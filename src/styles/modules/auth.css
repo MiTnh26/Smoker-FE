@@ -1,0 +1,126 @@
+/* auth.css */
+.login-page {
+  min-height: 100vh;
+  background-color: var(--background);
+}
+
+.login-form-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+
+.login-wrapper {
+  width: 100%;
+  max-width: 64rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3rem;
+}
+
+.login-logo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.75rem;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+.login-form-box {
+  flex: 1;
+  background-color: var(--card);
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  padding: 2rem;
+  max-width: 28rem;
+  border: 1px solid var(--border);
+}
+
+.login-form input {
+  width: 100%;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.login-form input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.login-form button.login-btn {
+  width: 100%;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: 0.375rem;
+  padding: 0.5rem 0;
+  transition: background 0.2s;
+}
+
+.login-form button.login-btn:hover {
+  filter: brightness(0.95);
+}
+
+.login-form button.create-account-btn {
+  width: 100%;
+  background-color: #16a34a;
+  color: #fff;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0;
+  transition: background 0.2s;
+}
+
+.login-form button.create-account-btn:hover {
+  background-color: #15803d;
+}
+
+.login-form .forgot-link {
+  display: block;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--primary);
+  text-decoration: none;
+  transition: text-decoration 0.2s;
+}
+
+.login-form .forgot-link:hover {
+  text-decoration: underline;
+}
+
+.login-form .divider {
+  position: relative;
+  margin: 1rem 0;
+}
+
+.login-form .divider-line {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border-top: 1px solid var(--border);
+}
+
+.login-footer {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.login-footer a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: text-decoration 0.2s;
+}
+
+.login-footer a:hover {
+  text-decoration: underline;
+}

@@ -1,0 +1,16 @@
+/* src/styles/themes/variables.css */
+:root {
+  --background: #1e1e2d;
+  --background-rgb: 30,30,45; /* rgb của background */
+  --foreground: #f8f8f8;
+  --card: #29293d;
+  --card-foreground: #f8f8f8;
+  --primary: #a855f7;
+  --primary-foreground: #ffffff;
+  --border: #444455;
+  --muted: #555566;
+  --muted-foreground: #cccccc;
+  --radius: 0.75rem;
+    --background: oklch(0.12 0.01 264);
+  --background-rgb: 29, 30, 31; /* ví dụ, convert Oklch sang RGB */
+}

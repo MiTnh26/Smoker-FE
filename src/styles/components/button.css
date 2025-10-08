@@ -1,0 +1,14 @@
+/* src/styles/components/button.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium bg-primary text-white transition;
+  }
+
+  .btn:hover {
+    @apply bg-primary; /* Tailwind không hỗ trợ /80 trực tiếp với màu custom */
+  }
+}

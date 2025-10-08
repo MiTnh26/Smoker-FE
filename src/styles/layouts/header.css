@@ -1,0 +1,18 @@
+/* src/styles/layouts/header.css */
+.header {
+  @apply fixed top-0 left-0 right-0 z-50 border-b border-border;
+  background-color: var(--background);
+  backdrop-blur: blur(12px);
+}
+
+.header-container {
+  @apply container mx-auto px-4 py-4 flex items-center justify-between;
+}
+
+.header-title {
+  @apply text-2xl font-bold text-primary;
+}
+
+.header-buttons {
+  @apply flex items-center gap-3;
+}

@@ -1,0 +1,78 @@
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  transition-property: opacity;
+  transition-duration: 700ms;
+}
+
+.hero-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(var(--background-rgb), 1),
+    rgba(var(--background-rgb), 0.5),
+    transparent
+  );
+}
+
+.hero-content {
+  position: absolute;
+  bottom: 5rem;
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.hero-title {
+  font-size: 2.25rem;
+  font-weight: bold;
+  color: var(--foreground);
+  margin-bottom: 1rem;
+}
+@media (min-width: 768px) {
+  .hero-title {
+    font-size: 3.75rem;
+  }
+}
+
+.hero-desc {
+  font-size: 1.125rem;
+  color: var(--muted-foreground);
+}
+@media (min-width: 768px) {
+  .hero-desc {
+    font-size: 1.25rem;
+  }
+}
+
+.hero-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  backdrop-filter: blur(4px);
+}
+
+.hero-button.left {
+  left: 1rem;
+}
+
+.hero-button.right {
+  right: 1rem;
+}
+
+.hero-button-bg {
+  background-color: rgba(var(--background-rgb), 0.2);
+}
+
+.hero-button-bg:hover {
+  background-color: rgba(var(--background-rgb), 0.4);
+}

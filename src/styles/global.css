@@ -1,0 +1,18 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Base styles */
+@import "./base/reset.css";
+@import "./base/typography.css";
+
+/* Layout */
+@import "./layouts/header.css";
+@import "./layouts/sidebar.css";
+
+/* Theme */
+@import "./themes/variables.css";
+@import "./themes/theme.css";
+
+/* Modules */
+@import "./modules/auth.css";
