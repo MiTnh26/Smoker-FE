@@ -1,70 +1,458 @@
 import React, { useState, useEffect } from "react";
-import { Input } from "../../../components/common/Input";
-import { Button } from "../../../components/common/Button";
+import PropTypes from "prop-types";
 import { userApi } from "../../../api/userApi";
 import { useNavigate } from "react-router-dom";
 
-export default function ProfileSetup() {
+const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ userName: "", avatar: "", background: "", bio: "", address: "", phone: "" });
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [form, setForm] = useState({
+    userName: '',
+    avatar: '',
+    background: '',
+    bio: '',
+    address: '',
+    phone: ''
+  });
+  
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Load existing profile data
   useEffect(() => {
-    (async () => {
+    const loadProfile = async () => {
       try {
         const res = await userApi.me();
-        if (res?.status === "success" && res?.data) {
-          const u = res.data;
+        if (res && res.status === "success" && res.data) {
+          const user = res.data;
           setForm({
-            userName: u.userName || "",
-            avatar: u.avatar || "",
-            background: u.background || "",
-            bio: u.bio || "",
-            address: u.address || "",
-            phone: u.phone || "",
+            userName: user.userName || '',
+            avatar: user.avatar || '',
+            background: user.background || '',
+            bio: user.bio || '',
+            address: user.address || '',
+            phone: user.phone || ''
           });
         }
-      } catch (e) {}
-    })();
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+      } finally {
+        setIsInitialized(true);
+      }
+    };
+    
+    loadProfile();
   }, []);
 
-  const onChange = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  // Validation functions
+  const validateField = (name, value) => {
+    const newErrors = { ...errors };
+    
+    switch (name) {
+      case 'userName':
+        if (!value.trim()) {
+          newErrors.userName = 'Tên người dùng là bắt buộc';
+        } else if (value.trim().length < 2) {
+          newErrors.userName = 'Tên phải có ít nhất 2 ký tự';
+        } else {
+          delete newErrors.userName;
+        }
+        break;
+        
+      case 'avatar':
+        if (!value.trim()) {
+          newErrors.avatar = 'Ảnh đại diện là bắt buộc';
+        } else if (!isValidUrl(value)) {
+          newErrors.avatar = 'URL ảnh không hợp lệ';
+        } else {
+          delete newErrors.avatar;
+        }
+        break;
+        
+      case 'background':
+        if (value.trim() && !isValidUrl(value)) {
+          newErrors.background = 'URL ảnh nền không hợp lệ';
+        } else {
+          delete newErrors.background;
+        }
+        break;
+        
+      case 'phone':
+        if (value.trim() && !isValidPhone(value)) {
+          newErrors.phone = 'Số điện thoại không hợp lệ';
+        } else {
+          delete newErrors.phone;
+        }
+        break;
+        
+      default:
+        break;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+  const isValidUrl = (string) => {
     try {
-      const res = await userApi.updateProfile(form);
-      if (res.status === "success") {
-        setSuccess("Lưu hồ sơ thành công");
-        setTimeout(() => navigate("/customer/newsfeed", { replace: true }), 800);
-      } else {
-        setError(res.message || "Lưu hồ sơ thất bại");
-      }
-    } catch (err) {
-      setError(err?.response?.data?.message || "Lưu hồ sơ thất bại");
+      new URL(string);
+      return true;
+    } catch {
+      return false;
     }
   };
 
+  const isValidPhone = (phone) => {
+    const phoneRegex = /^[+]?0?[1-9]\d{0,15}$/;
+
+    return phoneRegex.test(phone.replace(/\s/g, ''));
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+    
+    // Validate field on change
+    setTimeout(() => validateField(name, value), 300);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSuccess('');
+    
+    // Validate all fields
+    const isFormValid = Object.keys(form).every(key => {
+      if (key === 'userName' || key === 'avatar') {
+        return validateField(key, form[key]);
+      }
+      return true;
+    });
+
+    if (!isFormValid) {
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const result = await (onSave ? onSave(form) : userApi.updateProfile(form));
+      
+      if (result?.status === "success" || result?.token) {
+        setSuccess('Lưu hồ sơ thành công!');
+        setTimeout(() => {
+          navigate(redirectPath, { replace: true });
+        }, 1500);
+      } else {
+        throw new Error(result?.message || 'Cập nhật thất bại');
+      }
+    } catch (error) {
+      setErrors({ submit: error?.response?.data?.message || error.message || 'Cập nhật thất bại' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const isFormValid = !errors.userName && !errors.avatar && !errors.background && !errors.phone && 
+                     form.userName.trim() && form.avatar.trim();
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ padding: 24, maxWidth: 640, margin: "0 auto" }}>
-      <h2>Hoàn thiện hồ sơ</h2>
-      <p>Vui lòng bổ sung ít nhất Tên và Ảnh đại diện.</p>
-      <form onSubmit={onSubmit} className="space-y-3">
-        <Input placeholder="User name (bắt buộc)" value={form.userName} onChange={onChange("userName")} />
-        <Input placeholder="Avatar URL (bắt buộc)" value={form.avatar} onChange={onChange("avatar")} />
-        <Input placeholder="Background URL" value={form.background} onChange={onChange("background")} />
-        <Input placeholder="Bio" value={form.bio} onChange={onChange("bio")} />
-        <Input placeholder="Address" value={form.address} onChange={onChange("address")} />
-        <Input placeholder="Phone" value={form.phone} onChange={onChange("phone")} />
-        {error && <div style={{ color: "red", fontSize: 12 }}>{error}</div>}
-        {success && <div style={{ color: "green", fontSize: 12 }}>{success}</div>}
-        <Button type="submit">Lưu</Button>
-      </form>
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Hoàn thiện hồ sơ
+          </h1>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Tạo hồ sơ cá nhân để kết nối với cộng đồng. Hãy chia sẻ một chút về bản thân!
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Form Section */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* User Name */}
+              <div>
+                <label htmlFor="userName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên hiển thị <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="userName"
+                  name="userName"
+                  value={form.userName}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${
+                    errors.userName ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="Nhập tên hiển thị của bạn"
+                  aria-describedby={errors.userName ? 'userName-error' : undefined}
+                  required
+                />
+                {errors.userName && (
+                  <p id="userName-error" className="mt-2 text-sm text-red-600" role="alert">
+                    {errors.userName}
+                  </p>
+                )}
+              </div>
+
+              {/* Avatar URL */}
+              <div>
+                <label htmlFor="avatar" className="block text-sm font-medium text-gray-700 mb-2">
+                  Ảnh đại diện <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="url"
+                  id="avatar"
+                  name="avatar"
+                  value={form.avatar}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${
+                    errors.avatar ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="https://example.com/avatar.jpg"
+                  aria-describedby={errors.avatar ? 'avatar-error' : undefined}
+                  required
+                />
+                {errors.avatar && (
+                  <p id="avatar-error" className="mt-2 text-sm text-red-600" role="alert">
+                    {errors.avatar}
+                  </p>
+                )}
+              </div>
+
+              {/* Background URL */}
+              <div>
+                <label htmlFor="background" className="block text-sm font-medium text-gray-700 mb-2">
+                  Ảnh nền
+                </label>
+                <input
+                  type="url"
+                  id="background"
+                  name="background"
+                  value={form.background}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${
+                    errors.background ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="https://example.com/background.jpg"
+                  aria-describedby={errors.background ? 'background-error' : undefined}
+                />
+                {errors.background && (
+                  <p id="background-error" className="mt-2 text-sm text-red-600" role="alert">
+                    {errors.background}
+                  </p>
+                )}
+              </div>
+
+              {/* Bio */}
+              <div>
+                <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
+                  Giới thiệu bản thân
+                </label>
+                <textarea
+                  id="bio"
+                  name="bio"
+                  value={form.bio}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors resize-none"
+                  placeholder="Chia sẻ một chút về bản thân, sở thích, hoặc điều gì đó đặc biệt..."
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  {form.bio.length}/500 ký tự
+                </p>
+              </div>
+
+              {/* Address */}
+              <div>
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+                  Địa chỉ
+                </label>
+                <input
+                  type="text"
+                  id="address"
+                  name="address"
+                  value={form.address}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                  placeholder="Nhập địa chỉ của bạn"
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                  Số điện thoại
+                </label>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={form.phone}
+                  onChange={handleInputChange}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${
+                    errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="+84 123 456 789"
+                  aria-describedby={errors.phone ? 'phone-error' : undefined}
+                />
+                {errors.phone && (
+                  <p id="phone-error" className="mt-2 text-sm text-red-600" role="alert">
+                    {errors.phone}
+                  </p>
+                )}
+              </div>
+
+              {/* Submit Error */}
+              {errors.submit && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-sm text-red-600" role="alert">
+                    {errors.submit}
+                  </p>
+                </div>
+              )}
+
+              {/* Success Message */}
+              {success && (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <output className="text-sm text-green-600">
+                    {success}
+                  </output>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={!isFormValid || isLoading}
+                className={`w-full py-3 px-6 rounded-xl font-medium transition-all duration-200 ${
+                  isFormValid && !isLoading
+                    ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-sm hover:shadow-md'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                aria-describedby="submit-help"
+              >
+                {isLoading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Đang lưu...
+                  </div>
+                ) : (
+                  'Hoàn thành hồ sơ'
+                )}
+              </button>
+              
+              <p id="submit-help" className="text-sm text-gray-500 text-center">
+                Các trường có dấu <span className="text-red-500">*</span> là bắt buộc
+              </p>
+            </form>
+          </div>
+
+          {/* Preview Section */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Xem trước hồ sơ</h3>
+            
+            {/* Profile Card Preview */}
+            <div className="bg-gradient-to-br from-teal-50 to-blue-50 rounded-xl p-6 space-y-4">
+              {/* Background Image */}
+              {form.background ? (
+                <div className="relative h-32 rounded-lg overflow-hidden">
+                  <img
+                    src={form.background}
+                    alt="Background preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="h-32 bg-gradient-to-r from-teal-200 to-blue-200 rounded-lg flex items-center justify-center">
+                  <span className="text-gray-500 text-sm">Ảnh nền</span>
+                </div>
+              )}
+
+              {/* Avatar */}
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  {form.avatar ? (
+                    <img
+                      src={form.avatar}
+                      alt="Avatar preview"
+                      className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-sm"
+                      onError={(e) => {
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(form.userName || 'User')}&background=teal&color=fff&size=64`;
+                      }}
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-full bg-teal-500 flex items-center justify-center text-white font-semibold">
+                      {form.userName ? form.userName.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900">
+                    {form.userName || 'Tên người dùng'}
+                  </h4>
+                  <p className="text-sm text-gray-600">
+                    {form.address || 'Địa chỉ'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Bio */}
+              {form.bio && (
+                <div className="pt-2">
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {form.bio}
+                  </p>
+                </div>
+              )}
+
+              {/* Contact Info */}
+              <div className="pt-2 space-y-1">
+                {form.phone && (
+                  <p className="text-sm text-gray-600 flex items-center">
+                    <span className="mr-2">📞</span>
+                    {form.phone}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-xl">
+              <h4 className="font-medium text-blue-900 mb-2">💡 Mẹo hay</h4>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• Sử dụng ảnh chất lượng cao cho avatar</li>
+                <li>• Viết bio ngắn gọn, thú vị</li>
+                <li>• Cập nhật thông tin liên hệ chính xác</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+ProfileSetup.propTypes = {
+  onSave: PropTypes.func,
+  redirectPath: PropTypes.string,
+};
+
+export default ProfileSetup;
 
 

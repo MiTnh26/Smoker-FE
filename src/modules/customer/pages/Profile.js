@@ -1,31 +1,28 @@
 import React, { useEffect, useState } from "react";
 import { userApi } from "../../../api/userApi";
-import { Input } from "../../../components/common/Input";
 import { Button } from "../../../components/common/Button";
+import "../../../styles/modules/profile.css";
 
 export default function Profile() {
-  const [profile, setProfile] = useState({ userName: "", email: "", avatar: "", background: "", bio: "", address: "", phone: "" });
+  const [profile, setProfile] = useState({
+    userName: "",
+    email: "",
+    avatar: "",
+    background: "",
+    bio: "",
+    address: "",
+    phone: "",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   useEffect(() => {
     (async () => {
       try {
         const res = await userApi.me();
         if (res.status === "success" && res.data) {
-          setProfile({
-            userName: res.data.userName || "",
-            email: res.data.email || "",
-            avatar: res.data.avatar || "",
-            background: res.data.background || "",
-            bio: res.data.bio || "",
-            address: res.data.address || "",
-            phone: res.data.phone || "",
-          });
-        } else {
-          setError(res.message || "Không tải được hồ sơ");
-        }
+          setProfile(res.data);
+        } else setError(res.message || "Không tải được hồ sơ");
       } catch (e) {
         setError(e?.response?.data?.message || "Không tải được hồ sơ");
       } finally {
@@ -34,49 +31,133 @@ export default function Profile() {
     })();
   }, []);
 
-  const onChange = (k) => (e) => setProfile((p) => ({ ...p, [k]: e.target.value }));
-
-  const onSave = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    try {
-      const { email, ...payload } = profile; // email không cập nhật
-      const res = await userApi.updateProfile(payload);
-      if (res.status === "success") {
-        setSuccess("Cập nhật thành công");
-      } else {
-        setError(res.message || "Cập nhật thất bại");
-      }
-    } catch (e) {
-      setError(e?.response?.data?.message || "Cập nhật thất bại");
-    }
-  };
-
-  if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
+  if (loading) return <div className="profile-loading">Đang tải hồ sơ...</div>;
 
   return (
-    <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
-      <h2>Hồ sơ của tôi</h2>
-      <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginTop: 16 }}>
-        <div style={{ width: 180 }}>
-          <img src={profile.avatar || "https://via.placeholder.com/160"} alt="avatar" style={{ width: 160, height: 160, objectFit: "cover", borderRadius: 8 }} />
+    <div className="profile-layout">
+      {/* --- HEADER --- */}
+     
+
+      {/* --- COVER & AVATAR --- */}
+      <section
+        className="profile-cover"
+        style={{
+          backgroundImage: `url(${
+            profile.background || "https://i.imgur.com/6IUbEMn.jpg"
+          })`,
+        }}
+      >
+        <div className="profile-info-header">
+          <div className="avatar-container">
+            <img
+              src={profile.avatar || "https://via.placeholder.com/120"}
+              alt="avatar"
+              className="profile-avatar"
+            />
+            <Button className="btn-small">Update</Button>
+          </div>
+
+          <div className="profile-details">
+            <h2>{profile.userName || "Người dùng mới"}</h2>
+            <p>{profile.address || "Chưa có địa chỉ"}</p>
+            <p>
+              Giá thuê: <span className="highlight">300k/giờ</span>
+            </p>
+            <p>⭐ 4.1 (5 đánh giá)</p>
+          </div>
+
+          <div className="profile-actions">
+            <Button className="btn-outline">Share</Button>
+            <Button className="btn-outline">Edit</Button>
+          </div>
         </div>
-        <form onSubmit={onSave} style={{ flex: 1 }} className="space-y-3">
-          <Input placeholder="Email" value={profile.email} disabled />
-          <Input placeholder="User name" value={profile.userName} onChange={onChange("userName")} />
-          <Input placeholder="Avatar URL" value={profile.avatar} onChange={onChange("avatar")} />
-          <Input placeholder="Background URL" value={profile.background} onChange={onChange("background")} />
-          <Input placeholder="Bio" value={profile.bio} onChange={onChange("bio")} />
-          <Input placeholder="Address" value={profile.address} onChange={onChange("address")} />
-          <Input placeholder="Phone" value={profile.phone} onChange={onChange("phone")} />
-          {error && <div style={{ color: "red", fontSize: 12 }}>{error}</div>}
-          {success && <div style={{ color: "green", fontSize: 12 }}>{success}</div>}
-          <Button type="submit">Lưu thay đổi</Button>
-        </form>
+      </section>
+
+      {/* --- NAV TABS --- */}
+      <div className="profile-tabs">
+        <button className="active">Info</button>
+        <button>Bài viết</button>
+        <button>Video</button>
+        <button>Đánh giá</button>
       </div>
+
+      {/* --- MAIN CONTENT --- */}
+      <div className="profile-body">
+        {/* --- LEFT COLUMN --- */}
+        <div className="profile-left">
+          <div className="event-section">
+            <h3>EVENT</h3>
+            <div className="event-list">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="event-circle"></div>
+              ))}
+            </div>
+          </div>
+
+          <div className="menu-section">
+            <h3>MENU</h3>
+            <div className="menu-grid">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="menu-item"></div>
+              ))}
+            </div>
+            <Button className="btn-small">Chỉnh sửa menu</Button>
+          </div>
+        </div>
+
+        {/* --- RIGHT COLUMN --- */}
+        <aside className="profile-sidebar">
+          <div className="stats-box">
+            <p>Follower: 2</p>
+            <p>Following: 2</p>
+            <p>Bạn bè: 2</p>
+          </div>
+          <div className="contact-box">
+            <p>Liên hệ: Tele</p>
+            <p>Liên hệ: Zalo</p>
+          </div>
+        </aside>
+      </div>
+
+      {/* --- POST AREA --- */}
+      <section className="post-section">
+        <div className="post-create">
+          <img
+            src={profile.avatar || "https://via.placeholder.com/40"}
+            alt="avatar"
+            className="avatar-small"
+          />
+          <input type="text" placeholder="Bạn muốn đăng gì..." />
+          <i className="bx bx-image"></i>
+        </div>
+        <Button className="btn-small">Quản lý bài viết</Button>
+      </section>
+
+      {/* --- POST LIST --- */}
+      <section className="post-list">
+        <div className="post-card">
+          <div className="post-header">
+            <img
+              src={profile.avatar || "https://via.placeholder.com/40"}
+              alt="avatar"
+              className="avatar-small"
+            />
+            <div>
+              <h4>{profile.userName || "Người dùng"}</h4>
+              <p>2 giờ trước</p>
+            </div>
+            <i className="bx bx-dots-horizontal-rounded"></i>
+          </div>
+          <p className="post-content">
+            Đây là bài viết mẫu của người dùng, hiển thị nội dung đăng tải.
+          </p>
+          <div className="post-image"></div>
+          <div className="post-actions">
+            <button>❤️ Thích</button>
+            <button>💬 Bình luận</button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
-
-

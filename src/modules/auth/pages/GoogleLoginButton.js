@@ -13,14 +13,20 @@ export default function GoogleLoginButton() {
   const handleSuccess = async (credentialResponse) => {
     try {
       const idToken = credentialResponse.credential;
-
       const data = await authApi.googleLogin({ idToken });
-
+  
       if (data?.token) {
         await login({ token: data.token, user: data.user });
-        setMessage("Đăng nhập thành công! Chuyển hướng...");
+        setMessage("Đăng nhập thành công!");
         setError("");
-        setTimeout(() => navigate("/customer/newsfeed", { replace: true }), 800);
+  
+        // ✅ Nếu chưa có profile -> chuyển hướng tới trang thiết lập profile
+        if (data.needProfile) {
+          setTimeout(() => navigate("/profile-setup", { replace: true }), 800);
+        } else {
+          setTimeout(() => navigate("/customer/newsfeed", { replace: true }), 800);
+        }
+  
       } else if (data?.message) {
         setMessage(data.message);
         setError("");
@@ -29,10 +35,11 @@ export default function GoogleLoginButton() {
         setMessage("");
       }
     } catch (err) {
-      setError(err?.response?.data?.message || "Xác thực Google thất bại");
+      setError(err?.response?.data?.message || "Xác thực Google thất bại 2");
       setMessage("");
     }
   };
+  
 
   return (
     <div className="google-login-page">

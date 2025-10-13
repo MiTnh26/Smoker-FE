@@ -36,25 +36,25 @@ export function Login() {
     }
   };
 
-  const handleGoogleLogin = async (e) => {
-    e.preventDefault();
-    setError("");
-    try {
-      const res = await authApi.googleLogin();
-      if (res && res.token) {
-        await login({ token: res.token, user: res.user });
-        if (!res.needProfile) {
-          navigate("/customer/newsfeed", { replace: true });
-        } else {
-          navigate("/profile-setup", { replace: true });
-        }
-      } else {
-        setError(res?.message || "Đăng nhập thất bại");
-      }
-    } catch (err) {
-      setError(err?.response?.data?.message || "Đăng nhập thất bại");
-    }
-  };
+  // const handleGoogleLogin = async (e) => {
+  //   e.preventDefault();
+  //   setError("");
+  //   try {
+  //     const res = await authApi.googleLogin();
+  //     if (res && res.token) {
+  //       await login({ token: res.token, user: res.user });
+  //       if (!res.needProfile) {
+  //         navigate("/customer/newsfeed", { replace: true });
+  //       } else {
+  //         navigate("/profile-setup", { replace: true });
+  //       }
+  //     } else {
+  //       setError(res?.message || "Đăng nhập thất bại");
+  //     }
+  //   } catch (err) {
+  //     setError(err?.response?.data?.message || "Đăng nhập thất bại");
+  //   }
+  // };
 
   return (
     <div className="login-page">

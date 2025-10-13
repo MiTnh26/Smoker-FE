@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 // Import modules
-import { Login, Register } from "../modules/auth";
+import { Login, Register,GoogleLoginButton } from "../modules/auth";
 import { Newsfeed } from "../modules/customer";
 import { Profile } from "../modules/customer";
 import { DJDashboard } from "../modules/dj";
@@ -16,7 +16,7 @@ import CustomerLayout from "../layouts/CustomerLayout";
 
 import ProtectedRoute from "./ProtectedRoute";
 import ProfileSetup from "../modules/customer/pages/ProfileSetup";
-import GoogleLogin from "../modules/auth/pages/GoogleLogin";
+
 
 export default function AppRoutes() {
   const isAuth = !!localStorage.getItem("token");
@@ -40,7 +40,7 @@ export default function AppRoutes() {
         } />
         <Route path="/login/google" element={
           <AuthLayout>
-            <GoogleLogin />
+            <GoogleLoginButton />
           </AuthLayout>
         } />
         <Route path="/profile-setup" element={
