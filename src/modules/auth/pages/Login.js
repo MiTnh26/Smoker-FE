@@ -1,7 +1,7 @@
 import React, { useState } from "react"; // ✅ import useState
 import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
-import { Link } from "react-router-dom"; 
+import { Link } from "react-router-dom";
 import "../../../styles/modules/auth.css";
 
 import { useNavigate } from "react-router-dom";
@@ -14,6 +14,8 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { login } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+
   // Google login uses button only
 
   const handleSubmit = async (e) => {
@@ -58,7 +60,7 @@ export function Login() {
 
   return (
     <div className="login-page">
-  
+
 
       <div className="login-form-container">
         <div className="login-wrapper">
@@ -70,18 +72,74 @@ export function Login() {
           {/* Login Form */}
           <div className="login-form-box">
             <form className="login-form space-y-4" onSubmit={handleSubmit}>
-              <Input 
-                type="text" 
-                placeholder="Email or phone number" 
+              <Input
+                type="text"
+                placeholder="Email or phone number"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <Input 
-                type="password" 
-                placeholder="Password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div style={{ position: "relative" }}>
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ paddingRight: "38px" }}
+                />
+                <span
+                  onClick={() => setShowPassword((v) => !v)}
+                  style={{
+                    position: "absolute",
+                    right: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    cursor: "pointer",
+                    color: "#666",
+                    fontSize: 18,
+                    userSelect: "none",
+                  }}
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  tabIndex={0}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter" || e.key === " ") setShowPassword((v) => !v);
+                  }}
+                >
+                  {showPassword ? (
+                    // 👁️ Eye Open
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  ) : (
+                    // 👁️ Eye Closed
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="22"
+                      height="22"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17.94 17.94A10.06 10.06 0 0 1 12 19c-7 0-11-7-11-7a21.75 21.75 0 0 1 5.06-5.94" />
+                      <path d="m1 1 22 22" />
+                    </svg>
+                  )}
+                </span>
+
+              </div>
 
               {error && <div style={{ color: "red", fontSize: 12 }}>{error}</div>}
 
@@ -103,7 +161,7 @@ export function Login() {
                 để xác thực. Nếu là lần đầu, hệ thống sẽ gửi một <b>mật khẩu ngẫu nhiên</b>
                 về Gmail của bạn để sử dụng cho các lần <b>đăng nhập thủ công</b> sau này.
               </div>
-              <Button type="button" className="login-btn" onClick={() => navigate("/login/google") }>
+              <Button type="button" className="login-btn" onClick={() => navigate("/login/google")}>
                 Đăng nhập bằng Google
               </Button>
 
