@@ -1,21 +1,24 @@
 import React, { createContext, useContext, useState } from "react";
+import { userApi } from "../api/userApi";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    // mock user (sau này thay bằng API)
-    return JSON.parse(localStorage.getItem("user")) || null;
+    const storedUser = localStorage.getItem("user");
+    return storedUser ? JSON.parse(storedUser) : null;
   });
 
-  const login = (data) => {
-    setUser(data);
-    localStorage.setItem("user", JSON.stringify(data));
+  const login = async ({ token, user: profile }) => {
+    if (token) localStorage.setItem("token", token);
+    setUser(profile);
+    localStorage.setItem("user", JSON.stringify(profile));
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
   };
 
   return (

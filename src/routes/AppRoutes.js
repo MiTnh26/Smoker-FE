@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 // Import modules
 import { Login, Register } from "../modules/auth";
 import { Newsfeed } from "../modules/customer";
+import { Profile } from "../modules/customer";
 import { DJDashboard } from "../modules/dj";
 import { DancerDashboard } from "../modules/dancer";
 import { BarDashboard } from "../modules/bar";
@@ -14,6 +15,8 @@ import AuthLayout from "../layouts/AuthLayout";
 import CustomerLayout from "../layouts/CustomerLayout";
 
 import ProtectedRoute from "./ProtectedRoute";
+import ProfileSetup from "../modules/customer/pages/ProfileSetup";
+import GoogleLogin from "../modules/auth/pages/GoogleLogin";
 
 export default function AppRoutes() {
   const isAuth = !!localStorage.getItem("token");
@@ -35,6 +38,16 @@ export default function AppRoutes() {
             <Register />
           </AuthLayout>
         } />
+        <Route path="/login/google" element={
+          <AuthLayout>
+            <GoogleLogin />
+          </AuthLayout>
+        } />
+        <Route path="/profile-setup" element={
+          <CustomerLayout>
+            <ProfileSetup />
+          </CustomerLayout>
+        } />
 
         {/* <Route
           path="/customer/newsfeed"
@@ -49,6 +62,17 @@ export default function AppRoutes() {
             <ProtectedRoute role="customer">
               <CustomerLayout>
                 <Newsfeed />
+              </CustomerLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/customer/profile"
+          element={
+            <ProtectedRoute role="customer">
+              <CustomerLayout>
+                <Profile />
               </CustomerLayout>
             </ProtectedRoute>
           }

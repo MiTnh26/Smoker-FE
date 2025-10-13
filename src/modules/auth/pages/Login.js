@@ -5,19 +5,55 @@ import { Link } from "react-router-dom";
 import "../../../styles/modules/auth.css";
 
 import { useNavigate } from "react-router-dom";
+import { authApi } from "../../../api/userApi";
+import { useAuth } from "../../../hooks/useAuth";
 
 export function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const { login } = useAuth();
+  // Google login uses button only
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: gọi API đăng nhập
-    console.log("Email:", email, "Password:", password);
-     console.log("Login success!", { email, password });
-     localStorage.setItem("role", "customer");
-    navigate("/customer/newsfeed");
+    setError("");
+    try {
+      const res = await authApi.login(email, password);
+      if (res && res.token) {
+        await login({ token: res.token, user: res.user });
+        if (!res.needProfile) {
+          navigate("/customer/newsfeed", { replace: true });
+        } else {
+          navigate("/profile-setup", { replace: true });
+        }
+      } else {
+        setError(res?.message || "Đăng nhập thất bại");
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || "Đăng nhập thất bại");
+    }
+  };
+
+  const handleGoogleLogin = async (e) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const res = await authApi.googleLogin();
+      if (res && res.token) {
+        await login({ token: res.token, user: res.user });
+        if (!res.needProfile) {
+          navigate("/customer/newsfeed", { replace: true });
+        } else {
+          navigate("/profile-setup", { replace: true });
+        }
+      } else {
+        setError(res?.message || "Đăng nhập thất bại");
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || "Đăng nhập thất bại");
+    }
   };
 
   return (
@@ -47,6 +83,8 @@ export function Login() {
                 onChange={(e) => setPassword(e.target.value)}
               />
 
+              {error && <div style={{ color: "red", fontSize: 12 }}>{error}</div>}
+
               <Button type="submit" className="login-btn">
                 Log in
               </Button>
@@ -58,6 +96,16 @@ export function Login() {
               <div className="divider">
                 <div className="divider-line"></div>
               </div>
+
+              {/* Google Login simple flow */}
+              <div style={{ fontSize: 12, color: "#555" }}>
+                Cách 2 – Đăng nhập bằng Google: Chọn Gmail và nhập mật khẩu Gmail
+                để xác thực. Nếu là lần đầu, hệ thống sẽ gửi một <b>mật khẩu ngẫu nhiên</b>
+                về Gmail của bạn để sử dụng cho các lần <b>đăng nhập thủ công</b> sau này.
+              </div>
+              <Button type="button" className="login-btn" onClick={() => navigate("/login/google") }>
+                Đăng nhập bằng Google
+              </Button>
 
               <Button type="button" className="create-account-btn">
                 <Link to="/signup">Create new account</Link>
