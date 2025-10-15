@@ -13,7 +13,9 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     address: '',
     phone: ''
   });
-  
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [backgroundFile, setBackgroundFile] = useState(null);
+
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -41,67 +43,49 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
         setIsInitialized(true);
       }
     };
-    
+
     loadProfile();
   }, []);
 
   // Validation functions
   const validateField = (name, value) => {
     const newErrors = { ...errors };
-    
+
+    // Chuyển value sang string nếu có thể, dùng '' nếu là file hoặc null
+    const val = typeof value === 'string' ? value.trim() : '';
+
     switch (name) {
       case 'userName':
-        if (!value.trim()) {
-          newErrors.userName = 'Tên người dùng là bắt buộc';
-        } else if (value.trim().length < 2) {
-          newErrors.userName = 'Tên phải có ít nhất 2 ký tự';
-        } else {
-          delete newErrors.userName;
-        }
+        if (!val) newErrors.userName = 'Tên người dùng là bắt buộc';
+        else if (val.length < 2) newErrors.userName = 'Tên phải có ít nhất 2 ký tự';
+        else delete newErrors.userName;
         break;
-        
+
       case 'avatar':
-        if (!value.trim()) {
-          newErrors.avatar = 'Ảnh đại diện là bắt buộc';
-        } else if (!isValidUrl(value)) {
-          newErrors.avatar = 'URL ảnh không hợp lệ';
-        } else {
-          delete newErrors.avatar;
-        }
+        // avatarFile được giữ riêng, val là URL preview nếu có
+        if (!avatarFile && !val) newErrors.avatar = 'Ảnh đại diện là bắt buộc';
+        else delete newErrors.avatar;
         break;
-        
+
       case 'background':
-        if (value.trim() && !isValidUrl(value)) {
-          newErrors.background = 'URL ảnh nền không hợp lệ';
-        } else {
-          delete newErrors.background;
-        }
+        // Không bắt buộc
+        delete newErrors.background;
         break;
-        
+
       case 'phone':
-        if (value.trim() && !isValidPhone(value)) {
-          newErrors.phone = 'Số điện thoại không hợp lệ';
-        } else {
-          delete newErrors.phone;
-        }
+        if (val && !isValidPhone(val)) newErrors.phone = 'Số điện thoại không hợp lệ';
+        else delete newErrors.phone;
         break;
-        
+
       default:
         break;
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const isValidUrl = (string) => {
-    try {
-      new URL(string);
-      return true;
-    } catch {
-      return false;
-    }
-  };
+
 
   const isValidPhone = (phone) => {
     const phoneRegex = /^[+]?0?[1-9]\d{0,15}$/;
@@ -112,15 +96,39 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
-    
+
     // Validate field on change
     setTimeout(() => validateField(name, value), 300);
   };
 
+  const handleFileChange = (e) => {
+    const { name, files } = e.target;
+    const file = files && files[0];
+
+    if (name === 'avatar') {
+      setAvatarFile(file || null);
+      const previewUrl = file ? URL.createObjectURL(file) : form.avatar;
+      setForm(prev => ({ ...prev, avatar: previewUrl }));
+
+      // Validate với string URL
+      validateField('avatar', previewUrl);
+    }
+
+    if (name === 'background') {
+      setBackgroundFile(file || null);
+      const previewUrl = file ? URL.createObjectURL(file) : form.background;
+      setForm(prev => ({ ...prev, background: previewUrl }));
+
+      validateField('background', previewUrl);
+    }
+
+  };
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccess('');
-    
+
     // Validate all fields
     const isFormValid = Object.keys(form).every(key => {
       if (key === 'userName' || key === 'avatar') {
@@ -134,11 +142,37 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     }
 
     setIsLoading(true);
-    
+
     try {
-      const result = await (onSave ? onSave(form) : userApi.updateProfile(form));
-      
+      // Build FormData for multipart upload
+      const formData = new FormData();
+      formData.append('userName', form.userName.trim());
+      formData.append('bio', form.bio || '');
+      formData.append('address', form.address || '');
+      formData.append('phone', form.phone || '');
+
+      if (avatarFile) {
+        formData.append('avatar', avatarFile);
+      } else if (form.avatar) {
+        formData.append('avatar', form.avatar);
+      }
+
+      if (backgroundFile) {
+        formData.append('background', backgroundFile);
+      } else if (form.background) {
+        formData.append('background', form.background);
+      }
+
+      const result = await (onSave ? onSave(formData) : userApi.updateProfile(formData));
+
       if (result?.status === "success" || result?.token) {
+        // Cập nhật localStorage
+        const updatedUser = {
+          ...JSON.parse(localStorage.getItem("user") || "{}"),
+          ...result.data, // hoặc result.user tùy response từ API
+        };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+
         setSuccess('Lưu hồ sơ thành công!');
         setTimeout(() => {
           navigate(redirectPath, { replace: true });
@@ -153,8 +187,9 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     }
   };
 
-  const isFormValid = !errors.userName && !errors.avatar && !errors.background && !errors.phone && 
-                     form.userName.trim() && form.avatar.trim();
+
+  const isFormValid = !errors.userName && !errors.avatar && !errors.background && !errors.phone &&
+    form.userName.trim() && form.avatar.trim();
 
   if (!isInitialized) {
     return (
@@ -192,9 +227,8 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   name="userName"
                   value={form.userName}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${
-                    errors.userName ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${errors.userName ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
                   placeholder="Nhập tên hiển thị của bạn"
                   aria-describedby={errors.userName ? 'userName-error' : undefined}
                   required
@@ -206,21 +240,18 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                 )}
               </div>
 
-              {/* Avatar URL */}
+              {/* Avatar */}
               <div>
                 <label htmlFor="avatar" className="block text-sm font-medium text-gray-700 mb-2">
                   Ảnh đại diện <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="url"
+                  type="file"
                   id="avatar"
                   name="avatar"
-                  value={form.avatar}
-                  onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${
-                    errors.avatar ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
-                  placeholder="https://example.com/avatar.jpg"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
                   aria-describedby={errors.avatar ? 'avatar-error' : undefined}
                   required
                 />
@@ -231,21 +262,18 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                 )}
               </div>
 
-              {/* Background URL */}
+              {/* Background */}
               <div>
                 <label htmlFor="background" className="block text-sm font-medium text-gray-700 mb-2">
                   Ảnh nền
                 </label>
                 <input
-                  type="url"
+                  type="file"
                   id="background"
                   name="background"
-                  value={form.background}
-                  onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${
-                    errors.background ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
-                  placeholder="https://example.com/background.jpg"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
                   aria-describedby={errors.background ? 'background-error' : undefined}
                 />
                 {errors.background && (
@@ -301,9 +329,8 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   name="phone"
                   value={form.phone}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${
-                    errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    }`}
                   placeholder="+84 123 456 789"
                   aria-describedby={errors.phone ? 'phone-error' : undefined}
                 />
@@ -336,11 +363,10 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               <button
                 type="submit"
                 disabled={!isFormValid || isLoading}
-                className={`w-full py-3 px-6 rounded-xl font-medium transition-all duration-200 ${
-                  isFormValid && !isLoading
-                    ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-sm hover:shadow-md'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                className={`w-full py-3 px-6 rounded-xl font-medium transition-all duration-200 ${isFormValid && !isLoading
+                  ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-sm hover:shadow-md'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 aria-describedby="submit-help"
               >
                 {isLoading ? (
@@ -352,7 +378,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   'Hoàn thành hồ sơ'
                 )}
               </button>
-              
+
               <p id="submit-help" className="text-sm text-gray-500 text-center">
                 Các trường có dấu <span className="text-red-500">*</span> là bắt buộc
               </p>
@@ -362,7 +388,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
           {/* Preview Section */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Xem trước hồ sơ</h3>
-            
+
             {/* Profile Card Preview */}
             <div className="bg-gradient-to-br from-teal-50 to-blue-50 rounded-xl p-6 space-y-4">
               {/* Background Image */}
@@ -401,7 +427,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="flex-1">
                   <h4 className="font-semibold text-gray-900">
                     {form.userName || 'Tên người dùng'}

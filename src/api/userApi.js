@@ -10,7 +10,7 @@ export const authApi = {
 
 export const userApi = {
   me: () => axiosClient.get("/user/me"),
-  updateProfile: (payload) => axiosClient.put("/user/profile", payload),
+  updateProfile: (payload, config = {}) => axiosClient.put("/user/profile", payload, config),
 };
 
 

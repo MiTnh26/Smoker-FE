@@ -7,6 +7,7 @@ import DJRoutes from "./DJRoutes";
 import DancerRoutes from "./DancerRoutes";
 import BarRoutes from "./BarRoutes";
 import AdminRoutes from "./AdminRoutes";
+import BusinessRouters from "./BusinessRouters";
 
 export default function AppRoutes() {
   return (
@@ -21,7 +22,7 @@ export default function AppRoutes() {
         {DancerRoutes()}
         {BarRoutes()}
         {AdminRoutes()}
-
+        {BusinessRouters()}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

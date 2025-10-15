@@ -1,14 +1,18 @@
-// src/modules/business/pages/DJRegister.js
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import businessApi from "../../../api/businessApi";
+import "../../../styles/modules/businessRegister.css";
 
 export default function DJRegister() {
   const navigate = useNavigate();
+  const storedUser = JSON.parse(localStorage.getItem("user"));
   const [formData, setFormData] = useState({
     stageName: "",
     genre: "",
     experience: "",
     bio: "",
+    avatar: null,
+    background: null,
   });
 
   const handleChange = (e) => {
@@ -16,65 +20,73 @@ export default function DJRegister() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e) => {
+    const { name, files } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: files[0] }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("DJ registration data:", formData);
-    // TODO: call API đăng ký DJ tại đây
-    navigate("/customer/newsfeed");
+
+    if (!storedUser?.id) {
+      alert("Không tìm thấy tài khoản. Vui lòng đăng nhập lại.");
+      return;
+    }
+
+    const payload = new FormData();
+    payload.append("accountId", storedUser.id);
+    payload.append("role", "dj");
+    payload.append("userName", formData.stageName);
+    payload.append("bio", formData.bio || "");
+    payload.append("genre", formData.genre || "");
+    payload.append("experience", formData.experience || "");
+    if (formData.avatar) payload.append("avatar", formData.avatar);
+    if (formData.background) payload.append("background", formData.background);
+
+    try {
+      await businessApi.register(payload);
+      navigate("/customer/newsfeed");
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.message || "Đăng ký thất bại");
+    }
   };
 
   return (
-    <div className="max-w-lg mx-auto mt-10 bg-white p-6 rounded-2xl shadow">
-      <h2 className="text-2xl font-bold mb-6 text-center">Đăng ký DJ</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block font-medium mb-1">Nghệ danh</label>
-          <input
-            type="text"
-            name="stageName"
-            value={formData.stageName}
-            onChange={handleChange}
-            required
-            className="w-full border rounded-lg p-2"
-          />
+    <div className="business-register-container">
+      <h2>Đăng ký DJ</h2>
+      <form onSubmit={handleSubmit} className="business-register-form" encType="multipart/form-data">
+        <div className="form-group">
+          <label>Nghệ danh</label>
+          <input type="text" name="stageName" value={formData.stageName} onChange={handleChange} required />
         </div>
-        <div>
-          <label className="block font-medium mb-1">Thể loại âm nhạc</label>
-          <input
-            type="text"
-            name="genre"
-            value={formData.genre}
-            onChange={handleChange}
-            className="w-full border rounded-lg p-2"
-          />
+
+        <div className="form-group">
+          <label>Thể loại âm nhạc</label>
+          <input type="text" name="genre" value={formData.genre} onChange={handleChange} />
         </div>
-        <div>
-          <label className="block font-medium mb-1">Kinh nghiệm (năm)</label>
-          <input
-            type="number"
-            name="experience"
-            value={formData.experience}
-            onChange={handleChange}
-            min="0"
-            className="w-full border rounded-lg p-2"
-          />
+
+        <div className="form-group">
+          <label>Kinh nghiệm (năm)</label>
+          <input type="number" name="experience" min="0" value={formData.experience} onChange={handleChange} />
         </div>
-        <div>
-          <label className="block font-medium mb-1">Giới thiệu bản thân</label>
-          <textarea
-            name="bio"
-            value={formData.bio}
-            onChange={handleChange}
-            rows={4}
-            className="w-full border rounded-lg p-2"
-          />
+
+        <div className="form-group">
+          <label>Giới thiệu bản thân</label>
+          <textarea name="bio" value={formData.bio} onChange={handleChange} rows={4} />
         </div>
-        <button
-          type="submit"
-          className="w-full bg-black text-white py-2 rounded-lg hover:bg-gray-800 transition"
-        >
-          Gửi đăng ký
-        </button>
+
+        <div className="form-group">
+          <label>Ảnh đại diện</label>
+          <input type="file" name="avatar" accept="image/*" onChange={handleFileChange} />
+        </div>
+
+        <div className="form-group">
+          <label>Ảnh bìa</label>
+          <input type="file" name="background" accept="image/*" onChange={handleFileChange} />
+        </div>
+
+        <button type="submit" className="business-register-btn">Gửi đăng ký</button>
       </form>
     </div>
   );

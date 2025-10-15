@@ -17,10 +17,7 @@ export default function AuthRoutes() {
       <Route path="/login/google" element={<AuthLayout><GoogleLoginButton /></AuthLayout>} />
       <Route path="/profile-setup" element={<AuthLayout><ProfileSetup /></AuthLayout>} />
         {/*  Các route đăng ký */}
-        <Route path="/register/select-account-type" element={<AuthLayout><SelectAccountType /></AuthLayout>} />
-      <Route path="/register/bar" element={<AuthLayout><BarRegister /></AuthLayout>} />
-      <Route path="/register/dj" element={<AuthLayout><DJRegister /></AuthLayout>} />
-      <Route path="/register/dancer" element={<AuthLayout><DancerRegister /></AuthLayout>} />
+     
     </>
     </Fragment>
   );
