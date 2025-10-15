@@ -18,7 +18,7 @@ export default function CustomerSidebar() {
 
       <nav className="sidebar-nav">
         <Link to="#" className="sidebar-nav-item"><span>Tin tức</span></Link>
-        <Link to="#" className="sidebar-nav-item"><span>Đăng và tài khoản kinh doanh</span></Link>
+        <Link to="#" className="sidebar-nav-item"><span>Đăng ký tài khoản kinh doanh</span></Link>
         <Link to="#" className="sidebar-nav-item"><span>Hội nhóm</span></Link>
         <Link to="#" className="sidebar-nav-item"><span>Sự kiện</span></Link>
       </nav>
