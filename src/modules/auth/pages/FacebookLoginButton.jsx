@@ -2,33 +2,49 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FacebookLogin from 'react-facebook-login';
 import { authApi } from '../../../api/userApi';
+import { useAuth } from '../../../hooks/useAuth';
 
 const FacebookLoginButton = () => {
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const { login } = useAuth();
 
   const handleFacebookResponse = async (response) => {
     if (response.accessToken) {
+      // Log Facebook access token
+      console.log('Facebook Access Token:', response.accessToken);
+      console.log('Facebook Response:', response);
+      
       try {
         // Thử đăng nhập
         const loginResult = await authApi.facebookLogin(response.accessToken);
+        // Log backend response
+        console.log('Backend Login Response:', loginResult);
+        console.log('Backend Token:', loginResult.data.token);
+        
+        // Cập nhật context với thông tin user và token
+        await login({
+          token: loginResult.data.token,
+          user: loginResult.data.user
+        });
+
         // Lưu token
         localStorage.setItem('token', loginResult.data.token);
         // Redirect tùy theo role hoặc needProfile
         if (loginResult.data.needProfile) {
-          navigate('/profile/setup');
+          navigate('/profile-setup', { replace: true });
         } else {
           // Redirect dựa vào role
           const role = loginResult.data.user.role;
           switch (role) {
             case 'admin':
-              navigate('/admin/dashboard');
+              navigate('/admin/dashboard', { replace: true });
               break;
             case 'customer':
-              navigate('/customer/dashboard');
+              navigate('/customer/newsfeed', { replace: true });
               break;
             default:
-              navigate('/');
+              navigate('/', { replace: true });
           }
         }
       } catch (error) {
@@ -41,6 +57,8 @@ const FacebookLoginButton = () => {
             setError(registerError.response?.data?.message || 'Đăng ký thất bại');
           }
         } else {
+          console.error('Login Error:', error);
+          console.error('Error Response:', error.response);
           setError(error.response?.data?.message || 'Đăng nhập thất bại');
         }
       }

@@ -7,7 +7,7 @@ import "../../../styles/modules/auth.css";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../../api/userApi";
 import { useAuth } from "../../../hooks/useAuth";
-import { FacebookLoginButton } from '../pages/FacebookLoginButton';
+import FacebookLoginButton from '../pages/FacebookLoginButton';
 
 export function Login() {
   const navigate = useNavigate();
