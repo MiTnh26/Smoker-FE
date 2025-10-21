@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authApi } from '../../../api/userApi';
-import { Button, Input } from '../../../components/common';
+import { Button } from "../../../components/common/Button";
+import { Input } from "../../../components/common/Input";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');

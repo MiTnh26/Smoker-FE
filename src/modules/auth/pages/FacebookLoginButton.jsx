@@ -75,6 +75,14 @@ const FacebookLoginButton = () => {
         cssClass="w-full flex items-center justify-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
         icon="fa-facebook"
         textButton="Đăng nhập bằng Facebook"
+        // disableMobileRedirect={true}
+        // isMobile={false}
+        // redirectUri={window.location.href}
+        // // Thêm các options cho development
+        // legacyImplementation={process.env.NODE_ENV === 'development'}
+        // cookie={process.env.NODE_ENV === 'development'}
+        // xfbml={process.env.NODE_ENV === 'development'}
+        // version={'v18.0'}
       />
       
       {error && (
