@@ -7,6 +7,7 @@ import "../../../styles/modules/auth.css";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../../api/userApi";
 import { useAuth } from "../../../hooks/useAuth";
+import { FacebookLoginButton } from '../pages/FacebookLoginButton';
 
 export function Login() {
   const navigate = useNavigate();
@@ -148,7 +149,9 @@ export function Login() {
               </Button>
 
               <div className="forgot-link">
-                <Link to="/forgot-password">Forgotten account?</Link>
+                <Link to="/forgot-password" className="text-blue-600 hover:text-blue-800">
+                  Quên mật khẩu?
+                </Link>
               </div>
 
               <div className="divider">
@@ -164,6 +167,10 @@ export function Login() {
               <Button type="button" className="login-btn" onClick={() => navigate("/login/google")}>
                 Đăng nhập bằng Google
               </Button>
+
+              <div className="mt-2">
+                <FacebookLoginButton />
+              </div>
 
               <Button type="button" className="create-account-btn">
                 <Link to="/signup">Create new account</Link>
