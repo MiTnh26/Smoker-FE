@@ -20,22 +20,22 @@ const FacebookLoginButton = () => {
         const loginResult = await authApi.facebookLogin(response.accessToken);
         // Log backend response
         console.log('Backend Login Response:', loginResult);
-        console.log('Backend Token:', loginResult.data.token);
+        console.log('Backend Token:', loginResult.token);
         
         // Cập nhật context với thông tin user và token
         await login({
-          token: loginResult.data.token,
-          user: loginResult.data.user
+          token: loginResult.token,
+          user: loginResult.user
         });
 
         // Lưu token
-        localStorage.setItem('token', loginResult.data.token);
+        localStorage.setItem('token', loginResult.token);
         // Redirect tùy theo role hoặc needProfile
-        if (loginResult.data.needProfile) {
+        if (loginResult.needProfile) {
           navigate('/profile-setup', { replace: true });
         } else {
           // Redirect dựa vào role
-          const role = loginResult.data.user.role;
+          const role = loginResult.user.role;
           switch (role) {
             case 'admin':
               navigate('/admin/dashboard', { replace: true });
@@ -52,14 +52,14 @@ const FacebookLoginButton = () => {
           try {
             // Nếu tài khoản chưa tồn tại, thực hiện đăng ký
             const registerResult = await authApi.facebookRegister(response.email);
-            setError(registerResult.data.message || 'Vui lòng kiểm tra email để lấy mật khẩu');
+            setError(registerResult.message || 'Vui lòng kiểm tra email để lấy mật khẩu');
           } catch (registerError) {
-            setError(registerError.response?.data?.message || 'Đăng ký thất bại');
+            setError(registerError.response?.message || 'Đăng ký thất bại');
           }
         } else {
           console.error('Login Error:', error);
           console.error('Error Response:', error.response);
-          setError(error.response?.data?.message || 'Đăng nhập thất bại');
+          setError(error.response?.message || 'Đăng nhập thất bại');
         }
       }
     }
