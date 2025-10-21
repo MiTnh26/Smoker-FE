@@ -44,7 +44,7 @@ const FacebookLoginButton = () => {
               navigate('/customer/newsfeed', { replace: true });
               break;
             default:
-              navigate('/', { replace: true });
+              navigate('/profile-setup', { replace: true });
           }
         }
       } catch (error) {
