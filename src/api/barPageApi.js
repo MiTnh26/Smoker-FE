@@ -1,0 +1,52 @@
+// src/api/barPageApi.js
+import axiosClient from "./axiosClient";
+
+const barPageApi = {
+  // Step 1: Tạo mới Bar Page (không upload file)
+  create(payload) {
+    return axiosClient.post("/bar/register", payload);
+  },
+
+  // Step 2: Upload avatar/background cho Bar Page
+  upload(formData) {
+    return axiosClient.post("/bar/upload", formData);
+  },
+
+  // Step 3: Lấy Bar Page theo AccountId
+  getBarPageByAccountId(accountId) {
+    return axiosClient.get(`/bar/account/${accountId}`);
+  },
+
+  // Step 4: Lấy Bar Page theo  ID
+  getBarPageById(barPageId){
+    return axiosClient.get(`/bar/${barPageId}`);
+  },
+
+  // Step 5: Xóa Bar Page
+  delete(barPageId) {
+    return axiosClient.delete(`/bar/${barPageId}`);
+  },
+
+  // Table Classification APIs
+  createTableTypes({ barPageId, tableTypes }) {
+    return axiosClient.post("/table-classification/", { 
+      barPageId, 
+      tableTypes 
+    });
+  },
+
+  getTableTypes(barPageId) {
+    return axiosClient.get(`/table-classification/bar/${barPageId}`);
+  },
+
+  // Bar Table APIs
+  createTables(tables) {
+    return axiosClient.post("/bar-table/multiple", tables);
+  },
+
+  getTablesByBar(barId) {
+    return axiosClient.get(`/bar-table/${barId}`);
+  },
+};
+
+export default barPageApi;

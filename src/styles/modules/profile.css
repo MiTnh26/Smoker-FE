@@ -1,179 +1,115 @@
-.profile-layout {
-    background: #0a0613;
-    color: #e5d4ff;
-    font-family: "Inter", sans-serif;
-    min-height: 100vh;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer components {
+  /* --- Layout tổng thể --- */
+  .profile-container {
+    @apply min-h-screen bg-[#0b0a0f] text-[#f1f1f1] font-inter pb-12;
   }
-  
-  /* Header */
+
+  /* --- Header --- */
   .profile-topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #1b102b;
-    padding: 10px 24px;
-    border-bottom: 1px solid #351d55;
+    @apply flex justify-between items-center bg-[#151320] px-6 py-3 border-b border-[#272338];
   }
   .profile-logo {
-    color: #b794f4;
-    font-size: 20px;
-    font-weight: 700;
+    @apply text-[#7c3aed] font-semibold text-lg;
   }
   .search-bar {
-    background: #2a1844;
-    border: none;
-    padding: 6px 12px;
-    color: #ddd;
-    border-radius: 8px;
+    @apply bg-[#1f1c2d] text-white rounded-md px-3 py-1 border-none;
   }
   .profile-icons i {
-    color: #d8b4fe;
-    font-size: 22px;
-    margin-left: 14px;
-    cursor: pointer;
+    @apply text-[#a78bfa] text-xl ml-3 cursor-pointer hover:text-[#c4b5fd] transition;
   }
-  
-  /* Cover + Avatar */
+
+  /* --- Cover & Avatar --- */
   .profile-cover {
-    background-size: cover;
-    background-position: center;
-    padding: 40px 24px;
-    position: relative;
+    @apply relative bg-center bg-cover px-6 py-10;
   }
   .profile-info-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 24px;
+    @apply flex justify-between items-start gap-6;
   }
   .avatar-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
+    @apply flex flex-col items-center gap-2;
   }
   .profile-avatar {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    border: 3px solid #a855f7;
-    object-fit: cover;
+    @apply w-[120px] h-[120px] rounded-full border-4 border-[#6d28d9] object-cover shadow-md;
   }
   .btn-outline {
-    background: transparent;
-    border: 1px solid #9333ea;
-    color: #e9d5ff;
-    padding: 6px 12px;
-    border-radius: 6px;
+    @apply bg-transparent border border-[#6d28d9] text-white px-3 py-1 rounded-md 
+    hover:bg-[#6d28d9]/20 transition;
   }
-  
-  /* Tabs */
+
+  /* --- Tabs --- */
   .profile-tabs {
-    display: flex;
-    justify-content: center;
-    background: #140a22;
-    border-bottom: 1px solid #351d55;
+    @apply flex justify-center bg-[#151320] border-b border-[#272338];
   }
   .profile-tabs button {
-    background: none;
-    border: none;
-    color: #c4b5fd;
-    padding: 12px 24px;
-    font-size: 15px;
-    cursor: pointer;
+    @apply bg-transparent border-none text-[#a78bfa] px-6 py-3 text-sm cursor-pointer 
+    hover:text-white transition;
   }
   .profile-tabs button.active {
-    border-bottom: 2px solid #a855f7;
-    color: #ffffff;
+    @apply border-b-2 border-[#6d28d9] text-white;
   }
-  
-  /* Main body */
+
+  /* --- Main Body --- */
   .profile-body {
-    display: flex;
-    justify-content: space-between;
-    padding: 24px;
+    @apply flex justify-between p-6 flex-wrap;
   }
   .profile-left {
-    flex: 1.2;
+    @apply flex-1 min-w-[60%];
   }
   .profile-sidebar {
-    flex: 0.4;
-    background: #1b102b;
-    padding: 16px;
-    border-radius: 12px;
-    height: fit-content;
+    @apply flex-[0.4] bg-[#151320] p-5 rounded-xl border border-[#272338] text-sm;
   }
-  
-  /* Sections */
-  .event-list,
-  .menu-grid {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
+
+  /* --- Event & Menu --- */
+  .event-list, .menu-grid {
+    @apply flex gap-3 flex-wrap;
   }
   .event-circle {
-    width: 50px;
-    height: 50px;
-    background: #3b0764;
-    border-radius: 50%;
+    @apply w-[50px] h-[50px] bg-[#2b2340] rounded-full;
   }
   .menu-item {
-    width: 70px;
-    height: 70px;
-    background: #2e1065;
-    border-radius: 12px;
+    @apply w-[70px] h-[70px] bg-[#2b2340] rounded-lg;
   }
-  
-  /* Post Section */
+
+  /* --- Post Section --- */
   .post-section {
-    padding: 24px;
-    border-top: 1px solid #351d55;
+    @apply px-6 py-6 border-t border-[#272338];
   }
   .post-create {
-    display: flex;
-    align-items: center;
-    background: #1b102b;
-    padding: 10px 16px;
-    border-radius: 12px;
-    gap: 12px;
+    @apply flex items-center bg-[#151320] p-4 rounded-xl gap-3;
   }
   .post-create input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    color: #ddd;
+    @apply flex-1 bg-transparent border-none text-white outline-none;
   }
   .avatar-small {
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
+    @apply w-10 h-10 rounded-full;
   }
-  
-  /* Post card */
+
+  /* --- Post Card --- */
   .post-list {
-    padding: 0 24px 60px;
+    @apply px-6 pb-16;
   }
   .post-card {
-    background: #1b102b;
-    padding: 16px;
-    border-radius: 12px;
-    margin-top: 16px;
+    @apply bg-[#151320] p-4 rounded-xl mt-4 border border-[#272338] shadow-sm;
   }
   .post-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    @apply flex items-center justify-between;
   }
   .post-header h4 {
-    margin: 0;
-    color: #c4b5fd;
+    @apply text-white font-semibold;
   }
   .post-content {
-    margin: 12px 0;
+    @apply my-3 text-[#f1f1f1]/90;
   }
   .post-actions {
-    display: flex;
-    gap: 20px;
-    color: #c4b5fd;
+    @apply flex gap-5 text-[#a78bfa] hover:text-[#c4b5fd];
   }
-  
+
+  /* --- Button nhỏ --- */
+  .btn-small {
+    @apply text-sm bg-[#6d28d9] text-white px-3 py-1 rounded-md hover:bg-[#7c3aed] transition;
+  }
+}
+

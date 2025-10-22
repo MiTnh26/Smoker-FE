@@ -1,33 +1,31 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import businessApi from "../../../api/businessApi";
+import barPageApi from "../../../api/barPageApi";
+import BarRegisterStep1 from "../components/BarRegisterStep1";
+import BarRegisterStep2 from "../components/BarRegisterStep2";
+import BarRegisterStep3 from "../components/BarRegisterStep3";
+import BarRegisterStep4 from "../components/BarRegisterStep4";
 import "../../../styles/modules/businessRegister.css";
 
 export default function BarRegister() {
-  const navigate = useNavigate();
   const storedUser = JSON.parse(localStorage.getItem("user"));
 
-  // Step control
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Step 1: basic info
   const [info, setInfo] = useState({
-    userName: storedUser?.userName || "",
-    address: storedUser?.address || "",
-    phone: storedUser?.phone || "",
-    bio: storedUser?.bio || "",
-    role: "bar",
+    barName: "",
+    address: "",
+    phoneNumber: "",
+    email: storedUser?.email || "",
+    role: "Bar",
   });
 
-  // Created BussinessAccountId after step 1
-  const [businessId, setBusinessId] = useState(null);
-
-  // Step 2: files + preview
+  const [barPageId, setBarPageId] = useState(null);
   const [files, setFiles] = useState({ avatar: null, background: null });
   const [previews, setPreviews] = useState({ avatar: "", background: "" });
 
+  // Handle input changes
   const handleInfoChange = (e) => {
     const { name, value } = e.target;
     setInfo((prev) => ({ ...prev, [name]: value }));
@@ -40,30 +38,31 @@ export default function BarRegister() {
     setPreviews((prev) => ({ ...prev, [name]: file ? URL.createObjectURL(file) : "" }));
   };
 
+  // Step 1: Create BarPage
   const submitStep1 = async (e) => {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
     try {
-      const user = JSON.parse(localStorage.getItem("user"));
+      const user = storedUser;
       if (!user?.id) throw new Error("Không tìm thấy tài khoản. Vui lòng đăng nhập lại.");
 
       const payload = {
         accountId: user.id,
-        userName: info.userName.trim(),
-        role: info.role,
-        phone: info.phone || null,
+        barName: info.barName.trim(),
         address: info.address || null,
-        bio: info.bio || null,
+        phoneNumber: info.phoneNumber || null,
+        email: info.email || null,
+        role: info.role,
       };
 
-      const res = await businessApi.create(payload);
-      if (res?.status === "success" && res?.data?.BussinessAccountId) {
-        setBusinessId(res.data.BussinessAccountId);
+      const res = await barPageApi.create(payload);
+      if (res?.status === "success" && res?.data?.BarPageId) {
+        setBarPageId(res.data.BarPageId);
         setStep(2);
-        setMessage("Tạo tài khoản kinh doanh thành công. Tiếp tục tải ảnh.");
+        setMessage("Tạo trang Bar thành công. Tiếp tục tải ảnh.");
       } else {
-        throw new Error(res?.message || "Tạo tài khoản thất bại");
+        throw new Error(res?.message || "Tạo trang Bar thất bại");
       }
     } catch (err) {
       console.error(err);
@@ -73,21 +72,23 @@ export default function BarRegister() {
     }
   };
 
+  // Step 2: Upload Avatar/Background
   const submitStep2 = async (e) => {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
     try {
-      if (!businessId) throw new Error("Thiếu BussinessAccountId");
+      if (!barPageId) throw new Error("Thiếu BarPageId");
+
       const fd = new FormData();
-      fd.append("entityId", businessId);
+      fd.append("barPageId", barPageId);
       if (files.avatar) fd.append("avatar", files.avatar);
       if (files.background) fd.append("background", files.background);
 
-      const res = await businessApi.upload(fd);
+      const res = await barPageApi.upload(fd);
       if (res?.status === "success") {
         setMessage("Tải ảnh thành công!");
-        navigate("/customer/newsfeed");
+        setStep(3); // Mở rộng bước 3: tạo bàn
       } else {
         throw new Error(res?.message || "Upload thất bại");
       }
@@ -99,58 +100,46 @@ export default function BarRegister() {
     }
   };
 
+  // Step 3 and 4 are now handled by their respective components
+
   return (
     <div className="business-register-container">
-      <h2>Đăng ký Quán Bar</h2>
+      <h2>Đăng ký Trang Quán Bar</h2>
 
       {step === 1 && (
-        <form onSubmit={submitStep1} className="business-register-form">
-          <div className="form-group">
-            <label>Tên quán Bar</label>
-            <input type="text" name="userName" value={info.userName} onChange={handleInfoChange} required />
-          </div>
-
-          <div className="form-group">
-            <label>Địa chỉ</label>
-            <input type="text" name="address" value={info.address} onChange={handleInfoChange} required />
-          </div>
-
-          <div className="form-group">
-            <label>Số điện thoại</label>
-            <input type="text" name="phone" value={info.phone} onChange={handleInfoChange} required />
-          </div>
-
-          <div className="form-group">
-            <label>Mô tả</label>
-            <textarea name="bio" value={info.bio} onChange={handleInfoChange} rows={4} />
-          </div>
-
-          <button type="submit" className="business-register-btn" disabled={isLoading}>
-            {isLoading ? "Đang tạo..." : "Tạo tài khoản"}
-          </button>
-        </form>
+        <BarRegisterStep1
+          info={info}
+          handleInfoChange={handleInfoChange}
+          submitStep1={submitStep1}
+          isLoading={isLoading}
+        />
       )}
 
       {step === 2 && (
-        <form onSubmit={submitStep2} className="business-register-form">
-          <div className="form-group">
-            <label>Ảnh đại diện (Avatar)</label>
-            <input type="file" name="avatar" accept="image/*" onChange={handleFileChange} />
-            {previews.avatar && <img src={previews.avatar} alt="avatar preview" className="preview-image" />}
-          </div>
-
-          <div className="form-group">
-            <label>Ảnh bìa (Background)</label>
-            <input type="file" name="background" accept="image/*" onChange={handleFileChange} />
-            {previews.background && <img src={previews.background} alt="background preview" className="preview-image" />}
-          </div>
-
-          <button type="submit" className="business-register-btn" disabled={isLoading}>
-            {isLoading ? "Đang tải ảnh..." : "Hoàn tất đăng ký"}
-          </button>
-        </form>
+        <BarRegisterStep2
+          files={files}
+          previews={previews}
+          handleFileChange={handleFileChange}
+          submitStep2={submitStep2}
+          isLoading={isLoading}
+        />
       )}
 
+      {step === 3 && (
+        <BarRegisterStep3
+          barPageId={barPageId}
+          setStep={setStep}
+          isLoading={isLoading}
+          setMessage={setMessage}
+          setIsLoading={setIsLoading}
+        />
+      )}
+      {step === 4 && (
+        <BarRegisterStep4 
+        barPageId={barPageId} 
+        setMessage={setMessage} 
+        setIsLoading={setIsLoading} />
+      )}
       {message && <p className="business-register-message">{message}</p>}
     </div>
   );

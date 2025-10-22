@@ -11,7 +11,8 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     background: '',
     bio: '',
     address: '',
-    phone: ''
+    phone: '',
+    gender: ''
   });
   const [avatarFile, setAvatarFile] = useState(null);
   const [backgroundFile, setBackgroundFile] = useState(null);
@@ -20,6 +21,10 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Helpers
+  const isHttpUrl = (value) => typeof value === 'string' && /^https?:\/\//i.test(value);
+  const sanitizePhone = (value) => (value || '').replace(/\s/g, '').slice(0, 20);
 
   // Load existing profile data
   useEffect(() => {
@@ -34,7 +39,8 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
             background: user.background || '',
             bio: user.bio || '',
             address: user.address || '',
-            phone: user.phone || ''
+            phone: user.phone || '',
+            gender: user.gender || ''
           });
         }
       } catch (error) {
@@ -95,10 +101,13 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    const nextValue = name === 'phone' ? sanitizePhone(value) : value;
+    // Limit bio length to 500 to match DB
+    const limitedValue = name === 'bio' ? nextValue.slice(0, 500) : nextValue;
+    setForm(prev => ({ ...prev, [name]: limitedValue }));
 
     // Validate field on change
-    setTimeout(() => validateField(name, value), 300);
+    setTimeout(() => validateField(name, limitedValue), 300);
   };
 
   const handleFileChange = (e) => {
@@ -147,20 +156,27 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
       // Build FormData for multipart upload
       const formData = new FormData();
       formData.append('userName', form.userName.trim());
-      formData.append('bio', form.bio || '');
+      formData.append('bio', (form.bio || '').slice(0, 500));
       formData.append('address', form.address || '');
-      formData.append('phone', form.phone || '');
+      formData.append('phone', sanitizePhone(form.phone));
+      formData.append('gender', form.gender || '');
 
-      if (avatarFile) {
-        formData.append('avatar', avatarFile);
-      } else if (form.avatar) {
-        formData.append('avatar', form.avatar);
-      }
+      // if (avatarFile) {
+      //   formData.append('avatar', avatarFile);
+      // } else if (form.avatar && isHttpUrl(form.avatar)) {
+      //   // Preserve existing URL but avoid sending blob: preview strings
+      //   formData.append('avatar', form.avatar);
+      // }
 
-      if (backgroundFile) {
-        formData.append('background', backgroundFile);
-      } else if (form.background) {
-        formData.append('background', form.background);
+      // if (backgroundFile) {
+      //   formData.append('background', backgroundFile);
+      // } else if (form.background && isHttpUrl(form.background)) {
+      //   formData.append('background', form.background);
+      // }
+      if (avatarFile) formData.append('avatar', avatarFile);
+      if (backgroundFile) formData.append('background', backgroundFile);
+      for (let pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
       }
 
       const result = await (onSave ? onSave(formData) : userApi.updateProfile(formData));
@@ -253,7 +269,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   onChange={handleFileChange}
                   className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
                   aria-describedby={errors.avatar ? 'avatar-error' : undefined}
-                  required
+                  required={!form.avatar}
                 />
                 {errors.avatar && (
                   <p id="avatar-error" className="mt-2 text-sm text-red-600" role="alert">
@@ -340,7 +356,24 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   </p>
                 )}
               </div>
-
+              {/* Gender */}
+              <div>
+                <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
+                  Giới tính
+                </label>
+                <select
+                  id="gender"
+                  name="gender"
+                  value={form.gender}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                >
+                  <option value="">-- Chọn giới tính --</option>
+                  <option value="male">Nam</option>
+                  <option value="female">Nữ</option>
+                  <option value="other">Khác</option>
+                </select>
+              </div>
               {/* Submit Error */}
               {errors.submit && (
                 <div className="bg-red-50 border border-red-200 rounded-xl p-4">
@@ -437,7 +470,19 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   </p>
                 </div>
               </div>
-
+              <div className="flex-1">
+                <h4 className="font-semibold text-gray-900">
+                  {form.userName || 'Tên người dùng'}
+                </h4>
+                <p className="text-sm text-gray-600">
+                  {form.address || 'Địa chỉ'}
+                </p>
+                {form.gender && (
+                  <p className="text-sm text-gray-600 capitalize">
+                    {form.gender === 'male' ? 'Nam' : form.gender === 'female' ? 'Nữ' : 'Khác'}
+                  </p>
+                )}
+              </div>
               {/* Bio */}
               {form.bio && (
                 <div className="pt-2">

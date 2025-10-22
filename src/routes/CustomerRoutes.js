@@ -11,7 +11,7 @@ export default function CustomerRoutes() {
       <Route
         path="/customer/newsfeed"
         element={
-          <ProtectedRoute role="customer">
+          <ProtectedRoute roles={["customer"]}>
             <CustomerLayout><Newsfeed /></CustomerLayout>
           </ProtectedRoute>
         }
@@ -19,7 +19,7 @@ export default function CustomerRoutes() {
       <Route
         path="/customer/profile"
         element={
-          <ProtectedRoute role="customer">
+          <ProtectedRoute roles={["customer"]}>
             <CustomerLayout><Profile /></CustomerLayout>
           </ProtectedRoute>
         }

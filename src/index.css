@@ -1,13 +1,35 @@
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@import "@fontsource/inter/index.css";
+
+/* --- FONT --- */
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/700.css";
+
+/* --- TAILWIND CORE --- */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- BASE STYLE --- */
+@layer base {
+  body {
+    @apply bg-navy-900 text-white font-inter antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold text-white;
+  }
+
+  p, span, a, li {
+    @apply text-gray-200;
+  }
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* --- SMOOTH SCROLLING & GLOBAL RESETS --- */
+html {
+  scroll-behavior: smooth;
+}
+
+* {
+  @apply transition-all duration-200;
 }
