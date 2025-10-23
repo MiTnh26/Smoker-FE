@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../../../api/userApi';
 import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
@@ -9,6 +9,7 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,8 +19,10 @@ const ForgotPassword = () => {
 
     try {
       await authApi.forgotPassword(email);
-      setSuccess('Vui lòng kiểm tra email của bạn để lấy mật khẩu mới');
-      setEmail(''); // Reset form
+      setSuccess('Mã OTP đã được gửi về email. Đang chuyển sang bước xác thực OTP...');
+      setTimeout(() => {
+        navigate('/verify-otp', { state: { email } });
+      }, 1200);
     } catch (err) {
       setError(err.response?.data?.message || 'Có lỗi xảy ra');
     } finally {
