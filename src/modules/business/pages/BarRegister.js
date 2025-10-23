@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import barPageApi from "../../../api/barPageApi";
 import BarRegisterStep1 from "../components/BarRegisterStep1";
 import BarRegisterStep2 from "../components/BarRegisterStep2";
 import BarRegisterStep3 from "../components/BarRegisterStep3";
-import BarRegisterStep4 from "../components/BarRegisterStep4";
 import "../../../styles/modules/businessRegister.css";
 
 export default function BarRegister() {
@@ -21,11 +20,19 @@ export default function BarRegister() {
     role: "Bar",
   });
 
-  const [barPageId, setBarPageId] = useState(null);
   const [files, setFiles] = useState({ avatar: null, background: null });
   const [previews, setPreviews] = useState({ avatar: "", background: "" });
+  const [tableTypes, setTableTypes] = useState([]);
 
-  // Handle input changes
+  useEffect(() => {
+    if (storedUser?.businessId) {
+      setMessage("Tài khoản này đã tạo quán Bar, không thể tạo thêm");
+    }
+  }, [storedUser]);
+
+  const nextStep = () => setStep((prev) => Math.min(prev + 1, 3));
+  const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
+
   const handleInfoChange = (e) => {
     const { name, value } = e.target;
     setInfo((prev) => ({ ...prev, [name]: value }));
@@ -38,69 +45,70 @@ export default function BarRegister() {
     setPreviews((prev) => ({ ...prev, [name]: file ? URL.createObjectURL(file) : "" }));
   };
 
-  // Step 1: Create BarPage
-  const submitStep1 = async (e) => {
+  // -------------------
+  // Step 1: Thông tin quán
+  // -------------------
+  const submitStep1 = (e) => {
     e.preventDefault();
-    setMessage("");
-    setIsLoading(true);
-    try {
-      const user = storedUser;
-      if (!user?.id) throw new Error("Không tìm thấy tài khoản. Vui lòng đăng nhập lại.");
-
-      const payload = {
-        accountId: user.id,
-        barName: info.barName.trim(),
-        address: info.address || null,
-        phoneNumber: info.phoneNumber || null,
-        email: info.email || null,
-        role: info.role,
-      };
-
-      const res = await barPageApi.create(payload);
-      if (res?.status === "success" && res?.data?.BarPageId) {
-        setBarPageId(res.data.BarPageId);
-        setStep(2);
-        setMessage("Tạo trang Bar thành công. Tiếp tục tải ảnh.");
-      } else {
-        throw new Error(res?.message || "Tạo trang Bar thất bại");
-      }
-    } catch (err) {
-      console.error(err);
-      setMessage(err?.response?.data?.message || err.message || "Lỗi không xác định");
-    } finally {
-      setIsLoading(false);
+    if (!info.barName.trim()) {
+      setMessage("Vui lòng nhập tên quán Bar");
+      return;
     }
+    setMessage("");
+    nextStep();
   };
 
-  // Step 2: Upload Avatar/Background
-  const submitStep2 = async (e) => {
+  // -------------------
+  // Step 2: Ảnh quán
+  // -------------------
+  const submitStep2 = (e) => {
     e.preventDefault();
+    if (!files.avatar && !files.background) {
+      setMessage("Vui lòng chọn ít nhất một ảnh");
+      return;
+    }
     setMessage("");
+    nextStep();
+  };
+
+  // -------------------
+  // Step 3: Loại bàn và tạo BarPage
+  // -------------------
+  const submitStep3 = async (e) => {
+    e.preventDefault();
+    if (tableTypes.length === 0 || tableTypes.some(t => !t.name.trim())) {
+      setMessage("Vui lòng nhập ít nhất một loại bàn hợp lệ");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      if (!barPageId) throw new Error("Thiếu BarPageId");
+      // 1️⃣ Tạo BarPage
+      const res = await barPageApi.create({ accountId: storedUser.id, ...info });
+      const newBarPageId = res.data.BarPageId;
 
+      // 2️⃣ Upload ảnh
       const fd = new FormData();
-      fd.append("barPageId", barPageId);
+      fd.append("barPageId", newBarPageId);
       if (files.avatar) fd.append("avatar", files.avatar);
       if (files.background) fd.append("background", files.background);
+      await barPageApi.upload(fd);
 
-      const res = await barPageApi.upload(fd);
-      if (res?.status === "success") {
-        setMessage("Tải ảnh thành công!");
-        setStep(3); // Mở rộng bước 3: tạo bàn
-      } else {
-        throw new Error(res?.message || "Upload thất bại");
-      }
+      // 3️⃣ Tạo loại bàn
+      await barPageApi.createTableTypes({ barPageId: newBarPageId, tableTypes });
+
+      // 4️⃣ Cập nhật session và redirect
+      const updatedUser = { ...storedUser, role: "bar", businessId: newBarPageId };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      setMessage("Tạo BarPage thành công!");
+      window.location.href = `/bar/profile/${newBarPageId}`;
     } catch (err) {
-      console.error(err);
-      setMessage(err?.response?.data?.message || err.message || "Lỗi không xác định");
+      setMessage(err.response?.data?.message || "Lỗi khi tạo BarPage");
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Step 3 and 4 are now handled by their respective components
 
   return (
     <div className="business-register-container">
@@ -112,6 +120,7 @@ export default function BarRegister() {
           handleInfoChange={handleInfoChange}
           submitStep1={submitStep1}
           isLoading={isLoading}
+          message={message}
         />
       )}
 
@@ -122,24 +131,22 @@ export default function BarRegister() {
           handleFileChange={handleFileChange}
           submitStep2={submitStep2}
           isLoading={isLoading}
+          prevStep={prevStep}
+          message={message}
         />
       )}
 
       {step === 3 && (
         <BarRegisterStep3
-          barPageId={barPageId}
-          setStep={setStep}
+          tableTypes={tableTypes}
+          setTableTypes={setTableTypes}
+          submitStep3={submitStep3}
           isLoading={isLoading}
-          setMessage={setMessage}
-          setIsLoading={setIsLoading}
+          prevStep={prevStep}
+          message={message}
         />
       )}
-      {step === 4 && (
-        <BarRegisterStep4 
-        barPageId={barPageId} 
-        setMessage={setMessage} 
-        setIsLoading={setIsLoading} />
-      )}
+
       {message && <p className="business-register-message">{message}</p>}
     </div>
   );

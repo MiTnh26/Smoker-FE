@@ -12,9 +12,9 @@
 
 /* --- BASE STYLE --- */
 @layer base {
-  body {
+  /* body {
     @apply bg-navy-900 text-white font-inter antialiased;
-  }
+  } */
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold text-white;

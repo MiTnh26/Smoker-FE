@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function BarRegisterStep1({ info, handleInfoChange, submitStep1, isLoading }) {
+export default function BarRegisterStep1({ info, handleInfoChange, submitStep1, isLoading, message }) {
   return (
     <form onSubmit={submitStep1} className="business-register-form">
       <div className="form-group">
@@ -46,10 +46,11 @@ export default function BarRegisterStep1({ info, handleInfoChange, submitStep1, 
           required
         />
       </div>
-
       <button type="submit" className="business-register-btn" disabled={isLoading}>
-        {isLoading ? "Đang tạo..." : "Tạo Trang Bar"}
+        {isLoading ? "Đang tạo..." : "Tiếp tục ➜"}
       </button>
+      {message && <p className="business-register-message">{message}</p>}
+
     </form>
   );
 }

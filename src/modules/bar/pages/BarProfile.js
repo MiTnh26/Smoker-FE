@@ -1,12 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import barPageApi from "../../../api/barPageApi"; // ✅ Đổi sang barPageApi
-// import "../../../styles/modules/profile.css";
+import barPageApi from "../../../api/barPageApi";
 import PostCreate from "../../../components/layout/Social/PostCreate";
 import PostList from "../../../components/layout/Social/PostList";
+import BarEvent from "../components/BarEvent";
+import BarMenu from "../components/BarMenuCombo";
+import BarFollowInfo from "../components/BarFollowInfo";
+import BarVideo from "../components/BarVideo";
+import BarReview from "../components/BarReview";
+import BarTables from "../components/BarTables";
 
 export default function BarProfile() {
-  const { barPageId } = useParams(); // ✅ đổi param cho đúng route
+  const { barPageId } = useParams();
   const [profile, setProfile] = useState({
     BarName: "",
     Role: "",
@@ -18,11 +23,14 @@ export default function BarProfile() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("info"); // 🟢 tab state
 
   useEffect(() => {
     const fetchProfile = async () => {
+      console.log("👉 useParams barPageId:", barPageId);
       try {
-        const res = await barPageApi.getBarPageById(barPageId); // ✅ gọi đúng API
+        const res = await barPageApi.getBarPageById(barPageId);
+          console.log("✅ API Response getBarPageById:", res);
         if (res.status === "success" && res.data) {
           setProfile(res.data);
         } else {
@@ -40,6 +48,47 @@ export default function BarProfile() {
 
   if (loading) return <div className="profile-loading">Đang tải hồ sơ...</div>;
   if (error) return <div className="profile-error">{error}</div>;
+
+  // 🟢 Hàm render nội dung theo tab
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "info":
+        return (
+          <div className="profile-body">
+            <div className="profile-left">
+              <BarEvent barPageId={barPageId} />
+              <BarMenu barPageId={barPageId} />
+
+            </div>
+            <BarFollowInfo />
+          </div>
+        );
+      case "posts":
+        return (
+          <>
+            <section className="post-section">
+              <PostCreate avatar={profile.Avatar} />
+            </section>
+            <section className="post-list">
+              <PostList
+                posts={[]} // TODO: lấy từ API sau
+                avatar={profile.Avatar}
+                userName={profile.BarName}
+              />
+            </section>
+          </>
+        );
+      case "videos":
+        return <BarVideo barPageId={barPageId} />;
+
+      case "reviews":
+        return <BarReview barPageId={barPageId} />;
+        case "tables":
+      return <BarTables barPageId={barPageId} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="profile-container">
@@ -77,63 +126,35 @@ export default function BarProfile() {
 
       {/* --- TABS --- */}
       <div className="profile-tabs">
-        <button className="active">Thông tin</button>
-        <button>Bài viết</button>
-        <button>Video</button>
-        <button>Đánh giá</button>
+        <button
+          className={activeTab === "info" ? "active" : ""}
+          onClick={() => setActiveTab("info")}
+        >
+          Thông tin
+        </button>
+        <button
+          className={activeTab === "posts" ? "active" : ""}
+          onClick={() => setActiveTab("posts")}
+        >
+          Bài viết
+        </button>
+        <button
+          className={activeTab === "videos" ? "active" : ""}
+          onClick={() => setActiveTab("videos")}
+        >
+          Video
+        </button>
+        <button
+          className={activeTab === "reviews" ? "active" : ""}
+          onClick={() => setActiveTab("reviews")}
+        >
+          Đánh giá
+        </button>
+        <button className={activeTab === "tables" ? "active" : ""} onClick={() => setActiveTab("tables")}>Chỉnh sửa bàn</button>
       </div>
 
       {/* --- MAIN CONTENT --- */}
-      <div className="profile-body">
-        {/* LEFT */}
-        <div className="profile-left">
-          <div className="profile-card">
-            <h3 className="section-title">Sự kiện</h3>
-            <div className="event-list">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="event-circle" />
-              ))}
-            </div>
-          </div>
-
-          <div className="profile-card mt-4">
-            <h3 className="section-title">Menu</h3>
-            <div className="menu-grid">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="menu-item" />
-              ))}
-            </div>
-            <div className="flex justify-end mt-2">
-              <i className="bx bx-edit-alt text-[#a78bfa] cursor-pointer hover:text-white transition"></i>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT */}
-        <aside className="profile-sidebar">
-          <div className="profile-card">
-            <p>Follower: 2</p>
-            <p>Following: 2</p>
-            <p>Bạn bè: 2</p>
-          </div>
-          <div className="profile-card mt-4">
-            <p>Liên hệ: Tele</p>
-            <p>Liên hệ: Zalo</p>
-          </div>
-        </aside>
-      </div>
-
-      <section className="post-section">
-        <PostCreate avatar={profile.Avatar} />
-      </section>
-
-      <section className="post-list">
-        <PostList
-          posts={[]} // array bài đăng thực tế từ backend
-          avatar={profile.Avatar}
-          userName={profile.BarName}
-        />
-      </section>
+      {renderTabContent()}
     </div>
   );
 }

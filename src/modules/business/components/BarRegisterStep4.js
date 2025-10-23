@@ -1,106 +1,90 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import barPageApi from "../../../api/barPageApi";
-import { useAuth } from "../../../hooks/useAuth";
+import React, { useState } from "react";
 import "../../../styles/modules/barRegisterStep4.css";
-export default function BarRegisterStep4({ barPageId, setMessage, setIsLoading }) {
-  const navigate = useNavigate();
-  const { login } = useAuth();
-  const [tableTypes, setTableTypes] = useState([]);
-  const [tables, setTables] = useState(new Array(10).fill({ classificationId: "" }));
 
-  useEffect(() => {
-    const fetchTypes = async () => {
-      const res = await barPageApi.getTableTypes(barPageId);
-      setTableTypes(res?.data || []);
-    };
-    fetchTypes();
-  }, [barPageId]);
+export default function BarRegisterStep4({
+  tables,
+  setTables,
+  tableTypes,
+  prevStep,
+  isLoading,
+  setMessage,
+  handleSubmitAll
+}) {
+  const [tableCount, setTableCount] = useState(tables.length || 0);
 
-  const updateTable = (index, classificationId) => {
-    const newTables = [...tables];
-    newTables[index] = { classificationId };
-    setTables(newTables);
+  const handleTableCountChange = (e) => {
+    const count = Number(e.target.value);
+    setTableCount(count);
+    setTables(prev => {
+      const newTables = [...prev];
+      while (newTables.length < count) newTables.push({ classificationId: "" });
+      return newTables.slice(0, count);
+    });
   };
 
-  const submitStep4 = async () => {
-    setMessage(""); setIsLoading(true);
-    try {
-      const payload = tables
-        .map((t, i) => ({ 
-          barPageId, 
-          tableName: `Bàn ${i+1}`, 
-          tableClassificationId: t.classificationId 
-        }))
-        .filter(t => t.tableClassificationId); // Only include tables with selected classification
-      
-      if (payload.length === 0) {
-        setMessage("Vui lòng chọn loại bàn cho ít nhất một bàn");
-        return;
-      }
-      
-      const res = await barPageApi.createTables(payload);
-      if (res?.status === "success") {
-        setMessage("Tạo tất cả bàn thành công!");
-        
-        // Update user role to bar in AuthContext and session
-        const currentUser = JSON.parse(localStorage.getItem("user"));
-        if (currentUser) {
-          const updatedUser = {
-            ...currentUser,
-            role: "bar",
-            businessId: barPageId
-          };
-          // Update AuthContext and localStorage
-          login({ user: updatedUser });
-          
-          // Also update session if it exists
-          const currentSession = JSON.parse(localStorage.getItem("session"));
-          if (currentSession) {
-            const updatedSession = {
-              ...currentSession,
-              account: {
-                ...currentSession.account,
-                Role: "bar"
-              },
-              activeEntity: {
-                type: "BarPage",
-                id: barPageId
-              }
-            };
-            localStorage.setItem("session", JSON.stringify(updatedSession));
-          }
-        }
-        
-        // Navigate to bar profile after successful completion
-        // Use a small delay to ensure state updates are processed
-        setTimeout(() => {
-          window.location.href = `/bar/${barPageId}`;
-        }, 1000);
-      } else throw new Error(res?.message || "Tạo bàn thất bại");
-    } catch (err) {
-      console.error(err);
-      setMessage(err?.response?.data?.message || err.message || "Lỗi không xác định");
-    } finally { setIsLoading(false); }
+  const updateTable = (index, classificationId) => {
+    setTables(prev => {
+      const newTables = [...prev];
+      newTables[index] = { ...newTables[index], classificationId };
+      return newTables;
+    });
+  };
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (tables.some(t => t.classificationId === "")) {
+      setMessage("Vui lòng chọn loại bàn cho tất cả bàn");
+      return;
+    }
+    handleSubmitAll();
   };
 
   return (
-    <div>
-      <h3>Chọn loại bàn cho 10 ô</h3>
-      <div className="tables-grid">
-        {tables.map((t, i) => (
-          <div key={`table-${i}`} className="table-box">
-            <label>Bàn {i + 1}</label>
-            <select value={t.classificationId} onChange={e => updateTable(i, e.target.value)}>
-              <option value="">Chọn loại bàn</option>
-              {tableTypes.map(type => (
-                <option key={type.TableClassificationId} value={type.TableClassificationId}>{type.TableTypeName}</option>
-              ))}
-            </select>
-          </div>
-        ))}
+    <form onSubmit={submit} className="step4-container">
+      <div className="table-count-selector">
+        <label>Số lượng bàn:</label>
+        <input
+          type="number"
+          min="1"
+          max="50"
+          value={tableCount}
+          onChange={handleTableCountChange}
+        />
       </div>
-      <button onClick={submitStep4}>Tạo tất cả bàn</button>
-    </div>
+
+      <div className="tables-grid">
+        {tables.map((t, i) => {
+          const type = tableTypes.find(tt => tt.id === t.classificationId);
+          const bgColor = type?.color || "#eee";
+          const name = type?.name || "Chưa chọn";
+
+          return (
+            <div key={i} className="table-box" style={{ backgroundColor: bgColor }}>
+              <div className="table-number">Bàn {i + 1}</div>
+
+              <select
+                className="table-select"
+                value={t.classificationId}
+                onChange={(e) => updateTable(i, e.target.value)}
+              >
+                <option value="">Chọn loại bàn</option>
+                {tableTypes.map(tt => (
+                  <option key={tt.id} value={tt.id}>{tt.name || "Loại bàn"}</option>
+                ))}
+              </select>
+
+              <div className="table-name">{name}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="form-navigation">
+        <button type="button" onClick={prevStep} className="back-btn">⬅ Quay lại</button>
+        <button type="submit" disabled={tables.length === 0 || isLoading} className="next-btn">
+          {isLoading ? "Đang tạo..." : "Hoàn tất ✅"}
+        </button>
+      </div>
+    </form>
   );
 }

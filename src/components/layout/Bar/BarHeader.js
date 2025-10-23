@@ -23,15 +23,26 @@ export default function BarHeader() {
   useEffect(() => {
     const session = JSON.parse(localStorage.getItem("session"));
     if (!session) return;
-
-    // Lấy entity active của type BarPage
-    const activeBar = session.entities.find(
-      (e) => e.id === session.activeEntity?.id && e.type === "BarPage"
-    );
-
-    if (activeBar) setBarUser(activeBar);
-    if (session.account?.avatar) setFallbackAvatar(session.account.avatar);
+  
+    // Nếu có mảng entities thì tìm trong đó, còn không thì fallback sang account
+    const activeBar =
+      session?.entities?.find(
+        (e) => e.id === session?.activeEntity?.id && e.type === "BarPage"
+      ) ||
+      {
+        id: session?.activeEntity?.id,
+        name: session?.account?.userName || session?.account?.email || "Bar của bạn",
+        avatar: session?.account?.avatar,
+        type: session?.activeEntity?.type || "BarPage",
+      };
+  
+    setBarUser(activeBar);
+  
+    if (session?.account?.avatar) {
+      setFallbackAvatar(session.account.avatar);
+    }
   }, []);
+  
 
   return (
     <>

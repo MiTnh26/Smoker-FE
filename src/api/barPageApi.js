@@ -18,7 +18,7 @@ const barPageApi = {
   },
 
   // Step 4: Lấy Bar Page theo  ID
-  getBarPageById(barPageId){
+  getBarPageById(barPageId) {
     return axiosClient.get(`/bar/${barPageId}`);
   },
 
@@ -29,9 +29,9 @@ const barPageApi = {
 
   // Table Classification APIs
   createTableTypes({ barPageId, tableTypes }) {
-    return axiosClient.post("/table-classification/", { 
-      barPageId, 
-      tableTypes 
+    return axiosClient.post("/table-classification/", {
+      barPageId,
+      tableTypes
     });
   },
 
@@ -45,8 +45,19 @@ const barPageApi = {
   },
 
   getTablesByBar(barId) {
-    return axiosClient.get(`/bar-table/${barId}`);
+    return axiosClient.get(`/bar-table/bar/${barId}`);
   },
+
+  // Cập nhật bàn
+  updateBarTable(tableId, payload) {
+    return axiosClient.put(`/bar-table/${tableId}`, payload);
+  },
+
+  // Xóa bàn
+  deleteBarTable(tableId) {
+    return axiosClient.delete(`/bar-table/${tableId}`);
+  },
+
 };
 
 export default barPageApi;

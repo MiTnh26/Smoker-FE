@@ -13,10 +13,22 @@ export default function BarMenu({ onClose }) {
   useEffect(() => {
     const session = JSON.parse(localStorage.getItem("session"));
     if (!session) return;
+    // lay local
+    const storedActive = session.activeEntity;
+    const list = session.entities;
+    let resolvedActive = storedActive;
+
+    if (storedActive && storedActive.id) {
+      const found = list.find(e => String(e.id) === String(storedActive.id));
+      if (found) {
+        // merge để đảm bảo có đủ name, avatar, role, type
+        resolvedActive = { ...found, ...storedActive };
+      }
+    }
 
     setUser(session.account);
-    setEntities(session.entities || []);
-    setActiveEntity(session.entities?.find(e => e.id === session.activeEntity?.id) || null);
+    setEntities(list);
+    setActiveEntity(resolvedActive);
   }, []);
 
   if (!activeEntity) return null;
@@ -28,14 +40,17 @@ export default function BarMenu({ onClose }) {
     setActiveEntity(entity);
 
     // Điều hướng dựa theo type
-    switch (entity.type) {
-      case "BarPage":
+    switch (entity.role) {
+      case "bar":
         navigate(`/bar/${entity.id}`);
         break;
-      case "DJPage":
+      case "dj":
         navigate(`/dj/${entity.id}`);
         break;
-      case "DancerPage":
+      case "dancer":
+        navigate(`/dancer/${entity.id}`);
+        break;
+      case "customer":
         navigate(`/dancer/${entity.id}`);
         break;
       default:
@@ -48,9 +63,15 @@ export default function BarMenu({ onClose }) {
 
   const handleBackToUser = () => {
     const session = JSON.parse(localStorage.getItem("session")) || {};
-    delete session.activeEntity;
+    session.activeEntity = {
+      type: "Account",
+      id: session.account?.id,
+      name: session.account?.userName || session.account?.UserName,
+      avatar: session.account?.avatar || session.account?.Avatar,
+      role: session.account?.role || "customer",
+    };
     localStorage.setItem("session", JSON.stringify(session));
-    setActiveEntity(null);
+    setActiveEntity(session.activeEntity);
 
     navigate("/customer/profile");
     onClose?.();
@@ -70,7 +91,12 @@ export default function BarMenu({ onClose }) {
           </div>
           <div className="user-menu-info">
             <h3>{activeEntity.name || activeEntity.UserName}</h3>
-            <p>Xem trang doanh nghiệp của bạn</p>
+            <p>
+              {activeEntity.type === "Account"
+                ? "Xem trang cá nhân của bạn"
+                : "Xem trang doanh nghiệp của bạn"}
+            </p>
+
           </div>
         </div>
 

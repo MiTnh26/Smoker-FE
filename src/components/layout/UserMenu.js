@@ -1,162 +1,164 @@
+// src/components/layout/UserMenu.js
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, ChevronDown, ChevronUp } from "lucide-react";
-import axiosClient from "../../api/axiosClient";
+import axiosClient from "../../api/axiosClient"; // nếu bạn có API endpoint để lấy entities
 import "../../styles/layouts/usermenu.css";
 
 export default function UserMenu({ onClose }) {
   const navigate = useNavigate();
   const [session, setSession] = useState(null);
-  const [entities, setEntities] = useState([]); // riêng để dễ quản lý
+  const [entities, setEntities] = useState([]); // danh sách các entity (pages)
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // 🧠 Load session từ localStorage và fetch entities từ backend
+  // Helper: lấy accountId tương thích nhiều tên
+  const getAccountId = (acc) => acc?.id || acc?.AccountId || acc?.ID || null;
+
   useEffect(() => {
-    const storedSession = JSON.parse(localStorage.getItem("session"));
-    if (!storedSession) {
-      console.warn("Không tìm thấy session trong localStorage!");
-      return;
-    }
-    setSession(storedSession);
-
-    const accountId = storedSession?.account?.AccountId || storedSession?.account?.id;
-    if (!accountId) {
-      console.warn("session thiếu account id");
+    const stored = JSON.parse(localStorage.getItem("session"));
+    if (!stored) {
+      console.warn("UserMenu: không tìm thấy session trong localStorage");
       return;
     }
 
-    async function loadEntities() {
-      setLoading(true);
-      setError("");
-      try {
-        const data = await axiosClient.get(`/user/${accountId}/entities`);
+    // Chuẩn hoá account object fields (userName, avatar, role)
+    const account = {
+      ...stored.account,
+      userName: stored.account?.userName || stored.account?.UserName || "",
+      avatar: stored.account?.avatar || stored.account?.Avatar || "",
+      role: (stored.account?.role || stored.account?.Role || "customer").toLowerCase(),
+    };
 
-        // Data kỳ vọng: [{ type, id, name, avatar, role }, ...]
-        // Nhưng nếu backend trả khác (ví dụ: BarPageId...), chuẩn hóa lại
-        const normalized = (Array.isArray(data) ? data : []).map((it) => {
-          // if already normalized
-          if (it.type && it.id) return it;
+    // Nếu session.activeEntity là chỉ id, hãy cố gắng tìm object tương ứng trong entities
+    let localEntities = Array.isArray(stored.entities) ? stored.entities : [];
 
-          // fallback heuristics
-          if (it.BarPageId) {
-            return {
-              type: "BarPage",
-              id: it.BarPageId,
-              name: it.BarName || it.name || "",
-              avatar: it.Avatar || it.avatar || "",
-              role: it.Role || "bar",
-            };
-          }
-          if (it.BussinessAccountId || it.BusinessAccountId) {
-            return {
-              type: "BusinessAccount",
-              id: it.BussinessAccountId || it.BusinessAccountId,
-              name: it.UserName || it.name || "",
-              avatar: it.Avatar || it.avatar || "",
-              role: (it.Role || "business"),
-            };
-          }
-          if (it.AccountId || it.id) {
-            return {
-              type: "Account",
-              id: it.AccountId || it.id,
-              name: it.UserName || it.name || "",
-              avatar: it.Avatar || it.avatar || "",
-              role: it.Role || "customer",
-            };
-          }
-          // final fallback: keep as-is
-          return {
-            type: it.type || "Unknown",
-            id: it.id || JSON.stringify(it),
-            name: it.name || it.UserName || "",
+    // chuẩn hoá các entity: đảm bảo có id, name, role, avatar
+    localEntities = localEntities.map((it) => ({
+      ...it,
+      id: it.id || it.BarPageId || it.AccountId || it.BussinessAccountId || it.BusinessAccountId || null,
+      name: it.name || it.BarName || it.UserName || it.userName || "",
+      avatar: it.avatar || it.Avatar || "",
+      role: (it.role || it.Role || it.type || "").toLowerCase() || "",
+      type: it.type || (it.BarPageId ? "BarPage" : it.AccountId ? "Account" : it.type) || "",
+    }));
+
+    // nếu không có entities trong session, fallback gọi API (nếu có endpoint)
+    const accountId = getAccountId(stored.account);
+    const fetchIfNeeded = async () => {
+      if (!localEntities.length && accountId) {
+        // gọi API để lấy entities nếu bạn có endpoint; nếu ko muốn gọi, chỉ set fallback
+        try {
+          setLoading(true);
+          const res = await axiosClient.get(`/user/${accountId}/entities`);
+          // axiosClient trả data có thể nằm ở res.data: tùy impl
+          const data = res?.data?.data ?? res?.data ?? res;
+          const normalized = (Array.isArray(data) ? data : []).map((it) => ({
+            ...it,
+            id: it.id || it.BarPageId || it.AccountId || it.BussinessAccountId || it.BusinessAccountId || null,
+            name: it.name || it.BarName || it.UserName || it.userName || "",
             avatar: it.avatar || it.Avatar || "",
-            role: it.role || it.Role || "",
-          };
-        });
-
-        // đảm bảo account chính đứng đầu nếu không có trong list
-        const accountNormalized = {
-          type: "Account",
-          id: accountId,
-          name: storedSession.account?.UserName || storedSession.account?.userName || "",
-          avatar: storedSession.account?.Avatar || storedSession.account?.avatar || "",
-          role: storedSession.account?.Role || storedSession.account?.role || "customer",
-        };
-
-        // merge: nếu normalized không chứa accountId thì unshift
-        const hasAccount = normalized.some((e) => String(e.id) === String(accountId));
-        const merged = hasAccount ? normalized : [accountNormalized, ...normalized];
-
-        setEntities(merged);
-
-        // cập nhật session.entities + activeEntity mặc định nếu chưa có
-        const newSession = {
-          ...storedSession,
-          entities: merged,
-          activeEntity: storedSession.activeEntity || { type: "Account", id: accountId },
-        };
-        localStorage.setItem("session", JSON.stringify(newSession));
-        setSession(newSession);
-      } catch (err) {
-        console.error("Load entities error:", err);
-        setError(err.message || "Lỗi khi tải entities");
-
-        // Fallback: create a basic entity from session data
-        const fallbackEntity = {
-          type: "Account",
-          id: accountId,
-          name: storedSession.account?.UserName || storedSession.account?.userName || "User",
-          avatar: storedSession.account?.Avatar || storedSession.account?.avatar || "",
-          role: storedSession.account?.Role || storedSession.account?.role || "customer",
-        };
-        setEntities([fallbackEntity]);
-      } finally {
-        setLoading(false);
+            role: (it.role || it.Role || it.type || "").toLowerCase() || "",
+            type: it.type || (it.BarPageId ? "BarPage" : it.AccountId ? "Account" : it.type) || "",
+          }));
+          localEntities = normalized;
+        } catch (err) {
+          console.error("UserMenu: fetch entities error", err);
+          setError("Không tải được danh sách trang. Hiển thị dữ liệu cục bộ nếu có.");
+          // fallback: nếu stored.entities rỗng, tạo 1 entity từ account
+          if (!localEntities.length && accountId) {
+            localEntities = [
+              {
+                id: accountId,
+                name: account.userName,
+                avatar: account.avatar,
+                role: account.role,
+                type: "Account",
+              },
+            ];
+          }
+        } finally {
+          setLoading(false);
+        }
       }
-    }
 
-    loadEntities();
+      // ensure account entity exists in list
+      const hasAccount = localEntities.some((e) => String(e.id) === String(accountId));
+      if (!hasAccount && accountId) {
+        localEntities.unshift({
+          id: accountId,
+          name: account.userName,
+          avatar: account.avatar,
+          role: account.role,
+          type: "Account",
+        });
+      }
+
+      // determine activeEntity object
+      let active = null;
+      if (stored.activeEntity && stored.activeEntity.id) {
+        active = localEntities.find((e) => String(e.id) === String(stored.activeEntity.id)) || {
+          ...stored.activeEntity,
+          role: stored.activeEntity.role || (stored.activeEntity.type || "").toLowerCase(),
+        };
+      } else {
+        // default active = first entity (account)
+        active = localEntities[0] || null;
+      }
+
+      // lưu lại session chuẩn hoá
+      const newSession = {
+        ...stored,
+        account,
+        entities: localEntities,
+        activeEntity: active,
+      };
+      localStorage.setItem("session", JSON.stringify(newSession));
+      setSession(newSession);
+      setEntities(localEntities);
+    };
+
+    fetchIfNeeded();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!session) return null;
 
   const { account, activeEntity } = session;
-  // Lọc entities: loại bỏ customer và entity đang active
-  const filteredEntities = (entities || []).filter(
-    (e) => e.type !== "Account" && e.id !== activeEntity?.id
-  );
 
-  // Giới hạn số hiển thị mặc định, nếu không showAll = true thì show tất cả
+  // Hiển thị entities khác (bỏ entity đang active)
+  const filteredEntities = (entities || []).filter((e) => String(e.id) !== String(activeEntity?.id));
   const visibleEntities = showAll ? filteredEntities : filteredEntities.slice(0, 2);
 
+  const renderAvatar = (src, size = 48) => (src ? <img src={src} alt="avatar" /> : <User size={size} />);
 
-  // navigate dựa trên entity.type và role (chuẩn hóa)
   const handleSwitchEntity = (entity) => {
-    const newSession = { ...session, activeEntity: { type: entity.type, id: entity.id } };
+    // cập nhật session.activeEntity mà vẫn giữ entities
+    const newActive = {
+      ...entity,
+      role: (entity.role || entity.type || "").toLowerCase(),
+    };
+    const newSession = { ...session, activeEntity: newActive, entities: entities };
     localStorage.setItem("session", JSON.stringify(newSession));
     setSession(newSession);
 
-    const t = (entity.type || "").toLowerCase();
-    if (t === "account") {
-      navigate(`/user/${entity.id}`);
-    } else if (t === "barpage" || t === "bar") {
-      console.log("bar", t)
-      console.log("entity.id", entity.id)
-      navigate(`/bar/${entity.id}`);
-    } else if (t === "businessaccount" || t === "business") {
-      const role = (entity.role || "").toLowerCase();
-      // mặc định dj nếu không biết
-      if (role === "dj" || role === "dancer") {
-        navigate(`/${role}/${entity.id}`);
-      } else {
-        // general business route fallback
-        navigate(`/business/${entity.id}`);
-      }
-    } else {
-      alert("Loại tài khoản không hợp lệ!");
+    // điều hướng theo role (dùng role chứ không dùng type)
+    const role = (newActive.role).toLowerCase();
+    switch (role) {
+      case "bar":
+      
+        navigate(`/bar/${newActive.id}`);
+        break;
+      case "dj":
+      case "dancer":
+        navigate(`/${role}/${newActive.id}`);
+        break;
+      case "customer":
+      
+      default:
+        navigate(`/user/${newActive.id}`);
+        break;
     }
 
     onClose?.();
@@ -168,20 +170,25 @@ export default function UserMenu({ onClose }) {
     navigate("/login");
   };
 
-  const renderAvatar = (src, size = 48) =>
-    src ? <img src={src} alt="avatar" /> : <User size={size} />;
-
   return (
     <aside className="user-menu-sidebar">
       <div className="user-menu">
-        {/* HEADER */}
+        {/* HEADER: click -> chuyển về account (profile) */}
         <div
           className="user-menu-header"
-          onClick={() => handleSwitchEntity({ type: "Account", id: account.AccountId || account.id })}
+          onClick={() =>
+            handleSwitchEntity({
+              id: account.id || account.AccountId,
+              name: account.userName || account.UserName,
+              avatar: account.avatar,
+              role: account.role,
+              type: "Account",
+            })
+          }
         >
-          <div className="user-menu-avatar">{renderAvatar(account.Avatar || account.avatar)}</div>
+          <div className="user-menu-avatar">{renderAvatar(account.avatar)}</div>
           <div className="user-menu-info">
-            <h3>{account.UserName || account.userName}</h3>
+            <h3>{account.userName || account.UserName || "(User)"}</h3>
             <p>Xem trang cá nhân của bạn</p>
           </div>
         </div>
@@ -190,37 +197,38 @@ export default function UserMenu({ onClose }) {
         {loading && <div className="entities-loading">Đang tải...</div>}
         {error && <div className="entities-error" style={{ color: "red" }}>{error}</div>}
 
-        {entities && entities.length > 0 && (
+        {entities && entities.length > 0 ? (
           <div className="user-menu-businesses">
             <h4>Trang / Doanh nghiệp của bạn</h4>
             <ul>
-              {visibleEntities.map((entity) => (
+              {visibleEntities.map((e) => (
                 <li
-                  key={entity.id}
-                  onClick={() => handleSwitchEntity(entity)}
-                  className={`entity-item ${activeEntity?.id === entity.id ? "active" : ""}`}
+                  key={e.id}
+                  onClick={() => handleSwitchEntity(e)}
+                  className={`entity-item ${String(activeEntity?.id) === String(e.id) ? "active" : ""}`}
                   style={{ cursor: "pointer" }}
                 >
-                  <div className="user-menu-avatar">{renderAvatar(entity.avatar, 88)}</div>
-                  <span>{entity.name || "(Không tên)"}</span> <small>({entity.role || entity.type})</small>
-                  
+                  <div className="user-menu-avatar">{renderAvatar(e.avatar, 48)}</div>
+                  <span>{e.name || "(Không tên)"}</span> <small>({e.role })</small>
                 </li>
               ))}
             </ul>
 
-            {entities.length > 2 && (
+            {filteredEntities.length > 2 && (
               <button className="toggle-businesses" onClick={() => setShowAll(!showAll)}>
-                {showAll ? "Ẩn bớt" : `Xem thêm (${entities.length - 3})`}
+                {showAll ? "Ẩn bớt" : `Xem thêm (${filteredEntities.length - 2})`}
                 {showAll ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
             )}
           </div>
+        ) : (
+          <p style={{ padding: "8px 16px", color: "#888" }}>Bạn chưa có Trang / Doanh nghiệp khác.</p>
         )}
 
         {/* MENU */}
         <nav className="user-menu-nav">
           <Link to="#" className="user-menu-item">
-            <span>Cài đặt và quyền riêng tư</span>
+            <span>Cài đặt & quyền riêng tư</span>
           </Link>
           <Link to="#" className="user-menu-item">
             <span>Chế độ tối</span>

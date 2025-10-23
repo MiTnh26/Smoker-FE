@@ -101,4 +101,40 @@
     transform: none;
     box-shadow: none;
   }
+  .form-navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    gap: 10px;
+  }
+  
+  .back-btn,
+  .next-btn {
+    flex: 1;
+    padding: 10px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .back-btn {
+    background-color: #f0f0f0;
+    color: #333;
+  }
+  
+  .back-btn:hover {
+    background-color: #e0e0e0;
+  }
+  
+  .next-btn {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .next-btn:hover {
+    background-color: #0056b3;
+  }
   
