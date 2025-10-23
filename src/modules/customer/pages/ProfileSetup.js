@@ -393,7 +393,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               )}
 
               {/* Change Password Button */}
-              <button
+              {/* <button
                 type="button"
                 onClick={() => navigate('/change-password')}
                 className="w-full mb-4 py-3 px-6 rounded-xl font-medium border-2 border-teal-600 text-teal-600 hover:bg-teal-50 transition-all duration-200 flex items-center justify-center"
@@ -414,7 +414,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
                 Đổi mật khẩu
-              </button>
+              </button> */}
 
               {/* Submit Button */}
               <button
