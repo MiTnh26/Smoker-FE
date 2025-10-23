@@ -37,7 +37,8 @@ import {
       { label: "Sự kiện", icon: Calendar, path: "/bar/events" },
       { label: "Nhân sự (DJ, Dancer)", icon: Users, path: "/bar/staff" },
       { label: "Tin nhắn", icon: MessageCircle, path: "/bar/messages" },
-      { label: "Cài đặt quán", icon: Settings, path: "/bar/settings" },
+      { label: "Bar page", icon: User, path: "/bar/:barPageId" },
+      { label: "Cài đặt quán", icon: Settings, path: "/bar/settings/:barPageId" },
     ],
   
     dj: [

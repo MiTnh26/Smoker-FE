@@ -1,0 +1,27 @@
+.bar-layout {
+    display: flex;
+    flex-direction: column; /* header trên cùng, body dưới */
+    min-height: 100vh;
+  }
+  
+  .bar-body {
+     
+      background-color: black;
+    display: flex;  /* sidebar + main content */
+    flex: 1;        /* chiếm hết phần còn lại */
+  }
+  
+  .bar-body > aside {
+    margin-left: 40px;
+    width: 350px;   /* sidebar */
+    flex-shrink: 0;
+  }
+  
+  .bar-body > main {
+      flex: 1;
+      padding: 20px;
+  
+      margin-right: 410px; 
+      margin-left: 20px;
+  }
+  

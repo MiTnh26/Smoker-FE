@@ -10,6 +10,12 @@ const businessApi = {
   upload(formData) {
     return axiosClient.post("/business/upload", formData);
   },
+  getBusinessesByAccountId: (accountId) => {
+    return axiosClient.get(`/business/all-businesses/${accountId}`);
+  },
+  getBusinessById(businessId) {
+    return axiosClient.get(`/business/${businessId}`);
+  }
 };
 
 export default businessApi;

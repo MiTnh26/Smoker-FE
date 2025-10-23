@@ -1,54 +1,98 @@
 // src/components/layout/Sidebar.js
-import { Link, useLocation } from "react-router-dom";
-import { sidebarConfig } from "../../config/sidebarConfig";
-import "../../styles/modules/newsfeed.css";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { sidebarConfig } from "../../config/sidebarConfig.js";
 
-export default function Sidebar({ role = "customer" }) {
+export default function Sidebar() {
+  const { barPageId: paramBarPageId } = useParams();
   const location = useLocation();
-  const menus = sidebarConfig[role] || [];
 
-  // Lấy thông tin user từ localStorage
-  const storedUser = JSON.parse(localStorage.getItem("user")) || {};
-  const { userName, email, avatar } = storedUser;
+  const [user, setUser] = useState(null);
+  const [activeEntity, setActiveEntity] = useState(null);
+  const [menus, setMenus] = useState([]);
+  const [barPageId, setBarPageId] = useState(null);
+
+  useEffect(() => {
+    const session = JSON.parse(localStorage.getItem("session")) || {};
+    const account = session.account || {};
+    const entity =
+      session.entities?.find((e) => e.id === session.activeEntity?.id) || account;
+
+    console.log("🧠 [Sidebar] Loaded entity:", entity);
+
+    setUser(account);
+    setActiveEntity(entity);
+
+    const role =
+      entity.type === "Account"
+        ? account.role?.toLowerCase()
+        : entity.role?.toLowerCase();
+
+    console.log("🧠 [Sidebar] Resolved role:", role);
+    setMenus(sidebarConfig[role] || []);
+
+    // ✅ Ưu tiên lấy barPageId từ entity nếu có
+    if (entity?.type === "BarPage" && entity?.id) {
+      setBarPageId(entity.id);
+    } else if (session?.activeEntity?.id) {
+      setBarPageId(session.activeEntity.id);
+    }
+  }, []);
+
+  // ✅ Nếu useParams có giá trị thì override
+  useEffect(() => {
+    if (paramBarPageId) {
+      setBarPageId(paramBarPageId);
+    }
+  }, [paramBarPageId]);
+
+  if (!activeEntity) return null;
+
+  const resolvedBarPageId = barPageId;
 
   return (
     <aside className="newsfeed-sidebar-left">
-      {/* Header người dùng */}
       <div className="sidebar-user-profile">
         <div className="sidebar-user-avatar">
-          {avatar ? (
+          {activeEntity.avatar ? (
             <img
-              src={avatar}
-              alt="User Avatar"
+              src={activeEntity.avatar}
+              alt={activeEntity.name}
               className="rounded-full w-12 h-12 object-cover"
-              onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                  userName || "User"
-                )}&background=teal&color=fff&size=64`;
-              }}
             />
           ) : (
             <span>👤</span>
           )}
         </div>
         <div className="sidebar-user-info">
-          <h3>{userName || "Tên người dùng"}</h3>
-          <p>@{email?.split("@")[0] || "username"}</p>
+          <h3>{activeEntity.name}</h3>
+          {activeEntity.email && <p>@{activeEntity.email.split("@")[0]}</p>}
         </div>
       </div>
 
-      {/* Menu */}
       <nav className="sidebar-nav">
-        {menus.map(({ label, icon: Icon, path }) => (
-          <Link
-            key={path}
-            to={path}
-            className={`sidebar-nav-item ${location.pathname === path ? "active" : ""}`}
-          >
-            <Icon size={20} />
-            <span>{label}</span>
-          </Link>
-        ))}
+        {menus.map(({ label, icon: Icon, path }) => {
+          let resolvedPath = path;
+
+          // ✅ Luôn thay khi có ID thật
+          if (path.includes(":barPageId") && resolvedBarPageId) {
+            resolvedPath = path.replace(":barPageId", resolvedBarPageId);
+          }
+
+          console.log("🧭 [Sidebar] Final resolved path:", resolvedPath);
+
+          return (
+            <Link
+              key={resolvedPath}
+              to={resolvedPath}
+              className={`sidebar-nav-item ${location.pathname === resolvedPath ? "active" : ""
+                }`}
+            >
+              {Icon && <Icon size={20} />}
+              <span>{label}</span>
+            </Link>
+          );
+        })}
       </nav>
     </aside>
   );

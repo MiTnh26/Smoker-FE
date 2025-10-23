@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "../../components/common/Button";
 import { useNavigate } from "react-router-dom";
 
+
 import "../../styles/layouts/header.css";
 
 export default function AuthHeader() {

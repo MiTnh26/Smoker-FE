@@ -17,10 +17,22 @@ export default function GoogleLoginButton() {
   
       if (data?.token) {
         await login({ token: data.token, user: data.user });
+      
+        // ✅ Lưu session chuẩn
+        const session = {
+          token: data.token,
+          account: data.user,
+          activeEntity: {
+            type: "Account",
+            id: data.user?.AccountId || data.user?.id,
+            role: "Customer"
+          }
+        };
+        localStorage.setItem("session", JSON.stringify(session));
+      
         setMessage("Đăng nhập thành công!");
         setError("");
-  
-        // ✅ Nếu chưa có profile -> chuyển hướng tới trang thiết lập profile
+      
         if (data.needProfile) {
           setTimeout(() => navigate("/profile-setup", { replace: true }), 800);
         } else {

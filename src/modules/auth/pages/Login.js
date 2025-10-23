@@ -26,6 +26,17 @@ export function Login() {
       const res = await authApi.login(email, password);
       if (res && res.token) {
         await login({ token: res.token, user: res.user });
+        // ✅ Thêm đoạn session chuẩn
+        const session = {
+          token: res.token,
+          account: res.user, // chính là Customer
+          activeEntity: {
+            type: "Account",
+            id: res.user?.AccountId || res.user?.id, // đề phòng key khác nhau
+            role: "Customer"
+          }
+        };
+        localStorage.setItem("session", JSON.stringify(session));
         if (!res.needProfile) {
           navigate("/customer/newsfeed", { replace: true });
         } else {

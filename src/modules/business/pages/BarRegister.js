@@ -1,32 +1,37 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import businessApi from "../../../api/businessApi";
+import { useState, useEffect } from "react";
+import barPageApi from "../../../api/barPageApi";
+import BarRegisterStep1 from "../components/BarRegisterStep1";
+import BarRegisterStep2 from "../components/BarRegisterStep2";
+import BarRegisterStep3 from "../components/BarRegisterStep3";
 import "../../../styles/modules/businessRegister.css";
 
 export default function BarRegister() {
-  const navigate = useNavigate();
   const storedUser = JSON.parse(localStorage.getItem("user"));
 
-  // Step control
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Step 1: basic info
   const [info, setInfo] = useState({
-    userName: storedUser?.userName || "",
-    address: storedUser?.address || "",
-    phone: storedUser?.phone || "",
-    bio: storedUser?.bio || "",
-    role: "bar",
+    barName: "",
+    address: "",
+    phoneNumber: "",
+    email: storedUser?.email || "",
+    role: "Bar",
   });
 
-  // Created BussinessAccountId after step 1
-  const [businessId, setBusinessId] = useState(null);
-
-  // Step 2: files + preview
   const [files, setFiles] = useState({ avatar: null, background: null });
   const [previews, setPreviews] = useState({ avatar: "", background: "" });
+  const [tableTypes, setTableTypes] = useState([]);
+
+  useEffect(() => {
+    if (storedUser?.businessId) {
+      setMessage("Tài khoản này đã tạo quán Bar, không thể tạo thêm");
+    }
+  }, [storedUser]);
+
+  const nextStep = () => setStep((prev) => Math.min(prev + 1, 3));
+  const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
   const handleInfoChange = (e) => {
     const { name, value } = e.target;
@@ -40,60 +45,66 @@ export default function BarRegister() {
     setPreviews((prev) => ({ ...prev, [name]: file ? URL.createObjectURL(file) : "" }));
   };
 
-  const submitStep1 = async (e) => {
+  // -------------------
+  // Step 1: Thông tin quán
+  // -------------------
+  const submitStep1 = (e) => {
     e.preventDefault();
-    setMessage("");
-    setIsLoading(true);
-    try {
-      const user = JSON.parse(localStorage.getItem("user"));
-      if (!user?.id) throw new Error("Không tìm thấy tài khoản. Vui lòng đăng nhập lại.");
-
-      const payload = {
-        accountId: user.id,
-        userName: info.userName.trim(),
-        role: info.role,
-        phone: info.phone || null,
-        address: info.address || null,
-        bio: info.bio || null,
-      };
-
-      const res = await businessApi.create(payload);
-      if (res?.status === "success" && res?.data?.BussinessAccountId) {
-        setBusinessId(res.data.BussinessAccountId);
-        setStep(2);
-        setMessage("Tạo tài khoản kinh doanh thành công. Tiếp tục tải ảnh.");
-      } else {
-        throw new Error(res?.message || "Tạo tài khoản thất bại");
-      }
-    } catch (err) {
-      console.error(err);
-      setMessage(err?.response?.data?.message || err.message || "Lỗi không xác định");
-    } finally {
-      setIsLoading(false);
+    if (!info.barName.trim()) {
+      setMessage("Vui lòng nhập tên quán Bar");
+      return;
     }
+    setMessage("");
+    nextStep();
   };
 
-  const submitStep2 = async (e) => {
+  // -------------------
+  // Step 2: Ảnh quán
+  // -------------------
+  const submitStep2 = (e) => {
     e.preventDefault();
+    if (!files.avatar && !files.background) {
+      setMessage("Vui lòng chọn ít nhất một ảnh");
+      return;
+    }
     setMessage("");
+    nextStep();
+  };
+
+  // -------------------
+  // Step 3: Loại bàn và tạo BarPage
+  // -------------------
+  const submitStep3 = async (e) => {
+    e.preventDefault();
+    if (tableTypes.length === 0 || tableTypes.some(t => !t.name.trim())) {
+      setMessage("Vui lòng nhập ít nhất một loại bàn hợp lệ");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      if (!businessId) throw new Error("Thiếu BussinessAccountId");
+      // 1️⃣ Tạo BarPage
+      const res = await barPageApi.create({ accountId: storedUser.id, ...info });
+      const newBarPageId = res.data.BarPageId;
+
+      // 2️⃣ Upload ảnh
       const fd = new FormData();
-      fd.append("entityId", businessId);
+      fd.append("barPageId", newBarPageId);
       if (files.avatar) fd.append("avatar", files.avatar);
       if (files.background) fd.append("background", files.background);
+      await barPageApi.upload(fd);
 
-      const res = await businessApi.upload(fd);
-      if (res?.status === "success") {
-        setMessage("Tải ảnh thành công!");
-        navigate("/customer/newsfeed");
-      } else {
-        throw new Error(res?.message || "Upload thất bại");
-      }
+      // 3️⃣ Tạo loại bàn
+      await barPageApi.createTableTypes({ barPageId: newBarPageId, tableTypes });
+
+      // 4️⃣ Cập nhật session và redirect
+      const updatedUser = { ...storedUser, role: "bar", businessId: newBarPageId };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      setMessage("Tạo BarPage thành công!");
+      window.location.href = `/bar/profile/${newBarPageId}`;
     } catch (err) {
-      console.error(err);
-      setMessage(err?.response?.data?.message || err.message || "Lỗi không xác định");
+      setMessage(err.response?.data?.message || "Lỗi khi tạo BarPage");
     } finally {
       setIsLoading(false);
     }
@@ -101,54 +112,39 @@ export default function BarRegister() {
 
   return (
     <div className="business-register-container">
-      <h2>Đăng ký Quán Bar</h2>
+      <h2>Đăng ký Trang Quán Bar</h2>
 
       {step === 1 && (
-        <form onSubmit={submitStep1} className="business-register-form">
-          <div className="form-group">
-            <label>Tên quán Bar</label>
-            <input type="text" name="userName" value={info.userName} onChange={handleInfoChange} required />
-          </div>
-
-          <div className="form-group">
-            <label>Địa chỉ</label>
-            <input type="text" name="address" value={info.address} onChange={handleInfoChange} required />
-          </div>
-
-          <div className="form-group">
-            <label>Số điện thoại</label>
-            <input type="text" name="phone" value={info.phone} onChange={handleInfoChange} required />
-          </div>
-
-          <div className="form-group">
-            <label>Mô tả</label>
-            <textarea name="bio" value={info.bio} onChange={handleInfoChange} rows={4} />
-          </div>
-
-          <button type="submit" className="business-register-btn" disabled={isLoading}>
-            {isLoading ? "Đang tạo..." : "Tạo tài khoản"}
-          </button>
-        </form>
+        <BarRegisterStep1
+          info={info}
+          handleInfoChange={handleInfoChange}
+          submitStep1={submitStep1}
+          isLoading={isLoading}
+          message={message}
+        />
       )}
 
       {step === 2 && (
-        <form onSubmit={submitStep2} className="business-register-form">
-          <div className="form-group">
-            <label>Ảnh đại diện (Avatar)</label>
-            <input type="file" name="avatar" accept="image/*" onChange={handleFileChange} />
-            {previews.avatar && <img src={previews.avatar} alt="avatar preview" className="preview-image" />}
-          </div>
+        <BarRegisterStep2
+          files={files}
+          previews={previews}
+          handleFileChange={handleFileChange}
+          submitStep2={submitStep2}
+          isLoading={isLoading}
+          prevStep={prevStep}
+          message={message}
+        />
+      )}
 
-          <div className="form-group">
-            <label>Ảnh bìa (Background)</label>
-            <input type="file" name="background" accept="image/*" onChange={handleFileChange} />
-            {previews.background && <img src={previews.background} alt="background preview" className="preview-image" />}
-          </div>
-
-          <button type="submit" className="business-register-btn" disabled={isLoading}>
-            {isLoading ? "Đang tải ảnh..." : "Hoàn tất đăng ký"}
-          </button>
-        </form>
+      {step === 3 && (
+        <BarRegisterStep3
+          tableTypes={tableTypes}
+          setTableTypes={setTableTypes}
+          submitStep3={submitStep3}
+          isLoading={isLoading}
+          prevStep={prevStep}
+          message={message}
+        />
       )}
 
       {message && <p className="business-register-message">{message}</p>}
