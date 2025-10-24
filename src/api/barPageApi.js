@@ -27,6 +27,7 @@ const barPageApi = {
     return axiosClient.delete(`/bar/${barPageId}`);
   },
 
+
   // Table Classification APIs
   createTableTypes({ barPageId, tableTypes }) {
     return axiosClient.post("/table-classification/", {
@@ -34,10 +35,17 @@ const barPageApi = {
       tableTypes
     });
   },
-
   getTableTypes(barPageId) {
     return axiosClient.get(`/table-classification/bar/${barPageId}`);
   },
+  updateTableTypes(tableClassificationId,payload) {
+    return axiosClient.put(`/table-classification/${tableClassificationId}`,payload);
+  },
+  removeTableTypes(tableClassificationId) {
+    return axiosClient.delete(`/table-classification/${tableClassificationId}`);
+  },
+
+
 
   // Bar Table APIs
   createTables(tables) {
@@ -48,12 +56,11 @@ const barPageApi = {
     return axiosClient.get(`/bar-table/bar/${barId}`);
   },
 
-  // Cập nhật bàn
   updateBarTable(tableId, payload) {
     return axiosClient.put(`/bar-table/${tableId}`, payload);
   },
 
-  // Xóa bàn
+
   deleteBarTable(tableId) {
     return axiosClient.delete(`/bar-table/${tableId}`);
   },
