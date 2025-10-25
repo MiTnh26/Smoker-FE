@@ -10,7 +10,7 @@ export default function BarHeader() {
   const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | null
   const [barUser, setBarUser] = useState(null);
   const [fallbackAvatar, setFallbackAvatar] = useState(null);
-
+  const session = JSON.parse(localStorage.getItem("session"));
   const conversations = [
     { id: 1, name: "Người dùng A", lastMessage: "Hello!", time: "10 phút", unread: 2 },
     { id: 2, name: "Người dùng B", lastMessage: "Ok nhé!", time: "30 phút", unread: 0 },
@@ -21,9 +21,10 @@ export default function BarHeader() {
   };
 
   useEffect(() => {
-    const session = JSON.parse(localStorage.getItem("session"));
+
+
     if (!session) return;
-  
+
     // Nếu có mảng entities thì tìm trong đó, còn không thì fallback sang account
     const activeBar =
       session?.entities?.find(
@@ -35,20 +36,23 @@ export default function BarHeader() {
         avatar: session?.account?.avatar,
         type: session?.activeEntity?.type || "BarPage",
       };
-  
+
     setBarUser(activeBar);
-  
+
     if (session?.account?.avatar) {
       setFallbackAvatar(session.account.avatar);
     }
   }, []);
-  
 
+  const role = session.activeEntity.role;
+  const activeEntityId = session.activeEntity.id;
   return (
     <>
       <header className="newsfeed-header">
         <div className="newsfeed-header-content">
-          <Link to="/" className="newsfeed-logo">Smoker - Bar Page</Link>
+          <Link to={`/${role}/${activeEntityId}`} className="newsfeed-logo">
+            Smoker - Page
+          </Link>
 
           <div className="newsfeed-search">
             <Search className="search-icon" />

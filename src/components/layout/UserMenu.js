@@ -133,7 +133,7 @@ export default function UserMenu({ onClose }) {
 
   const renderAvatar = (src, size = 48) => (src ? <img src={src} alt="avatar" /> : <User size={size} />);
 
-  const handleSwitchEntity = (entity) => {
+  const handleSwitchEntity = async (entity) => {
     // cập nhật session.activeEntity mà vẫn giữ entities
     const newActive = {
       ...entity,
@@ -142,7 +142,7 @@ export default function UserMenu({ onClose }) {
     const newSession = { ...session, activeEntity: newActive, entities: entities };
     localStorage.setItem("session", JSON.stringify(newSession));
     setSession(newSession);
-
+    await new Promise((res) => setTimeout(res, 50));
     // điều hướng theo role (dùng role chứ không dùng type)
     const role = (newActive.role).toLowerCase();
     switch (role) {
@@ -151,8 +151,12 @@ export default function UserMenu({ onClose }) {
         navigate(`/bar/${newActive.id}`);
         break;
       case "dj":
+          navigate(`/${role}/${newActive.id}`);
+        console.log("duong dan",`/${role}/${newActive.id}` )
+        break;
       case "dancer":
         navigate(`/${role}/${newActive.id}`);
+        console.log("dan",`/${role}/${newActive.id}` )
         break;
       case "customer":
       

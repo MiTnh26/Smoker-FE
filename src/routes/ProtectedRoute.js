@@ -1,33 +1,47 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth"; // nếu hook này có thì giữ lại, nếu không dùng thì bỏ
+// import { useAuth } from "../hooks/useAuth"; // Nếu không dùng thì có thể bỏ dòng này
 
 export default function ProtectedRoute({ roles, children }) {
-  // Lấy session từ localStorage
+  // 🔹 Lấy session từ localStorage
   const session = JSON.parse(localStorage.getItem("session"));
   const user = session?.account;
   const activeEntity = session?.activeEntity || user;
 
-  // 1️⃣ Nếu chưa đăng nhập
+  // Nếu chưa đăng nhập
   if (!user) return <Navigate to="/login" replace />;
 
-  // 2️⃣ Kiểm tra quyền truy cập
-  if (roles && !roles.includes(activeEntity?.role?.toLowerCase())) {
-    // 3️⃣ Điều hướng về trang phù hợp theo role hiện tại
-    switch (activeEntity?.role?.toLowerCase()) {
+  // 🔹 Chuẩn hoá role & id
+  const activeRole = (activeEntity?.role || user?.role || "").toLowerCase();
+  const activeId = activeEntity?.id || user?.id;
+
+  // Debug log (rất quan trọng để kiểm tra)
+  console.log("🛡 ProtectedRoute:", {
+    requiredRoles: roles,
+    activeRole,
+    activeId,
+    path: window.location.pathname,
+  });
+
+  // 🔹 Kiểm tra quyền truy cập
+  if (roles && !roles.includes(activeRole)) {
+    console.warn("🚫 Không đủ quyền truy cập:", { required: roles, current: activeRole });
+
+    // Điều hướng về trang tương ứng với vai trò hiện tại
+    switch (activeRole) {
       case "customer":
         return <Navigate to="/customer/newsfeed" replace />;
       case "bar":
-        return <Navigate to={`/bar/${activeEntity.id}`} replace />;
+        return <Navigate to={`/bar/${activeId}`} replace />;
       case "dj":
-        return <Navigate to={`/dj/${activeEntity.id}`} replace />;
+        return <Navigate to={`/dj/${activeId}`} replace />;
       case "dancer":
-        return <Navigate to={`/dancer/${activeEntity.id}`} replace />;
+        return <Navigate to={`/dancer/${activeId}`} replace />;
       default:
         return <Navigate to="/" replace />;
     }
   }
 
-  // 4️⃣ Nếu hợp lệ, render nội dung được bảo vệ
+  // 🔹 Nếu hợp lệ, render nội dung được bảo vệ
   return children;
 }

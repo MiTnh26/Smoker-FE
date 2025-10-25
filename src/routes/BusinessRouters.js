@@ -7,10 +7,10 @@ import BarRegister from "../modules/business/pages/BarRegister";
 import DJRegister from "../modules/business/pages/DJRegister";
 import DancerRegister from "../modules/business/pages/DancerRegister";
 import BarProfile from "../modules/bar/pages/BarProfile";
-import DJProfile from "../modules/dj/pages/Profile";
+import DJProfile from "../modules/dj/pages/DJProfile";
 import DancerProfile from "../modules/dancer/pages/Profile";
 import ProtectedRoute from "./ProtectedRoute"; // import ProtectedRoute
-
+import DJLayout from "../layouts/DJLayout";
 export default function BusinessRoutes() {
     return (
         <Fragment>
@@ -59,18 +59,18 @@ export default function BusinessRoutes() {
                     } 
                 /> */}
                 <Route 
-                    path="/business/dj/:businessId" 
+                    path="/dj/:businessId" 
                     element={
-                        <ProtectedRoute roles={["customer"]}>
-                            <CustomerLayout><DJProfile /></CustomerLayout>
+                        <ProtectedRoute roles={["dj"]}>
+                            <DJLayout><DJProfile /></DJLayout>
                         </ProtectedRoute>
                     } 
                 />
                 <Route 
-                    path="/business/dancer/:businessId" 
+                    path="/dancer/:businessId" 
                     element={
-                        <ProtectedRoute roles={["customer"]}>
-                            <CustomerLayout><DancerProfile /></CustomerLayout>
+                        <ProtectedRoute roles={["dancer"]}>
+                            <DJLayout><DancerProfile /></DJLayout>
                         </ProtectedRoute>
                     } 
                 />

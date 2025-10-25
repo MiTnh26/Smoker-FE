@@ -96,21 +96,25 @@ export default function ComboManager() {
       <div className="tables-grid">
         {combos.map((c, i) => (
           <div key={i} className="table-box">
+            Tên combo
             <input
               type="text"
               value={c.ComboName}
               placeholder="Tên combo"
               onChange={e => updateCombo(i, "ComboName", e.target.value)}
             />
+            Giá combo
             <input
               type="number"
-              value={c.Price || 0}
+              value={c.Price || 0}  // chỉ số
               placeholder="Giá combo"
-              onChange={e => updateCombo(i, "Price", e.target.value)}
+              onChange={e => updateCombo(i, "Price", Number(e.target.value))}
             />
+            <span>{c.Price ? c.Price + ".000 đ" : ""}</span>
             {c.ComboId && (
               <button onClick={() => deleteComboHandler(c.ComboId, i)}>Xóa</button>
             )}
+
           </div>
         ))}
       </div>

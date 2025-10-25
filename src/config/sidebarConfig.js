@@ -25,11 +25,12 @@ import {
 export const sidebarConfig = {
   customer: [
     { label: "Trang chủ", icon: Home, path: "/customer/newsfeed" },
-    { label: "Đăng ký tài khoản kinh doanh", icon: Store, path: "/register/select-account-type" },
+   
     { label: "Hội nhóm", icon: Users, path: "/customer/groups" },
     { label: "Sự kiện", icon: Calendar, path: "/customer/events" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/customer/messages" },
     { label: "Hồ sơ", icon: User, path: "/customer/profile" },
+     { label: "Đăng ký tài khoản kinh doanh", icon: Store, path: "/register/select-account-type" },
   ],
 
   // bar: [

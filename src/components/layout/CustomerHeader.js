@@ -21,7 +21,7 @@ export default function CustomerHeader() {
     <>
       <header className="newsfeed-header">
         <div className="newsfeed-header-content">
-          <Link to="/" className="newsfeed-logo">Smoker</Link>
+          <Link to="/customer/newsfeed" className="newsfeed-logo">Smoker</Link>
 
           <div className="newsfeed-search">
             <Search className="search-icon" />
