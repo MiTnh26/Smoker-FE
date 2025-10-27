@@ -1,12 +1,23 @@
+/* =========================================================
+   SELECT ACCOUNT TYPE — theme adaptive version
+   ========================================================= */
+
 .select-account-type-container {
   min-height: 80vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  background: linear-gradient(135deg, #0f172a 0%, #111827 40%, #1f2937 100%);
+  background: linear-gradient(
+    135deg,
+    rgb(var(--background)) 0%,
+    rgb(var(--muted)) 40%,
+    rgb(var(--card)) 100%
+  );
+  color: rgb(var(--foreground));
 }
 
+/* --- Grid chính --- */
 .select-account-type-container .account-type-grid {
   width: 100%;
   max-width: 1100px;
@@ -28,19 +39,21 @@
 }
 
 .select-account-type-container h2 {
-  color: #e5e7eb;
+  color: rgb(var(--foreground));
   margin-bottom: 28px;
+  text-align: center;
 }
 
+/* --- Thẻ loại tài khoản --- */
 .account-type-card {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+  background: rgb(var(--card) / 0.8);
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius);
   padding: 28px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   cursor: pointer;
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
-  color: #e5e7eb;
+  color: rgb(var(--foreground));
   text-align: left;
   backdrop-filter: blur(6px);
 }
@@ -48,34 +61,37 @@
 .account-type-card:hover {
   transform: translateY(-6px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
-  border-color: rgba(59, 130, 246, 0.6);
-  background: rgba(59, 130, 246, 0.08);
+  border-color: rgb(var(--primary) / 0.6);
+  background: rgb(var(--primary) / 0.08);
 }
 
 .account-type-card:focus,
 .account-type-card:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 0 0 4px rgb(var(--primary) / 0.35);
 }
 
+/* --- Tiêu đề & mô tả --- */
 .account-type-card h3 {
   margin: 8px 0 6px;
   font-size: 1.2rem;
   font-weight: 700;
-  color: #f9fafb;
+  color: rgb(var(--foreground));
 }
 
 .account-type-card p {
   font-size: 0.95rem;
-  color: #cbd5e1;
+  color: rgb(var(--muted-foreground));
   line-height: 1.5;
 }
 
+/* --- Khi được chọn --- */
 .account-type-card.selected {
-  border-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.14);
+  border-color: rgb(var(--primary));
+  background: rgb(var(--primary) / 0.14);
 }
 
+/* --- Icon container --- */
 .icon-wrapper {
   display: inline-flex;
   width: 52px;
@@ -84,10 +100,15 @@
   justify-content: center;
   border-radius: 12px;
   margin-bottom: 14px;
-  background: linear-gradient(145deg, rgba(59, 130, 246, 0.18), rgba(99, 102, 241, 0.18));
-  color: #93c5fd;
+  background: linear-gradient(
+    145deg,
+    rgb(var(--primary) / 0.15),
+    rgb(var(--primary) / 0.25)
+  );
+  color: rgb(var(--primary) / 0.8);
 }
 
+/* --- Hàng nút hành động --- */
 .actions {
   grid-column: 1 / -1;
   display: flex;
@@ -96,18 +117,19 @@
   margin-top: 10px;
 }
 
+/* --- Nút tiếp tục --- */
 .continue-btn {
-  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--primary) / 0.85));
   border: none;
   padding: 12px 28px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   font-size: 1rem;
-  color: #fff;
+  color: rgb(var(--primary-foreground));
   letter-spacing: 0.2px;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-  box-shadow: 0 10px 20px rgba(59, 130, 246, 0.35);
-  opacity: 0.85;
+  box-shadow: 0 10px 20px rgba(var(--primary) / 0.35);
+  opacity: 0.9;
 }
 
 .continue-btn.active {
@@ -116,7 +138,7 @@
 
 .continue-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 28px rgba(59, 130, 246, 0.45);
+  box-shadow: 0 14px 28px rgba(var(--primary) / 0.45);
 }
 
 .continue-btn:disabled {

@@ -2,8 +2,8 @@ import { Link } from "react-router-dom";
 import { Home, MessageCircle, Bell, User, Search } from "lucide-react";
 import { useState } from "react";
 import UserMenu from "./UserMenu";
-import MessagesPanel from "./MessagesPanel"; 
-import "../../styles/layouts/customerheader.css";
+import MessagesPanel from "../common/MessagesPanel"; 
+import "../../../styles/layouts/customerheader.css";
 
 export default function CustomerHeader() {
   const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | null

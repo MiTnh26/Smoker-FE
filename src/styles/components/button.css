@@ -5,10 +5,17 @@
 
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium bg-primary text-white transition;
+    @apply px-4 py-2 rounded-lg font-medium text-white transition;
+    background-color: rgb(var(--primary)); /* dùng biến theme */
+    color: rgb(var(--primary-foreground)); /* chữ trên nền primary */
   }
 
   .btn:hover {
-    @apply bg-primary; /* Tailwind không hỗ trợ /80 trực tiếp với màu custom */
+    background-color: rgb(var(--primary) / 0.8); /* hover tối hơn 20% */
+  }
+
+  .btn:disabled {
+    @apply opacity-60 cursor-not-allowed;
+    background-color: rgb(var(--primary) / 0.5); /* nhạt hơn */
   }
 }

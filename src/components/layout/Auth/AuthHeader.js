@@ -1,9 +1,9 @@
 import React from "react";
-import { Button } from "../../components/common/Button";
+import { Button } from "../../common/Button";
 import { useNavigate } from "react-router-dom";
 
 
-import "../../styles/layouts/header.css";
+import "../../../styles/layouts/header.css";
 
 export default function AuthHeader() {
  const navigate = useNavigate(); // hook để điều hướng

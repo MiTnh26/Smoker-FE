@@ -1,36 +1,26 @@
 /* Submenu container */
 .sidebar-submenu {
-  display: flex;
-  flex-direction: column;
-  margin-top: 0.45rem;
-  margin-left: 1.5rem; /* thụt vào so với menu cha */
-  padding-left: 0.25rem;
-  border-left: 2px solid #444; /* optional viền bên trái */
-  gap: 0.45rem;
+  @apply flex flex-col gap-2 mt-2 ml-6 pl-1 border-l-2;
+  border-color: rgb(var(--border));
 }
 
 /* Submenu item */
 .sidebar-submenu-item {
-  padding: 0.4rem 0.75rem; 
- 
-  border-radius: 9px;
-  color: #ccc;
-  font-size: 0.9rem;
-  transition: background-color 0.2s, color 0.2s;
-  text-decoration: none; /* bỏ gạch chân */
+  @apply px-3 py-1 rounded-lg text-sm transition-colors;
+  color: rgb(var(--muted-foreground));
+  text-decoration: none;
 }
 
 /* Hover submenu item */
 .sidebar-submenu-item:hover {
-  background-color: #333;
-  color: #fff;
-  text-decoration: none; /* bỏ gạch chân khi hover */
+  @apply no-underline;
+  background-color: rgb(var(--muted));
+  color: rgb(var(--foreground));
 }
 
 /* Submenu item active */
 .sidebar-submenu-item.active {
-    margin-top: 0.45rem;
-  background-color: #555;
-  color: #fff;
-  text-decoration: none; /* bỏ gạch chân khi active */
+  @apply mt-2 no-underline rounded-lg;
+  background-color: rgb(var(--border));
+  color: rgb(var(--foreground));
 }

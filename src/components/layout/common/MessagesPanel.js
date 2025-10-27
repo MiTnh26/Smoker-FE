@@ -1,7 +1,7 @@
 import React from "react";
-import { Input } from "../common/Input";
+import { Input } from "../../common/Input";
 import { Search, User } from "lucide-react";
-import "../../styles/layouts/messagepanel.css";
+import "../../../styles/layouts/messagepanel.css";
 
 export default function MessagesPanel({ conversations = [], onClose }) {
   return (

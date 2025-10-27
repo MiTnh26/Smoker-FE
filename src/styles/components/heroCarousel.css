@@ -16,8 +16,8 @@
   inset: 0;
   background: linear-gradient(
     to top,
-    rgba(var(--background-rgb), 1),
-    rgba(var(--background-rgb), 0.5),
+    rgb(var(--background) / 1),
+    rgb(var(--background) / 0.5),
     transparent
   );
 }
@@ -35,9 +35,10 @@
 .hero-title {
   font-size: 2.25rem;
   font-weight: bold;
-  color: var(--foreground);
+  color: rgb(var(--foreground) / 1);
   margin-bottom: 1rem;
 }
+
 @media (min-width: 768px) {
   .hero-title {
     font-size: 3.75rem;
@@ -46,8 +47,9 @@
 
 .hero-desc {
   font-size: 1.125rem;
-  color: var(--muted-foreground);
+  color: rgb(var(--muted-foreground) / 1);
 }
+
 @media (min-width: 768px) {
   .hero-desc {
     font-size: 1.25rem;
@@ -70,9 +72,10 @@
 }
 
 .hero-button-bg {
-  background-color: rgba(var(--background-rgb), 0.2);
+  background-color: rgb(var(--background) / 0.2);
+  transition: background-color 0.2s;
 }
 
 .hero-button-bg:hover {
-  background-color: rgba(var(--background-rgb), 0.4);
+  background-color: rgb(var(--background) / 0.4);
 }

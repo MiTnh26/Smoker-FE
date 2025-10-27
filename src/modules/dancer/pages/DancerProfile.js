@@ -6,7 +6,7 @@ import PostCreate from "../../../components/layout/common/PostCreate";
 import PostList from "../../../components/layout/common/PostList";
 import "../../../styles/modules/djProfile.css";
 
-export default function DJProfile() {
+export default function DasncerProfile() {
     const { businessId } = useParams();
     const [profile, setProfile] = useState({
         userName: "",

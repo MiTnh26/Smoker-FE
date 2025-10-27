@@ -18,6 +18,7 @@ export default function BarRegister() {
     phoneNumber: "",
     email: storedUser?.email || "",
     role: "Bar",
+    
   });
 
   const [files, setFiles] = useState({ avatar: null, background: null });

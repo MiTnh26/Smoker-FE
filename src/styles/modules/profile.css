@@ -1,88 +1,149 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @layer components {
+
   /* --- Layout tổng thể --- */
   .profile-container {
-    @apply min-h-screen bg-[#0b0a0f] text-[#f1f1f1] font-inter pb-12;
+    @apply min-h-screen font-inter pb-12;
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
   }
 
   /* --- Header --- */
   .profile-topbar {
-    @apply flex justify-between items-center bg-[#151320] px-6 py-3 border-b border-[#272338];
+    @apply flex justify-between items-center px-6 py-3 border-b;
+    background-color: rgb(var(--card));
+    border-color: rgb(var(--border));
   }
+
   .profile-logo {
-    @apply text-[#7c3aed] font-semibold text-lg;
+    @apply font-semibold text-lg;
+    color: rgb(var(--primary));
   }
+
   .search-bar {
-    @apply bg-[#1f1c2d] text-white rounded-md px-3 py-1 border-none;
+    @apply rounded-md px-3 py-1 border-none;
+    background-color: rgb(var(--input));
+    color: rgb(var(--input-foreground));
   }
+
   .profile-icons i {
-    @apply text-[#a78bfa] text-xl ml-3 cursor-pointer hover:text-[#c4b5fd] transition;
+    @apply text-xl ml-3 cursor-pointer transition;
+    color: rgb(var(--primary));
+  }
+
+  .profile-icons i:hover {
+    color: rgb(var(--secondary));
   }
 
   /* --- Cover & Avatar --- */
   .profile-cover {
     @apply relative bg-center bg-cover px-6 py-10;
   }
+
   .profile-info-header {
     @apply flex justify-between items-start gap-6;
   }
+
   .avatar-container {
     @apply flex flex-col items-center gap-2;
   }
+
   .profile-avatar {
-    @apply w-[120px] h-[120px] rounded-full border-4 border-[#6d28d9] object-cover shadow-md;
+    @apply w-[120px] h-[120px] rounded-full border-4 object-cover shadow-md;
+    border-color: rgb(var(--primary));
   }
+
   .btn-outline {
-    @apply bg-transparent border border-[#6d28d9] text-white px-3 py-1 rounded-md 
-    hover:bg-[#6d28d9]/20 transition;
+    @apply bg-transparent px-3 py-1 rounded-md transition;
+    border: 1px solid rgb(var(--primary));
+    color: rgb(var(--foreground));
+  }
+
+  .btn-outline:hover {
+    background-color: rgb(var(--primary) / 0.2);
   }
 
   /* --- Tabs --- */
   .profile-tabs {
-    @apply flex justify-center bg-[#151320] border-b border-[#272338];
+    @apply flex justify-center border-b;
+    background-color: rgb(var(--card));
+    border-color: rgb(var(--border));
   }
+
   .profile-tabs button {
-    @apply bg-transparent border-none text-[#a78bfa] px-6 py-3 text-sm cursor-pointer 
-    hover:text-white transition;
+    @apply bg-transparent border-none px-6 py-3 text-sm cursor-pointer transition;
+    color: rgb(var(--primary));
   }
+
+  .profile-tabs button:hover {
+    color: rgb(var(--foreground));
+  }
+
   .profile-tabs button.active {
-    @apply border-b-2 border-[#6d28d9] text-white;
+    border-bottom-width: 2px;
+    border-bottom-color: rgb(var(--primary));
+    color: rgb(var(--foreground));
   }
 
   /* --- Main Body --- */
   .profile-body {
     @apply flex justify-between p-6 flex-wrap;
+    gap: 1rem;
+    /* khoảng cách giữa left và right */
   }
+
+  @media (min-width: 1024px) {
+    .profile-body {
+      @apply flex-nowrap;
+    }
+  }
+
   .profile-left {
     @apply flex-1 min-w-[60%];
   }
+
   .profile-sidebar {
-    @apply flex-[0.4] bg-[#151320] p-5 rounded-xl border border-[#272338] text-sm;
+    @apply flex-[0.4] p-5 rounded-xl border text-sm;
+    background-color: rgb(var(--card));
+    border-color: rgb(var(--border));
+    color: rgb(var(--foreground));
   }
 
   /* --- Event & Menu --- */
-  .event-list, .menu-grid {
+  .event-list,
+  .menu-grid {
     @apply flex gap-3 flex-wrap;
   }
+
   .event-circle {
-    @apply w-[50px] h-[50px] bg-[#2b2340] rounded-full;
+    @apply w-[50px] h-[50px] rounded-full;
+    background-color: rgb(var(--secondary));
   }
+
   .menu-item {
-    @apply w-[70px] h-[70px] bg-[#2b2340] rounded-lg;
+    @apply w-[70px] h-[70px] rounded-lg;
+    background-color: rgb(var(--secondary));
   }
 
   /* --- Post Section --- */
   .post-section {
-    @apply px-6 py-6 border-t border-[#272338];
+    @apply px-6 py-6 border-t;
+    border-color: rgb(var(--border));
   }
+
   .post-create {
-    @apply flex items-center bg-[#151320] p-4 rounded-xl gap-3;
+    @apply flex items-center p-4 rounded-xl gap-3;
+    background-color: rgb(var(--card));
   }
+
   .post-create input {
-    @apply flex-1 bg-transparent border-none text-white outline-none;
+    @apply flex-1 border-none outline-none bg-transparent;
+    color: rgb(var(--foreground));
   }
+
   .avatar-small {
     @apply w-10 h-10 rounded-full;
   }
@@ -91,25 +152,44 @@
   .post-list {
     @apply px-6 pb-16;
   }
+
   .post-card {
-    @apply bg-[#151320] p-4 rounded-xl mt-4 border border-[#272338] shadow-sm;
+    @apply p-4 rounded-xl mt-4 border shadow-sm;
+    background-color: rgb(var(--card));
+    border-color: rgb(var(--border));
   }
+
   .post-header {
     @apply flex items-center justify-between;
   }
+
   .post-header h4 {
-    @apply text-white font-semibold;
+    @apply font-semibold;
+    color: rgb(var(--foreground));
   }
+
   .post-content {
-    @apply my-3 text-[#f1f1f1]/90;
+    @apply my-3;
+    color: rgb(var(--muted-foreground));
   }
+
   .post-actions {
-    @apply flex gap-5 text-[#a78bfa] hover:text-[#c4b5fd];
+    @apply flex gap-5;
+    color: rgb(var(--primary));
+  }
+
+  .post-actions:hover {
+    color: rgb(var(--secondary));
   }
 
   /* --- Button nhỏ --- */
   .btn-small {
-    @apply text-sm bg-[#6d28d9] text-white px-3 py-1 rounded-md hover:bg-[#7c3aed] transition;
+    @apply text-sm px-3 py-1 rounded-md transition;
+    background-color: rgb(var(--primary));
+    color: rgb(var(--foreground));
+  }
+
+  .btn-small:hover {
+    background-color: rgb(var(--secondary));
   }
 }
-

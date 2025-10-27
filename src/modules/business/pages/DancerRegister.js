@@ -14,15 +14,15 @@ export default function DancerRegister() {
 
   // Step 1: basic info
   const [info, setInfo] = useState({
-    // userName: storedUser?.userName || "",
-    // address: storedUser?.address || "",
-    // phone: storedUser?.phone || "",
-    // bio: storedUser?.bio || "",
-    role: "dancer",
+    userName: "",
+    address: "",
+    phone: "",
+    bio: "",
+    gender: "",
+    pricePerHours: "",
+    pricePerSession: "",
+    role: "Dancer",
   });
-
-  // Created BussinessAccountId after step 1
-  const [businessId, setBusinessId] = useState(null);
 
   // Step 2: files + preview
   const [files, setFiles] = useState({ avatar: null, background: null });
@@ -40,57 +40,54 @@ export default function DancerRegister() {
     setPreviews((prev) => ({ ...prev, [name]: file ? URL.createObjectURL(file) : "" }));
   };
 
-  const submitStep1 = async (e) => {
+  const goNextStep = (e) => {
     e.preventDefault();
-    setMessage("");
+    setStep(2);
+  };
+
+  // Submit tất cả ở bước cuối
+  const handleSubmitAll = async (e) => {
+    e.preventDefault();
     setIsLoading(true);
+    setMessage("");
+
     try {
       const user = JSON.parse(localStorage.getItem("user"));
       if (!user?.id) throw new Error("Không tìm thấy tài khoản. Vui lòng đăng nhập lại.");
 
+      // B1: Gọi API registerDJ để tạo business
       const payload = {
         accountId: user.id,
         userName: info.userName.trim(),
-        role: info.role,
+        role: "Dancer",
         phone: info.phone || null,
         address: info.address || null,
         bio: info.bio || null,
+        gender: info.gender || null,
+        pricePerHours: Number(info.pricePerHours) || 0,
+        pricePerSession: Number(info.pricePerSession) || 0,
       };
 
       const res = await businessApi.create(payload);
-      if (res?.status === "success" && res?.data?.BussinessAccountId) {
-        setBusinessId(res.data.BussinessAccountId);
-        setStep(2);
-        setMessage("Tạo tài khoản kinh doanh thành công. Tiếp tục tải ảnh.");
-      } else {
-        throw new Error(res?.message || "Tạo tài khoản thất bại");
+      if (res?.status !== "success" || !res?.data?.BussinessAccountId) {
+        throw new Error(res?.message || "Tạo tài khoản Dancer thất bại");
       }
-    } catch (err) {
-      console.error(err);
-      setMessage(err?.response?.data?.message || err.message || "Lỗi không xác định");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const submitStep2 = async (e) => {
-    e.preventDefault();
-    setMessage("");
-    setIsLoading(true);
-    try {
-      if (!businessId) throw new Error("Thiếu BussinessAccountId");
+      const businessId = res.data.BussinessAccountId;
+
+      // B2: Upload file
       const fd = new FormData();
       fd.append("entityId", businessId);
       if (files.avatar) fd.append("avatar", files.avatar);
       if (files.background) fd.append("background", files.background);
 
-      const res = await businessApi.upload(fd);
-      if (res?.status === "success") {
-        setMessage("Tải ảnh thành công!");
-        navigate("/customer/newsfeed");
-      } else {
-        throw new Error(res?.message || "Upload thất bại");
+      const uploadRes = await businessApi.upload(fd);
+      if (uploadRes?.status !== "success") {
+        throw new Error(uploadRes?.message || "Tải ảnh thất bại");
       }
+
+      setMessage("🎉 Đăng ký Dancer thành công!");
+      navigate("/customer/newsfeed");
     } catch (err) {
       console.error(err);
       setMessage(err?.response?.data?.message || err.message || "Lỗi không xác định");
@@ -104,35 +101,53 @@ export default function DancerRegister() {
       <h2>Đăng ký Dancer</h2>
 
       {step === 1 && (
-        <form onSubmit={submitStep1} className="business-register-form">
+        <form onSubmit={goNextStep} className="business-register-form">
           <div className="form-group">
             <label>Tên Dancer</label>
             <input type="text" name="userName" value={info.userName} onChange={handleInfoChange} required />
           </div>
 
           <div className="form-group">
+            <label>Giới tính</label>
+            <select name="gender" value={info.gender} onChange={handleInfoChange}>
+              <option value="">-- Chọn giới tính --</option>
+              <option value="Nam">Nam</option>
+              <option value="Nữ">Nữ</option>
+              <option value="Khác">Khác</option>
+            </select>
+          </div>
+
+          <div className="form-group">
             <label>Địa chỉ</label>
-            <input type="text" name="address" value={info.address} onChange={handleInfoChange} required />
+            <input type="text" name="address" value={info.address} onChange={handleInfoChange} />
           </div>
 
           <div className="form-group">
             <label>Số điện thoại</label>
-            <input type="text" name="phone" value={info.phone} onChange={handleInfoChange} required />
+            <input type="text" name="phone" value={info.phone} onChange={handleInfoChange} />
           </div>
 
           <div className="form-group">
-            <label>Mô tả</label>
-            <textarea name="bio" value={info.bio} onChange={handleInfoChange} rows={4} />
+            <label>Giới thiệu bản thân</label>
+            <textarea name="bio" value={info.bio} onChange={handleInfoChange} rows={3} />
           </div>
 
-          <button type="submit" className="business-register-btn" disabled={isLoading}>
-            {isLoading ? "Đang tạo..." : "Tạo tài khoản"}
-          </button>
+          <div className="form-group">
+            <label>Giá thuê theo giờ (đồng)</label>
+            <input type="number" name="pricePerHours" value={info.pricePerHours} onChange={handleInfoChange} />
+          </div>
+
+          <div className="form-group">
+            <label>Giá thuê theo buổi (đồng)</label>
+            <input type="number" name="pricePerSession" value={info.pricePerSession} onChange={handleInfoChange} />
+          </div>
+
+          <button type="submit" className="business-register-btn">Tiếp tục</button>
         </form>
       )}
 
       {step === 2 && (
-        <form onSubmit={submitStep2} className="business-register-form">
+        <form onSubmit={handleSubmitAll} className="business-register-form">
           <div className="form-group">
             <label>Ảnh đại diện (Avatar)</label>
             <input type="file" name="avatar" accept="image/*" onChange={handleFileChange} />
@@ -146,7 +161,7 @@ export default function DancerRegister() {
           </div>
 
           <button type="submit" className="business-register-btn" disabled={isLoading}>
-            {isLoading ? "Đang tải ảnh..." : "Hoàn tất đăng ký"}
+            {isLoading ? "Đang đăng ký..." : "Hoàn tất đăng ký"}
           </button>
         </form>
       )}

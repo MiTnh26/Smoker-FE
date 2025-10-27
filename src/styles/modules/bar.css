@@ -1,27 +1,23 @@
+/* 🎨 Tailwind + CSS Variables Version */
+
+/* Layout container */
 .bar-layout {
-    display: flex;
-    flex-direction: column; /* header trên cùng, body dưới */
-    min-height: 100vh;
-  }
-  
-  .bar-body {
-     
-      background-color: black;
-    display: flex;  /* sidebar + main content */
-    flex: 1;        /* chiếm hết phần còn lại */
-  }
-  
-  .bar-body > aside {
-    margin-left: 40px;
-    width: 350px;   /* sidebar */
-    flex-shrink: 0;
-  }
-  
-  .bar-body > main {
-      flex: 1;
-      padding: 20px;
-  
-      margin-right: 410px; 
-      margin-left: 20px;
-  }
-  
+  @apply flex flex-col min-h-screen;
+}
+
+/* Body container: sidebar + main content */
+.bar-body {
+  @apply flex flex-1 bg-black; /* bạn có thể dùng variable: bg-[rgb(var(--background))] */
+}
+
+/* Sidebar */
+.bar-body > aside {
+  @apply flex-shrink-0 ml-10 w-[350px];
+}
+
+/* Main content */
+.bar-body > main {
+  @apply flex-1 p-5;
+  margin-left: 20px;   /* Tailwind không có margin-left 20px trực tiếp, dùng ml-[20px] */
+  margin-right: 410px; /* tương tự: mr-[410px] */
+}

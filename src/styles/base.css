@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base global style */
+html, body {
+  @apply bg-background text-foreground font-inter transition-colors duration-300;
+}
+
+/* Scrollbar đẹp */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--muted-foreground));
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--primary));
+}

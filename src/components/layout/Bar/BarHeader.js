@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Home, MessageCircle, Bell, User, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import BarMenu from "./BarMenu";
-import MessagesPanel from "../MessagesPanel";
+import MessagesPanel from "../common/MessagesPanel"
 import "../../../styles/layouts/header.css";
 
 export default function BarHeader() {

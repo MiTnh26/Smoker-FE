@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, ChevronDown, ChevronUp } from "lucide-react";
-import axiosClient from "../../api/axiosClient"; // nếu bạn có API endpoint để lấy entities
-import "../../styles/layouts/usermenu.css";
+import axiosClient from "../../../api/axiosClient"; // nếu bạn có API endpoint để lấy entities
+import "../../../styles/layouts/usermenu.css";
 
 export default function UserMenu({ onClose }) {
   const navigate = useNavigate();
@@ -12,6 +12,13 @@ export default function UserMenu({ onClose }) {
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+
+  // Áp dụng theme khi component mount hoặc theme thay đổi
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   // Helper: lấy accountId tương thích nhiều tên
   const getAccountId = (acc) => acc?.id || acc?.AccountId || acc?.ID || null;
@@ -147,19 +154,19 @@ export default function UserMenu({ onClose }) {
     const role = (newActive.role).toLowerCase();
     switch (role) {
       case "bar":
-      
+
         navigate(`/bar/${newActive.id}`);
         break;
       case "dj":
-          navigate(`/${role}/${newActive.id}`);
-        console.log("duong dan",`/${role}/${newActive.id}` )
+        navigate(`/${role}/${newActive.id}`);
+        console.log("duong dan", `/${role}/${newActive.id}`)
         break;
       case "dancer":
         navigate(`/${role}/${newActive.id}`);
-        console.log("dan",`/${role}/${newActive.id}` )
+        console.log("dan", `/${role}/${newActive.id}`)
         break;
       case "customer":
-      
+
       default:
         navigate(`/user/${newActive.id}`);
         break;
@@ -213,7 +220,7 @@ export default function UserMenu({ onClose }) {
                   style={{ cursor: "pointer" }}
                 >
                   <div className="user-menu-avatar">{renderAvatar(e.avatar, 48)}</div>
-                  <span>{e.name || "(Không tên)"}</span> <small>({e.role })</small>
+                  <span>{e.name || "(Không tên)"}</span> <small>({e.role})</small>
                 </li>
               ))}
             </ul>
@@ -234,9 +241,16 @@ export default function UserMenu({ onClose }) {
           <Link to="#" className="user-menu-item">
             <span>Cài đặt & quyền riêng tư</span>
           </Link>
-          <Link to="#" className="user-menu-item">
-            <span>Chế độ tối</span>
-          </Link>
+          <button
+            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            className="user-menu-item flex justify-between items-center"
+          >
+            <span>Chế độ sáng tối</span>
+            <span className="text-sm opacity-70">
+              {theme === "light" ? "🌞 Sáng" : "🌙 Tối"}
+            </span>
+          </button>
+
           <Link to="#" className="user-menu-item">
             <span>Ngôn ngữ</span>
           </Link>

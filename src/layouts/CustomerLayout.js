@@ -1,5 +1,5 @@
 // src/layouts/CustomerLayout.js
-import CustomerHeader from "../components/layout/CustomerHeader";
+import CustomerHeader from "../components/layout/Customer/CustomerHeader";
 
 // import Footer from "../components/layout/Footer";
 import Sidebar from "../components/layout/Sidebar";

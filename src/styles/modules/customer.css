@@ -1,26 +1,18 @@
+/* Customer Layout */
 .customer-layout {
-  display: flex;
-  flex-direction: column; /* header trên cùng, body dưới */
-  min-height: 100vh;
+  @apply flex flex-col min-h-screen;
 }
 
 .customer-body {
-   
-    background-color: black;
-  display: flex;  /* sidebar + main content */
-  flex: 1;        /* chiếm hết phần còn lại */
+  @apply flex flex-1 bg-[rgb(var(--background))];
 }
 
 .customer-body > aside {
-     margin-left: 40px;
-  width: 350px;   /* sidebar */
-  flex-shrink: 0;
+  @apply ml-10 w-[350px] flex-shrink-0;
 }
 
 .customer-body > main {
-    flex: 1;
-    padding: 20px;
-
-    margin-right: 410px; 
-    margin-left: 20px;
+  @apply flex-1 p-5;
+  margin-left: 20px;  /* Không có class Tailwind chuẩn cho 20px, giữ margin tùy chỉnh */
+  margin-right: 410px; /* Không có class Tailwind chuẩn cho 410px, giữ margin tùy chỉnh */
 }

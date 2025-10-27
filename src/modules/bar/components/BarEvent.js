@@ -72,7 +72,7 @@ export default function BarEvent({ barPageId }) {
       {events.length === 0 ? (
         <p>Chưa có sự kiện nào.</p>
       ) : (
-        <div className="relative w-full max-w-[35vw] h-[240px] mx-auto overflow-hidden">
+        <div className="relative w-full max-w-[19vw] h-[240px] mx-auto overflow-hidden">
           <Swiper
             spaceBetween={10}
             autoplay={events.length > 1 ? { delay: 4000 } : false}
