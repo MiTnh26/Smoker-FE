@@ -95,8 +95,8 @@
   }
 
   .user-menu-avatar {
-    @apply flex items-center justify-center rounded-full p-3 text-white;
-    background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+    @apply flex items-center justify-center rounded-full text-white;
+    background: none;
   }
 
   .user-menu-info h3 {

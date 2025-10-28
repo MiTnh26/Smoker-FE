@@ -33,16 +33,24 @@
   height: 48px;
   border-radius: 50%;
   overflow: hidden;
-  background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+  background: none; /* bỏ nền để ảnh lấp đầy không tạo viền */
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+/* Force override any global header avatar styles inside the user menu */
+.user-menu .user-menu-avatar {
+  background: none !important;
+  padding: 0 !important;
+}
+
 .user-menu-avatar img {
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50%;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 
@@ -88,11 +96,19 @@
   color: rgb(var(--card-foreground));
 }
 
+/* Avatar trong danh sách: dùng cùng kiểu cắt tròn, chỉ khác kích thước */
+.user-menu-businesses li .user-menu-avatar {
+  width: 36px;
+  height: 36px;
+}
+
 .user-menu-businesses li img {
-  width: 24px;
-  height: 24px;
+  width: 100% !important;
+  height: 100% !important;
   border-radius: 50%;
   object-fit: cover;
+  object-position: center;
+  display: block;
 }
 
 /* Toggle xem thêm/ẩn bớt */

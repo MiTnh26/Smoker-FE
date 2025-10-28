@@ -9,7 +9,7 @@ export default function BarMenu({ onClose }) {
   const [activeEntity, setActiveEntity] = useState(null);
   const [entities, setEntities] = useState([]);
   const [showAll, setShowAll] = useState(false);
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+ const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
   // Áp dụng theme khi component mount hoặc theme thay đổi
   useEffect(() => {
