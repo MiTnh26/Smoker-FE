@@ -1,0 +1,9 @@
+.input {
+  @apply
+    border        /* áp dụng border chung */
+    border-border /* màu border = var(--border) */
+    rounded-lg    /* bo góc 0.5rem / 8px */
+    px-4 py-2    /* padding ngang 1rem, dọc 0.5rem */
+    bg-card       /* nền thẻ = var(--card), tự động theo light/dark mode */
+    text-foreground; /* màu chữ = var(--card-foreground), tự động theo theme */
+}

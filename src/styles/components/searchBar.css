@@ -1,0 +1,44 @@
+/* src/styles/components/searchBar.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .search-bar {
+    @apply relative mx-auto mb-12 max-w-2xl; /* center, margin-bottom, max width */
+  }
+
+  .search-input {
+    @apply w-full rounded-xl text-lg;       /* full width, bo góc, text-lg */
+    padding-left: 3rem;                     /* pl-12 */
+    padding-right: 1rem;                     /* pr-4 */
+    padding-top: 1.5rem;                     /* py-6 top */
+    padding-bottom: 1.5rem;                  /* py-6 bottom */
+    background-color: var(--card);           /* bg-card theo theme */
+    border: 1px solid var(--border);         /* border theo theme */
+    color: var(--card-foreground);           /* chữ theo theme */
+  }
+
+  .search-input::placeholder {
+    color: var(--muted-foreground);          /* placeholder theo theme */
+  }
+
+  .search-icon {
+    @apply absolute left-4 top-1/2;
+    transform: translateY(-50%);
+    width: 1.25rem;  /* w-5 */
+    height: 1.25rem; /* h-5 */
+    color: var(--muted-foreground);          /* icon màu phụ */
+  }
+
+  .search-button {
+    @apply absolute right-2 top-1/2 rounded-lg px-4 py-2 text-white;
+    transform: translateY(-50%);
+    background-color: var(--primary);        /* màu nút chính */
+    transition: background-color 0.3s;
+  }
+
+  .search-button:hover {
+    background-color: rgba(var(--primary-rgb), 0.9); /* hover slightly darker */
+  }
+}

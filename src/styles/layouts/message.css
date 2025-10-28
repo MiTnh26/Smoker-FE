@@ -1,0 +1,119 @@
+/* src/styles/components/messagesPanel.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* ===== Messages Panel ===== */
+  .messages-panel-bottom {
+    @apply fixed flex flex-col z-20;
+    bottom: 0;
+    right: 20px;
+    width: 360px;
+    height: 500px;
+    border-radius: 12px 12px 0 0;
+    background-color: rgb(var(--card));
+    border: 1px solid rgb(var(--border));
+    box-shadow: 0 2px 16px rgba(0,0,0,0.18), 0 0.5px 1.5px rgba(0,0,0,0.08);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: rgb(var(--foreground));
+    padding: 0;
+  }
+
+  /* ===== Header ===== */
+  .messages-header {
+    @apply flex items-center justify-between px-4 py-3 rounded-t-xl border-b;
+    background-color: rgb(var(--muted));
+    border-color: rgb(var(--border));
+  }
+
+  .messages-header h3 {
+    @apply m-0 text-base font-semibold;
+    color: rgb(var(--foreground));
+  }
+
+  .messages-header button {
+    @apply bg-none border-none rounded-full p-1.5 cursor-pointer transition-colors;
+    font-size: 1.2rem;
+    color: rgb(var(--muted-foreground));
+  }
+  .messages-header button:hover {
+    background-color: rgb(var(--border));
+    color: rgb(var(--foreground));
+  }
+
+  /* ===== Search ===== */
+  .messages-search {
+    @apply flex items-center gap-2 px-3 py-1.5 rounded-full mx-4 my-2.5 bg-muted;
+  }
+  .messages-search-input {
+    @apply flex-1 border-none bg-transparent outline-none text-sm;
+    color: rgb(var(--foreground));
+    padding: 0.25rem 0;
+  }
+
+  /* ===== Messages List ===== */
+  .messages-list {
+    @apply flex flex-col gap-2 overflow-y-auto px-2;
+  }
+
+  .message-item {
+    @apply flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors;
+  }
+  .message-item:hover {
+    background-color: rgb(var(--muted));
+  }
+
+  .message-avatar {
+    @apply flex items-center justify-center rounded-full w-10 h-10 overflow-hidden;
+    background-color: rgb(var(--border));
+  }
+
+  .message-info h4 {
+    @apply m-0 text-sm font-semibold;
+    color: rgb(var(--foreground));
+  }
+  .message-info p {
+    @apply m-0 text-xs;
+    color: rgb(var(--muted-foreground));
+  }
+
+  .message-meta {
+    @apply flex flex-col items-end gap-0.5 ml-auto;
+  }
+  .message-time {
+    @apply text-xs;
+    color: rgb(var(--muted-foreground));
+  }
+  .message-unread {
+    @apply text-xs font-semibold rounded-full px-2 py-0.5;
+    background-color: rgb(var(--primary));
+    color: rgb(var(--primary-foreground));
+  }
+
+  /* ===== Input Bar ===== */
+  .messages-input-bar {
+    @apply flex items-center px-4 py-2 rounded-b-xl border-t;
+    background-color: rgb(var(--muted));
+    border-color: rgb(var(--border));
+  }
+
+  .messages-input-bar input {
+    @apply flex-1 rounded-full px-3 py-2 text-sm border-none outline-none mr-2;
+    background-color: rgb(var(--border));
+    color: rgb(var(--foreground));
+  }
+
+  .messages-input-bar button {
+    @apply flex items-center justify-center rounded-full cursor-pointer transition-colors;
+    width: 36px;
+    height: 36px;
+    background-color: rgb(var(--primary));
+    color: rgb(var(--primary-foreground));
+    font-size: 1.2rem;
+    border: none;
+  }
+  .messages-input-bar button:hover {
+    background-color: rgb(var(--primary-hover));
+  }
+}

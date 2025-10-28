@@ -1,0 +1,21 @@
+/* src/styles/components/button.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium text-white transition;
+    background-color: rgb(var(--primary)); /* dùng biến theme */
+    color: rgb(var(--primary-foreground)); /* chữ trên nền primary */
+  }
+
+  .btn:hover {
+    background-color: rgb(var(--primary) / 0.8); /* hover tối hơn 20% */
+  }
+
+  .btn:disabled {
+    @apply opacity-60 cursor-not-allowed;
+    background-color: rgb(var(--primary) / 0.5); /* nhạt hơn */
+  }
+}

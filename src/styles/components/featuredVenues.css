@@ -1,0 +1,28 @@
+.venue-card {
+  overflow: hidden;
+  border-radius: var(--radius);
+  background-color: rgb(var(--card) / 1);
+  border: 1px solid rgb(var(--border) / 1);
+  cursor: pointer;
+  transition: all 0.3s, background-color 0.3s, border-color 0.3s, color 0.3s;
+}
+
+.venue-card:hover {
+  border-color: rgb(var(--primary) / 1);
+}
+
+.venue-name {
+  color: rgb(var(--foreground) / 1);
+  transition: color 0.2s;
+}
+
+.venue-card:hover .venue-name,
+.venue-name:focus,
+.venue-name:active {
+  color: rgb(var(--primary) / 1);
+}
+
+.venue-type {
+  background-color: rgb(var(--primary) / 0.2);
+  color: rgb(var(--primary) / 1);
+}

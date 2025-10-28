@@ -1,0 +1,131 @@
+.post-card {
+  background: rgb(var(--card));
+  color: rgb(var(--card-foreground));
+  border-radius: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.post-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* HEADER */
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.post-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.post-time {
+  color: rgb(var(--muted-foreground));
+  font-size: 0.8rem;
+}
+
+.more-btn {
+  background: none;
+  border: none;
+  color: rgb(var(--muted-foreground));
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+/* CONTENT */
+.post-content {
+  margin-top: 0.75rem;
+}
+
+.post-text {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.post-image {
+  margin-top: 0.75rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  object-fit: cover;
+}
+
+.post-tags {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.tag {
+  background: rgba(var(--muted) / 0.6);
+  color: rgb(var(--primary));
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.4rem;
+}
+
+/* FOOTER */
+.post-footer {
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgb(var(--border));
+  padding-top: 0.6rem;
+}
+
+.actions-left {
+  display: flex;
+  gap: 1rem;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgb(var(--muted-foreground));
+  font-size: 0.9rem;
+  transition: color 0.2s;
+}
+
+.action-btn:hover {
+  color: rgb(var(--foreground));
+}
+
+.liked {
+  color: rgb(var(--danger));
+}
+
+.audio-btn {
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  font-size: 0.8rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.audio-btn:hover {
+  background: rgb(var(--secondary));
+}

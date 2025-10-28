@@ -1,0 +1,19 @@
+/* Customer Layout */
+.customer-layout {
+  @apply flex flex-col min-h-screen;
+}
+
+.customer-body {
+  @apply flex flex-1 bg-[rgb(var(--background))] gap-6 px-6;
+}
+
+.customer-body > aside {
+  @apply w-[300px] flex-shrink-0;
+}
+
+.customer-body > main {
+  @apply p-5 flex-none;
+  max-width: 680px; /* Cột nội dung trung tâm giống FB */
+  width: 100%;
+  margin: 0 auto; /* center the main column */
+}

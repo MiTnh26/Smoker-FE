@@ -1,0 +1,241 @@
+/* src/styles/components/newsfeed.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* ===== Page Wrapper ===== */
+  .newsfeed-page {
+    @apply flex flex-col min-h-screen;
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  /* ===== Header ===== */
+  .newsfeed-header {
+    @apply h-16 flex items-center px-8 sticky top-0 z-50;
+    background-color: rgb(var(--card));
+    border-bottom: 1px solid rgb(var(--border));
+    backdrop-filter: blur(10px);
+  }
+
+  .newsfeed-header-content {
+    @apply flex items-center w-full justify-between mx-auto;
+    max-width: 1400px;
+  }
+
+  .newsfeed-logo {
+    @apply text-2xl font-bold no-underline transition-opacity;
+    color: rgb(var(--primary));
+    letter-spacing: -0.02em;
+  }
+  .newsfeed-logo:hover {
+    opacity: 0.8;
+  }
+
+  /* ===== Search Bar ===== */
+  .newsfeed-search {
+    @apply flex items-center flex-1 max-w-md mx-4 px-4 rounded-xl border transition-colors;
+    background-color: rgb(var(--card));
+    border: 1px solid rgb(var(--border));
+  }
+  .newsfeed-search:focus-within {
+    border-color: rgb(var(--primary));
+  }
+
+  .search-icon {
+    @apply mr-2;
+    color: rgb(var(--muted-foreground));
+  }
+
+  .search-input {
+    @apply flex-1 border-none bg-transparent outline-none text-sm;
+    color: rgb(var(--foreground));
+  }
+  .search-input::placeholder {
+    color: rgb(var(--muted-foreground));
+  }
+
+  /* ===== Header Nav ===== */
+  .newsfeed-nav {
+    @apply flex gap-2;
+  }
+  .newsfeed-nav .nav-icon {
+    @apply flex items-center justify-center p-2 rounded-xl cursor-pointer transition-colors;
+    background: none;
+    color: rgb(var(--muted-foreground));
+  }
+  .newsfeed-nav .nav-icon.active,
+  .newsfeed-nav .nav-icon:hover {
+    background-color: rgb(var(--primary));
+    color: rgb(var(--primary-foreground));
+    transform: translateY(-1px);
+  }
+
+  /* ===== User Menu Panel ===== */
+  .user-menu-panel {
+    @apply fixed top-20 flex flex-col overflow-hidden rounded-xl shadow-lg;
+    right: 2rem;
+    width: 360px;
+    max-height: 500px;
+    background-color: rgb(var(--card));
+    color: rgb(var(--card-foreground));
+    animation: slideDown 0.2s ease-out;
+    z-index: 20;
+  }
+
+  .user-menu-content {
+    @apply p-4 flex flex-col;
+  }
+
+  .user-menu-profile {
+    @apply flex items-center gap-4 p-4 rounded-xl mb-4;
+    background-color: rgb(var(--muted));
+  }
+
+  .user-menu-avatar {
+    @apply flex items-center justify-center rounded-full p-3 text-white;
+    background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+  }
+
+  .user-menu-info h3 {
+    @apply m-0 text-base font-semibold;
+    color: rgb(var(--foreground));
+  }
+  .user-menu-info p {
+    @apply m-0 mt-1 text-sm;
+    color: rgb(var(--muted-foreground));
+  }
+
+  .user-menu-divider {
+    @apply h-px my-3;
+    background-color: rgb(var(--border));
+  }
+
+  .user-menu-nav {
+    @apply flex flex-col gap-1;
+  }
+
+  .user-menu-item {
+    @apply flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors;
+    color: rgb(var(--muted-foreground));
+    text-decoration: none;
+  }
+  .user-menu-item:hover {
+    @apply transform translate-x-1;
+    background-color: rgb(var(--muted));
+    color: rgb(var(--primary));
+  }
+
+  .user-menu-logout {
+    @apply flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium cursor-pointer transition-colors text-left;
+    color: rgb(var(--danger));
+    background: none;
+    border: none;
+  }
+  .user-menu-logout:hover {
+    @apply transform translate-x-1;
+    background-color: rgba(var(--danger-rgb), 0.1);
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ===== Panel Header ===== */
+  .panel-header {
+    @apply flex justify-between items-center px-5 py-4 rounded-t-xl font-semibold text-base;
+    background-color: rgb(var(--muted));
+    border-bottom: 1px solid rgb(var(--border));
+  }
+  .panel-header h3 {
+    @apply m-0 text-lg font-semibold;
+    color: rgb(var(--foreground));
+  }
+  .panel-header button {
+    @apply bg-none border-none text-base p-1 rounded-md cursor-pointer transition-colors;
+    color: rgb(var(--foreground));
+  }
+  .panel-header button:hover {
+    background-color: rgba(var(--foreground-rgb), 0.1);
+    color: rgb(var(--primary));
+  }
+
+  /* ===== Newsfeed Layout ===== */
+  .newsfeed-container {
+    @apply flex flex-1 gap-8 px-8 mx-auto;
+    max-width: 1400px;
+  }
+
+  .newsfeed-sidebar-left {
+    @apply sticky p-6 rounded-xl;
+    width: 280px;
+    background-color: rgb(var(--card));
+    border: 1px solid rgb(var(--border));
+    top: 5.5rem;
+  }
+
+  .sidebar-user-profile {
+    @apply flex items-center gap-3 mb-6 pb-6 border-b;
+    border-color: rgb(var(--border));
+  }
+
+  .sidebar-user-avatar {
+    @apply flex items-center justify-center rounded-full p-2 text-white;
+    background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+  }
+
+  .sidebar-user-info h3 {
+    @apply m-0 text-base font-semibold;
+    color: rgb(var(--foreground));
+  }
+  .sidebar-user-info p {
+    @apply m-0 mt-1 text-sm;
+    color: rgb(var(--muted-foreground));
+  }
+
+  .sidebar-nav {
+    @apply flex flex-col gap-1;
+  }
+  .sidebar-nav-item {
+    @apply block px-4 py-3 rounded-lg text-sm font-medium transition-colors;
+    color: rgb(var(--muted-foreground));
+    text-decoration: none;
+  }
+  .sidebar-nav-item:hover {
+    @apply transform translate-x-1;
+    background-color: rgb(var(--muted));
+    color: rgb(var(--primary));
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 768px) {
+    .newsfeed-container { @apply flex-col px-4; }
+    .newsfeed-sidebar-left { @apply w-full relative top-0; }
+    .newsfeed-header { @apply px-4; }
+    .newsfeed-search { @apply mx-2; }
+    .user-menu-panel { @apply left-4 right-4 w-auto; }
+  }
+
+  /* ===== Header Layout ===== */
+  .header {
+    @apply fixed top-0 left-0 right-0 z-50 border-b;
+    background-color: rgb(var(--background));
+    backdrop-filter: blur(12px);
+  }
+
+  .header-container {
+    @apply container mx-auto px-4 py-4 flex items-center justify-between;
+  }
+
+  .header-title {
+    @apply text-2xl font-bold;
+    color: rgb(var(--primary));
+  }
+
+  .header-buttons {
+    @apply flex items-center gap-3;
+  }
+}

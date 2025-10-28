@@ -1,0 +1,115 @@
+/* 🎨 Bar Tables Container */
+.bar-tables-container {
+  @apply max-w-[1200px] mx-auto p-5 font-inter text-[rgb(var(--foreground))] rounded-xl shadow-lg;
+  background: linear-gradient(135deg, #9e9ef3, #ff5bf4);
+}
+
+.bar-tables-container h3 {
+  @apply text-2xl font-semibold mb-4;
+}
+
+/* Thông báo */
+.bar-tables-message {
+  @apply bg-yellow-50 text-yellow-700 px-3 py-2 rounded mb-4 text-sm;
+}
+
+/* Số bàn tổng */
+.table-count-selector {
+  @apply text-base mb-3 font-medium;
+}
+
+/* Grid bàn */
+.tables-grid {
+  @apply grid gap-5 mb-4;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+/* Box từng bàn */
+.table-box {
+  @apply bg-[rgb(var(--card))] rounded-2xl p-3 flex flex-col gap-2 shadow transition-all duration-200 cursor-default;
+}
+
+.table-box:hover {
+  @apply transform -translate-y-1 shadow-xl;
+}
+
+/* Tên bàn */
+.table-number {
+  @apply font-semibold text-base text-gray-800 text-center mb-1;
+}
+
+/* Input tên bàn */
+.table-name {
+  @apply px-2 py-2 rounded border border-gray-300 text-sm transition-all duration-200;
+}
+
+.table-name:focus {
+  @apply outline-none border-indigo-500 shadow-[0_0_0_2px_rgba(99,102,241,0.2)];
+}
+
+/* Dropdown loại bàn */
+.table-select {
+  @apply px-2 py-2 rounded border border-gray-300 text-sm bg-white transition-all duration-200;
+}
+
+.table-select:focus {
+  @apply outline-none border-indigo-500 shadow-[0_0_0_2px_rgba(99,102,241,0.2)];
+}
+
+/* Button trong table box */
+.table-actions {
+  @apply flex justify-center mt-1.5;
+}
+
+.table-actions button {
+  @apply px-3 py-1.5 bg-red-500 text-white font-medium rounded transition-all duration-150;
+}
+
+.table-actions button:hover {
+  @apply bg-red-600 -translate-y-0.5;
+}
+
+.table-actions button:disabled {
+  @apply cursor-not-allowed opacity-60;
+}
+
+/* Button thêm bàn & lưu tất cả */
+.add-table-btn,
+.save-all-btn {
+  @apply px-4 py-2 rounded-xl text-base font-semibold mr-3 transition-all duration-200;
+}
+
+.add-table-btn {
+  @apply bg-green-400 text-green-900;
+}
+
+.add-table-btn:hover {
+  @apply bg-green-500 -translate-y-0.5;
+}
+
+.save-all-btn {
+  @apply bg-blue-500 text-slate-100;
+}
+
+.save-all-btn:hover {
+  @apply bg-blue-600 -translate-y-0.5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tables-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .table-name,
+  .table-select {
+    @apply text-xs;
+  }
+
+  .add-table-btn,
+  .save-all-btn {
+    @apply text-sm px-3 py-2;
+  }
+}

@@ -1,0 +1,81 @@
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  transition-property: opacity;
+  transition-duration: 700ms;
+}
+
+.hero-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgb(var(--background) / 1),
+    rgb(var(--background) / 0.5),
+    transparent
+  );
+}
+
+.hero-content {
+  position: absolute;
+  bottom: 5rem;
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.hero-title {
+  font-size: 2.25rem;
+  font-weight: bold;
+  color: rgb(var(--foreground) / 1);
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .hero-title {
+    font-size: 3.75rem;
+  }
+}
+
+.hero-desc {
+  font-size: 1.125rem;
+  color: rgb(var(--muted-foreground) / 1);
+}
+
+@media (min-width: 768px) {
+  .hero-desc {
+    font-size: 1.25rem;
+  }
+}
+
+.hero-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  backdrop-filter: blur(4px);
+}
+
+.hero-button.left {
+  left: 1rem;
+}
+
+.hero-button.right {
+  right: 1rem;
+}
+
+.hero-button-bg {
+  background-color: rgb(var(--background) / 0.2);
+  transition: background-color 0.2s;
+}
+
+.hero-button-bg:hover {
+  background-color: rgb(var(--background) / 0.4);
+}

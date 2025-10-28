@@ -1,0 +1,48 @@
+/* src/styles/index.css */
+
+/* --- FONT --- */
+@import "@fontsource/inter/index.css";
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/700.css";
+
+/* --- THEME --- */
+@import "./variables.css";
+@import "./theme.css";
+@import "./base.css";
+
+/* --- BASE & LAYOUTS --- */
+
+@import "./layouts/header.css";
+
+
+/* --- MODULES --- */
+@import "./modules/auth.css";
+
+/* --- TAILWIND CORE --- */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- GLOBAL OVERRIDES --- */
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply font-inter bg-background text-foreground antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold text-foreground;
+  }
+
+  p, span, a, li {
+    @apply text-muted-foreground;
+  }
+
+  * {
+    @apply transition-all duration-200;
+  }
+}

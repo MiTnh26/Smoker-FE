@@ -1,0 +1,105 @@
+/* Overlay */
+.shortViewer {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Wrapper */
+.shortViewer__wrapper {
+  position: relative;
+  width: 90%;
+  max-width: 500px;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Label */
+.shortViewer__label {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+/* Video */
+.shortViewer__video {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0;
+  background: #000;
+}
+
+/* Info */
+.shortViewer__info {
+  width: 100%;
+  padding: 10px;
+  color: #fff;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0));
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+}
+
+.shortViewer__user {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.shortViewer__caption {
+  font-size: 0.9rem;
+  line-height: 1.2rem;
+}
+
+/* Close button scoped */
+.shortViewer__closeButton {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  color: #fff;
+  font-size: 1.25rem;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  z-index: 20;
+  transition: background 0.2s;
+}
+
+.shortViewer__closeButton:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .shortViewer__wrapper {
+    width: 95%;
+  }
+
+  .shortViewer__label {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .shortViewer__caption {
+    font-size: 0.8rem;
+  }
+}
