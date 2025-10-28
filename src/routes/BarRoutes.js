@@ -5,9 +5,10 @@ import BarProfile from "../modules/bar/pages/BarProfile";
 import ProtectedRoute from "./ProtectedRoute";
 import BarSettings from "../modules/bar/pages/BarSettings";
 import TableClassificationManager from "../modules/bar/pages/TableClassificationManager";
-
 import ComboManager from "../modules/bar/pages/ComboManager";
 import VoucherManager from "../modules/bar/pages/VoucherManager";
+import ManagePost from "../modules/bar/pages/ManagePost";
+import ManageStory from "../modules/bar/pages/ManageStory";
 export default function BarRoutes() {
   return (
     <Fragment>
@@ -50,7 +51,24 @@ export default function BarRoutes() {
         element={
           <ProtectedRoute roles={["bar"]}>
             <BarLayout> <ComboManager /></BarLayout>
+            <BarLayout>  <BarSettings /></BarLayout>
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/bar/manage-post"
+        element={
+          // <ProtectedRoute roles={["bar"]}>
+            <BarLayout><ManagePost /></BarLayout>
+        //  </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/bar/manage-story"
+        element={
+          // <ProtectedRoute roles={["bar"]}>
+            <BarLayout><ManageStory /></BarLayout>
+          // </ProtectedRoute>
         }
       />
     </Fragment>

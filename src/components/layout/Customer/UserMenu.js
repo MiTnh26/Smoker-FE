@@ -270,6 +270,9 @@ export default function UserMenu({ onClose }) {
           <Link to="#" className="user-menu-item">
             <span>Ngôn ngữ</span>
           </Link>
+           <Link to="/change-password" className="user-menu-item">
+            <span>Đổi mật khẩu</span>
+          </Link>
           <button onClick={handleLogout} className="user-menu-item logout">
             <span>Đăng xuất</span>
           </button>

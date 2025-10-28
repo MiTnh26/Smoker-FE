@@ -66,6 +66,33 @@ export function Register() {
     }
   };
 
+  const handleFacebookRegister = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    if (!email) {
+      setError("Vui lòng nhập email để đăng ký bằng Facebook");
+      return;
+    }
+    try {
+      const response = await authApi.facebookRegister(email);
+      if (response.status === "NEW_USER") {
+        setSuccess(response.message);
+      } else if (response.status === "EXISTING_USER") {
+        setError(response.message);
+      } else {
+        setError("Đăng ký thất bại");
+      }
+    } catch (err) {
+      const msg =
+        err?.response?.status === 409
+          ? "Email đã tồn tại"
+          : err?.response?.data?.message || "Đăng ký thất bại";
+      console.error("Facebook register failed:", err);
+      setError(msg);
+    }
+  };
+
   return (
     <div className="signup-page">
       <div className="signup-form-container">
@@ -231,6 +258,22 @@ export function Register() {
                 onClick={handleGoogleRegister}
               >
                 Đăng ký bằng Google
+              </Button>
+
+              <div style={{ fontSize: 12, color: "#555", marginTop: "10px" }}>
+                Cách 3 – Đăng ký bằng Facebook: Xác thực email của bạn, hệ thống sẽ
+                tạo mật khẩu ngẫu nhiên và <b>gửi về hộp thư email</b>. Vui lòng
+                mở email để lấy mật khẩu này và dùng để{" "}
+                <b>đăng nhập thủ công</b> lần đầu.
+              </div>
+
+              <Button
+                type="button"
+                className="signup-btn"
+                onClick={handleFacebookRegister}
+                style={{ backgroundColor: "#1877f2" }}
+              >
+                Đăng ký bằng Facebook
               </Button>
 
               <div className="text-center text-sm text-muted-foreground">

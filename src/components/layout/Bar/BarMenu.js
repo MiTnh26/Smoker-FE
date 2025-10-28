@@ -181,6 +181,9 @@ export default function BarMenu({ onClose }) {
             </span>
           </button>
           <Link to="#" className="user-menu-item"><span>Ngôn ngữ</span></Link>
+            <Link to="/change-password" className="user-menu-item">
+                      <span>Đổi mật khẩu</span>
+                    </Link>
           <Link to="/login" className="user-menu-item logout"><span>Đăng xuất</span></Link>
         </nav>
       </div>
