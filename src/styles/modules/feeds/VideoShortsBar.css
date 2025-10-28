@@ -1,0 +1,192 @@
+.shorts-bar-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.shorts-bar {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.shorts-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.short-item {
+  position: relative;
+  flex-shrink: 0;
+  width: 180px;  /* to hơn story */
+  height: 300px;
+  border-radius: 1rem;
+  overflow: hidden;
+  cursor: pointer;
+  background: #f0f0f0;
+  transition: transform 0.3s ease;
+}
+
+.short-item:hover {
+  transform: scale(1.05);
+}
+
+.short-thumbnail {
+  position: relative;
+  width: 100%;
+  height: 80%;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.short-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.short-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  color: white;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.short-avatar {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid white;
+  overflow: hidden;
+}
+
+.short-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.short-user {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* New BEM-scoped styles for enterprise naming */
+.shortsBar {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.shortsBar__list {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.shortsBar__list::-webkit-scrollbar {
+  display: none;
+}
+
+.shortsBar__item {
+  position: relative;
+  flex-shrink: 0;
+  width: 180px;
+  height: 300px;
+  border-radius: 1rem;
+  overflow: hidden;
+  cursor: pointer;
+  background: #f0f0f0;
+  transition: transform 0.2s ease;
+}
+
+.shortsBar__item:hover {
+  transform: scale(1.03);
+}
+
+.shortsBar__thumbnailWrapper {
+  position: relative;
+  width: 100%;
+  height: 80%;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+.shortsBar__thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.shortsBar__captionOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  color: #fff;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.shortsBar__avatarWrapper {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  overflow: hidden;
+}
+
+.shortsBar__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.shortsBar__user {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.shortsBar__scrollButton {
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.shortsBar__scrollButton:hover {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.shortsBar__scrollButton--left {
+  margin-right: 4px;
+}
+
+.shortsBar__scrollButton--right {
+  margin-left: 4px;
+}

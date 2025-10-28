@@ -1,22 +1,59 @@
-import { motion } from "framer-motion"
-import "../../../styles/modules/story.css"
+import { useMemo, useRef, useState } from "react"
+import CreateStory from "./CreateStory"
+import "../../../styles/modules/feeds/StoryBar.css"
 
-export default function StoryBar({ stories, onStoryClick }) {
+export default function StoryBar({ stories, onStoryClick, onStoryCreated }) {
+  const barRef = useRef(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  const VISIBLE_COUNT = 4
+  const ITEM_WIDTH = 140
+  const GAP = 16
+  const totalItems = (stories?.length || 0) + 1 // include CreateStory
+  const maxIndex = Math.max(0, totalItems - VISIBLE_COUNT)
+
+  const offset = useMemo(() => {
+    return currentIndex * (ITEM_WIDTH + GAP)
+  }, [currentIndex])
+
+  const go = (direction) => {
+    setCurrentIndex((prev) => {
+      if (direction === "left") return Math.max(0, prev - 1)
+      return Math.min(maxIndex, prev + 1)
+    })
+  }
+
   return (
-    <div className="story-bar">
-      <div className="story-scroll">
+    <div className="story-bar-container">
+      <button className="story-scroll-btn left" onClick={() => go("left")} aria-label="Previous stories" disabled={currentIndex === 0}>‹</button>
+
+      <div className="story-viewport">
+        <div className="story-bar" ref={barRef} style={{ transform: `translateX(-${offset}px)` }}>
+        {/* Story tạo mới nằm đầu */}
+        <CreateStory onStoryCreated={(newStory) => {
+          onStoryCreated(newStory)
+          onStoryClick(newStory) // mở ngay StoryViewer
+        }} />
+
+        {/* Render tất cả story */}
         {stories.map((story) => (
-          <motion.div
+          <div
             key={story.id}
             className="story-item"
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onStoryClick(story.id)}
+            onClick={() => onStoryClick(story)}
           >
-            <img src={story.thumbnail} alt={story.user} className="story-thumbnail" />
+            <div className="story-avatar">
+              <img src={story.avatar} alt={story.user} />
+            </div>
+            <img src={story.thumbnail} alt={story.user} />
             <p className="story-user">{story.user}</p>
-          </motion.div>
+          </div>
         ))}
+
+        </div>
       </div>
+
+      <button className="story-scroll-btn right" onClick={() => go("right")} aria-label="Next stories" disabled={currentIndex === maxIndex}>›</button>
     </div>
   )
 }

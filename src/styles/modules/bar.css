@@ -7,7 +7,8 @@
 
 /* Body container: sidebar + main content */
 .bar-body {
-  @apply flex flex-1 bg-black; /* bạn có thể dùng variable: bg-[rgb(var(--background))] */
+  @apply flex flex-1; /* nền theo theme */
+  background-color: rgb(var(--background));
 }
 
 /* Sidebar */

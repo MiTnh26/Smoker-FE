@@ -242,12 +242,28 @@ export default function UserMenu({ onClose }) {
             <span>Cài đặt & quyền riêng tư</span>
           </Link>
           <button
-            onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+            onClick={() => {
+              const next =
+                theme === "light"
+                  ? "dark"
+                  : theme === "dark"
+                  ? "bw"
+                  : theme === "bw"
+                  ? "liquidglass"
+                  : "light";
+              setTheme(next);
+            }}
             className="user-menu-item flex justify-between items-center"
           >
-            <span>Chế độ sáng tối</span>
+            <span>Chế độ giao diện</span>
             <span className="text-sm opacity-70">
-              {theme === "light" ? "🌞 Sáng" : "🌙 Tối"}
+              {theme === "light"
+                ? "🌞 Sáng"
+                : theme === "dark"
+                ? "🌙 Tối"
+                : theme === "bw"
+                ? "⚫⚪ Đen trắng"
+                : "🪟 LiquidGlass"}
             </span>
           </button>
 

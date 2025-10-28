@@ -5,31 +5,44 @@ import FeedHeader from "../components/FeedHeader"
 import StoryBar from "../components/StoryBar"
 import StoryViewer from "../components/StoryViewer"
 import PostCard from "../components/PostCard"
+import CreatePostBox from "../components/CreatePostBox"
+import CreateStory from "../components/CreateStory"
+import { posts as initialPosts } from "../data/mockPosts"
+import { stories as initialStories } from "../data/mockStories"
 import "../../../styles/modules/newsfeed.css"
+import VideoShortBar from "../components/VideoShortBar";
+import VideoShortViewer from "../components/VideoShortViewer";
+import { shorts as initialShorts } from "../data/mockShorts"
 
-export default function Newsfeed() {
+
+export default function NewsfeedPage() {
+  const [posts, setPosts] = useState(initialPosts)
+  const [stories, setStories] = useState(initialStories)
   const [playingPost, setPlayingPost] = useState(null)
   const [activeStory, setActiveStory] = useState(null)
+  const [shortVideos, setShortVideos] = useState(initialShorts)
+  const [activeShortVideo, setActiveShortVideo] = useState(null)
 
-  const posts = [
-    { id: 1, user: "Bar Tabung", time: "2 giờ trước", content: "Đêm nay có DJ nổi tiếng!", audioTitle: "Summer Mix 2024", likes: 125, comments: 23 },
-    { id: 2, user: "Club Paradise", time: "5 giờ trước", content: "Happy hour 50%!", audioTitle: "Chill Vibes", likes: 89, comments: 15 },
-    { id: 3, user: "Cafe Acoustic", time: "1 ngày trước", content: "Đêm nhạc Acoustic miễn phí vé vào cửa.", audioTitle: "Live Acoustic Session", likes: 67, comments: 8 },
-  ]
-
-  const stories = [
-    { id: 1, user: "Bar Tabung", thumbnail: "/images/story1.jpg", video: "/videos/story1.mp4" },
-    { id: 2, user: "Club Paradise", thumbnail: "/images/story2.jpg", video: "/videos/story2.mp4" },
-    { id: 3, user: "Sky Lounge", thumbnail: "/images/story3.jpg", video: "/videos/story3.mp4" },
-  ]
+  const handleStoryCreated = (newStory) => {
+    // thêm story mới vào đầu mảng
+    setStories([newStory, ...stories])
+  }
 
   return (
     <div className="newsfeed-page">
       <FeedHeader />
-      <StoryBar stories={stories} onStoryClick={setActiveStory} />
+
+      {/* Tạo Story + StoryBar */}
+      <div className="story-section ">
+
+        <StoryBar stories={stories} onStoryClick={setActiveStory} onStoryCreated={handleStoryCreated} />
+      </div>
+
 
       <main className="newsfeed-main">
-        <div className="feed-posts">
+        <CreatePostBox onCreate={() => console.log("Mở modal tạo bài viết")} />
+
+        <div className="feed-posts space-y-4">
           {posts.map((post) => (
             <PostCard
               key={post.id}
@@ -40,7 +53,13 @@ export default function Newsfeed() {
           ))}
         </div>
       </main>
-
+      {/* Video Shorts */}
+      <div className="shorts-section">
+        <VideoShortBar
+          videos={shortVideos}
+          onVideoClick={setActiveShortVideo}
+        />
+      </div>
       {activeStory && (
         <StoryViewer
           stories={stories}
@@ -48,6 +67,19 @@ export default function Newsfeed() {
           onClose={() => setActiveStory(null)}
         />
       )}
+      {/* Short Video Viewer */}
+      {activeShortVideo && (
+        <VideoShortViewer
+          videos={shortVideos}
+          activeVideo={activeShortVideo}
+          onClose={() => setActiveShortVideo(null)}
+          visible={!!activeShortVideo} 
+        />
+      )}
+
+
+
     </div>
+
   )
 }

@@ -22,7 +22,16 @@ export default function MessagesPanel({ conversations = [], onClose }) {
 
       <div className="panel-list">
         {conversations.map((conv) => (
-          <div key={conv.id} className="panel-item">
+          <div
+            key={conv.id}
+            className="panel-item"
+            onClick={() => {
+              if (window.__openChat) {
+                window.__openChat({ id: conv.id, name: conv.name })
+              }
+              onClose?.()
+            }}
+          >
             <div className="panel-avatar">
               <User size={32} />
             </div>

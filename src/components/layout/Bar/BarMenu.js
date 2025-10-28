@@ -9,6 +9,13 @@ export default function BarMenu({ onClose }) {
   const [activeEntity, setActiveEntity] = useState(null);
   const [entities, setEntities] = useState([]);
   const [showAll, setShowAll] = useState(false);
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+
+  // Áp dụng theme khi component mount hoặc theme thay đổi
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
 
   useEffect(() => {
     const session = JSON.parse(localStorage.getItem("session"));
@@ -147,7 +154,32 @@ export default function BarMenu({ onClose }) {
         <nav className="user-menu-nav">
           <Link to="#" className="user-menu-item"><span>Cài đặt và quyền riêng tư</span></Link>
           <Link to="#" className="user-menu-item"><span>Cài đặt</span></Link>
-          <Link to="#" className="user-menu-item"><span>Chế độ tối</span></Link>
+          <button
+            onClick={() => {
+              const next =
+                theme === "light"
+                  ? "dark"
+                  : theme === "dark"
+                  ? "bw"
+                  : theme === "bw"
+                  ? "liquidglass"
+                  : "light";
+              setTheme(next);
+            }}
+            className="user-menu-item"
+            style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+          >
+            <span>Chế độ giao diện</span>
+            <span className="text-sm" style={{ opacity: 0.7 }}>
+              {theme === "light"
+                ? "🌞 Sáng"
+                : theme === "dark"
+                ? "🌙 Tối"
+                : theme === "bw"
+                ? "⚫⚪ Đen trắng"
+                : "🪟 LiquidGlass"}
+            </span>
+          </button>
           <Link to="#" className="user-menu-item"><span>Ngôn ngữ</span></Link>
           <Link to="/login" className="user-menu-item logout"><span>Đăng xuất</span></Link>
         </nav>

@@ -1,40 +1,61 @@
-import { Heart, MessageSquare, Share2, Play, Pause, User, Menu } from "lucide-react"
+import { useState } from "react"
+import "../../../styles/modules/feeds/PostCard.css"
 
 export default function PostCard({ post, playingPost, setPlayingPost }) {
+  const isPlaying = playingPost === post.id
+  const [liked, setLiked] = useState(false)
+
+  const togglePlay = () => setPlayingPost(isPlaying ? null : post.id)
+  const toggleLike = () => setLiked(!liked)
+
   return (
     <article className="post-card">
+      {/* Header */}
       <div className="post-header">
         <div className="post-user">
-          <div className="post-avatar"><User size={40} /></div>
+          <img src={post.avatar} alt={post.user} className="user-avatar" />
           <div>
-            <h4 className="post-username">{post.user}</h4>
+            <h4 className="user-name">{post.user}</h4>
             <p className="post-time">{post.time}</p>
           </div>
         </div>
-        <button className="post-menu"><Menu size={20} /></button>
+        <button className="more-btn">⋯</button>
       </div>
 
-      <div className="post-content"><p>{post.content}</p></div>
-
-      <div className="post-audio">
-        <button
-          className="audio-play-btn"
-          onClick={() => setPlayingPost(playingPost === post.id ? null : post.id)}
-        >
-          {playingPost === post.id ? <Pause size={24} /> : <Play size={24} />}
-        </button>
-        <div className="audio-info"><p className="audio-title">{post.audioTitle}</p></div>
+      {/* Content */}
+      <div className="post-content">
+        <p className="post-text">{post.content}</p>
+        {post.image && (
+          <img src={post.image} alt="post" className="post-image" />
+        )}
+        {post.hashtags && (
+          <div className="post-tags">
+            {post.hashtags.map((tag, i) => (
+              <span key={i} className="tag">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="post-stats">
-        <span>{post.likes} lượt thích</span>
-        <span>{post.comments} bình luận</span>
-      </div>
-
-      <div className="post-actions">
-        <button className="action-btn"><Heart size={20} /><span>Thích</span></button>
-        <button className="action-btn"><MessageSquare size={20} /><span>Bình luận</span></button>
-        <button className="action-btn"><Share2 size={20} /><span>Chia sẻ</span></button>
+      {/* Footer */}
+      <div className="post-footer">
+        <div className="actions-left">
+          <button
+            onClick={toggleLike}
+            className={`action-btn ${liked ? "liked" : ""}`}
+          >
+            ❤️ {liked ? post.likes + 1 : post.likes}
+          </button>
+          <button className="action-btn">💬 {post.comments}</button>
+          <button className="action-btn">↗️ {post.shares || 0}</button>
+        </div>
+        {post.audioTitle && (
+          <button onClick={togglePlay} className="audio-btn">
+            {isPlaying ? "⏸ Dừng" : "▶️ Nghe"} {post.audioTitle}
+          </button>
+        )}
       </div>
     </article>
   )

@@ -7,20 +7,19 @@
 
   /* ===== Panel Container ===== */
   .panel-container {
-    @apply fixed flex flex-col z-20 overflow-hidden p-2 rounded-md;
-    top: 145px;
+    @apply fixed flex flex-col z-20 overflow-hidden rounded-xl;
+    top: 136px;
     right: 32px;
     width: 360px;
-    max-height: 400px;
+    max-height: 520px;
     background-color: rgb(var(--card));
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-    color: rgb(var(--foreground));
+    border: 1px solid rgb(var(--border));
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    color: rgb(var(--card-foreground));
   }
 
   /* ===== Header ===== */
-  .panel-header {
-    @apply flex items-center justify-between mb-2;
-  }
+  .panel-header { @apply flex items-center justify-between px-4 py-3 border-b; border-color: rgb(var(--border)); }
 
   .panel-header h3 {
     @apply m-0 text-base font-semibold;
@@ -34,11 +33,7 @@
   }
 
   /* ===== Search ===== */
-  .panel-search {
-    @apply flex items-center gap-2 px-3 py-1.5 rounded-md border-b;
-    background-color: rgb(var(--secondary-card));
-    border-color: rgb(var(--border));
-  }
+  .panel-search { @apply flex items-center gap-2 px-4 py-2 border-b; border-color: rgb(var(--border)); background-color: rgb(var(--card)); }
 
   .panel-search-input {
     @apply flex-1 px-2 py-1 rounded text-sm border outline-none;
@@ -56,15 +51,11 @@
   }
 
   /* ===== List ===== */
-  .panel-list {
-    @apply flex flex-col gap-1 overflow-y-auto flex-1 px-0.5 py-0.5;
-  }
+  .panel-list { @apply flex flex-col gap-1 overflow-y-auto flex-1 px-2 py-2; }
 
   /* ===== Item ===== */
-  .panel-item {
-    @apply flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors;
-    background-color: rgb(var(--secondary-card));
-  }
+  .panel-item { @apply flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors; }
+  .panel-item:hover { background-color: rgb(var(--muted)); }
 
   .panel-item:hover {
     background-color: rgb(var(--primary));
@@ -72,12 +63,7 @@
   }
 
   /* ===== Avatar ===== */
-  .panel-avatar {
-    @apply flex items-center justify-center rounded-full flex-shrink-0;
-    background-color: rgb(var(--primary));
-    color: rgb(var(--primary-foreground));
-    padding: 0.5rem;
-  }
+  .panel-avatar { @apply flex items-center justify-center rounded-full flex-shrink-0; background-color: rgb(var(--primary)); color: rgb(var(--primary-foreground)); width: 40px; height: 40px; }
 
   /* ===== Info ===== */
   .panel-info {
