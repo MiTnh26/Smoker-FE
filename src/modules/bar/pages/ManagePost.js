@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
 
+import React, { useEffect, useState } from "react";
 import {
   getPosts,
   createPost,
@@ -12,7 +12,8 @@ const ManagePost = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ title: "", content: "", images: "" });
+  const [formData, setFormData] = useState({ title: "", content: "", images: "", type: "post" });
+  const [imageFile, setImageFile] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
 
@@ -40,44 +41,31 @@ const ManagePost = () => {
     setLoading(true);
     setError("");
     try {
-      await createPost(formData);
+      let data;
+      if (imageFile) {
+        data = new FormData();
+        data.append("title", formData.title);
+        data.append("content", formData.content);
+        data.append("images", imageFile);
+        data.append("type", "post");
+      } else {
+        data = { ...formData, images: formData.images || "", type: "post" };
+      }
+      await createPost(data);
       setShowForm(false);
-      setFormData({ title: "", content: "", images: "" });
+      setFormData({ title: "", content: "", images: "", type: "post" });
+      setImageFile(null);
       fetchPosts();
     } catch (err) {
       setError("Tạo bài viết thất bại");
     }
     setLoading(false);
   };
-// Hàm upload ảnh lên Cloudinary (unsigned upload)
-const uploadImageToCloudinary = async (file) => {
-  const url = "https://api.cloudinary.com/v1_1/dienwsyhr/image/upload";
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", "unsigned_preset"); // Đảm bảo bạn đã tạo preset này trên Cloudinary
-  const res = await fetch(url, {
-    method: "POST",
-    body: formData,
-  });
-  return res.json();
-};
-  // Xử lý upload file ảnh lên Cloudinary
-  const handleFileChange = async (e) => {
+  // Xử lý chọn file ảnh để gửi lên BE
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setLoading(true);
-      setError("");
-      try {
-        const result = await uploadImageToCloudinary(file);
-        if (result.secure_url) {
-          setFormData((prev) => ({ ...prev, images: result.secure_url }));
-        } else {
-          setError("Upload ảnh thất bại");
-        }
-      } catch (err) {
-        setError("Upload ảnh thất bại");
-      }
-      setLoading(false);
+      setImageFile(file);
     }
   };
 
@@ -90,8 +78,10 @@ const uploadImageToCloudinary = async (file) => {
       setFormData({
         title: res.data.data.title,
         content: res.data.data.content,
-        images: res.data.data.images || ""
+        images: typeof res.data.data.images === "string" ? res.data.data.images : "",
+        type: res.data.data.type || "post"
       });
+      setImageFile(null);
     } catch (err) {
       setError("Không lấy được dữ liệu bài viết");
     }
@@ -102,10 +92,21 @@ const uploadImageToCloudinary = async (file) => {
     setLoading(true);
     setError("");
     try {
-      await updatePost(editingId, formData);
+      let data;
+      if (imageFile) {
+        data = new FormData();
+        data.append("title", formData.title);
+        data.append("content", formData.content);
+        data.append("images", imageFile);
+        data.append("type", "post");
+      } else {
+        data = { ...formData, images: formData.images || "", type: "post" };
+      }
+      await updatePost(editingId, data);
       setEditingId(null);
       setShowForm(false);
-      setFormData({ title: "", content: "", images: "" });
+      setFormData({ title: "", content: "", images: "", type: "post" });
+      setImageFile(null);
       fetchPosts();
     } catch (err) {
       setError("Cập nhật thất bại");
@@ -135,7 +136,8 @@ const uploadImageToCloudinary = async (file) => {
         onClick={() => {
           setShowForm(true);
           setEditingId(null);
-          setFormData({ title: "", content: "", images: "" });
+          setFormData({ title: "", content: "", images: "", type: "post" });
+          setImageFile(null);
         }}
       >
         + Tạo bài viết mới
@@ -183,8 +185,8 @@ const uploadImageToCloudinary = async (file) => {
               className="w-full border rounded px-2 py-1 mt-1"
               placeholder="Nhập link ảnh hoặc tải lên"
             />
-            {formData.images && (
-              <img src={formData.images} alt="preview" className="max-h-32 rounded mt-2" />
+            {(imageFile || formData.images) && (
+              <img src={imageFile ? URL.createObjectURL(imageFile) : formData.images} alt="preview" className="max-h-32 rounded mt-2" />
             )}
           </div>
           <div className="flex gap-2 mt-2">

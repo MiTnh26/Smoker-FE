@@ -1,10 +1,12 @@
+
 import { useMemo, useRef, useState } from "react"
-import CreateStory from "./CreateStory"
+import { useNavigate } from "react-router-dom";
 import "../../../styles/modules/feeds/StoryBar.css"
 
 export default function StoryBar({ stories, onStoryClick, onStoryCreated }) {
   const barRef = useRef(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const navigate = useNavigate();
 
   const VISIBLE_COUNT = 4
   const ITEM_WIDTH = 140
@@ -29,13 +31,16 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated }) {
 
       <div className="story-viewport">
         <div className="story-bar" ref={barRef} style={{ transform: `translateX(-${offset}px)` }}>
-        {/* Story tạo mới nằm đầu */}
-        <CreateStory onStoryCreated={(newStory) => {
-          onStoryCreated(newStory)
-          onStoryClick(newStory) // mở ngay StoryViewer
-        }} />
 
-        {/* Render tất cả story */}
+        {/* Nút tạo story mới chuyển sang trang editor */}
+        <div className="story-item create-story-item" onClick={() => navigate("/customer/story-editor")}
+          style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
+        >
+          <div className="story-avatar" style={{ background: "#eee", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 32, color: "#888" }}>+</span>
+          </div>
+          <div style={{ marginTop: 8, color: "#333", fontWeight: 500 }}>Tạo Story</div>
+        </div>
         {stories.map((story) => (
           <div
             key={story.id}
@@ -57,3 +62,4 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated }) {
     </div>
   )
 }
+
