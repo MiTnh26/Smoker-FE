@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import FeedHeader from "../components/FeedHeader"
 import StoryBar from "../components/StoryBar"
 import StoryViewer from "../components/StoryViewer"
@@ -13,7 +13,10 @@ import "../../../styles/modules/newsfeed.css"
 import VideoShortBar from "../components/VideoShortBar";
 import VideoShortViewer from "../components/VideoShortViewer";
 import { shorts as initialShorts } from "../data/mockShorts"
-
+import {
+  getStories,
+  getStoryById
+} from "../../../api/storyApi";
 
 export default function NewsfeedPage() {
   const [posts, setPosts] = useState(initialPosts)
@@ -22,12 +25,29 @@ export default function NewsfeedPage() {
   const [activeStory, setActiveStory] = useState(null)
   const [shortVideos, setShortVideos] = useState(initialShorts)
   const [activeShortVideo, setActiveShortVideo] = useState(null)
+const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  // Fetch stories from API on mount
+   const fetchStories = async () => {
+     setLoading(true);
+     try {
+       const res = await getStories();
+       setStories(res.data || []);
+     } catch (err) {
+       setError("Lỗi tải story");
+     }
+     setLoading(false);
+   };
+ 
+   useEffect(() => {
+     fetchStories();
+   }, []);
 
   const handleStoryCreated = (newStory) => {
     // thêm story mới vào đầu mảng
     setStories([newStory, ...stories])
   }
-
+ console.log("  stories ", stories)
   return (
     <div className="newsfeed-page">
       <FeedHeader />

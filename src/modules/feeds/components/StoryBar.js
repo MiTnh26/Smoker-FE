@@ -32,28 +32,38 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated }) {
       <div className="story-viewport">
         <div className="story-bar" ref={barRef} style={{ transform: `translateX(-${offset}px)` }}>
 
-        {/* Nút tạo story mới chuyển sang trang editor */}
-        <div className="story-item create-story-item" onClick={() => navigate("/customer/story-editor")}
-          style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
-        >
-          <div className="story-avatar" style={{ background: "#eee", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 32, color: "#888" }}>+</span>
-          </div>
-          <div style={{ marginTop: 8, color: "#333", fontWeight: 500 }}>Tạo Story</div>
-        </div>
-        {stories.map((story) => (
-          <div
-            key={story.id}
-            className="story-item"
-            onClick={() => onStoryClick(story)}
+          {/* Nút tạo story mới chuyển sang trang editor */}
+          <div key="create" className="story-item create-story-item" onClick={() => navigate("/customer/story-editor")}
+            style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
           >
-            <div className="story-avatar">
-              <img src={story.avatar} alt={story.user} />
+            <div className="story-avatar" style={{ background: "#eee", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: 32, color: "#888" }}>+</span>
             </div>
-            <img src={story.thumbnail} alt={story.user} />
-            <p className="story-user">{story.user}</p>
+            <div style={{ marginTop: 8, color: "#333", fontWeight: 500 }}>Tạo Story</div>
           </div>
-        ))}
+          {stories.map((story, idx) => {
+            // key: ưu tiên _id, fallback idx
+            const key = story._id || `story-${idx}`;
+            // avatar src
+            const avatarSrc = story.avatar || '/default-avatar.png';
+            // images src: nếu rỗng/null thì không render img
+            const hasImage = story.images && typeof story.images === 'string' && story.images.trim() !== '';
+            return (
+              <div
+                key={key}
+                className="story-item"
+                onClick={() => onStoryClick(story)}
+              >
+                <div className="story-avatar">
+                  <img src={avatarSrc} alt={story.accountId || 'user'} />
+                </div>
+                {hasImage && (
+                  <img src={story.images} alt={story.title || 'story'} />
+                )}
+                <p className="story-user">{story.accountId || story.title}</p>
+              </div>
+            );
+          })}
 
         </div>
       </div>
