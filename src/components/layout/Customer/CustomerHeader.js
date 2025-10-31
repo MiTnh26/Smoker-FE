@@ -1,12 +1,14 @@
 import { Link } from "react-router-dom";
-import { Home, MessageCircle, Bell, User, Search } from "lucide-react";
+import { Home, MessageCircle, User, Search, Bell } from "lucide-react";
 import { useState } from "react";
-import UserMenu from "./UserMenu";
-import MessagesPanel from "../common/MessagesPanel"; 
+import UnifiedMenu from "../../common/UnifiedMenu";
+import MessagesPanel from "../common/MessagesPanel";
+import NotificationPanel from "../common/NotificationPanel";
+import DropdownPanel from "../../common/DropdownPanel";
 import "../../../styles/layouts/customerheader.css";
 
 export default function CustomerHeader() {
-  const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | null
+  const [activePanel, setActivePanel] = useState(null); // 'notifications' | 'messages' | 'user' | null
 
   const conversations = [
     { id: 1, name: "Nguyễn Văn A", lastMessage: "Tối nay đi không?", time: "10 phút", unread: 2 },
@@ -14,8 +16,15 @@ export default function CustomerHeader() {
   ];
 
   const togglePanel = (panel) => {
-    setActivePanel(activePanel === panel ? null : panel);
+    console.log("[CustomerHeader] Toggling panel:", panel, "Current:", activePanel);
+    const newPanel = activePanel === panel ? null : panel;
+    console.log("[CustomerHeader] New activePanel:", newPanel);
+    setActivePanel(newPanel);
   };
+
+  // Debug activePanel
+  console.log("[CustomerHeader] Current activePanel:", activePanel);
+  console.log("[CustomerHeader] Panel should be open:", !!activePanel);
 
   return (
     <>
@@ -32,17 +41,32 @@ export default function CustomerHeader() {
             <button className="nav-icon active"><Home size={24} /></button>
 
             <button
-              className="nav-icon"
-              onClick={() => togglePanel("messages")}
+              className={`nav-icon ${activePanel === "messages" ? "active" : ""}`}
+              onClick={() => {
+                console.log("[CustomerHeader] Message button clicked!");
+                togglePanel("messages");
+              }}
             >
               <MessageCircle size={24} />
             </button>
 
-            <button className="nav-icon"><Bell size={24} /></button>
+            {/* Notification Button */}
+            <button
+              className={`nav-icon ${activePanel === "notifications" ? "active" : ""}`}
+              onClick={() => {
+                console.log("[CustomerHeader] Notification button clicked!");
+                togglePanel("notifications");
+              }}
+            >
+              <Bell size={24} />
+            </button>
 
             <button
-              className="nav-icon"
-              onClick={() => togglePanel("user")}
+              className={`nav-icon ${activePanel === "user" ? "active" : ""}`}
+              onClick={() => {
+                console.log("[CustomerHeader] User button clicked!");
+                togglePanel("user");
+              }}
             >
               <User size={24} />
             </button>
@@ -50,25 +74,47 @@ export default function CustomerHeader() {
         </div>
       </header>
 
-      {/* Shared panel container */}
-      {activePanel && (
-        <div className="user-menu-panel">
-          <div className="panel-header">
-            <h3>{activePanel === "user" ? "User Menu" : "Tin nhắn"}</h3>
-            <button onClick={() => setActivePanel(null)}>✕</button>
-          </div>
-
-          <div className="user-menu-content">
-            {activePanel === "user" && <UserMenu />}
-            {activePanel === "messages" && (
-              <MessagesPanel
-                conversations={conversations}
-                onClose={() => setActivePanel(null)}
-              />
-            )}
-          </div>
-        </div>
-      )}
+      <DropdownPanel
+        isOpen={!!activePanel}
+        onClose={() => {
+          console.log("[CustomerHeader] Closing panel");
+          setActivePanel(null);
+        }}
+        title={(() => {
+          if (activePanel === "user") return "User Menu";
+          if (activePanel === "messages") return "Tin nhắn";
+          if (activePanel === "notifications") return "Thông báo";
+          return "";
+        })()}
+      >
+        {activePanel === "notifications" && (
+          <NotificationPanel
+            onClose={() => {
+              console.log("[CustomerHeader] NotificationPanel onClose");
+              setActivePanel(null);
+            }}
+          />
+        )}
+        {activePanel === "messages" && (
+          <MessagesPanel
+            conversations={conversations}
+            onClose={() => {
+              console.log("[CustomerHeader] MessagesPanel onClose");
+              setActivePanel(null);
+            }}
+          />
+        )}
+        {activePanel === "user" && (
+          <UnifiedMenu
+            onClose={() => {
+              console.log("[CustomerHeader] UnifiedMenu onClose");
+              setActivePanel(null);
+            }}
+            menuConfig="customer"
+            showBackToAccount={false}
+          />
+        )}
+      </DropdownPanel>
     </>
   );
 }

@@ -1,0 +1,213 @@
+/* PostComposerModal.css */
+.post-composer-modal {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(var(--overlay));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.post-composer-modal .modal-content {
+  width: 520px;
+  max-width: 92vw;
+  background: rgb(var(--card));
+  color: rgb(var(--card-foreground));
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--border));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.post-composer-modal .modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgb(var(--border));
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.post-composer-modal .modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.post-composer-modal .content-textarea {
+  width: 100%;
+  resize: vertical;
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgb(var(--border));
+  border-radius: 8px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.post-composer-modal .content-textarea:focus {
+  border-color: rgb(var(--primary));
+}
+
+.post-composer-modal .content-textarea::placeholder {
+  color: rgb(var(--muted-foreground));
+}
+
+.post-composer-modal .media-upload-section {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.post-composer-modal .upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid rgb(var(--border));
+  border-radius: 8px;
+  background: transparent;
+  color: rgb(var(--muted-foreground));
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.post-composer-modal .upload-btn:hover {
+  background: rgb(var(--muted));
+  color: rgb(var(--foreground));
+}
+
+.post-composer-modal .upload-btn input[type="file"] {
+  display: none;
+}
+
+.post-composer-modal .media-preview {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.post-composer-modal .media-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgb(var(--border));
+}
+
+.post-composer-modal .media-item img,
+.post-composer-modal .media-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-composer-modal .media-item .remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.post-composer-modal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.post-composer-modal .btn-cancel {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgb(var(--border));
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.post-composer-modal .btn-cancel:hover {
+  background: rgb(var(--muted));
+}
+
+.post-composer-modal .btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.post-composer-modal .btn-submit {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  border: 1px solid rgb(var(--primary));
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.post-composer-modal .btn-submit:hover:not(:disabled) {
+  background: rgb(var(--secondary));
+  border-color: rgb(var(--secondary));
+}
+
+.post-composer-modal .btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.post-composer-modal .upload-progress {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: rgb(var(--muted-foreground));
+}
+
+/* LiquidGlass theme specific styles */
+[data-theme='liquidglass'] .post-composer-modal .modal-content {
+  background: rgba(var(--card), 0.25);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(var(--border), 0.2);
+}
+
+[data-theme='liquidglass'] .post-composer-modal .content-textarea {
+  background: rgba(var(--input), 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--input-border), 0.2);
+}
+
+[data-theme='liquidglass'] .post-composer-modal .content-textarea:focus {
+  border-color: rgba(var(--primary), 0.6);
+}
+
+[data-theme='liquidglass'] .post-composer-modal .btn-submit {
+  background: rgba(var(--primary), 0.8);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(var(--primary), 0.2);
+}
+
+[data-theme='liquidglass'] .post-composer-modal .btn-submit:hover:not(:disabled) {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}

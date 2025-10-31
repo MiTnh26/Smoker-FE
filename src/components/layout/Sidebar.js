@@ -14,12 +14,31 @@ export default function Sidebar() {
   const [barPageId, setBarPageId] = useState(null);
   const [openSubMenu, setOpenSubMenu] = useState(null);
 
-  useEffect(() => {
+  const loadSession = () => {
     const session = JSON.parse(localStorage.getItem("session")) || {};
     const account = session.account || {};
-    const entity =
-      session.entities?.find((e) => e.id === session.activeEntity?.id) || account;
-
+    
+    // Find active entity, if not found use account as fallback
+    let entity = session.entities?.find((e) => e.id === session.activeEntity?.id);
+    
+    // If no entity found, use account data
+    if (!entity) {
+      entity = {
+        ...account,
+        type: "Account",
+        avatar: account.avatar,
+        name: account.userName || account.email,
+        email: account.email,
+      };
+    }
+    
+    // Ensure entity has avatar from account if entity.avatar is missing
+    if (!entity.avatar && account.avatar) {
+      entity.avatar = account.avatar;
+    }
+    
+    console.log("[Sidebar] Loading session - entity:", entity);
+    
     setUser(account);
     setActiveEntity(entity);
 
@@ -36,6 +55,24 @@ export default function Sidebar() {
     } else if (session?.activeEntity?.id) {
       setBarPageId(session.activeEntity.id);
     }
+  };
+
+  useEffect(() => {
+    loadSession();
+    
+    // Listen for profile updates
+    const handleProfileUpdate = () => {
+      console.log("[Sidebar] Profile updated event received");
+      loadSession();
+    };
+    
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    window.addEventListener('storage', handleProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('storage', handleProfileUpdate);
+    };
   }, []);
 
   useEffect(() => {

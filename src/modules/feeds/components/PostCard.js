@@ -13,7 +13,7 @@ export default function PostCard({ post, playingPost, setPlayingPost }) {
       {/* Header */}
       <div className="post-header">
         <div className="post-user">
-          <img src={post.avatar} alt={post.user} className="user-avatar" />
+          <img src={post.avatar || "https://via.placeholder.com/40"} alt={post.user} className="user-avatar" />
           <div>
             <h4 className="user-name">{post.user}</h4>
             <p className="post-time">{post.time}</p>
@@ -28,7 +28,13 @@ export default function PostCard({ post, playingPost, setPlayingPost }) {
         {post.image && (
           <img src={post.image} alt="post" className="post-image" />
         )}
-        {post.hashtags && (
+        {post.videoSrc && !post.image && (
+          <video className="post-video" src={post.videoSrc} controls />
+        )}
+        {post.audioSrc && (
+          <audio className="post-audio" src={post.audioSrc} controls />
+        )}
+        {post.hashtags && post.hashtags.length > 0 && (
           <div className="post-tags">
             {post.hashtags.map((tag, i) => (
               <span key={i} className="tag">

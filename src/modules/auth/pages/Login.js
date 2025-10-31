@@ -7,6 +7,7 @@ import "../../../styles/modules/auth.css";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../../api/userApi";
 import { useAuth } from "../../../hooks/useAuth";
+import { fetchAllEntities } from "../../../utils/sessionHelper";
 
 export function Login() {
   const navigate = useNavigate();
@@ -25,13 +26,20 @@ export function Login() {
       const res = await authApi.login(email, password);
       if (res && res.token) {
         await login({ token: res.token, user: res.user });
+        
+        // Fetch all entities (bars, businesses)
+        const entities = await fetchAllEntities(res.user.id, res.user);
+        
         // ✅ Thêm đoạn session chuẩn
         const session = {
           token: res.token,
           account: res.user, // chính là Customer
+          entities: entities, // Tất cả entities
           activeEntity: {
             type: "Account",
-            id: res.user?.AccountId || res.user?.id, // đề phòng key khác nhau
+            id: res.user.id,
+            name: res.user.userName,
+            avatar: res.user.avatar,
             role: "Customer"
           }
         };

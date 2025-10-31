@@ -348,14 +348,6 @@
 }
 
 /* RESPONSIVE */
-/* Hide sidebars and expand feed at tablet and below */
-@media (max-width: 1100px) {
-  .newsfeed-sidebar-left { display: none; }
-  .right-sidebar { display: none; }
-  .newsfeed-container { padding: 1.25rem; gap: 1rem; }
-}
-
-/* Stack layout on small screens */
 @media (max-width: 768px) {
   .newsfeed-container {
     flex-direction: column;

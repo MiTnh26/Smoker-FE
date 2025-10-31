@@ -3,6 +3,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { authApi } from "../../../api/userApi";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
+import { fetchAllEntities } from "../../../utils/sessionHelper";
 
 export default function GoogleLoginButton() {
   const navigate = useNavigate();
@@ -18,13 +19,19 @@ export default function GoogleLoginButton() {
       if (data?.token) {
         await login({ token: data.token, user: data.user });
       
+        // Fetch all entities (bars, businesses)
+        const entities = await fetchAllEntities(data.user.id, data.user);
+      
         // ✅ Lưu session chuẩn
         const session = {
           token: data.token,
           account: data.user,
+          entities: entities, // Tất cả entities
           activeEntity: {
             type: "Account",
-            id: data.user?.AccountId || data.user?.id,
+            id: data.user.id,
+            name: data.user.userName,
+            avatar: data.user.avatar,
             role: "Customer"
           }
         };
