@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { userApi } from "../../../api/userApi";
+import { locationApi } from "../../../api/locationApi";
 import { useNavigate } from "react-router-dom";
 
 const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
@@ -17,6 +18,15 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   const [avatarFile, setAvatarFile] = useState(null);
   const [backgroundFile, setBackgroundFile] = useState(null);
 
+  // Location states
+  const [provinces, setProvinces] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
+  const [selectedWardId, setSelectedWardId] = useState('');
+  const [locationLoading, setLocationLoading] = useState(false);
+
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -25,6 +35,69 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   // Helpers
   const isHttpUrl = (value) => typeof value === 'string' && /^https?:\/\//i.test(value);
   const sanitizePhone = (value) => (value || '').replace(/\s/g, '').slice(0, 20);
+
+  // Load provinces on mount
+  useEffect(() => {
+    const loadProvinces = async () => {
+      try {
+        setLocationLoading(true);
+        const data = await locationApi.getProvinces();
+        setProvinces(data);
+      } catch (error) {
+        console.error('Failed to load provinces:', error);
+      } finally {
+        setLocationLoading(false);
+      }
+    };
+    loadProvinces();
+  }, []);
+
+  // Load districts when province is selected
+  useEffect(() => {
+    const loadDistricts = async () => {
+      if (!selectedProvinceId) {
+        setDistricts([]);
+        setSelectedDistrictId('');
+        return;
+      }
+      try {
+        setLocationLoading(true);
+        const data = await locationApi.getDistricts(selectedProvinceId);
+        setDistricts(data);
+        // Reset district and ward selection
+        setSelectedDistrictId('');
+        setSelectedWardId('');
+        setWards([]);
+      } catch (error) {
+        console.error('Failed to load districts:', error);
+      } finally {
+        setLocationLoading(false);
+      }
+    };
+    loadDistricts();
+  }, [selectedProvinceId]);
+
+  // Load wards when district is selected
+  useEffect(() => {
+    const loadWards = async () => {
+      if (!selectedDistrictId) {
+        setWards([]);
+        setSelectedWardId('');
+        return;
+      }
+      try {
+        setLocationLoading(true);
+        const data = await locationApi.getWards(selectedDistrictId);
+        setWards(data);
+        setSelectedWardId('');
+      } catch (error) {
+        console.error('Failed to load wards:', error);
+      } finally {
+        setLocationLoading(false);
+      }
+    };
+    loadWards();
+  }, [selectedDistrictId]);
 
   // Load existing profile data
   useEffect(() => {
@@ -42,6 +115,62 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
             phone: user.phone || '',
             gender: user.gender || ''
           });
+          
+          // Load structured address data if available
+          if (user.addressData) {
+            // Backend đã parse và trả về addressData object
+            if (user.addressData.provinceId) {
+              setSelectedProvinceId(user.addressData.provinceId);
+              // Load districts cho province đã chọn
+              try {
+                const districtsData = await locationApi.getDistricts(user.addressData.provinceId);
+                setDistricts(districtsData);
+                
+                if (user.addressData.districtId) {
+                  setSelectedDistrictId(user.addressData.districtId);
+                  // Load wards cho district đã chọn
+                  try {
+                    const wardsData = await locationApi.getWards(user.addressData.districtId);
+                    setWards(wardsData);
+                    
+                    if (user.addressData.wardId) {
+                      setSelectedWardId(user.addressData.wardId);
+                    }
+                  } catch (error) {
+                    console.error('Failed to load wards:', error);
+                  }
+                }
+              } catch (error) {
+                console.error('Failed to load districts:', error);
+              }
+            }
+          } else if (user.address) {
+            // Fallback: Nếu không có addressData, thử parse address như JSON
+            try {
+              const addressData = JSON.parse(user.address);
+              if (addressData && addressData.provinceId) {
+                setSelectedProvinceId(addressData.provinceId);
+                if (addressData.districtId) {
+                  // Load districts và wards tương tự
+                  const districtsData = await locationApi.getDistricts(addressData.provinceId);
+                  setDistricts(districtsData);
+                  setSelectedDistrictId(addressData.districtId);
+                  
+                  if (addressData.wardId) {
+                    const wardsData = await locationApi.getWards(addressData.districtId);
+                    setWards(wardsData);
+                    setSelectedWardId(addressData.wardId);
+                  }
+                }
+                // Lấy detail address nếu có
+                if (addressData.detail) {
+                  setForm(prev => ({ ...prev, address: addressData.detail }));
+                }
+              }
+            } catch {
+              // Address is plain string, ignore
+            }
+          }
         }
       } catch (error) {
         console.error('Failed to load profile:', error);
@@ -106,8 +235,40 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     const limitedValue = name === 'bio' ? nextValue.slice(0, 500) : nextValue;
     setForm(prev => ({ ...prev, [name]: limitedValue }));
 
-    // Validate field on change
-    setTimeout(() => validateField(name, limitedValue), 300);
+    // Validate field immediately for phone to fix the issue
+    if (name === 'phone') {
+      validateField(name, limitedValue);
+    } else {
+      // Validate other fields on change with delay
+      setTimeout(() => validateField(name, limitedValue), 300);
+    }
+  };
+
+  const handleLocationChange = (type, value) => {
+    if (type === 'province') {
+      setSelectedProvinceId(value);
+    } else if (type === 'district') {
+      setSelectedDistrictId(value);
+    } else if (type === 'ward') {
+      setSelectedWardId(value);
+    }
+  };
+
+  // Build full address string from selected location
+  const buildAddress = () => {
+    const parts = [];
+    const addressDetail = form.address?.trim() || '';
+    if (addressDetail) parts.push(addressDetail);
+    
+    const selectedWard = wards.find(w => w.id === selectedWardId);
+    const selectedDistrict = districts.find(d => d.id === selectedDistrictId);
+    const selectedProvince = provinces.find(p => p.id === selectedProvinceId);
+
+    if (selectedWard) parts.push(selectedWard.name);
+    if (selectedDistrict) parts.push(selectedDistrict.name);
+    if (selectedProvince) parts.push(selectedProvince.name);
+
+    return parts.join(', ');
   };
 
   const handleFileChange = (e) => {
@@ -138,15 +299,17 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     e.preventDefault();
     setSuccess('');
 
-    // Validate all fields
-    const isFormValid = Object.keys(form).every(key => {
-      if (key === 'userName' || key === 'avatar') {
-        return validateField(key, form[key]);
-      }
-      return true;
-    });
+    // Validate all required fields and phone if provided
+    let isValid = true;
+    
+    // Validate required fields
+    if (!validateField('userName', form.userName)) isValid = false;
+    if (!validateField('avatar', form.avatar)) isValid = false;
+    
+    // Validate phone if provided
+    if (form.phone && !validateField('phone', form.phone)) isValid = false;
 
-    if (!isFormValid) {
+    if (!isValid) {
       return;
     }
 
@@ -157,7 +320,21 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
       const formData = new FormData();
       formData.append('userName', form.userName.trim());
       formData.append('bio', (form.bio || '').slice(0, 500));
-      formData.append('address', form.address || '');
+      
+      // Build address from selected location
+      const fullAddress = buildAddress() || form.address || '';
+      formData.append('address', fullAddress);
+      
+      // Also send structured address data as JSON string for easier parsing later
+      if (selectedProvinceId || selectedDistrictId || selectedWardId) {
+        formData.append('addressData', JSON.stringify({
+          provinceId: selectedProvinceId,
+          districtId: selectedDistrictId,
+          wardId: selectedWardId,
+          fullAddress: fullAddress
+        }));
+      }
+      
       formData.append('phone', sanitizePhone(form.phone));
       formData.append('gender', form.gender || '');
 
@@ -182,12 +359,81 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
       const result = await (onSave ? onSave(formData) : userApi.updateProfile(formData));
 
       if (result?.status === "success" || result?.token) {
-        // Cập nhật localStorage
-        const updatedUser = {
-          ...JSON.parse(localStorage.getItem("user") || "{}"),
-          ...result.data, // hoặc result.user tùy response từ API
-        };
-        localStorage.setItem("user", JSON.stringify(updatedUser));
+        // Get updated user data from API
+        let updatedUserData = result.data || result.user;
+        if (!updatedUserData) {
+          // If not in result, fetch from API
+          try {
+            const userRes = await userApi.me();
+            if (userRes?.status === "success" && userRes.data) {
+              updatedUserData = userRes.data;
+            }
+          } catch (fetchError) {
+            console.error('Failed to fetch updated user data:', fetchError);
+          }
+        }
+
+        // Cập nhật localStorage user
+        if (updatedUserData) {
+          const updatedUser = {
+            ...JSON.parse(localStorage.getItem("user") || "{}"),
+            ...updatedUserData,
+          };
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+        }
+
+        // IMPORTANT: Update session in localStorage so menu and sidebar show new avatar
+        try {
+          const sessionRaw = localStorage.getItem("session");
+          if (sessionRaw && updatedUserData) {
+            const session = JSON.parse(sessionRaw);
+            console.log(`[PROFILE SETUP] Current session:`, session);
+            
+            // Update avatar in session.account
+            if (session.account) {
+              console.log(`[PROFILE SETUP] Updating account.avatar from ${session.account.avatar} to ${updatedUserData.avatar}`);
+              session.account.avatar = updatedUserData.avatar || session.account.avatar;
+              session.account.userName = updatedUserData.userName || session.account.userName;
+              session.account.phone = updatedUserData.phone || session.account.phone;
+              session.account.bio = updatedUserData.bio || session.account.bio;
+              session.account.address = updatedUserData.address || session.account.address;
+            }
+            
+            // Update activeEntity if exists
+            if (session.activeEntity) {
+              console.log(`[PROFILE SETUP] Updating activeEntity.avatar`);
+              session.activeEntity.avatar = updatedUserData.avatar || session.activeEntity.avatar;
+              session.activeEntity.name = updatedUserData.userName || session.activeEntity.name;
+            }
+            
+            // Update entities array if exists
+            if (session.entities && Array.isArray(session.entities)) {
+              session.entities.forEach(entity => {
+                if (entity.type === "Account" && entity.id === session.account?.id) {
+                  console.log(`[PROFILE SETUP] Updating entity.avatar in entities array`);
+                  entity.avatar = updatedUserData.avatar || entity.avatar;
+                  entity.name = updatedUserData.userName || entity.name;
+                }
+              });
+            }
+            
+            localStorage.setItem("session", JSON.stringify(session));
+            console.log(`[PROFILE SETUP] Session updated in localStorage`);
+            
+            // Dispatch custom event to notify other components (menu, sidebar, etc.)
+            const event = new Event('profileUpdated');
+            window.dispatchEvent(event);
+            console.log(`[PROFILE SETUP] Dispatched profileUpdated event`);
+            
+            const customEvent = new CustomEvent('profileUpdated', { 
+              detail: { avatar: updatedUserData.avatar, userName: updatedUserData.userName }
+            });
+            window.dispatchEvent(customEvent);
+            console.log(`[PROFILE SETUP] Dispatched customEvent with detail`);
+          }
+        } catch (sessionError) {
+          console.error(`[PROFILE SETUP] Error updating session:`, sessionError);
+        }
 
         setSuccess('Lưu hồ sơ thành công!');
         setTimeout(() => {
@@ -318,21 +564,96 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                 </p>
               </div>
 
-              {/* Address */}
+              {/* Address - Province */}
               <div>
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                  Địa chỉ
+                <label htmlFor="province" className="block text-sm font-medium text-gray-700 mb-2">
+                  Tỉnh/Thành phố
                 </label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  value={form.address}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
-                  placeholder="Nhập địa chỉ của bạn"
-                />
+                <select
+                  id="province"
+                  name="province"
+                  value={selectedProvinceId}
+                  onChange={(e) => handleLocationChange('province', e.target.value)}
+                  disabled={locationLoading}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">-- Chọn Tỉnh/Thành phố --</option>
+                  {provinces.map((province) => (
+                    <option key={province.id} value={province.id}>
+                      {province.name} ({province.typeText})
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {/* Address - District */}
+              {selectedProvinceId && (
+                <div>
+                  <label htmlFor="district" className="block text-sm font-medium text-gray-700 mb-2">
+                    Quận/Huyện
+                  </label>
+                  <select
+                    id="district"
+                    name="district"
+                    value={selectedDistrictId}
+                    onChange={(e) => handleLocationChange('district', e.target.value)}
+                    disabled={locationLoading || !selectedProvinceId}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">-- Chọn Quận/Huyện --</option>
+                    {districts.map((district) => (
+                      <option key={district.id} value={district.id}>
+                        {district.name} ({district.typeText})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Address - Ward */}
+              {selectedDistrictId && (
+                <div>
+                  <label htmlFor="ward" className="block text-sm font-medium text-gray-700 mb-2">
+                    Phường/Xã
+                  </label>
+                  <select
+                    id="ward"
+                    name="ward"
+                    value={selectedWardId}
+                    onChange={(e) => handleLocationChange('ward', e.target.value)}
+                    disabled={locationLoading || !selectedDistrictId}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">-- Chọn Phường/Xã --</option>
+                    {wards.map((ward) => (
+                      <option key={ward.id} value={ward.id}>
+                        {ward.name} ({ward.typeText})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Additional Address Detail */}
+              {(selectedProvinceId || selectedDistrictId || selectedWardId) && (
+                <div>
+                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+                    Địa chỉ chi tiết (số nhà, tên đường...)
+                  </label>
+                  <input
+                    type="text"
+                    id="address"
+                    name="address"
+                    value={form.address}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                    placeholder="Số nhà, tên đường, tổ, khu phố..."
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Địa chỉ đầy đủ: {buildAddress() || 'Chưa chọn'}
+                  </p>
+                </div>
+              )}
 
               {/* Phone */}
               <div>
@@ -466,22 +787,14 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                     {form.userName || 'Tên người dùng'}
                   </h4>
                   <p className="text-sm text-gray-600">
-                    {form.address || 'Địa chỉ'}
+                    {buildAddress() || form.address || 'Địa chỉ'}
                   </p>
+                  {form.gender && (
+                    <p className="text-sm text-gray-600 capitalize">
+                      {form.gender === 'male' ? 'Nam' : form.gender === 'female' ? 'Nữ' : 'Khác'}
+                    </p>
+                  )}
                 </div>
-              </div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-gray-900">
-                  {form.userName || 'Tên người dùng'}
-                </h4>
-                <p className="text-sm text-gray-600">
-                  {form.address || 'Địa chỉ'}
-                </p>
-                {form.gender && (
-                  <p className="text-sm text-gray-600 capitalize">
-                    {form.gender === 'male' ? 'Nam' : form.gender === 'female' ? 'Nữ' : 'Khác'}
-                  </p>
-                )}
               </div>
               {/* Bio */}
               {form.bio && (

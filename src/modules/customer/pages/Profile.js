@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { userApi } from "../../../api/userApi";
+import { locationApi } from "../../../api/locationApi";
 import axiosClient from "../../../api/axiosClient";
 import { Button } from "../../../components/common/Button";
+import AddressSelector from "../../../components/common/AddressSelector";
 import "../../../styles/modules/profile.css";
 import ProfileFollowInfo from "../components/ProfileFollowInfo";
 
@@ -28,6 +30,12 @@ export default function Profile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBackground, setUploadingBackground] = useState(false);
   const [activeTab, setActiveTab] = useState("info"); // info, posts, videos, reviews
+  
+  // Location states
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
+  const [selectedWardId, setSelectedWardId] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -35,6 +43,34 @@ export default function Profile() {
         const res = await userApi.me();
         if (res.status === "success" && res.data) {
           setProfile(res.data);
+          
+          // Load structured address data if available
+          if (res.data.addressData) {
+            if (res.data.addressData.provinceId) {
+              setSelectedProvinceId(res.data.addressData.provinceId);
+              const districtsData = await locationApi.getDistricts(res.data.addressData.provinceId);
+              // Store districts data - we'll need to manage this state
+              
+              if (res.data.addressData.districtId) {
+                setSelectedDistrictId(res.data.addressData.districtId);
+                const wardsData = await locationApi.getWards(res.data.addressData.districtId);
+                
+                if (res.data.addressData.wardId) {
+                  setSelectedWardId(res.data.addressData.wardId);
+                }
+              }
+            }
+            // Extract address detail if stored separately
+            if (res.data.address && res.data.addressData) {
+              // Try to extract detail from full address
+              const fullAddr = res.data.address;
+              const parts = fullAddr.split(', ');
+              if (parts.length > 3) {
+                setAddressDetail(parts.slice(0, -3).join(', '));
+              }
+            }
+          }
+          
           // Load user posts after profile is loaded
           await loadUserPosts(res.data.id);
         } else setError(res.message || "Không tải được hồ sơ");
@@ -206,11 +242,26 @@ export default function Profile() {
       console.log(`[SAVE PROFILE] Starting save`);
       setSaving(true);
       
+      // Full address is already built by AddressSelector via onAddressChange
+      let fullAddress = profile.address || '';
+      
       // Prepare FormData for profile update
       const formData = new FormData();
       formData.append('userName', profile.userName || '');
       formData.append('bio', profile.bio || '');
-      formData.append('address', profile.address || '');
+      formData.append('address', fullAddress);
+      
+      // Send structured address data
+      if (selectedProvinceId || selectedDistrictId || selectedWardId) {
+        formData.append('addressData', JSON.stringify({
+          provinceId: selectedProvinceId,
+          districtId: selectedDistrictId,
+          wardId: selectedWardId,
+          fullAddress: fullAddress,
+          detail: addressDetail
+        }));
+      }
+      
       formData.append('phone', profile.phone || '');
       formData.append('gender', profile.gender || '');
       
@@ -731,17 +782,29 @@ export default function Profile() {
                     />
                   </label>
 
-                  <label className="block">
-                    <span className="text-sm font-medium">Địa chỉ:</span>
-                    <input
-                      type="text"
-                      value={profile.address || ""}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, address: e.target.value }))
-                      }
-                      className="w-full border rounded-lg px-3 py-2 mt-1"
+                  <div>
+                    <span className="text-sm font-medium block mb-2">Địa chỉ:</span>
+                    <AddressSelector
+                      selectedProvinceId={selectedProvinceId}
+                      selectedDistrictId={selectedDistrictId}
+                      selectedWardId={selectedWardId}
+                      addressDetail={addressDetail}
+                      onProvinceChange={(id) => {
+                        setSelectedProvinceId(id);
+                        setSelectedDistrictId('');
+                        setSelectedWardId('');
+                      }}
+                      onDistrictChange={(id) => {
+                        setSelectedDistrictId(id);
+                        setSelectedWardId('');
+                      }}
+                      onWardChange={setSelectedWardId}
+                      onAddressDetailChange={setAddressDetail}
+                      onAddressChange={(fullAddr) => {
+                        setProfile(prev => ({ ...prev, address: fullAddr }));
+                      }}
                     />
-                  </label>
+                  </div>
 
                   <label className="block">
                     <span className="text-sm font-medium">Điện thoại:</span>

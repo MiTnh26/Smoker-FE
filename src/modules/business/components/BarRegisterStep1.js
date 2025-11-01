@@ -1,6 +1,22 @@
 import React from "react";
+import AddressSelector from "../../../components/common/AddressSelector";
 
-export default function BarRegisterStep1({ info, handleInfoChange, submitStep1, isLoading, message }) {
+export default function BarRegisterStep1({ 
+  info, 
+  handleInfoChange, 
+  submitStep1, 
+  isLoading, 
+  message,
+  selectedProvinceId,
+  selectedDistrictId,
+  selectedWardId,
+  addressDetail,
+  onProvinceChange,
+  onDistrictChange,
+  onWardChange,
+  onAddressDetailChange,
+  onAddressChange
+}) {
   return (
     <form onSubmit={submitStep1} className="business-register-form">
       <div className="form-group">
@@ -16,12 +32,16 @@ export default function BarRegisterStep1({ info, handleInfoChange, submitStep1, 
 
       <div className="form-group">
         <label>Địa chỉ</label>
-        <input
-          type="text"
-          name="address"
-          value={info.address}
-          onChange={handleInfoChange}
-          required
+        <AddressSelector
+          selectedProvinceId={selectedProvinceId}
+          selectedDistrictId={selectedDistrictId}
+          selectedWardId={selectedWardId}
+          addressDetail={addressDetail}
+          onProvinceChange={onProvinceChange}
+          onDistrictChange={onDistrictChange}
+          onWardChange={onWardChange}
+          onAddressDetailChange={onAddressDetailChange}
+          onAddressChange={onAddressChange}
         />
       </div>
 

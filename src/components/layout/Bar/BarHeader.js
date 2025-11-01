@@ -36,14 +36,16 @@ export default function BarHeader() {
       if (!newSession) return;
 
       // Nếu có mảng entities thì tìm trong đó, còn không thì fallback sang account
+      // Match by ID first, then by type (BarPage, Business, BusinessAccount, etc.)
       const activeBar =
         newSession?.entities?.find(
-          (e) => e.id === newSession?.activeEntity?.id && e.type === "BarPage"
+          (e) => String(e.id) === String(newSession?.activeEntity?.id)
         ) ||
         {
           id: newSession?.activeEntity?.id,
-          name: newSession?.account?.userName || newSession?.account?.email || "Bar của bạn",
-          avatar: newSession?.account?.avatar,
+          name: newSession?.activeEntity?.name || newSession?.account?.userName || newSession?.account?.email || "Trang của bạn",
+          avatar: newSession?.activeEntity?.avatar || newSession?.account?.avatar,
+          role: newSession?.activeEntity?.role,
           type: newSession?.activeEntity?.type || "BarPage",
         };
 
@@ -83,8 +85,20 @@ export default function BarHeader() {
     return null; // or a loading state
   }
 
-  const role = session.activeEntity.role;
+  const role = (session.activeEntity.role || session.activeEntity.type || "").toLowerCase();
   const activeEntityId = session.activeEntity.id;
+  
+  // Determine menu config based on role
+  const getMenuConfig = () => {
+    if (role === "dj") return "dj";
+    if (role === "dancer") return "dancer";
+    if (role === "bar" || role === "barpage") return "bar";
+    if (session.activeEntity.type === "Business" || session.activeEntity.type === "BusinessAccount") return "business";
+    return "bar"; // default fallback
+  };
+  
+  const menuConfig = getMenuConfig();
+  
   return (
     <>
       <header className="newsfeed-header">
@@ -123,7 +137,7 @@ export default function BarHeader() {
           <UnifiedMenu
             onClose={() => setActivePanel(null)}
             userData={barUser}
-            menuConfig="bar"
+            menuConfig={menuConfig}
             showBackToAccount={true}
           />
         )}

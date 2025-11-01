@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import barPageApi from "../../../api/barPageApi";
+import { locationApi } from "../../../api/locationApi";
+import AddressSelector from "../../../components/common/AddressSelector";
 import PostCreate from "../../../components/layout/common/PostCreate";
 import PostList from "../../../components/layout/common/PostList";
 import BarEvent from "../components/BarEvent";
@@ -9,6 +11,7 @@ import BarFollowInfo from "../components/BarFollowInfo";
 import BarVideo from "../components/BarVideo";
 import BarReview from "../components/BarReview";
 import BarTables from "../components/BarTables";
+import TableClassificationManager from "./TableClassificationManager";
 
 export default function BarProfile() {
   const { barPageId } = useParams();
@@ -28,6 +31,14 @@ export default function BarProfile() {
   const handleEditClick = () => setShowEditModal(true);
   const handleCloseEdit = () => setShowEditModal(false);
   const [editingField, setEditingField] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [tableTypes, setTableTypes] = useState([]); // 🟢 Track table types for disable logic
+  
+  // Location states
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
+  const [selectedWardId, setSelectedWardId] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -37,6 +48,31 @@ export default function BarProfile() {
         console.log("✅ API Response getBarPageById:", res);
         if (res.status === "success" && res.data) {
           setProfile(res.data);
+          
+          // Load structured address data if available
+          if (res.data.addressData) {
+            if (res.data.addressData.provinceId) {
+              setSelectedProvinceId(res.data.addressData.provinceId);
+              const districtsData = await locationApi.getDistricts(res.data.addressData.provinceId);
+              
+              if (res.data.addressData.districtId) {
+                setSelectedDistrictId(res.data.addressData.districtId);
+                const wardsData = await locationApi.getWards(res.data.addressData.districtId);
+                
+                if (res.data.addressData.wardId) {
+                  setSelectedWardId(res.data.addressData.wardId);
+                }
+              }
+            }
+            // Extract address detail
+            if (res.data.Address && res.data.addressData) {
+              const fullAddr = res.data.Address;
+              const parts = fullAddr.split(', ');
+              if (parts.length > 3) {
+                setAddressDetail(parts.slice(0, -3).join(', '));
+              }
+            }
+          }
         } else {
           setError(res.message || "Không tải được hồ sơ quán bar");
         }
@@ -47,7 +83,19 @@ export default function BarProfile() {
         setLoading(false);
       }
     };
+    
+    const fetchTableTypes = async () => {
+      try {
+        const res = await barPageApi.getTableTypes(barPageId);
+        setTableTypes(res.data || []);
+      } catch (err) {
+        console.error("❌ Lỗi tải loại bàn:", err);
+        setTableTypes([]);
+      }
+    };
+    
     fetchProfile();
+    fetchTableTypes();
   }, [barPageId]);
 
   if (loading) return <div className="profile-loading">Đang tải hồ sơ...</div>;
@@ -89,6 +137,13 @@ export default function BarProfile() {
         return <BarReview barPageId={barPageId} />;
       case "tables":
         return <BarTables barPageId={barPageId} />;
+      case "table-types":
+        return <TableClassificationManager onTableTypesChange={() => {
+          // Refresh table types when they are updated
+          barPageApi.getTableTypes(barPageId)
+            .then(res => setTableTypes(res.data || []))
+            .catch(err => console.error("❌ Lỗi refresh loại bàn:", err));
+        }} />;
       default:
         return null;
     }
@@ -148,22 +203,45 @@ export default function BarProfile() {
         <button
           className={activeTab === "posts" ? "active" : ""}
           onClick={() => setActiveTab("posts")}
+          disabled={tableTypes.length === 0}
+          style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
+          title={tableTypes.length === 0 ? "Vui lòng thêm loại bàn trước" : ""}
         >
           Bài viết
         </button>
         <button
           className={activeTab === "videos" ? "active" : ""}
           onClick={() => setActiveTab("videos")}
+          disabled={tableTypes.length === 0}
+          style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
+          title={tableTypes.length === 0 ? "Vui lòng thêm loại bàn trước" : ""}
         >
           Video
         </button>
         <button
           className={activeTab === "reviews" ? "active" : ""}
           onClick={() => setActiveTab("reviews")}
+          disabled={tableTypes.length === 0}
+          style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
+          title={tableTypes.length === 0 ? "Vui lòng thêm loại bàn trước" : ""}
         >
           Đánh giá
         </button>
-        <button className={activeTab === "tables" ? "active" : ""} onClick={() => setActiveTab("tables")}>Chỉnh sửa bàn</button>
+        <button 
+          className={activeTab === "table-types" ? "active" : ""} 
+          onClick={() => setActiveTab("table-types")}
+        >
+          Loại bàn
+        </button>
+        <button 
+          className={activeTab === "tables" ? "active" : ""} 
+          onClick={() => setActiveTab("tables")}
+          disabled={tableTypes.length === 0}
+          style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
+          title={tableTypes.length === 0 ? "Vui lòng thêm loại bàn trước" : ""}
+        >
+          Chỉnh sửa bàn
+        </button>
       </div>
 
 
@@ -307,17 +385,29 @@ export default function BarProfile() {
                     />
                   </label>
 
-                  <label className="block">
-                    <span className="text-sm font-medium">Địa chỉ:</span>
-                    <input
-                      type="text"
-                      value={profile.Address}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, Address: e.target.value }))
-                      }
-                      className="w-full border rounded-lg px-3 py-2 mt-1"
+                  <div>
+                    <span className="text-sm font-medium block mb-2">Địa chỉ:</span>
+                    <AddressSelector
+                      selectedProvinceId={selectedProvinceId}
+                      selectedDistrictId={selectedDistrictId}
+                      selectedWardId={selectedWardId}
+                      addressDetail={addressDetail}
+                      onProvinceChange={(id) => {
+                        setSelectedProvinceId(id);
+                        setSelectedDistrictId('');
+                        setSelectedWardId('');
+                      }}
+                      onDistrictChange={(id) => {
+                        setSelectedDistrictId(id);
+                        setSelectedWardId('');
+                      }}
+                      onWardChange={setSelectedWardId}
+                      onAddressDetailChange={setAddressDetail}
+                      onAddressChange={(fullAddr) => {
+                        setProfile(prev => ({ ...prev, Address: fullAddr }));
+                      }}
                     />
-                  </label>
+                  </div>
 
                   <label className="block">
                     <span className="text-sm font-medium">Điện thoại:</span>
@@ -354,14 +444,58 @@ export default function BarProfile() {
                   Đóng
                 </button>
                 <button
-                  onClick={() => {
-                    // TODO: gọi API update
-                    alert("Đã lưu thay đổi!");
-                    handleCloseEdit();
+                  onClick={async () => {
+                    try {
+                      setSaving(true);
+                      
+                      // Build FormData
+                      const formData = new FormData();
+                      formData.append('barPageId', barPageId);
+                      formData.append('barName', profile.BarName || '');
+                      formData.append('phoneNumber', profile.PhoneNumber || '');
+                      formData.append('email', profile.Email || '');
+                      
+                      // Build address
+                      let fullAddress = profile.Address || '';
+                      
+                      // Send structured address data
+                      if (selectedProvinceId || selectedDistrictId || selectedWardId) {
+                        formData.append('addressData', JSON.stringify({
+                          provinceId: selectedProvinceId,
+                          districtId: selectedDistrictId,
+                          wardId: selectedWardId,
+                          fullAddress: fullAddress,
+                          detail: addressDetail
+                        }));
+                        formData.append('address', fullAddress);
+                      } else {
+                        formData.append('address', profile.Address || '');
+                      }
+                      
+                      // Send avatar and background URLs
+                      if (profile.Avatar) formData.append('avatar', profile.Avatar);
+                      if (profile.Background) formData.append('background', profile.Background);
+                      
+                      const res = await barPageApi.upload(formData);
+                      
+                      if (res.status === "success") {
+                        setProfile(res.data);
+                        alert("Đã lưu thay đổi!");
+                        handleCloseEdit();
+                      } else {
+                        alert("Lưu thất bại: " + (res.message || "Lỗi không xác định"));
+                      }
+                    } catch (error) {
+                      console.error("Error saving bar profile:", error);
+                      alert("Lưu thất bại: " + (error.response?.data?.message || error.message));
+                    } finally {
+                      setSaving(false);
+                    }
                   }}
-                  className="px-4 py-2 bg-[#a78bfa] text-white rounded-lg hover:bg-[#8b5cf6]"
+                  disabled={saving}
+                  className="px-4 py-2 bg-[#a78bfa] text-white rounded-lg hover:bg-[#8b5cf6] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Lưu thay đổi
+                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
                 </button>
               </div>
             </div>

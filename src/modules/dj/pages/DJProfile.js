@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import businessApi from "../../../api/businessApi";
+import { locationApi } from "../../../api/locationApi";
+import AddressSelector from "../../../components/common/AddressSelector";
 import PostCreate from "../../../components/layout/common/PostCreate";
 import PostList from "../../../components/layout/common/PostList";
 import "../../../styles/modules/djProfile.css";
@@ -23,6 +25,15 @@ export default function DJProfile() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState("info");
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingField, setEditingField] = useState(null);
+    const [saving, setSaving] = useState(false);
+    
+    // Location states
+    const [selectedProvinceId, setSelectedProvinceId] = useState('');
+    const [selectedDistrictId, setSelectedDistrictId] = useState('');
+    const [selectedWardId, setSelectedWardId] = useState('');
+    const [addressDetail, setAddressDetail] = useState('');
 
     useEffect(() => {
         const fetchDJ = async () => {
@@ -33,6 +44,19 @@ export default function DJProfile() {
 
                 if (res.status === "success" && res.data) {
                     const data = res.data;
+                    console.log("🔍 Full API response data:", data);
+                    console.log("🔍 addressData:", data.addressData);
+                    console.log("🔍 Address:", data.Address);
+
+                    // Map gender from Vietnamese to English if needed
+                    const mapGender = (gender) => {
+                        if (!gender) return '';
+                        const genderLower = gender.toLowerCase();
+                        if (genderLower === 'nam' || genderLower === 'male') return 'male';
+                        if (genderLower === 'nữ' || genderLower === 'female') return 'female';
+                        if (genderLower === 'khác' || genderLower === 'other') return 'other';
+                        return gender; // Return as-is if unknown format
+                    };
 
                     // 🔥 Chuẩn hóa key từ PascalCase -> camelCase
                     const mappedData = {
@@ -43,12 +67,70 @@ export default function DJProfile() {
                         address: data.Address,
                         phone: data.Phone,
                         bio: data.Bio,
-                        gender: data.Gender,
+                        gender: mapGender(data.Gender),
                         pricePerHours: data.PricePerHours,
                         pricePerSession: data.PricePerSession,
                     };
 
                     setProfile(mappedData);
+                    
+                    // Try to get addressData - could be object or JSON string
+                    let addressDataObj = null;
+                    if (data.addressData) {
+                        if (typeof data.addressData === 'string') {
+                            try {
+                                addressDataObj = JSON.parse(data.addressData);
+                            } catch (e) {
+                                console.error('Failed to parse addressData string:', e);
+                            }
+                        } else {
+                            addressDataObj = data.addressData;
+                        }
+                    }
+                    
+                    console.log("🔍 Parsed addressDataObj:", addressDataObj);
+                    
+                    // Load structured address data if available
+                    if (addressDataObj && addressDataObj.provinceId) {
+                        console.log("✅ Loading address with provinceId:", addressDataObj.provinceId);
+                        setSelectedProvinceId(addressDataObj.provinceId);
+                        try {
+                            await locationApi.getDistricts(addressDataObj.provinceId);
+                            
+                            if (addressDataObj.districtId) {
+                                console.log("✅ Loading district:", addressDataObj.districtId);
+                                setSelectedDistrictId(addressDataObj.districtId);
+                                try {
+                                    await locationApi.getWards(addressDataObj.districtId);
+                                    
+                                    if (addressDataObj.wardId) {
+                                        console.log("✅ Loading ward:", addressDataObj.wardId);
+                                        setSelectedWardId(addressDataObj.wardId);
+                                    }
+                                } catch (error) {
+                                    console.error('Failed to load wards:', error);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Failed to load districts:', error);
+                        }
+                        
+                        // Extract address detail
+                        if (addressDataObj.detail) {
+                            setAddressDetail(addressDataObj.detail);
+                        } else if (data.Address) {
+                            // Try to extract from full address string
+                            const fullAddr = data.Address;
+                            const parts = fullAddr.split(', ');
+                            if (parts.length > 3) {
+                                setAddressDetail(parts.slice(0, -3).join(', '));
+                            }
+                        }
+                    } else if (data.Address) {
+                        // Fallback: try to parse address string if no addressData
+                        console.log("⚠️ No addressData, trying to parse from Address string");
+                        // This is a fallback, might not always work
+                    }
                 } else {
                     setError(res.message || "Không tải được hồ sơ DJ");
                 }
@@ -64,6 +146,17 @@ export default function DJProfile() {
     }, [businessId]);
 
 
+    // Helper to display gender in Vietnamese
+    const displayGender = (gender) => {
+        if (!gender) return "Chưa cập nhật";
+        const genderLower = gender.toLowerCase();
+        if (genderLower === 'male') return 'Nam';
+        if (genderLower === 'female') return 'Nữ';
+        if (genderLower === 'other') return 'Khác';
+        // If already in Vietnamese, return as-is
+        return gender;
+    };
+
     if (loading) return <div className="profile-loading">Đang tải hồ sơ...</div>;
     if (error) return <div className="profile-error">{error}</div>;
 
@@ -74,7 +167,7 @@ export default function DJProfile() {
                     <div className="profile-body">
                         <div className="profile-info-card">
                             <h3>Giới thiệu</h3>
-                            <p><strong>Giới tính:</strong> {profile.gender || "Chưa cập nhật"}</p>
+                            <p><strong>Giới tính:</strong> {displayGender(profile.gender)}</p>
                             <p><strong>Địa chỉ:</strong> {profile.address || "Chưa có địa chỉ"}</p>
                             <p><strong>Điện thoại:</strong> {profile.phone || "Chưa có"}</p>
                             <p><strong>Giới thiệu:</strong> {profile.bio || "Chưa có mô tả"}</p>
@@ -131,7 +224,13 @@ export default function DJProfile() {
 
                     <div className="profile-actions flex gap-3">
                         <i className="bx bx-share-alt text-[#a78bfa] text-2xl cursor-pointer hover:text-white transition"></i>
-                        <i className="bx bx-edit text-[#a78bfa] text-2xl cursor-pointer hover:text-white transition"></i>
+                        <button
+                            onClick={() => setShowEditModal(true)}
+                            className="flex items-center gap-1 px-3 py-1 bg-[#a78bfa] text-white rounded-xl hover:bg-[#8b5cf6] transition"
+                        >
+                            <i className="bx bx-edit text-lg"></i>
+                            Chỉnh sửa hồ sơ
+                        </button>
                     </div>
                 </div>
             </section>
@@ -154,6 +253,365 @@ export default function DJProfile() {
 
             {/* --- MAIN CONTENT --- */}
             {renderTabContent()}
+            
+            {/* Edit Modal */}
+            {showEditModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">
+                        <h3 className="text-2xl font-semibold mb-5 text-center">Chỉnh sửa hồ sơ DJ</h3>
+                        
+                        <div className="space-y-6">
+                            {/* Avatar */}
+                            <div className="flex justify-between items-center border-b pb-3">
+                                <div className="flex items-center gap-4">
+                                    <img src={profile.avatar || "https://via.placeholder.com/100"} alt="Avatar" className="w-20 h-20 rounded-full object-cover border" />
+                                    <div>
+                                        <p className="font-medium text-lg">Ảnh đại diện</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setEditingField(editingField === "avatar" ? null : "avatar")}
+                                    className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
+                                >
+                                    {editingField === "avatar" ? "Đóng" : "Chỉnh sửa"}
+                                </button>
+                            </div>
+                            {editingField === "avatar" && (
+                                <div className="mt-3">
+                                    <input
+                                        type="text"
+                                        placeholder="Nhập link ảnh đại diện..."
+                                        value={profile.avatar}
+                                        onChange={(e) => setProfile(prev => ({ ...prev, avatar: e.target.value }))}
+                                        className="w-full border rounded-lg px-3 py-2"
+                                    />
+                                </div>
+                            )}
+                            
+                            {/* Background */}
+                            <div className="flex justify-between items-center border-b pb-3">
+                                <div className="flex items-center gap-4">
+                                    <img src={profile.background || "https://i.imgur.com/6IUbEMn.jpg"} alt="Background" className="w-24 h-16 rounded-lg object-cover border" />
+                                    <div>
+                                        <p className="font-medium text-lg">Ảnh bìa</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setEditingField(editingField === "background" ? null : "background")}
+                                    className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
+                                >
+                                    {editingField === "background" ? "Đóng" : "Chỉnh sửa"}
+                                </button>
+                            </div>
+                            {editingField === "background" && (
+                                <div className="mt-3">
+                                    <input
+                                        type="text"
+                                        placeholder="Nhập link ảnh bìa..."
+                                        value={profile.background}
+                                        onChange={(e) => setProfile(prev => ({ ...prev, background: e.target.value }))}
+                                        className="w-full border rounded-lg px-3 py-2"
+                                    />
+                                </div>
+                            )}
+                            
+                            {/* Info */}
+                            <div className="flex justify-between items-start border-b pb-3">
+                                <div>
+                                    <p className="font-medium text-lg mb-1">Thông tin chi tiết</p>
+                                    <div className="text-sm text-gray-600 space-y-1">
+                                        <p><strong>Tên:</strong> {profile.userName || "Chưa có tên"}</p>
+                                        <p><strong>Địa chỉ:</strong> {profile.address || "Chưa có địa chỉ"}</p>
+                                        <p><strong>Điện thoại:</strong> {profile.phone || "Chưa có"}</p>
+                                        <p><strong>Giới tính:</strong> {displayGender(profile.gender)}</p>
+                                        <p><strong>Giá/giờ:</strong> {profile.pricePerHours || 0} đ</p>
+                                        <p><strong>Giá/buổi:</strong> {profile.pricePerSession || 0} đ</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setEditingField(editingField === "info" ? null : "info")}
+                                    className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium self-start"
+                                >
+                                    {editingField === "info" ? "Đóng" : "Chỉnh sửa"}
+                                </button>
+                            </div>
+                            
+                            {editingField === "info" && (
+                                <div className="mt-3 space-y-3">
+                                    <label className="block">
+                                        <span className="text-sm font-medium">Tên:</span>
+                                        <input
+                                            type="text"
+                                            value={profile.userName || ""}
+                                            onChange={(e) => setProfile(prev => ({ ...prev, userName: e.target.value }))}
+                                            className="w-full border rounded-lg px-3 py-2 mt-1"
+                                        />
+                                    </label>
+                                    
+                                    <div>
+                                        <span className="text-sm font-medium block mb-2">Địa chỉ:</span>
+                                        <AddressSelector
+                                            selectedProvinceId={selectedProvinceId}
+                                            selectedDistrictId={selectedDistrictId}
+                                            selectedWardId={selectedWardId}
+                                            addressDetail={addressDetail}
+                                            onProvinceChange={(id) => {
+                                                setSelectedProvinceId(id);
+                                                setSelectedDistrictId('');
+                                                setSelectedWardId('');
+                                            }}
+                                            onDistrictChange={(id) => {
+                                                setSelectedDistrictId(id);
+                                                setSelectedWardId('');
+                                            }}
+                                            onWardChange={setSelectedWardId}
+                                            onAddressDetailChange={setAddressDetail}
+                                            onAddressChange={(fullAddr) => {
+                                                setProfile(prev => ({ ...prev, address: fullAddr }));
+                                            }}
+                                        />
+                                    </div>
+                                    
+                                    <label className="block">
+                                        <span className="text-sm font-medium">Điện thoại:</span>
+                                        <input
+                                            type="text"
+                                            value={profile.phone || ""}
+                                            onChange={(e) => setProfile(prev => ({ ...prev, phone: e.target.value }))}
+                                            className="w-full border rounded-lg px-3 py-2 mt-1"
+                                        />
+                                    </label>
+                                    
+                                    <label className="block">
+                                        <span className="text-sm font-medium">Giới tính:</span>
+                                        <select
+                                            value={profile.gender || ""}
+                                            onChange={(e) => setProfile(prev => ({ ...prev, gender: e.target.value }))}
+                                            className="w-full border rounded-lg px-3 py-2 mt-1"
+                                        >
+                                            <option value="">Chọn giới tính</option>
+                                            <option value="male">Nam</option>
+                                            <option value="female">Nữ</option>
+                                            <option value="other">Khác</option>
+                                        </select>
+                                    </label>
+                                    
+                                    <label className="block">
+                                        <span className="text-sm font-medium">Giá/giờ (VNĐ):</span>
+                                        <input
+                                            type="number"
+                                            value={profile.pricePerHours || ""}
+                                            onChange={(e) => setProfile(prev => ({ ...prev, pricePerHours: e.target.value }))}
+                                            className="w-full border rounded-lg px-3 py-2 mt-1"
+                                        />
+                                    </label>
+                                    
+                                    <label className="block">
+                                        <span className="text-sm font-medium">Giá/buổi (VNĐ):</span>
+                                        <input
+                                            type="number"
+                                            value={profile.pricePerSession || ""}
+                                            onChange={(e) => setProfile(prev => ({ ...prev, pricePerSession: e.target.value }))}
+                                            className="w-full border rounded-lg px-3 py-2 mt-1"
+                                        />
+                                    </label>
+                                    
+                                    <label className="block">
+                                        <span className="text-sm font-medium">Giới thiệu:</span>
+                                        <textarea
+                                            rows={3}
+                                            value={profile.bio || ""}
+                                            onChange={(e) => setProfile(prev => ({ ...prev, bio: e.target.value }))}
+                                            className="w-full border rounded-lg px-3 py-2 mt-1"
+                                        />
+                                    </label>
+                                </div>
+                            )}
+                            
+                            {/* Buttons */}
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button
+                                    onClick={() => setShowEditModal(false)}
+                                    disabled={saving}
+                                    className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                                >
+                                    Đóng
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            setSaving(true);
+                                            
+                                            const formData = new FormData();
+                                            formData.append('entityId', businessId);
+                                            formData.append('userName', profile.userName || '');
+                                            formData.append('phone', profile.phone || '');
+                                            formData.append('bio', profile.bio || '');
+                                            formData.append('gender', profile.gender || '');
+                                            formData.append('pricePerHours', profile.pricePerHours || 0);
+                                            formData.append('pricePerSession', profile.pricePerSession || 0);
+                                            
+                                            // Build fullAddress from current states or use profile.address
+                                            let fullAddress = profile.address || '';
+                                            
+                                            // If we have location selections, build address from them
+                                            if (selectedProvinceId || selectedDistrictId || selectedWardId || addressDetail) {
+                                                const parts = [];
+                                                if (addressDetail) parts.push(addressDetail);
+                                                
+                                                // Fetch names for IDs to build full address (order: detail, ward, district, province)
+                                                if (selectedProvinceId) {
+                                                    try {
+                                                        // Get province name
+                                                        const provinces = await locationApi.getProvinces();
+                                                        const selectedProvince = provinces.find(p => p.id === selectedProvinceId);
+                                                        
+                                                        // Get district name if district is selected
+                                                        if (selectedDistrictId) {
+                                                            const districts = await locationApi.getDistricts(selectedProvinceId);
+                                                            const selectedDistrict = districts.find(d => d.id === selectedDistrictId);
+                                                            
+                                                            // Get ward name if ward is selected
+                                                            if (selectedWardId) {
+                                                                const wards = await locationApi.getWards(selectedDistrictId);
+                                                                const selectedWard = wards.find(w => w.id === selectedWardId);
+                                                                if (selectedWard) parts.push(selectedWard.name);
+                                                            }
+                                                            
+                                                            if (selectedDistrict) parts.push(selectedDistrict.name);
+                                                        }
+                                                        
+                                                        if (selectedProvince) parts.push(selectedProvince.name);
+                                                    } catch (e) {
+                                                        console.error('Failed to build address from IDs:', e);
+                                                        // Fallback to profile.address if build fails
+                                                        fullAddress = profile.address || '';
+                                                    }
+                                                }
+                                                
+                                                if (parts.length > 0) {
+                                                    fullAddress = parts.join(', ');
+                                                }
+                                            }
+                                            
+                                            // Send structured address data
+                                            if (selectedProvinceId || selectedDistrictId || selectedWardId) {
+                                                formData.append('addressData', JSON.stringify({
+                                                    provinceId: selectedProvinceId || null,
+                                                    districtId: selectedDistrictId || null,
+                                                    wardId: selectedWardId || null,
+                                                    fullAddress: fullAddress,
+                                                    detail: addressDetail || null
+                                                }));
+                                                formData.append('address', fullAddress);
+                                            } else {
+                                                formData.append('address', fullAddress || profile.address || '');
+                                            }
+                                            
+                                            // Send avatar and background URLs
+                                            if (profile.avatar) formData.append('avatar', profile.avatar);
+                                            if (profile.background) formData.append('background', profile.background);
+                                            
+                                            const res = await businessApi.upload(formData);
+                                            
+                                            if (res.status === "success") {
+                                                // Reload profile
+                                                const reloadRes = await businessApi.getBusinessById(businessId);
+                                                if (reloadRes.status === "success" && reloadRes.data) {
+                                                    const data = reloadRes.data;
+                                                    
+                                                    // Map gender from Vietnamese to English if needed
+                                                    const mapGender = (gender) => {
+                                                        if (!gender) return '';
+                                                        const genderLower = gender.toLowerCase();
+                                                        if (genderLower === 'nam' || genderLower === 'male') return 'male';
+                                                        if (genderLower === 'nữ' || genderLower === 'female') return 'female';
+                                                        if (genderLower === 'khác' || genderLower === 'other') return 'other';
+                                                        return gender; // Return as-is if unknown format
+                                                    };
+                                                    
+                                                    setProfile({
+                                                        userName: data.UserName,
+                                                        role: data.Role,
+                                                        avatar: data.Avatar,
+                                                        background: data.Background,
+                                                        address: data.Address,
+                                                        phone: data.Phone,
+                                                        bio: data.Bio,
+                                                        gender: mapGender(data.Gender),
+                                                        pricePerHours: data.PricePerHours,
+                                                        pricePerSession: data.PricePerSession,
+                                                    });
+                                                    
+                                                    // Reload address data
+                                                    let reloadAddressDataObj = null;
+                                                    if (data.addressData) {
+                                                        if (typeof data.addressData === 'string') {
+                                                            try {
+                                                                reloadAddressDataObj = JSON.parse(data.addressData);
+                                                            } catch (e) {
+                                                                console.error('Failed to parse addressData string on reload:', e);
+                                                            }
+                                                        } else {
+                                                            reloadAddressDataObj = data.addressData;
+                                                        }
+                                                    }
+                                                    
+                                                    if (reloadAddressDataObj && reloadAddressDataObj.provinceId) {
+                                                        setSelectedProvinceId(reloadAddressDataObj.provinceId);
+                                                        try {
+                                                            await locationApi.getDistricts(reloadAddressDataObj.provinceId);
+                                                            
+                                                            if (reloadAddressDataObj.districtId) {
+                                                                setSelectedDistrictId(reloadAddressDataObj.districtId);
+                                                                try {
+                                                                    await locationApi.getWards(reloadAddressDataObj.districtId);
+                                                                    
+                                                                    if (reloadAddressDataObj.wardId) {
+                                                                        setSelectedWardId(reloadAddressDataObj.wardId);
+                                                                    }
+                                                                } catch (error) {
+                                                                    console.error('Failed to load wards on reload:', error);
+                                                                }
+                                                            }
+                                                        } catch (error) {
+                                                            console.error('Failed to load districts on reload:', error);
+                                                        }
+                                                        
+                                                        // Extract address detail
+                                                        if (reloadAddressDataObj.detail) {
+                                                            setAddressDetail(reloadAddressDataObj.detail);
+                                                        } else if (data.Address) {
+                                                            const fullAddr = data.Address;
+                                                            const parts = fullAddr.split(', ');
+                                                            if (parts.length > 3) {
+                                                                setAddressDetail(parts.slice(0, -3).join(', '));
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                alert("Đã lưu thay đổi!");
+                                                setShowEditModal(false);
+                                            } else {
+                                                alert("Lưu thất bại: " + (res.message || "Lỗi không xác định"));
+                                            }
+                                        } catch (error) {
+                                            console.error("Error saving DJ profile:", error);
+                                            alert("Lưu thất bại: " + (error.response?.data?.message || error.message));
+                                        } finally {
+                                            setSaving(false);
+                                        }
+                                    }}
+                                    disabled={saving}
+                                    className="px-4 py-2 bg-[#a78bfa] text-white rounded-lg hover:bg-[#8b5cf6] disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {saving ? "Đang lưu..." : "Lưu thay đổi"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

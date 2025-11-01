@@ -52,8 +52,8 @@ export function normalizeEntity(entity) {
   // Extract avatar
   const avatar = entity.avatar || entity.Avatar || "";
 
-  // Extract role
-  const role = (entity.role || entity.Role || entity.type || "").toLowerCase();
+  // Extract role - prioritize role field
+  const role = (entity.role || entity.Role || "").toLowerCase();
 
   // Determine type
   let type = entity.type || entity.Type;
@@ -61,6 +61,11 @@ export function normalizeEntity(entity) {
     if (entity.BarPageId) type = "BarPage";
     else if (entity.BussinessAccountId || entity.BusinessAccountId) type = "Business";
     else if (entity.AccountId || entity.id) type = "Account";
+  }
+  
+  // Map BusinessAccount to Business for filtering compatibility, but preserve role
+  if (type === "BusinessAccount") {
+    type = "Business";
   }
 
   return {

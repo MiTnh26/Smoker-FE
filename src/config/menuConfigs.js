@@ -117,6 +117,82 @@ export const menuConfigs = {
       },
     ],
   },
+
+  dj: {
+    showBackToAccount: true,
+    showEntities: true,
+    entityLabel: "Trang / Doanh nghiệp của bạn",
+    entityTypes: ["BarPage", "Business"],
+    menuItems: [
+      {
+        id: "settings",
+        label: "Cài đặt & quyền riêng tư",
+        href: "#",
+        icon: null,
+        onClick: null,
+      },
+      {
+        id: "theme",
+        label: "Chế độ giao diện",
+        href: null,
+        icon: null,
+        onClick: "toggleTheme",
+      },
+      {
+        id: "language",
+        label: "Ngôn ngữ",
+        href: "#",
+        icon: null,
+        onClick: null,
+      },
+      {
+        id: "logout",
+        label: "Đăng xuất",
+        href: "/login",
+        icon: null,
+        onClick: "handleLogout",
+        isLogout: true,
+      },
+    ],
+  },
+
+  dancer: {
+    showBackToAccount: true,
+    showEntities: true,
+    entityLabel: "Trang / Doanh nghiệp của bạn",
+    entityTypes: ["BarPage", "Business"],
+    menuItems: [
+      {
+        id: "settings",
+        label: "Cài đặt & quyền riêng tư",
+        href: "#",
+        icon: null,
+        onClick: null,
+      },
+      {
+        id: "theme",
+        label: "Chế độ giao diện",
+        href: null,
+        icon: null,
+        onClick: "toggleTheme",
+      },
+      {
+        id: "language",
+        label: "Ngôn ngữ",
+        href: "#",
+        icon: null,
+        onClick: null,
+      },
+      {
+        id: "logout",
+        label: "Đăng xuất",
+        href: "/login",
+        icon: null,
+        onClick: "handleLogout",
+        isLogout: true,
+      },
+    ],
+  },
 };
 
 /**

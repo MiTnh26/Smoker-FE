@@ -1,13 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import barPageApi from "../../../api/barPageApi";
 import "../../../styles/modules/barTables.css";
 
-export default function TableClassificationManager() {
+export default function TableClassificationManager({ onTableTypesChange }) {
   const { barPageId } = useParams();
+  const location = useLocation();
   const [classifications, setClassifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+
+  // Show message from navigation state if available
+  useEffect(() => {
+    if (location.state?.message) {
+      setMessage(location.state.message);
+      // Clear the state message after showing
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // 🔹 Load danh sách loại bàn khi vào trang
   useEffect(() => {
@@ -81,9 +91,17 @@ export default function TableClassificationManager() {
         });
       }
 
-      setMessage(" Đã lưu!");
+      setMessage("✅ Đã lưu!");
       const res = await barPageApi.getTableTypes(barPageId);
       setClassifications(res.data || []);
+      // Notify parent component to refresh table types
+      if (onTableTypesChange) {
+        onTableTypesChange();
+      }
+      // Trigger event for sidebar to refresh
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("tableTypesUpdated"));
+      }
     } catch (err) {
       console.error("❌ Lỗi khi lưu loại bàn:", err);
       setMessage("Lỗi khi lưu loại bàn.");
@@ -99,6 +117,14 @@ export default function TableClassificationManager() {
       await barPageApi.removeTableTypes(id);
       setClassifications((prev) => prev.filter((_, i) => i !== index));
       setMessage("🗑️ Đã xóa loại bàn.");
+      // Notify parent component to refresh table types
+      if (onTableTypesChange) {
+        onTableTypesChange();
+      }
+      // Trigger event for sidebar to refresh
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("tableTypesUpdated"));
+      }
     } catch (err) {
       console.error("❌ Lỗi khi xóa loại bàn:", err);
       setMessage("Không thể xóa loại bàn này.");

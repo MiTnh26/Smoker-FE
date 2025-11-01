@@ -24,3 +24,14 @@
   background-color: rgb(var(--border));
   color: rgb(var(--foreground));
 }
+
+/* Submenu item disabled */
+.sidebar-submenu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
+
+.sidebar-submenu-item.disabled:hover {
+  background-color: transparent;
+  color: rgb(var(--muted-foreground));
+}

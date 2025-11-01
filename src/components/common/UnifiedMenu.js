@@ -81,10 +81,16 @@ export default function UnifiedMenu({
     );
 
     // Filter by entity types if specified in config
+    // Also allow DJ/Dancer entities by role if they match Business type
     if (config.entityTypes && config.entityTypes.length > 0) {
-      filteredEntities = filteredEntities.filter((e) =>
-        config.entityTypes.includes(e.type)
-      );
+      filteredEntities = filteredEntities.filter((e) => {
+        // Allow if type matches
+        if (config.entityTypes.includes(e.type)) return true;
+        // Allow DJ/Dancer if Business is allowed (they are Business type with DJ/Dancer role)
+        if (config.entityTypes.includes("Business") && 
+            (e.role === "dj" || e.role === "dancer")) return true;
+        return false;
+      });
     }
   }
 
@@ -214,7 +220,7 @@ export default function UnifiedMenu({
                     {renderAvatar(entity.avatar, 28)}
                   </div>
                   <span>{entity.name}</span>
-                  <small>({entity.type || entity.role})</small>
+                  <small>({entity.role })</small>
                 </li>
               ))}
             </ul>

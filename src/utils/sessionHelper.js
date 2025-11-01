@@ -61,11 +61,13 @@ export async function fetchAllEntities(accountId, user) {
       businessesResponse.data.forEach(business => {
         // Ensure we use BusinessAccountId or BusinessId, not AccountId
         const businessId = business.BussinessAccountId || business.BusinessAccountId || business.BusinessId || business.id;
+        // Use role from backend (DJ, Dancer, or business), fallback to "business" if not available
+        const businessRole = business.Role || business.role || "business";
         const normalized = normalizeEntity({
           ...business,
           id: businessId,  // Force use business ID
           type: "Business",
-          role: "business"
+          role: businessRole  // Use role from backend, not hardcoded
         });
         if (normalized) {
           entities.push(normalized);
@@ -74,11 +76,13 @@ export async function fetchAllEntities(accountId, user) {
     } else if (businessesResponse && businessesResponse.data && !Array.isArray(businessesResponse.data)) {
       // Single business object
       const businessId = businessesResponse.data.BussinessAccountId || businessesResponse.data.BusinessAccountId || businessesResponse.data.BusinessId || businessesResponse.data.id;
+      // Use role from backend (DJ, Dancer, or business), fallback to "business" if not available
+      const businessRole = businessesResponse.data.Role || businessesResponse.data.role || "business";
       const normalized = normalizeEntity({
         ...businessesResponse.data,
         id: businessId,  // Force use business ID
         type: "Business",
-        role: "business"
+        role: businessRole  // Use role from backend, not hardcoded
       });
       if (normalized) {
         entities.push(normalized);
