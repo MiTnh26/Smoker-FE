@@ -3,7 +3,6 @@
 //Importing libries
 import React from "react";
 import { useContext, useState, useRef } from "react";
-import axios from "axios";
 import {  useNavigate } from "react-router-dom";
 
 //Importing context
@@ -12,12 +11,11 @@ import { SongContext } from "../contexts/SongContext";
 //Importing icons
 import { MoreVertical, Trash2, ListPlus, ListMusic } from "lucide-react";
 import musicbg from "../assets/musicbg.jpg";
+import songApi from "../api/songApi";
 
-
-const SongCard = ({ title, artistName, songSrc, userId, songId, file }) => {
-
+const SongCard = ({ title, artistName, songSrc, userId, songId, file, onDeleted }) => {
   // Using context
-  const { song, audio, __URL__ } = useContext(SongContext);
+  const { song, audio } = useContext(SongContext);
   const navigate = useNavigate(); // Used to navigate to the playlist page
 
   // Hardcoded userId for testing/ownership
@@ -34,29 +32,24 @@ const SongCard = ({ title, artistName, songSrc, userId, songId, file }) => {
   const handlePlay = () => {
     song.setSongName(title);
     song.setArtistName(artistName);
-    song.setSongUrl(`${__URL__}/api/song/stream/${songSrc}`);
-    audio.src = `${__URL__}/api/song/stream/${songSrc}`;
+    song.setSongUrl(songApi.getSongStreamUrl(songSrc));
+    audio.src = songApi.getSongStreamUrl(songSrc);
     audio.load();
     audio.play();
-    song.setIsPlaying(true)
+    song.setIsPlaying(true);
   };
 
-  const headers = {
-    "x-auth-token": localStorage.getItem("access_token"),
-  };
   // Delete the song
   const deleteSong = async () => {
-    const { data, status } = await axios.delete(
-      `${__URL__}/api/song/delete/${songId}?file=${file}`,
-      {
-        headers,
-      }
-    );
-    // Nếu muốn reload lại danh sách, hãy gọi hàm fetchSongs ở component cha hoặc dùng state nâng lên
+    try {
+      await songApi.deleteSong(songId);
+      if (onDeleted) onDeleted();
+    } catch (err) {
+      // Xử lý lỗi nếu cần
+    }
   };
   const handleDelete = () => {
-    window.confirm("Are you sure you want to delete this song?") && 
-    deleteSong();
+    window.confirm("Are you sure you want to delete this song?") && deleteSong();
   };
 
   // Add the song to the playlist
@@ -82,38 +75,38 @@ const SongCard = ({ title, artistName, songSrc, userId, songId, file }) => {
 
       {/* <---------------------------Desktop Options-------------------------> */}
       <div className="hidden lg:flex justify-start items-center p-2 space-x-5">
-            <button onClick={handleAddToPlaylist}><ListPlus size={30}/></button>
-            <button><ListMusic size={25}/></button>
-            {
-              // if user is the owner of the song then show the delete option
-              // currentUserId === userId ? (
-                <button onClick={handleDelete} className=" ">
-                  <Trash2 size={25}/>
-                </button>
-              // ) : (<></>)
-            }
-          </div>
+        <button onClick={handleAddToPlaylist}><ListPlus size={30}/></button>
+        <button><ListMusic size={25}/></button>
+        {/*
+        // if user is the owner of the song then show the delete option
+        // currentUserId === userId ? (
+        */}
+        <button onClick={handleDelete} className=" ">
+          <Trash2 size={25}/>
+        </button>
+        {/* ) : (<></>) */}
+      </div>
       {/* <---------------------------Mobile Options-------------------------> */}
       <div
         onClick={displayOptions}
         onMouseOut={() => setShowOptions(false)}
         className="relative block lg:hidden"
       >
-  <MoreVertical size={15} />
+        <MoreVertical size={15} />
       </div>
       {showOptions && (
         <div className="absolute right-0 z-10 w-36 bg-gray-900 ">
           <ul className="flex justify-start flex-col items-start space-y-2 p-2">
             <button onClick={handleAddToPlaylist}>Add to playlist</button>
             <button onClick={handlePlayNext}>play next</button>
-            {
-              // if user is the owner of the song then show the delete option
-              currentUserId === userId ? (
-                <button onClick={handleDelete} className=" ">
-                  Delete
-                </button>
-              ) : (<></>)
-            }
+            {/*
+            // if user is the owner of the song then show the delete option
+            currentUserId === userId ? (
+            */}
+            <button onClick={handleDelete} className=" ">
+              Delete
+            </button>
+            {/* ) : (<></>) */}
           </ul>
         </div>
       )}

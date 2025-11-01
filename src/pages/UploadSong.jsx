@@ -1,25 +1,20 @@
-import React, { useState, useEffect, useContext } from "react";
-import axios from "axios";
-// import { redirect } from "react-router-dom";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { SongContext } from "../contexts/SongContext";
+import songApi from "../api/songApi";
+
 const UploadSong = () => {
   const navigate = useNavigate();
-  const {__URL__} = useContext(SongContext)
 
-  // we are using this to upload the file
   const [file, setFile] = useState();
   const [title, setTitle] = useState();
   const [artist, setArtist] = useState();
   const [album, setAlbum] = useState();
   const [description, setDescription] = useState();
 
-  // we are using this to handle the file change
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
   };
 
-  // we are using this to handle the form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData();
@@ -29,28 +24,21 @@ const UploadSong = () => {
     formData.append("album", album);
     formData.append("description", description);
 
-    const config = {
-      headers: {
-        "content-type": "multipart/form-data",
-        "x-auth-token": localStorage.getItem("access_token"),
-      },
-    };
-    const result = await axios.post(
-      `${__URL__}/api/song/upload`,
-      formData,
-      config
-    );
-
-    // if the file is uploaded successfully, we will redirect the user to the home page with alert message
-    if (result.status === 201) {
-      alert("File uploaded successfully");
-      navigate("/explore");
+    try {
+      const result = await songApi.uploadSong(formData);
+      // console.log(result);
+      if (result?.status === "success" || result?.data?.status === "success") {
+        alert("File uploaded successfully");
+        navigate("/songs");
+      }
+    } catch (err) {
+      alert("Upload failed");
     }
   };
 
   return (
     <div className="flex flex-col min-h-screen py-10 text-white px-5 bg-slate-800 space-y-5 pb-10 lg:p-20">
-       <h1 className="text-3xl font-bold text-center lg:text-4xl">Upload Song</h1>
+      <h1 className="text-3xl font-bold text-center lg:text-4xl">Upload Song</h1>
 
       <form
         onSubmit={handleSubmit}
@@ -123,7 +111,6 @@ const UploadSong = () => {
         <button
           className="bg-[#ffd700] text-[#7d0000] text-sm  py-1 rounded-xl w-32 lg:mx-4"
           type="submit"
-          // disabled={localStorage.getItem("access_token") ? false : true}
         >
           Submit
         </button>
