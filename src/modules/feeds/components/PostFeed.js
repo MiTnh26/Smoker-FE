@@ -3,8 +3,9 @@ import axiosClient from "../../../api/axiosClient";
 import PostCard from "./PostCard";
 import PostComposerModal from "./PostComposerModal";
 import CreatePostBox from "./CreatePostBox";
+import LivestreamCard from "./LivestreamCard";
 
-export default function PostFeed() {
+export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClick }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -121,11 +122,27 @@ export default function PostFeed() {
   return (
     <>
       {/* CreatePostBox - nhấp vào input để tạo bài viết */}
-      <CreatePostBox onCreate={() => {
-        setShowComposer(true);
-      }} />
+      <CreatePostBox 
+        onCreate={() => {
+          setShowComposer(true);
+        }}
+        onGoLive={onGoLive}
+      />
 
       <div className="feed-posts space-y-4">
+        {/* Active Livestreams */}
+        {activeLivestreams && activeLivestreams.length > 0 && (
+          <div className="livestreams-section">
+            {activeLivestreams.map((livestream) => (
+              <LivestreamCard
+                key={livestream.livestreamId}
+                livestream={livestream}
+                onClick={() => onLivestreamClick?.(livestream)}
+              />
+            ))}
+          </div>
+        )}
+
         {posts.length === 0 ? (
           <p className="text-gray-400">Chưa có bài viết nào.</p>
         ) : (

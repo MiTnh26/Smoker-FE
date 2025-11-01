@@ -10,6 +10,7 @@ import {
   Star,
   MessageCircle,
   Store,
+  CreditCard
 } from "lucide-react";
 
 /**
@@ -30,7 +31,8 @@ export const sidebarConfig = {
     { label: "Sự kiện", icon: Calendar, path: "/customer/events" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/customer/messages" },
     { label: "Hồ sơ", icon: User, path: "/customer/profile" },
-     { label: "Đăng ký tài khoản kinh doanh", icon: Store, path: "/register/select-account-type" },
+    { label: "Bank info", icon: CreditCard, path: "/customer/bank-info" },
+    { label: "Đăng ký tài khoản kinh doanh", icon: Store, path: "/register/select-account-type" },
   ],
 
   // bar: [

@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { Route } from "react-router-dom";
 import CustomerLayout from "../layouts/CustomerLayout";
-import {  Profile } from "../modules/customer";
+import {  Profile, AddBankInfo } from "../modules/customer";
 import ProtectedRoute from "./ProtectedRoute";
 import Newsfeed from "../modules/feeds/pages/Newsfeed"
 export default function CustomerRoutes() {
@@ -21,6 +21,14 @@ export default function CustomerRoutes() {
         element={
           <ProtectedRoute roles={["customer"]}>
             <CustomerLayout><Profile /></CustomerLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/bank-info"
+        element={
+          <ProtectedRoute roles={["customer"]}>
+            <CustomerLayout><AddBankInfo /></CustomerLayout>
           </ProtectedRoute>
         }
       />

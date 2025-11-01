@@ -21,7 +21,12 @@ axiosClient.interceptors.request.use((config) => {
   
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    console.log(`[REQUEST] Token present: ${token.substring(0, 20)}...`);
+  } else {
+    console.warn(`[REQUEST] No token found for ${config.url}`);
   }
+  
+  console.log(`[REQUEST] Request data:`, config.data);
   
   // If sending FormData, let browser set proper multipart boundary
   if (typeof FormData !== "undefined" && config.data instanceof FormData) {
@@ -42,12 +47,17 @@ axiosClient.interceptors.response.use(
   },
   (error) => {
     console.error(`[ERROR] ${error.config?.method?.toUpperCase()} ${error.config?.url}`);
+    console.error("Error response:", error.response);
     console.error("Error details:", {
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
       message: error.message,
     });
+    // Log full error data for debugging
+    if (error.response?.data) {
+      console.error("Full error response data:", JSON.stringify(error.response.data, null, 2));
+    }
     throw error;
   }
 );

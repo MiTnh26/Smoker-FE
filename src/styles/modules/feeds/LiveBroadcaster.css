@@ -1,0 +1,343 @@
+.live-broadcaster-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(var(--overlay));
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.live-broadcaster-container {
+  width: 100%;
+  height: 100%;
+  max-width: 1400px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  padding: 20px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgb(var(--foreground));
+  transition: background 0.3s;
+  z-index: 10;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Setup Screen */
+.live-broadcaster-setup {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  background: rgb(var(--card));
+  border-radius: var(--radius);
+  padding: 40px;
+  color: rgb(var(--card-foreground));
+}
+
+.live-broadcaster-setup h2 {
+  margin: 0 0 30px 0;
+  font-size: 28px;
+  text-align: center;
+}
+
+.broadcast-title-input,
+.broadcast-description-input {
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  background: rgb(var(--input));
+  border: 1px solid rgb(var(--input-border));
+  border-radius: calc(var(--radius) * 0.75);
+  color: rgb(var(--foreground));
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+.broadcast-title-input:focus,
+.broadcast-description-input:focus {
+  outline: none;
+  border-color: rgb(var(--danger));
+}
+
+.broadcast-description-input {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.broadcast-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 30px;
+}
+
+.btn-cancel,
+.btn-start {
+  padding: 12px 24px;
+  border: none;
+  border-radius: calc(var(--radius) * 0.75);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-cancel {
+  background: rgb(var(--muted));
+  color: rgb(var(--muted-foreground));
+}
+
+.btn-cancel:hover {
+  background: rgb(var(--border));
+}
+
+.btn-start {
+  background: rgb(var(--danger));
+  color: rgb(var(--primary-foreground));
+}
+
+.btn-start:hover {
+  background: rgba(var(--danger) / 0.9);
+}
+
+/* Live Screen */
+.live-broadcaster-live {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  gap: 20px;
+}
+
+.broadcast-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.local-video {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  position: relative;
+}
+
+.local-video > div,
+.local-video video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  background: #000;
+}
+
+.live-badge {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgb(var(--danger));
+  color: rgb(var(--primary-foreground));
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  z-index: 5;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(var(--primary-foreground));
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.broadcast-info {
+  background: rgb(var(--card));
+  border-radius: var(--radius);
+  padding: 20px;
+  color: rgb(var(--card-foreground));
+}
+
+.broadcast-info h3 {
+  margin: 0 0 12px 0;
+  font-size: 20px;
+}
+
+.viewer-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: rgb(var(--muted-foreground));
+}
+
+.broadcast-controls {
+  display: flex;
+  gap: 12px;
+}
+
+.control-btn {
+  background: rgb(var(--muted));
+  border: none;
+  border-radius: calc(var(--radius) * 0.75);
+  padding: 12px 24px;
+  color: rgb(var(--foreground));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s;
+  font-size: 14px;
+}
+
+.control-btn:hover {
+  background: rgb(var(--border));
+}
+
+.btn-end {
+  background: rgb(var(--danger));
+  margin-left: auto;
+  color: rgb(var(--primary-foreground));
+}
+
+.btn-end:hover {
+  background: rgba(var(--danger) / 0.9);
+}
+
+/* Chat Section */
+.broadcast-chat {
+  width: 320px;
+  background: rgb(var(--card));
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 40px);
+  max-height: 800px;
+}
+
+.chat-header {
+  padding: 16px;
+  border-bottom: 1px solid rgb(var(--border));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgb(var(--card-foreground));
+  font-weight: 600;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-message {
+  color: rgb(var(--card-foreground));
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.chat-message strong {
+  color: rgb(var(--danger));
+}
+
+.chat-input-container {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid rgb(var(--border));
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px 12px;
+  background: rgb(var(--input));
+  border: 1px solid rgb(var(--input-border));
+  border-radius: 20px;
+  color: rgb(var(--foreground));
+  font-size: 14px;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: rgb(var(--danger));
+}
+
+.chat-send-btn {
+  background: rgb(var(--danger));
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  color: rgb(var(--primary-foreground));
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s;
+}
+
+.chat-send-btn:hover {
+  background: rgba(var(--danger) / 0.9);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .live-broadcaster-live {
+    flex-direction: column;
+  }
+
+  .broadcast-chat {
+    width: 100%;
+    max-height: 300px;
+  }
+
+  .local-video {
+    min-height: 300px;
+  }
+}
