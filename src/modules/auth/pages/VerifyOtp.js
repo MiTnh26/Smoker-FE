@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { authApi } from "../../../api/userApi";
 
 export default function VerifyOtp() {
-  const [email, setEmail] = useState("");
+  const location = useLocation();
+  const email = location.state?.email || "";
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -28,13 +29,7 @@ export default function VerifyOtp() {
     <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-xl shadow">
       <h2 className="text-xl font-bold mb-4">Xác thực OTP</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          type="email"
-          placeholder="Email đăng ký"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          required
-        />
+        <div className="text-gray-700 text-sm">Email: <b>{email}</b></div>
         <Input
           type="text"
           placeholder="Nhập mã OTP"

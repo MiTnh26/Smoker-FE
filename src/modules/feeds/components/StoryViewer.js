@@ -2,11 +2,25 @@ import { useState, useEffect } from "react";
 import "../../../styles/modules/feeds/StoryViewer.css";
 
 export default function StoryViewer({ stories, activeStory, onClose }) {
-  const [currentIndex, setCurrentIndex] = useState(
-    stories.findIndex((s) => s.id === activeStory.id)
-  );
+  // Hỗ trợ cả id và _id
+  const getActiveId = (as) => {
+    if (!as) return null;
+    if (typeof as === "string") return as;
+    return as._id || as.id || null;
+  };
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    const activeId = getActiveId(activeStory);
+    return Math.max(0, stories.findIndex((s) => (s._id || s.id) === activeId));
+  });
 
   const story = stories[currentIndex];
+
+  // Cập nhật currentIndex khi activeStory hoặc stories thay đổi
+  useEffect(() => {
+    const activeId = getActiveId(activeStory);
+    const idx = stories.findIndex((s) => (s._id || s.id) === activeId);
+    if (idx >= 0) setCurrentIndex(idx);
+  }, [activeStory, stories]);
 
   useEffect(() => {
     if (!story) return;
@@ -27,21 +41,37 @@ export default function StoryViewer({ stories, activeStory, onClose }) {
 
   if (!story) return null;
 
+  // Nếu có nhạc, tạo url stream
+  const audioUrl = story.songFilename ? `http://localhost:9999/api/song/stream/${story.songFilename}` : null;
+  // Tạo key duy nhất cho audio để reset khi chuyển story
+  const audioKey = (story._id || story.id || currentIndex) + (audioUrl || '');
+
   return (
     <div className="story-viewer-overlay" onClick={onClose}>
       <div className="story-viewer" onClick={(e) => e.stopPropagation()}>
-        {story.type === "video" ? (
+        {/* Hiển thị ảnh hoặc video nếu có */}
+        {story.type === "video" && story.video ? (
           <video src={story.video} autoPlay muted className="story-video" />
         ) : (
-          <img src={story.thumbnail} alt={story.user} className="story-video" />
+          story.images && story.images !== "" ? (
+            <img src={story.images} alt={story.title || story.content || "story"} className="story-video" />
+          ) : null
+        )}
+
+        {/* Audio player nếu có nhạc */}
+        {audioUrl && (
+          <audio key={audioKey} src={audioUrl} controls autoPlay style={{ width: "100%", marginTop: 12 }}>
+            Trình duyệt của bạn không hỗ trợ audio.
+          </audio>
         )}
 
         <div className="story-info">
-          <img src={story.avatar} alt={story.user} className="story-avatar-small" />
+          {/* Nếu có avatar thì hiển thị, không thì để mặc định */}
+          <img src={story.avatar || "/default-avatar.png"} alt={story.accountId || "user"} className="story-avatar-small" />
           <div>
-            <p className="story-user">{story.user}</p>
-            <p className="story-caption">{story.caption}</p>
-            <p className="story-time">{story.time}</p>
+            <p className="story-user">{story.accountId || story.title}</p>
+            <p className="story-caption">{story.content}</p>
+            <p className="story-time">{story.createdAt ? new Date(story.createdAt).toLocaleString() : ""}</p>
           </div>
         </div>
 

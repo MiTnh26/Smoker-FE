@@ -4,6 +4,7 @@ import CustomerLayout from "../layouts/CustomerLayout";
 import {  Profile, AddBankInfo } from "../modules/customer";
 import ProtectedRoute from "./ProtectedRoute";
 import Newsfeed from "../modules/feeds/pages/Newsfeed"
+import StoryEditor from "../modules/feeds/components/StoryEditor";
 export default function CustomerRoutes() {
   return (
     <Fragment>
@@ -13,6 +14,14 @@ export default function CustomerRoutes() {
         element={
           <ProtectedRoute roles={["customer"]}>
             <CustomerLayout><Newsfeed /></CustomerLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/story-editor"
+        element={
+          <ProtectedRoute roles={["customer"]}>
+            <CustomerLayout><StoryEditor /></CustomerLayout>
           </ProtectedRoute>
         }
       />

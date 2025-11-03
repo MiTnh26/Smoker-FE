@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
 
+import React, { useEffect, useState } from "react";
 import {
   getPosts,
   createPost,
@@ -12,6 +12,8 @@ const ManagePost = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({ title: "", content: "", images: "", type: "post" });
+  const [imageFile, setImageFile] = useState(null);
   const [postType, setPostType] = useState(null); // "media" or "music"
   const [mediaFormData, setMediaFormData] = useState({ title: "", content: "", images: {}, videos: {}, caption: "" });
   const [musicFormData, setMusicFormData] = useState({ 
@@ -55,6 +57,17 @@ const ManagePost = () => {
     setLoading(true);
     setError("");
     try {
+      let data;
+      if (imageFile) {
+        data = new FormData();
+        data.append("title", formData.title);
+        data.append("content", formData.content);
+        data.append("images", imageFile);
+        data.append("type", "post");
+      } else {
+        data = { ...formData, images: formData.images || "", type: "post" };
+      }
+      await createPost(data);
       // Format data for image/video post
       const postData = {
         title: mediaFormData.title,
@@ -65,6 +78,8 @@ const ManagePost = () => {
       };
       await createPost(postData);
       setShowForm(false);
+      setFormData({ title: "", content: "", images: "", type: "post" });
+      setImageFile(null);
       setPostType(null);
       setMediaFormData({ title: "", content: "", images: {}, videos: {}, caption: "" });
       fetchPosts();
@@ -73,6 +88,8 @@ const ManagePost = () => {
     }
     setLoading(false);
   };
+  // Xử lý chọn file ảnh để gửi lên BE
+  const handleFileChange = (e) => {
 
   const handleCreateMusic = async (e) => {
     e.preventDefault();
@@ -212,6 +229,7 @@ const ManagePost = () => {
   const handleMusicImageChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
+      setImageFile(file);
       setLoading(true);
       setError("");
       try {
@@ -237,6 +255,13 @@ const ManagePost = () => {
     setError("");
     try {
       const res = await getPostById(id);
+      setFormData({
+        title: res.data.data.title,
+        content: res.data.data.content,
+        images: typeof res.data.data.images === "string" ? res.data.data.images : "",
+        type: res.data.data.type || "post"
+      });
+      setImageFile(null);
       const post = res.data.data;
       // Check if it's a music post (has songId) or media post
       if (post.songId) {
@@ -295,6 +320,17 @@ const ManagePost = () => {
     setLoading(true);
     setError("");
     try {
+      let data;
+      if (imageFile) {
+        data = new FormData();
+        data.append("title", formData.title);
+        data.append("content", formData.content);
+        data.append("images", imageFile);
+        data.append("type", "post");
+      } else {
+        data = { ...formData, images: formData.images || "", type: "post" };
+      }
+      await updatePost(editingId, data);
       const postData = {
         title: musicFormData.musicTitle,
         content: musicFormData.description,
@@ -316,6 +352,8 @@ const ManagePost = () => {
       await updatePost(editingId, postData);
       setEditingId(null);
       setShowForm(false);
+      setFormData({ title: "", content: "", images: "", type: "post" });
+      setImageFile(null);
       setPostType(null);
       setMusicFormData({ 
         musicTitle: "", 
@@ -351,6 +389,18 @@ const ManagePost = () => {
     <div className="max-w-3xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-4">Quản lý bài viết Bar</h2>
       {error && <div className="text-red-500 mb-2">{error}</div>}
+      <button
+        className="bg-blue-600 text-white px-4 py-2 rounded mb-4 hover:bg-blue-700"
+        onClick={() => {
+          setShowForm(true);
+          setEditingId(null);
+          setFormData({ title: "", content: "", images: "", type: "post" });
+          setImageFile(null);
+        }}
+      >
+        + Tạo bài viết mới
+      </button>
+      {showForm && (
       <div className="flex gap-2 mb-4">
         <button
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -436,6 +486,16 @@ const ManagePost = () => {
               onChange={handleMediaFileChange}
               className="mb-1"
             />
+            <input
+              type="text"
+              name="images"
+              value={formData.images}
+              onChange={handleInputChange}
+              className="w-full border rounded px-2 py-1 mt-1"
+              placeholder="Nhập link ảnh hoặc tải lên"
+            />
+            {(imageFile || formData.images) && (
+              <img src={imageFile ? URL.createObjectURL(imageFile) : formData.images} alt="preview" className="max-h-32 rounded mt-2" />
             {mediaFormData.images && Object.keys(mediaFormData.images).length > 0 && (
               <div className="mt-2">
                 {Object.values(mediaFormData.images).map((img, idx) => (

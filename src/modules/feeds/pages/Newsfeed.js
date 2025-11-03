@@ -1,10 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import FeedHeader from "../components/FeedHeader"
 import StoryBar from "../components/StoryBar"
 import StoryViewer from "../components/StoryViewer"
 import PostFeed from "../components/PostFeed"
+import PostCard from "../components/PostCard"
+import CreatePostBox from "../components/CreatePostBox"
+// import CreateStory from "../components/CreateStory"
+import { posts as initialPosts } from "../data/mockPosts"
 import { stories as initialStories } from "../data/mockStories"
 import "../../../styles/modules/newsfeed.css"
 import VideoShortBar from "../components/VideoShortBar";
@@ -14,6 +19,10 @@ import LiveBroadcaster from "../components/LiveBroadcaster";
 import LiveViewer from "../components/LiveViewer";
 import livestreamApi from "../../../api/livestreamApi";
 
+import {
+  getStories,
+  getStoryById
+} from "../../../api/storyApi";
 
 export default function NewsfeedPage() {
   const [stories, setStories] = useState(initialStories)
@@ -24,6 +33,23 @@ export default function NewsfeedPage() {
   const [activeLivestream, setActiveLivestream] = useState(null)
   const [activeLivestreams, setActiveLivestreams] = useState([])
 
+const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  // Fetch stories from API on mount
+   const fetchStories = async () => {
+     setLoading(true);
+     try {
+       const res = await getStories();
+       setStories(res.data || []);
+     } catch (err) {
+       setError("Lỗi tải story");
+     }
+     setLoading(false);
+   };
+ 
+   useEffect(() => {
+     fetchStories();
+   }, []);
 
   const handleStoryCreated = (newStory) => {
     // thêm story mới vào đầu mảng
@@ -62,6 +88,7 @@ export default function NewsfeedPage() {
     setActiveLivestream(livestream);
   };
 
+ console.log("  stories ", stories)
   return (
     <div className="newsfeed-page">
       <FeedHeader />
