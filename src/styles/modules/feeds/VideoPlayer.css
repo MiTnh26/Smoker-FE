@@ -1,0 +1,300 @@
+.video-player-container {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 0.875rem;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+  /* Container chỉ wrap video, không force kích thước */
+  display: block;
+  /* Smooth rendering */
+  contain: layout style paint;
+  /* Hardware acceleration */
+  transform: translateZ(0);
+}
+
+.video-player {
+  /* Video tự điều chỉnh theo kích thước gốc */
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Giữ nguyên aspect ratio gốc - không crop, không stretch */
+  object-fit: contain;
+  /* Không giới hạn - video hiển thị đúng kích thước gốc */
+  max-width: 100%;
+  max-height: none;
+  /* Smooth playback - tránh jumping frames */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  /* Force GPU acceleration */
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  /* Reset margin để tránh spacing không mong muốn */
+  margin: 0;
+  padding: 0;
+  vertical-align: top;
+}
+
+/* Overlay and Play Button */
+.video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 10;
+  transition: opacity 0.3s ease;
+}
+
+.video-play-button {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: rgb(var(--primary));
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.video-play-button:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.4);
+}
+
+.video-play-button:active {
+  transform: scale(0.95);
+}
+
+/* Controls */
+.video-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  padding: 1rem;
+  z-index: 20;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.video-controls.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.video-controls.hidden {
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+}
+
+/* Progress Bar */
+.video-progress-container {
+  width: 100%;
+  height: 6px;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+  position: relative;
+}
+
+.video-progress-bar {
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  position: relative;
+  overflow: visible;
+}
+
+.video-progress-fill {
+  height: 100%;
+  background: rgb(var(--primary));
+  border-radius: 3px;
+  transition: width 0.1s linear;
+  position: relative;
+}
+
+.video-progress-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background: rgb(var(--primary));
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.video-progress-container:hover .video-progress-handle {
+  opacity: 1;
+}
+
+/* Controls Bar */
+.video-controls-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.video-controls-left,
+.video-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.video-control-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.video-control-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+.video-control-btn:active {
+  transform: scale(0.95);
+}
+
+/* Volume Control */
+.video-volume-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.video-volume-slider {
+  width: 80px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.video-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: rgb(var(--primary));
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.video-volume-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: rgb(var(--primary));
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Time Display */
+.video-time {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Loading Indicator */
+.video-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+}
+
+.video-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.2);
+  border-top-color: rgb(var(--primary));
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .video-controls-bar {
+    gap: 0.5rem;
+  }
+
+  .video-control-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .video-volume-slider {
+    width: 60px;
+  }
+
+  .video-time {
+    font-size: 0.75rem;
+  }
+
+  .video-play-button {
+    width: 64px;
+    height: 64px;
+  }
+
+  .video-player-container {
+    min-height: 150px;
+  }
+}
+
+/* Post Card specific styles - không force kích thước */
+.post-media-left .video-player-container,
+.post-videos .video-player-container {
+  width: 100%;
+  /* KHÔNG set max-height - để video tự điều chỉnh */
+}
+
+.post-media-left .video-player-container .video-player {
+  /* Video tự điều chỉnh theo aspect ratio gốc */
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+

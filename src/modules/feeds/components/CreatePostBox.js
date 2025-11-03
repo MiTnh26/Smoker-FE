@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Video } from "lucide-react";
 import "../../../styles/modules/feeds/CreatePostBox.css"
 
-export default function CreatePostBox({ onCreate, onGoLive }) {
+export default function CreatePostBox({ onCreate, onGoLive, onMediaClick, onMusicClick }) {
   const [avatar, setAvatar] = useState("https://media.techz.vn/resize_x700x/media2019/source/01TRAMY/2024MY1/mckanhnong.png");
   
   // Function to get avatar from session
@@ -39,6 +39,20 @@ export default function CreatePostBox({ onCreate, onGoLive }) {
   const handleGoLive = () => {
     onGoLive?.();
   };
+
+  const handleMediaClick = () => {
+    if (onMediaClick) {
+      onMediaClick();
+    } else {
+      onCreate?.();
+    }
+  };
+
+  const handleMusicClick = () => {
+    if (onMusicClick) {
+      onMusicClick();
+    }
+  };
   
   return (
     <div className="create-post-box">
@@ -60,10 +74,10 @@ export default function CreatePostBox({ onCreate, onGoLive }) {
         <button className="action-btn" onClick={handleGoLive}>
           <Video size={18} style={{ marginRight: '8px' }} /> Go Live
         </button>
-        <button className="action-btn">
+        <button className="action-btn" onClick={handleMediaClick}>
           <i className="fa-solid fa-image"></i> Ảnh/Video
         </button>
-        <button className="action-btn">
+        <button className="action-btn" onClick={handleMusicClick}>
           <i className="fa-solid fa-music"></i> Âm nhạc
         </button>
         <button className="action-btn">

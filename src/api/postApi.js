@@ -2,10 +2,11 @@
 import axiosClient from "./axiosClient";
 
 // Lấy danh sách post
+// params can include includeMedias, includeMusic flags
 export const getPosts = (params) => axiosClient.get("/posts", { params });
 
-// Lấy post theo id
-export const getPostById = (id) => axiosClient.get(`/posts/${id}`);
+// Lấy post theo id (supports includeMedias/includeMusic)
+export const getPostById = (id, params) => axiosClient.get(`/posts/${id}`, { params });
 
 // Tạo post mới
 export const createPost = (data) => axiosClient.post("/posts", data);
@@ -25,6 +26,9 @@ export const unlikePost = (postId) => axiosClient.delete(`/posts/${postId}/like`
 // Thêm comment
 export const addComment = (postId, data) => axiosClient.post(`/posts/${postId}/comments`, data);
 
+// Cập nhật comment
+export const updateComment = (postId, commentId, data) => axiosClient.put(`/posts/${postId}/comments/${commentId}`, data);
+
 // Xóa comment
 export const deleteComment = (postId, commentId) => axiosClient.delete(`/posts/${postId}/comments/${commentId}`);
 
@@ -39,6 +43,9 @@ export const addReply = (postId, commentId, data) => axiosClient.post(`/posts/${
 
 // Thêm reply vào reply
 export const addReplyToReply = (postId, commentId, replyId, data) => axiosClient.post(`/posts/${postId}/comments/${commentId}/replies/${replyId}`, data);
+
+// Cập nhật reply
+export const updateReply = (postId, commentId, replyId, data) => axiosClient.put(`/posts/${postId}/comments/${commentId}/replies/${replyId}`, data);
 
 // Xóa reply
 export const deleteReply = (postId, commentId, replyId) => axiosClient.delete(`/posts/${postId}/comments/${commentId}/replies/${replyId}`);
@@ -57,3 +64,20 @@ export const searchPostsByTitle = (params) => axiosClient.get("/posts/search/tit
 
 // Tìm kiếm post theo author
 export const searchPostsByAuthor = (params) => axiosClient.get("/posts/search/author", { params });
+
+// Upload media for posts (images, videos, audio)
+export const uploadPostMedia = (formData) => axiosClient.post("/posts/upload", formData, {
+  headers: {
+    "Content-Type": "multipart/form-data",
+  },
+});
+
+// Get media details by ID
+export const getMediaById = (mediaId) => axiosClient.get(`/medias/${mediaId}`);
+
+// Get media details by postId and URL
+export const getMediaByUrl = (postId, url) => {
+  const params = { url };
+  if (postId) params.postId = postId;
+  return axiosClient.get("/medias/by-url", { params });
+};
