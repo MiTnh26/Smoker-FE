@@ -89,7 +89,7 @@ const ManagePost = () => {
     setLoading(false);
   };
   // Xử lý chọn file ảnh để gửi lên BE
-  const handleFileChange = (e) => {
+  const handleFileChange = (e) => {}
 
   const handleCreateMusic = async (e) => {
     e.preventDefault();
@@ -331,40 +331,10 @@ const ManagePost = () => {
         data = { ...formData, images: formData.images || "", type: "post" };
       }
       await updatePost(editingId, data);
-      const postData = {
-        title: musicFormData.musicTitle,
-        content: musicFormData.description,
-        caption: musicFormData.description,
-        audios: {
-          "1": {
-            url: musicFormData.audioUrl,
-            artist: musicFormData.artistName,
-            thumbnail: musicFormData.musicBackgroundImage
-          }
-        },
-        musicTitle: musicFormData.musicTitle,
-        artistName: musicFormData.artistName,
-        description: musicFormData.description,
-        hashTag: musicFormData.hashTag,
-        musicPurchaseLink: musicFormData.musicPurchaseLink,
-        musicBackgroundImage: musicFormData.musicBackgroundImage
-      };
-      await updatePost(editingId, postData);
       setEditingId(null);
       setShowForm(false);
       setFormData({ title: "", content: "", images: "", type: "post" });
       setImageFile(null);
-      setPostType(null);
-      setMusicFormData({ 
-        musicTitle: "", 
-        artistName: "", 
-        description: "", 
-        hashTag: "", 
-        musicPurchaseLink: "", 
-        musicBackgroundImage: "",
-        audioFile: null,
-        audioUrl: ""
-      });
       fetchPosts();
     } catch (err) {
       setError("Cập nhật thất bại");
@@ -401,40 +371,6 @@ const ManagePost = () => {
         + Tạo bài viết mới
       </button>
       {showForm && (
-      <div className="flex gap-2 mb-4">
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          onClick={() => {
-            setShowForm(true);
-            setPostType("media");
-            setEditingId(null);
-            setMediaFormData({ title: "", content: "", images: {}, videos: {}, caption: "" });
-          }}
-        >
-          📷 Đăng Ảnh/Video
-        </button>
-        <button
-          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-          onClick={() => {
-            setShowForm(true);
-            setPostType("music");
-            setEditingId(null);
-            setMusicFormData({ 
-              musicTitle: "", 
-              artistName: "", 
-              description: "", 
-              hashTag: "", 
-              musicPurchaseLink: "", 
-              musicBackgroundImage: "",
-              audioFile: null,
-              audioUrl: ""
-            });
-          }}
-        >
-          🎵 Đăng Nhạc
-        </button>
-      </div>
-      {showForm && postType === "media" && (
         <form
           className="bg-white shadow rounded p-4 mb-6"
           onSubmit={editingId ? handleUpdateMedia : handleCreateMedia}
@@ -490,25 +426,12 @@ const ManagePost = () => {
               type="text"
               name="images"
               value={formData.images}
-              onChange={handleInputChange}
+              // onChange={handleInputChange}
               className="w-full border rounded px-2 py-1 mt-1"
               placeholder="Nhập link ảnh hoặc tải lên"
             />
             {(imageFile || formData.images) && (
               <img src={imageFile ? URL.createObjectURL(imageFile) : formData.images} alt="preview" className="max-h-32 rounded mt-2" />
-            {mediaFormData.images && Object.keys(mediaFormData.images).length > 0 && (
-              <div className="mt-2">
-                {Object.values(mediaFormData.images).map((img, idx) => (
-                  <img key={idx} src={img.url} alt="preview" className="max-h-32 rounded mt-2 mr-2" />
-                ))}
-              </div>
-            )}
-            {mediaFormData.videos && Object.keys(mediaFormData.videos).length > 0 && (
-              <div className="mt-2">
-                {Object.values(mediaFormData.videos).map((video, idx) => (
-                  <video key={idx} src={video.url} controls className="max-h-32 rounded mt-2 mr-2" />
-                ))}
-              </div>
             )}
           </div>
           <div className="flex gap-2 mt-2">

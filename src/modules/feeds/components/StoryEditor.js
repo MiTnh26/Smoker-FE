@@ -4,6 +4,7 @@ import Cropper from "react-easy-crop";
 import Slider from "@mui/material/Slider";
 import getCroppedImg from "./utils/cropImage";
 import { createStory } from "../../../api/storyApi";
+
 export default function StoryEditor({ onStoryCreated, onClose }) {
   const [file, setFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");

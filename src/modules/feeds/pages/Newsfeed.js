@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useState, useEffect } from "react"
+
 import FeedHeader from "../components/FeedHeader"
 import StoryBar from "../components/StoryBar"
 import StoryViewer from "../components/StoryViewer"
