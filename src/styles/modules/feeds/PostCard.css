@@ -155,9 +155,9 @@
   position: absolute;
   top: 42px;
   right: 8px;
-  background: rgb(var(--popover));
-  color: rgb(var(--popover-foreground));
-  border: 1px solid rgba(var(--border), 0.5);
+  background: rgb(var(--card));
+  color: rgb(var(--foreground));
+  border: 1px solid rgba(var(--border-darker), 0.5);
   border-radius: 0.75rem;
   box-shadow: 0 12px 28px rgba(0,0,0,0.15);
   padding: 0.5rem;

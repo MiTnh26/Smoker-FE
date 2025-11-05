@@ -77,7 +77,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
       if (accountId && myIds.includes(String(accountId))) {
         return active?.avatar || me?.avatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz48L3N2Zz4=";
       }
-    } catch {}
+    } catch { }
     return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz48cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjgiIHI9IjQiIGZpbGw9IiM5Y2EzYWYiLz48L3N2Zz4=";
   };
 
@@ -85,13 +85,13 @@ export default function CommentSection({ postId, onClose, inline = false }) {
     try {
       setLoading(true);
       const response = await getPostById(postId);
-      
+
       console.log("Raw response from API:", response);
-      
+
       // Axios interceptor already unwraps response.data, so response IS the API response
       // Response structure should be: { success: true, data: { ...post... } }
       let post = null;
-      
+
       if (response?.success && response.data) {
         // Standard structure: { success: true, data: { ...post... } }
         post = response.data;
@@ -102,16 +102,16 @@ export default function CommentSection({ postId, onClose, inline = false }) {
         // Nested data
         post = response.data;
       }
-      
+
       console.log("Extracted post object:", post);
       console.log("Post.comments:", post?.comments);
       console.log("Post.comments type:", typeof post?.comments);
       console.log("Post.comments keys:", post?.comments ? Object.keys(post.comments) : null);
-      
+
       if (post && post.comments) {
         // Transform comments from Map/Object to array
         const commentsArray = [];
-        
+
         console.log("Processing comments...");
         console.log("post.comments value:", post.comments);
         console.log("post.comments type:", typeof post.comments);
@@ -119,15 +119,15 @@ export default function CommentSection({ postId, onClose, inline = false }) {
         console.log("Is Map?", post.comments instanceof Map);
         console.log("Is Array?", Array.isArray(post.comments));
         console.log("Object.keys(post.comments):", Object.keys(post.comments || {}));
-        
+
         if (post.comments && typeof post.comments === 'object') {
           let commentsData = [];
-          
+
           // Try Map first
           if (post.comments instanceof Map) {
             commentsData = Array.from(post.comments.entries());
             console.log("Using Map conversion, entries:", commentsData.length);
-          } 
+          }
           // Try Array
           else if (Array.isArray(post.comments)) {
             commentsData = post.comments.map((comment, index) => [
@@ -135,19 +135,19 @@ export default function CommentSection({ postId, onClose, inline = false }) {
               comment
             ]);
             console.log("Using Array conversion, entries:", commentsData.length);
-          } 
+          }
           // Try plain object with Object.keys first
           else {
             // Try multiple methods to extract keys
             let commentKeys = Object.keys(post.comments);
             console.log("Object.keys result:", commentKeys);
-            
+
             // If Object.keys returns empty, try getOwnPropertyNames
             if (commentKeys.length === 0) {
               commentKeys = Object.getOwnPropertyNames(post.comments);
               console.log("Object.getOwnPropertyNames result:", commentKeys);
             }
-            
+
             // Try JSON.stringify/parse to force conversion
             if (commentKeys.length === 0) {
               try {
@@ -155,7 +155,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                 const parsed = JSON.parse(stringified);
                 commentKeys = Object.keys(parsed);
                 console.log("After JSON stringify/parse, keys:", commentKeys);
-                
+
                 if (commentKeys.length > 0) {
                   commentsData = commentKeys.map(key => [key, parsed[key]]);
                   console.log("Using JSON conversion, entries:", commentsData.length);
@@ -164,7 +164,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                 console.error("JSON conversion failed:", e);
               }
             }
-            
+
             // If still empty, try Object.entries
             if (commentKeys.length > 0 && commentsData.length === 0) {
               commentsData = commentKeys.map(key => {
@@ -179,16 +179,16 @@ export default function CommentSection({ postId, onClose, inline = false }) {
               console.log("Using Object.entries fallback, entries:", commentsData.length);
             }
           }
-          
+
           console.log("Comments data after conversion:", commentsData);
           console.log("Number of comments:", commentsData.length);
-          
+
           for (const [commentId, comment] of commentsData) {
             if (!comment || typeof comment !== 'object') {
               console.warn("Invalid comment:", comment);
               continue;
             }
-            
+
             // Transform replies from Map/Object to array
             const repliesArray = [];
             if (comment.replies && typeof comment.replies === 'object' && !Array.isArray(comment.replies)) {
@@ -198,7 +198,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
               } else {
                 repliesData = Object.entries(comment.replies);
               }
-              
+
               for (const [replyId, reply] of repliesData) {
                 if (!reply || typeof reply !== 'object') continue;
                 repliesArray.push({
@@ -214,7 +214,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                 });
               }
             }
-            
+
             const extractedCommentId = extractId(commentId) || extractId(comment._id) || String(commentId);
             commentsArray.push({
               id: extractedCommentId,
@@ -229,7 +229,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
             });
           }
         }
-        
+
         // Sort comments with current sortOrder
         const sortedComments = sortComments(commentsArray, sortOrder);
 
@@ -284,7 +284,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
       const typeRole = normalizeTypeRole(activeEntity);
 
       console.log("Submitting comment:", { postId, content: newComment, typeRole });
-      
+
       // Axios interceptor unwraps response.data, so response IS the API response
       const response = await addComment(postId, {
         content: newComment,
@@ -296,9 +296,9 @@ export default function CommentSection({ postId, onClose, inline = false }) {
       // Handle different response structures
       if (response?.success || response?.data?.success) {
         setNewComment("");
-        setMessage({ type: "success", text: "Đã thêm bình luận thành công!" });
-        setTimeout(() => setMessage(null), 3000);
-        
+        // setMessage({ type: "success", text: "Đã thêm bình luận thành công!" });
+        // setTimeout(() => setMessage(null), 3000);
+
         // Reload comments after a short delay to ensure backend has processed
         setTimeout(async () => {
           await loadComments();
@@ -309,9 +309,9 @@ export default function CommentSection({ postId, onClose, inline = false }) {
       }
     } catch (error) {
       console.error("Error adding comment:", error);
-      setMessage({ 
-        type: "error", 
-        text: error?.response?.data?.message || "Không thể thêm bình luận. Vui lòng thử lại." 
+      setMessage({
+        type: "error",
+        text: error?.response?.data?.message || "Không thể thêm bình luận. Vui lòng thử lại."
       });
       setTimeout(() => setMessage(null), 3000);
     } finally {
@@ -320,81 +320,81 @@ export default function CommentSection({ postId, onClose, inline = false }) {
   };
 
   const handleAddReply = async (commentId, replyToId = null) => {
-      const replyKey = replyToId ? `${commentId}-${replyToId}` : commentId;
-      const text = replyContent[replyKey]?.replyText || "";
-      if (!text.trim()) {
-        setMessage({ type: "error", text: "Vui lòng nhập nội dung phản hồi" });
-        setTimeout(() => setMessage(null), 3000);
-        return;
-      }
+    const replyKey = replyToId ? `${commentId}-${replyToId}` : commentId;
+    const text = replyContent[replyKey]?.replyText || "";
+    if (!text.trim()) {
+      setMessage({ type: "error", text: "Vui lòng nhập nội dung phản hồi" });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
 
-      setSubmitting(true);
-      setMessage(null);
+    setSubmitting(true);
+    setMessage(null);
 
+    try {
+      let session;
       try {
-        let session;
-        try {
-          const raw = localStorage.getItem("session");
-          session = raw ? JSON.parse(raw) : null;
-        } catch (e) {
-          session = null;
-        }
-
-        const currentUser = session?.account;
-        const activeEntity = session?.activeEntity || currentUser;
-        const normalizeTypeRole = (ae) => {
-          const raw = (ae?.role || "").toString().toLowerCase();
-          if (raw === "bar") return "BarPage";
-          if (raw === "dj" || raw === "dancer") return "BusinessAccount";
-          return "Account";
-        };
-        const typeRole = normalizeTypeRole(activeEntity);
-
-        let response;
-        if (replyToId) {
-          // Reply to a reply - use addReplyToReply API
-          response = await addReplyToReply(postId, commentId, replyToId, {
-            content: text,
-            typeRole: typeRole
-          });
-        } else {
-          // Reply to a comment
-          response = await addReply(postId, commentId, {
-            content: text,
-            typeRole: typeRole
-          });
-        }
-
-        // Handle different response structures
-        if (response?.success || response?.data?.success) {
-          setReplyContent(prev => {
-            const newState = { ...prev };
-            delete newState[replyKey];
-            return newState;
-          });
-          setReplyingTo(null);
-          setMessage({ type: "success", text: "Đã thêm phản hồi thành công!" });
-          setTimeout(() => setMessage(null), 3000);
-          
-          // Reload comments after a short delay
-          setTimeout(async () => {
-            await loadComments();
-          }, 500);
-        } else {
-          setMessage({ type: "error", text: response?.message || "Không thể thêm phản hồi" });
-          setTimeout(() => setMessage(null), 3000);
-        }
-      } catch (error) {
-        console.error("Error adding reply:", error);
-        setMessage({ 
-          type: "error", 
-          text: error?.response?.data?.message || "Không thể thêm phản hồi. Vui lòng thử lại." 
-        });
-        setTimeout(() => setMessage(null), 3000);
-      } finally {
-        setSubmitting(false);
+        const raw = localStorage.getItem("session");
+        session = raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        session = null;
       }
-    };
+
+      const currentUser = session?.account;
+      const activeEntity = session?.activeEntity || currentUser;
+      const normalizeTypeRole = (ae) => {
+        const raw = (ae?.role || "").toString().toLowerCase();
+        if (raw === "bar") return "BarPage";
+        if (raw === "dj" || raw === "dancer") return "BusinessAccount";
+        return "Account";
+      };
+      const typeRole = normalizeTypeRole(activeEntity);
+
+      let response;
+      if (replyToId) {
+        // Reply to a reply - use addReplyToReply API
+        response = await addReplyToReply(postId, commentId, replyToId, {
+          content: text,
+          typeRole: typeRole
+        });
+      } else {
+        // Reply to a comment
+        response = await addReply(postId, commentId, {
+          content: text,
+          typeRole: typeRole
+        });
+      }
+
+      // Handle different response structures
+      if (response?.success || response?.data?.success) {
+        setReplyContent(prev => {
+          const newState = { ...prev };
+          delete newState[replyKey];
+          return newState;
+        });
+        setReplyingTo(null);
+        setMessage({ type: "success", text: "Đã thêm phản hồi thành công!" });
+        setTimeout(() => setMessage(null), 3000);
+
+        // Reload comments after a short delay
+        setTimeout(async () => {
+          await loadComments();
+        }, 500);
+      } else {
+        setMessage({ type: "error", text: response?.message || "Không thể thêm phản hồi" });
+        setTimeout(() => setMessage(null), 3000);
+      }
+    } catch (error) {
+      console.error("Error adding reply:", error);
+      setMessage({
+        type: "error",
+        text: error?.response?.data?.message || "Không thể thêm phản hồi. Vui lòng thử lại."
+      });
+      setTimeout(() => setMessage(null), 3000);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleLikeComment = async (commentId) => {
     try {
@@ -432,7 +432,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
       const response = alreadyLiked
         ? await unlikeComment(postId, commentId)
         : await likeComment(postId, commentId, { typeRole });
-      
+
       if (!(response?.success || response?.data?.success)) {
         // Rollback optimistic update on failure
         setLikedComments(prev => {
@@ -503,7 +503,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
       const response = alreadyLiked
         ? await unlikeReply(postId, commentId, replyId)
         : await likeReply(postId, commentId, replyId, { typeRole });
-      
+
       if (!(response?.success || response?.data?.success)) {
         // Rollback on failure
         setLikedReplies(prev => {
@@ -595,24 +595,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
           </div>
         )}
 
-        {/* Add Comment Form */}
-        <form onSubmit={handleAddComment} className="add-comment-form">
-          <input
-            type="text"
-            placeholder="Viết bình luận..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            className="comment-input"
-            disabled={submitting}
-          />
-          <button 
-            type="submit" 
-            className="submit-comment-btn"
-            disabled={submitting || !newComment.trim()}
-          >
-            {submitting ? "Đang đăng..." : "Đăng"}
-          </button>
-        </form>
+
 
         {/* Comments List */}
         <div className="comments-list">
@@ -624,13 +607,13 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                 <div className="comment-row">
                   <img className="comment-avatar" src={getAvatarForAccount(comment.accountId)} alt="avatar" />
                   <div className="comment-content">
-                  <div className="comment-text">{comment.content}</div>
-                  {comment.images && (
-                    <img src={comment.images} alt="comment" className="comment-image" />
-                  )}
+                    <div className="comment-text">{comment.content}</div>
+                    {comment.images && (
+                      <img src={comment.images} alt="comment" className="comment-image" />
+                    )}
                   </div>
                 </div>
-                
+
                 <div className="comment-actions">
                   <button
                     onClick={() => handleLikeComment(comment.id)}
@@ -653,27 +636,27 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                 {/* Reply Input */}
                 {replyingTo?.commentId === comment.id && replyingTo.type === "comment" && (
                   <div className="reply-input-container">
-                            <input
-                              type="text"
-                              placeholder="Viết phản hồi..."
-                              value={replyContent[comment.id]?.replyText || ""}
-                              onChange={(e) =>
-                                setReplyContent((prev) => ({
-                                  ...prev,
-                                  [comment.id]: { replyText: e.target.value }
-                                }))
-                              }
-                              className="reply-input"
-                              disabled={submitting}
-                            />
-                            <div className="reply-actions">
-                              <button
-                                onClick={() => handleAddReply(comment.id)}
-                                className="submit-reply-btn"
-                                disabled={submitting || !(replyContent[comment.id]?.replyText || "").trim()}
-                              >
-                                {submitting ? "Đang đăng..." : "Đăng"}
-                              </button>
+                    <input
+                      type="text"
+                      placeholder="Viết phản hồi..."
+                      value={replyContent[comment.id]?.replyText || ""}
+                      onChange={(e) =>
+                        setReplyContent((prev) => ({
+                          ...prev,
+                          [comment.id]: { replyText: e.target.value }
+                        }))
+                      }
+                      className="reply-input"
+                      disabled={submitting}
+                    />
+                    <div className="reply-actions">
+                      <button
+                        onClick={() => handleAddReply(comment.id)}
+                        className="submit-reply-btn"
+                        disabled={submitting || !(replyContent[comment.id]?.replyText || "").trim()}
+                      >
+                        {submitting ? "Đang đăng..." : "Đăng"}
+                      </button>
                       <button
                         onClick={() => {
                           setReplyingTo(null);
@@ -699,10 +682,10 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                         <div className="reply-row">
                           <img className="reply-avatar" src={getAvatarForAccount(reply.accountId)} alt="avatar" />
                           <div className="reply-content">
-                          <div className="reply-text">{reply.content}</div>
-                          {reply.images && (
-                            <img src={reply.images} alt="reply" className="reply-image" />
-                          )}
+                            <div className="reply-text">{reply.content}</div>
+                            {reply.images && (
+                              <img src={reply.images} alt="reply" className="reply-image" />
+                            )}
                           </div>
                         </div>
                         <div className="reply-actions">
@@ -727,27 +710,27 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                         {/* Reply to Reply Input */}
                         {replyingTo?.replyId === reply.id && replyingTo.type === "reply" && (
                           <div className="reply-input-container">
-                              <input
-                                type="text"
-                                placeholder="Viết phản hồi..."
-                                value={replyContent[`${comment.id}-${reply.id}`]?.replyText || ""}
-                                onChange={(e) =>
-                                  setReplyContent((prev) => ({
-                                    ...prev,
-                                    [`${comment.id}-${reply.id}`]: { replyText: e.target.value, replyToId: reply.id }
-                                  }))
-                                }
-                                className="reply-input"
-                                disabled={submitting}
-                              />
-                              <div className="reply-actions">
-                                <button
-                                  onClick={() => handleAddReply(comment.id, reply.id)}
-                                  className="submit-reply-btn"
-                                  disabled={submitting || !(replyContent[`${comment.id}-${reply.id}`]?.replyText || "").trim()}
-                                >
-                                  {submitting ? "Đang đăng..." : "Đăng"}
-                                </button>
+                            <input
+                              type="text"
+                              placeholder="Viết phản hồi..."
+                              value={replyContent[`${comment.id}-${reply.id}`]?.replyText || ""}
+                              onChange={(e) =>
+                                setReplyContent((prev) => ({
+                                  ...prev,
+                                  [`${comment.id}-${reply.id}`]: { replyText: e.target.value, replyToId: reply.id }
+                                }))
+                              }
+                              className="reply-input"
+                              disabled={submitting}
+                            />
+                            <div className="reply-actions">
+                              <button
+                                onClick={() => handleAddReply(comment.id, reply.id)}
+                                className="submit-reply-btn"
+                                disabled={submitting || !(replyContent[`${comment.id}-${reply.id}`]?.replyText || "").trim()}
+                              >
+                                {submitting ? "Đang đăng..." : "Đăng"}
+                              </button>
                               <button
                                 onClick={() => {
                                   setReplyingTo(null);
@@ -772,6 +755,24 @@ export default function CommentSection({ postId, onClose, inline = false }) {
             ))
           )}
         </div>
+        {/* Add Comment Form */}
+        <form onSubmit={handleAddComment} className="add-comment-form">
+          <input
+            type="text"
+            placeholder="Viết bình luận..."
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            className="comment-input"
+            disabled={submitting}
+          />
+          <button
+            type="submit"
+            className="submit-comment-btn"
+            disabled={submitting || !newComment.trim()}
+          >
+            {submitting ? "Đang đăng..." : "Đăng"}
+          </button>
+        </form>
       </div>
     </div>
   );

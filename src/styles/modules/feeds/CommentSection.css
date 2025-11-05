@@ -86,16 +86,20 @@
 .comment-section-body {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 1.25rem;
+  padding: 0rem 1rem 0rem 1rem;
 }
 
 .comment-sort-options {
   display: flex;
+  position: sticky;
+  top: 0;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  padding-top: 0.75rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid rgba(var(--border), 0.3);
+  background-color: rgb(var(--card));
+  z-index: 10;
 }
 
 .sort-label {
@@ -157,12 +161,24 @@
   }
 }
 
-.add-comment-form {
+/* .add-comment-form {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(var(--border), 0.5);
+} */
+.add-comment-form {
+  display: flex;
+  /* gap: 0.5rem; */
+  /* margin-top: 1rem; */
+  padding: 1rem;
+  /* border-top: 1px solid rgba(var(--border), 0.5); */
+
+  position: sticky;
+  bottom: 0; /* dính vào đáy container */
+  background-color: rgb(var(--card)); /* để không bị lộ nội dung phía sau */
+  z-index: 10; /* ưu tiên hiển thị */
 }
 
 .comment-input,
