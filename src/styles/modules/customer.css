@@ -10,6 +10,16 @@
 .customer-body > aside {
   @apply w-[300px] flex-shrink-0;
 }
+.customer-body > aside:first-child {
+  @apply hidden lg:block w-[300px] flex-shrink-0; /* Left sidebar */
+}
+
+.customer-body > aside:last-child {
+  @apply hidden xl:block w-[300px] flex-shrink-0; /* Right sidebar */
+}
+.customer-body > main {
+  @apply p-5 flex-none w-full max-w-[680px] mx-auto;
+}
 
 .customer-body > main {
   @apply p-5 flex-none;

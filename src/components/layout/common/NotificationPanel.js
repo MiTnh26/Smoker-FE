@@ -20,7 +20,7 @@ export default function NotificationPanel({ onClose }) {
         setNotifications(response.data || []);
         // Update unread count from filtered notifications
         const unread = response.data?.filter(
-          (notif) => notif["Trạng Thái"] === "Chưa Đọc"
+          (notif) => notif.status === "Unread"
         ).length || 0;
         setUnreadCount(unread);
       }
@@ -50,7 +50,7 @@ export default function NotificationPanel({ onClose }) {
       setNotifications((prev) =>
         prev.map((notif) =>
           notif._id === notificationId
-            ? { ...notif, "Trạng Thái": "Đã Đọc" }
+            ? { ...notif, status: "Read" }
             : notif
         )
       );
@@ -66,7 +66,7 @@ export default function NotificationPanel({ onClose }) {
     try {
       await notificationApi.markAllAsRead();
       setNotifications((prev) =>
-        prev.map((notif) => ({ ...notif, "Trạng Thái": "Đã Đọc" }))
+        prev.map((notif) => ({ ...notif, status: "Read" }))
       );
       setUnreadCount(0);
       // Update from server to be sure
@@ -78,13 +78,13 @@ export default function NotificationPanel({ onClose }) {
 
   // Handle notification click
   const handleNotificationClick = (notification) => {
-    if (notification["Trạng Thái"] === "Chưa Đọc") {
+    if (notification.status === "Unread") {
       handleMarkAsRead(notification._id);
     }
 
     // Navigate to the link if available
-    if (notification["Đường dẫn"]) {
-      navigate(notification["Đường dẫn"]);
+    if (notification.link) {
+      navigate(notification.link);
     }
     onClose?.();
   };
@@ -92,18 +92,16 @@ export default function NotificationPanel({ onClose }) {
   // Get notification icon based on type
   const getNotificationIcon = (type) => {
     switch (type) {
-      case "Thích":
+      case "Like":
         return "❤️";
-      case "Bình Luận":
+      case "Comment":
         return "💬";
-      case "Theo Dõi":
+      case "Follow":
         return "👤";
-      case "Chia Sẻ":
-        return "↗️";
-      case "Tag":
-        return "🏷️";
-      case "Mention":
-        return "@";
+      case "Messages":
+        return "💌";
+      case "Confirm":
+        return "✅";
       default:
         return "🔔";
     }
@@ -111,11 +109,39 @@ export default function NotificationPanel({ onClose }) {
 
   // Get notification text preview
   const getNotificationText = (notification) => {
-    const content = notification["Nội Dung"] || "Bạn có thông báo mới";
+    const content = notification.content || "You have a new notification";
     if (content.length > 80) {
       return `${content.substring(0, 80)}...`;
     }
     return content;
+  };
+
+  // Format time ago
+  const getTimeAgo = (date) => {
+    const now = new Date();
+    const notificationDate = new Date(date);
+    const diffInSeconds = Math.floor((now - notificationDate) / 1000);
+
+    if (diffInSeconds < 60) return "Just now";
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    return notificationDate.toLocaleDateString();
+  };
+
+  // Test notification handler
+  const handleTestNotification = async (type) => {
+    try {
+      const response = await notificationApi.createTestNotification(type);
+      if (response.success) {
+        // Refresh notifications after creating test notification
+        await fetchNotifications();
+        await fetchUnreadCount();
+        console.log(`✅ Test ${type} notification created!`);
+      }
+    } catch (error) {
+      console.error("Error creating test notification:", error);
+    }
   };
 
   // Fetch notifications on mount
@@ -148,13 +174,13 @@ export default function NotificationPanel({ onClose }) {
     <>
       {/* Header - Notifications List Header */}
       <div className="notification-header">
-        <h3>Thông báo</h3>
+      
         {unreadCount > 0 && (
           <button
             className="mark-all-read-btn"
             onClick={handleMarkAllAsRead}
           >
-            Đánh dấu tất cả đã đọc
+            Mark all as read
           </button>
         )}
       </div>
@@ -163,18 +189,18 @@ export default function NotificationPanel({ onClose }) {
       <div className="notification-list">
         {loading && (
           <div className="notification-loading">
-            <p>Đang tải...</p>
+            <p>Loading...</p>
           </div>
         )}
         {!loading && notifications.length === 0 && (
           <div className="notification-empty">
             <Bell size={48} style={{ opacity: 0.3 }} />
-            <p>Không có thông báo</p>
+            <p>No notifications</p>
           </div>
         )}
         {!loading && notifications.length > 0 && (
           notifications.map((notification) => {
-            const isUnread = notification["Trạng Thái"] === "Chưa Đọc";
+            const isUnread = notification.status === "Unread";
             return (
               <button
                 key={notification._id}
@@ -183,14 +209,14 @@ export default function NotificationPanel({ onClose }) {
                 onClick={() => handleNotificationClick(notification)}
               >
                 <div className="notification-avatar">
-                  {getNotificationIcon(notification["Loại Thông Báo"])}
+                  {getNotificationIcon(notification.type)}
                 </div>
                 <div className="notification-content">
                   <p className="notification-text">
                     {getNotificationText(notification)}
                   </p>
                   <span className="notification-time">
-                    {new Date(notification.createdAt || notification["Gửi Lúc"]).toLocaleString("vi-VN")}
+                    {getTimeAgo(notification.createdAt)}
                   </span>
                 </div>
                 {isUnread && (
@@ -211,8 +237,91 @@ export default function NotificationPanel({ onClose }) {
             onClose?.();
           }}
         >
-          Xem tất cả thông báo
+          View all notifications
         </button>
+        
+        {/* Test Buttons - Only for development/testing */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{ 
+            marginTop: '10px', 
+            paddingTop: '10px', 
+            borderTop: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '5px'
+          }}>
+            <button
+              onClick={() => handleTestNotification('Like')}
+              style={{
+                padding: '5px 10px',
+                fontSize: '11px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '4px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Test Like
+            </button>
+            <button
+              onClick={() => handleTestNotification('Comment')}
+              style={{
+                padding: '5px 10px',
+                fontSize: '11px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '4px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Test Comment
+            </button>
+            <button
+              onClick={() => handleTestNotification('Follow')}
+              style={{
+                padding: '5px 10px',
+                fontSize: '11px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '4px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Test Follow
+            </button>
+            <button
+              onClick={() => handleTestNotification('Messages')}
+              style={{
+                padding: '5px 10px',
+                fontSize: '11px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '4px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Test Message
+            </button>
+            <button
+              onClick={() => handleTestNotification('Confirm')}
+              style={{
+                padding: '5px 10px',
+                fontSize: '11px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '4px',
+                color: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              Test Confirm
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

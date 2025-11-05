@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react"
+import YouTubeLinkPreview from "../../../components/common/YouTubeLinkPreview"
+import { splitTextWithYouTube } from "../../../utils/youtube"
 import { likePost, unlikePost } from "../../../api/postApi"
 import AudioWaveform from "./AudioWaveform"
 import VideoPlayer from "./VideoPlayer"
@@ -6,9 +8,9 @@ import ImageDetailModal from "./ImageDetailModal"
 import CommentSection from "./CommentSection"
 import "../../../styles/modules/feeds/PostCard.css"
 
-export default function PostCard({ 
-  post, 
-  playingPost, 
+export default function PostCard({
+  post,
+  playingPost,
   setPlayingPost,
   sharedAudioRef,
   sharedCurrentTime,
@@ -94,9 +96,20 @@ export default function PostCard({
   const handleImageClick = (imageUrl) => {
     setSelectedImage({ imageUrl, postId: post.id })
   }
+  // Extract music info if post has populated musicId
+  const music = post.musicId || {};
+
+  // Normalize music fields into post
+  const audioTitle = music.title || post.audioTitle || post.title;
+  const artistName = music.artist || post.artistName || post.user;
+  const thumbnail = music.coverUrl || post.thumbnail;
+  const audioUrl = music.audioUrl || post.audioSrc;
+  const genre = music.hashTag || post.genre;
+  const description = music.details || post.description;
 
   // Get audio from post data (already extracted in transformPost)
-  const audioMedia = post.audioSrc ? { url: post.audioSrc } : null
+  const audioMedia = audioUrl ? { url: audioUrl } : null;
+
 
   // Normalize medias: backend may return an array of media objects with type
   const medias = (() => {
@@ -119,10 +132,10 @@ export default function PostCard({
       <div className="post-header">
         <div className="post-user">
           <div className="avatar-wrapper">
-            <img 
-              src={post.avatar || "https://via.placeholder.com/40"} 
-              alt={post.user} 
-              className="user-avatar" 
+            <img
+              src={post.avatar || "https://via.placeholder.com/40"}
+              alt={post.user}
+              className="user-avatar"
             />
             {post.verified && <span className="verified-badge">✓</span>}
           </div>
@@ -157,127 +170,72 @@ export default function PostCard({
 
       {/* Content */}
       <div className="post-content">
-        <p className="post-text">{post.content}</p>
-        
+        <div className="post-text">
+          {(() => {
+            const segments = splitTextWithYouTube(post.content || "");
+            return segments.map((seg, i) => {
+              if (seg.type === "youtube") {
+                return (
+                  <YouTubeLinkPreview key={`yt-${i}`} url={seg.url} videoId={seg.videoId} />
+                );
+              }
+              // Render plain text, preserving line breaks
+              const lines = (seg.text || "").split("\n");
+              return (
+                <span key={`txt-${i}`}>
+                  {lines.map((line, idx) => (
+                    <span key={idx}>
+                      {line}
+                      {idx < lines.length - 1 ? <br /> : null}
+                    </span>
+                  ))}
+                </span>
+              );
+            });
+          })()}
+        </div>
+
         {/* Check if post has both image and audio - show side by side layout */}
         {audioMedia && (
-          (medias.images.length > 0 || post.image) ? (
-            <div className="post-media-audio-layout">
-              {/* Left side: Image */}
-              <div className="post-media-left">
-                {medias.images.length > 0 ? (
-                  <div 
-                    className={`post-images ${medias.images.length > 1 ? 'post-images-grid' : ''}`}
-                    data-count={medias.images.length}
-                  >
-                    {medias.images.map((img, index) => {
-                      const isLastImage = index === medias.images.length - 1;
-                      const remainingCount = medias.images.length - 5;
-                      const shouldShowOverlay = medias.images.length > 5 && isLastImage && remainingCount > 0;
-                      
-                      return (
-                        <img 
-                          key={img.id || index} 
-                          src={img.url} 
-                          alt={img.caption || `Post image ${index + 1}`} 
-                          className="post-image"
-                          onClick={() => handleImageClick(img.url)}
-                          data-remaining={shouldShowOverlay ? remainingCount : undefined}
-                        />
-                      );
-                    })}
-                  </div>
-                ) : post.image ? (
-                  <img 
-                    src={post.image} 
-                    alt="post" 
-                    className="post-image"
-                    onClick={() => handleImageClick(post.image)}
-                  />
-                ) : null}
-                
-                {/* Videos if any */}
-                {medias.videos.length > 0 && (
-                  <div className="post-videos">
-                    {medias.videos.map((video, index) => (
-                      <VideoPlayer 
-                        key={video.id || index}
-                        src={video.url}
-                        poster={video.thumbnail || video.poster}
-                        className="post-video"
-                      />
-                    ))}
-                  </div>
-                )}
-                {!post.medias && post.videoSrc && (
-                  <VideoPlayer 
-                    src={post.videoSrc}
-                    className="post-video"
-                  />
-                )}
-              </div>
-
-              {/* Right side: Audio Waveform */}
-              <div className="post-audio-right">
-                <AudioWaveform
-                  audioSrc={audioMedia.url}
-                  isPlaying={sharedIsPlaying || isPlaying}
-                  onTogglePlay={togglePlay}
-                  audioTitle={post.audioTitle || post.title}
-                  artistName={post.artistName || post.user}
-                  album={post.album}
-                  genre={post.genre}
-                  releaseDate={post.releaseDate}
-                  description={post.description}
-                  thumbnail={post.thumbnail}
-                  sharedAudioRef={sharedAudioRef}
-                  sharedCurrentTime={sharedCurrentTime}
-                  sharedDuration={sharedDuration}
-                  onSeek={onSeek}
-                />
-              </div>
-            </div>
-          ) : (
-            /* Only audio, no image - show audio full width */
-            <AudioWaveform
-              audioSrc={audioMedia.url}
-              isPlaying={sharedIsPlaying || isPlaying}
-              onTogglePlay={togglePlay}
-              audioTitle={post.audioTitle || post.title}
-              artistName={post.artistName || post.user}
-              album={post.album}
-              genre={post.genre}
-              releaseDate={post.releaseDate}
-              description={post.description}
-              thumbnail={post.thumbnail}
-              sharedAudioRef={sharedAudioRef}
-              sharedCurrentTime={sharedCurrentTime}
-              sharedDuration={sharedDuration}
-              onSeek={onSeek}
-            />
-          )
+          <AudioWaveform
+            audioSrc={audioMedia.url}
+            isPlaying={sharedIsPlaying || isPlaying}
+            onTogglePlay={togglePlay}
+            audioTitle={audioTitle}
+            artistName={artistName}
+            album={post.album}
+            genre={genre}
+            releaseDate={post.releaseDate}
+            description={description}
+            thumbnail={thumbnail}
+            sharedAudioRef={sharedAudioRef}
+            sharedCurrentTime={sharedCurrentTime}
+            sharedDuration={sharedDuration}
+            onSeek={onSeek}
+          />
         )}
 
         {/* Display music info if populated but no audio source */}
-        {!audioMedia && (post.audioTitle || post.artistName || post.thumbnail) && (
+        {!audioMedia && (audioTitle || artistName || thumbnail) && (
           <div className="post-music-card">
-            {post.thumbnail && (
-              <img src={post.thumbnail} alt={post.audioTitle || "Cover"} className="music-cover" />
+            {thumbnail && (
+              <img src={thumbnail} alt={audioTitle || "Cover"} className="music-cover" />
             )}
-            <div className="music-meta">
-              {post.audioTitle && <div className="music-title">{post.audioTitle}</div>}
-              {post.artistName && <div className="music-artist">{post.artistName}</div>}
-              {post.genre && <div className="music-genre">{post.genre}</div>}
-            </div>
+            {/* <div className="music-meta">
+              {audioTitle && <div className="music-title">{audioTitle}</div>}
+              {artistName && <div className="music-artist">{artistName}</div>}
+              {genre && <div className="music-genre">{genre}</div>}
+            </div> */}
           </div>
         )}
+
 
         {/* Display medias if no audio - normal vertical layout */}
         {!audioMedia && (medias.images.length > 0 || medias.videos.length > 0) && (
           <div className="post-medias">
             {/* Display images */}
             {medias.images.length > 0 && (
-              <div 
+              <div
                 className={`post-images ${medias.images.length > 1 ? 'post-images-grid' : ''}`}
                 data-count={medias.images.length}
               >
@@ -285,12 +243,12 @@ export default function PostCard({
                   const isLastImage = index === medias.images.length - 1;
                   const remainingCount = medias.images.length - 5;
                   const shouldShowOverlay = medias.images.length > 5 && isLastImage && remainingCount > 0;
-                  
+
                   return (
-                    <img 
-                      key={img.id || index} 
-                      src={img.url} 
-                      alt={img.caption || `Post image ${index + 1}`} 
+                    <img
+                      key={img.id || index}
+                      src={img.url}
+                      alt={img.caption || `Post image ${index + 1}`}
                       className="post-image"
                       onClick={() => handleImageClick(img.url)}
                       data-remaining={shouldShowOverlay ? remainingCount : undefined}
@@ -299,12 +257,12 @@ export default function PostCard({
                 })}
               </div>
             )}
-            
+
             {/* Display videos */}
             {medias.videos.length > 0 && (
               <div className="post-videos">
                 {medias.videos.map((video, index) => (
-                  <VideoPlayer 
+                  <VideoPlayer
                     key={video.id || index}
                     src={video.url}
                     poster={video.thumbnail || video.poster}
@@ -315,23 +273,23 @@ export default function PostCard({
             )}
           </div>
         )}
-        
+
         {/* Fallback: Display single image for backward compatibility */}
         {!audioMedia && !post.medias && post.image && (
-          <img 
-            src={post.image} 
-            alt="post" 
+          <img
+            src={post.image}
+            alt="post"
             className="post-image"
             onClick={() => handleImageClick(post.image)}
           />
         )}
         {!audioMedia && !post.medias && post.videoSrc && !post.image && (
-          <VideoPlayer 
+          <VideoPlayer
             src={post.videoSrc}
             className="post-video"
           />
         )}
-        
+
         {post.hashtags && post.hashtags.length > 0 && (
           <div className="post-tags">
             {post.hashtags.map((tag, i) => (
@@ -356,8 +314,8 @@ export default function PostCard({
             </svg>
             <span className="action-count">{likeCount}</span>
           </button>
-          <button 
-            className="action-btn comment-btn" 
+          <button
+            className="action-btn comment-btn"
             aria-label="Comment"
             onClick={() => setShowComments(!showComments)}
           >
@@ -375,7 +333,7 @@ export default function PostCard({
             <span className="action-count">{post.shares || 0}</span>
           </button>
         </div>
-        {post.views && (
+        {/* {post.views && (
           <div className="post-views">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -383,7 +341,7 @@ export default function PostCard({
             </svg>
             <span>{post.views}</span>
           </div>
-        )}
+        )} */}
       </div>
 
       {/* Image Detail Modal */}

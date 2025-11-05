@@ -57,13 +57,13 @@
 
 .story-user {
   font-weight: 600;
-  color: #fff;
+  color: rgb(var(--white));
   margin: 0;
 }
 
 .story-caption {
   font-size: 0.85rem;
-  color: #e5e7eb;
+  color: rgb(var(--muted-foreground));
   margin: 0;
 }
 
@@ -84,8 +84,8 @@
 }
 
 .story-controls button {
-  background: rgba(0,0,0,0.35);
-  color: #fff;
+  background: rgb(var(--black) / 0.35);
+  color: rgb(var(--white));
   border: none;
   border-radius: 50%;
   width: 44px;
@@ -106,8 +106,8 @@
   position: absolute;
   top: 12px;
   right: 12px;
-  background: rgba(0,0,0,0.35);
-  color: #fff;
+  background: rgb(var(--black) / 0.35);
+  color: rgb(var(--white));
   border: none;
   border-radius: 50%;
   width: 32px;

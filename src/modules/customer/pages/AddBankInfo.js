@@ -1,12 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import bankInfoApi from "../../../api/bankInfoApi";
 import "../../../styles/modules/addBankInfo.css";
 
 export default function AddBankInfo() {
   const navigate = useNavigate();
-  const storedUser = JSON.parse(localStorage.getItem("user"));
-  const storedSession = JSON.parse(localStorage.getItem("session")) || {};
+  // Parse once to prevent changing object references on each render (avoids effect loops)
+  const storedUser = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("user")); } catch { return null; }
+  }, []);
+  const storedSession = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("session")) || {}; } catch { return {}; }
+  }, []);
 
   const [formData, setFormData] = useState({
     bankName: "",
@@ -65,8 +70,9 @@ export default function AddBankInfo() {
           const barEntity = storedSession.entities?.find(
             (e) => e.type === "BarPage" || e.role?.toLowerCase() === "bar"
           );
-          if (barEntity?.entityId) {
-            const res = await bankInfoApi.getByBarPageId(barEntity.entityId);
+          const barId = barEntity?.entityId || barEntity?.id;
+          if (barId) {
+            const res = await bankInfoApi.getByBarPageId(barId);
             if (res?.status === "success" && res.data) {
               setExistingBankInfo(res.data);
               setFormData({
@@ -87,7 +93,7 @@ export default function AddBankInfo() {
     };
 
     checkExistingBankInfo();
-  }, [entityType, storedUser, storedSession]);
+  }, [entityType]);
 
   // Update formData khi entityType thay đổi
   useEffect(() => {
@@ -104,7 +110,7 @@ export default function AddBankInfo() {
       setFormData((prev) => ({
         ...prev,
         accountId: null,
-        barPageId: barEntity?.entityId || null,
+        barPageId: barEntity?.entityId || barEntity?.id || null,
       }));
     }
   }, [entityType, storedUser, storedSession]);
@@ -262,7 +268,7 @@ export default function AddBankInfo() {
                 </option>
               ))}
             </select>
-            {formData.customBankInput && (
+            {customBankInput && (
               <input
                 type="text"
                 name="bankName"

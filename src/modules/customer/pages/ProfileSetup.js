@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { userApi } from "../../../api/userApi";
 import { locationApi } from "../../../api/locationApi";
 import { useNavigate } from "react-router-dom";
+import "../../../styles/modules/profileSetup.css";
 
 const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   const navigate = useNavigate();
@@ -462,25 +463,25 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="profile-setup min-h-screen py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="ps-title text-3xl font-bold mb-2">
             Hoàn thiện hồ sơ
           </h1>
-          <p className="text-gray-600 max-w-2xl mx-auto">
+          <p className="ps-muted max-w-2xl mx-auto">
             Tạo hồ sơ cá nhân để kết nối với cộng đồng. Hãy chia sẻ một chút về bản thân!
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form Section */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
+          <div className="ps-card rounded-2xl p-6 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* User Name */}
               <div>
-                <label htmlFor="userName" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="userName" className="ps-label block text-sm font-medium mb-2">
                   Tên hiển thị <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -489,8 +490,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   name="userName"
                   value={form.userName}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${errors.userName ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                    }`}
+                  className={`ps-input w-full px-4 py-3 rounded-xl ${errors.userName ? 'ps-input-error' : ''}`}
                   placeholder="Nhập tên hiển thị của bạn"
                   aria-describedby={errors.userName ? 'userName-error' : undefined}
                   required
@@ -504,7 +504,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
 
               {/* Avatar */}
               <div>
-                <label htmlFor="avatar" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="avatar" className="ps-label block text-sm font-medium mb-2">
                   Ảnh đại diện <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -513,7 +513,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   name="avatar"
                   accept="image/*"
                   onChange={handleFileChange}
-                  className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-transparent"
                   aria-describedby={errors.avatar ? 'avatar-error' : undefined}
                   required={!form.avatar}
                 />
@@ -526,7 +526,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
 
               {/* Background */}
               <div>
-                <label htmlFor="background" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="background" className="ps-label block text-sm font-medium mb-2">
                   Ảnh nền
                 </label>
                 <input
@@ -535,7 +535,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   name="background"
                   accept="image/*"
                   onChange={handleFileChange}
-                  className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                  className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-transparent"
                   aria-describedby={errors.background ? 'background-error' : undefined}
                 />
                 {errors.background && (
@@ -547,7 +547,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
 
               {/* Bio */}
               <div>
-                <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="bio" className="ps-label block text-sm font-medium mb-2">
                   Giới thiệu bản thân
                 </label>
                 <textarea
@@ -556,17 +556,17 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   value={form.bio}
                   onChange={handleInputChange}
                   rows={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors resize-none"
+                  className="ps-input w-full px-4 py-3 rounded-xl resize-none"
                   placeholder="Chia sẻ một chút về bản thân, sở thích, hoặc điều gì đó đặc biệt..."
                 />
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm ps-hint">
                   {form.bio.length}/500 ký tự
                 </p>
               </div>
 
               {/* Address - Province */}
               <div>
-                <label htmlFor="province" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="province" className="ps-label block text-sm font-medium mb-2">
                   Tỉnh/Thành phố
                 </label>
                 <select
@@ -575,7 +575,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   value={selectedProvinceId}
                   onChange={(e) => handleLocationChange('province', e.target.value)}
                   disabled={locationLoading}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="ps-input w-full px-4 py-3 rounded-xl disabled:cursor-not-allowed"
                 >
                   <option value="">-- Chọn Tỉnh/Thành phố --</option>
                   {provinces.map((province) => (
@@ -589,7 +589,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               {/* Address - District */}
               {selectedProvinceId && (
                 <div>
-                  <label htmlFor="district" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="district" className="ps-label block text-sm font-medium mb-2">
                     Quận/Huyện
                   </label>
                   <select
@@ -598,7 +598,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                     value={selectedDistrictId}
                     onChange={(e) => handleLocationChange('district', e.target.value)}
                     disabled={locationLoading || !selectedProvinceId}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="ps-input w-full px-4 py-3 rounded-xl disabled:cursor-not-allowed"
                   >
                     <option value="">-- Chọn Quận/Huyện --</option>
                     {districts.map((district) => (
@@ -613,7 +613,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               {/* Address - Ward */}
               {selectedDistrictId && (
                 <div>
-                  <label htmlFor="ward" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="ward" className="ps-label block text-sm font-medium mb-2">
                     Phường/Xã
                   </label>
                   <select
@@ -622,7 +622,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                     value={selectedWardId}
                     onChange={(e) => handleLocationChange('ward', e.target.value)}
                     disabled={locationLoading || !selectedDistrictId}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="ps-input w-full px-4 py-3 rounded-xl disabled:cursor-not-allowed"
                   >
                     <option value="">-- Chọn Phường/Xã --</option>
                     {wards.map((ward) => (
@@ -637,7 +637,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               {/* Additional Address Detail */}
               {(selectedProvinceId || selectedDistrictId || selectedWardId) && (
                 <div>
-                  <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="address" className="ps-label block text-sm font-medium mb-2">
                     Địa chỉ chi tiết (số nhà, tên đường...)
                   </label>
                   <input
@@ -646,10 +646,10 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                     name="address"
                     value={form.address}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                    className="ps-input w-full px-4 py-3 rounded-xl"
                     placeholder="Số nhà, tên đường, tổ, khu phố..."
                   />
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs ps-hint">
                     Địa chỉ đầy đủ: {buildAddress() || 'Chưa chọn'}
                   </p>
                 </div>
@@ -657,7 +657,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
 
               {/* Phone */}
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="phone" className="ps-label block text-sm font-medium mb-2">
                   Số điện thoại
                 </label>
                 <input
@@ -666,8 +666,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   name="phone"
                   value={form.phone}
                   onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors ${errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                    }`}
+                  className={`ps-input w-full px-4 py-3 rounded-xl ${errors.phone ? 'ps-input-error' : ''}`}
                   placeholder="+84 123 456 789"
                   aria-describedby={errors.phone ? 'phone-error' : undefined}
                 />
@@ -679,7 +678,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               </div>
               {/* Gender */}
               <div>
-                <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="gender" className="ps-label block text-sm font-medium mb-2">
                   Giới tính
                 </label>
                 <select
@@ -687,7 +686,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   name="gender"
                   value={form.gender}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                  className="ps-input w-full px-4 py-3 rounded-xl"
                 >
                   <option value="">-- Chọn giới tính --</option>
                   <option value="male">Nam</option>
@@ -741,10 +740,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               <button
                 type="submit"
                 disabled={!isFormValid || isLoading}
-                className={`w-full py-3 px-6 rounded-xl font-medium transition-all duration-200 ${isFormValid && !isLoading
-                  ? 'bg-teal-600 hover:bg-teal-700 text-white shadow-sm hover:shadow-md'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                className={`ps-btn-primary w-full py-3 px-6 rounded-xl font-medium ${!isFormValid || isLoading ? 'ps-btn-disabled' : ''}`}
                 aria-describedby="submit-help"
               >
                 {isLoading ? (
@@ -764,11 +760,11 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
           </div>
 
           {/* Preview Section */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Xem trước hồ sơ</h3>
+          <div className="ps-card ps-preview rounded-2xl p-6 sm:p-8">
+            <h3 className="ps-title text-lg font-semibold mb-6">Xem trước hồ sơ</h3>
 
             {/* Profile Card Preview */}
-            <div className="bg-gradient-to-br from-teal-50 to-blue-50 rounded-xl p-6 space-y-4">
+            <div className="ps-preview-body rounded-xl p-6 space-y-4">
               {/* Background Image */}
               {form.background ? (
                 <div className="relative h-32 rounded-lg overflow-hidden">
@@ -782,8 +778,8 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   />
                 </div>
               ) : (
-                <div className="h-32 bg-gradient-to-r from-teal-200 to-blue-200 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-500 text-sm">Ảnh nền</span>
+                <div className="h-32 ps-cover rounded-lg flex items-center justify-center">
+                  <span className="ps-muted text-sm">Ảnh nền</span>
                 </div>
               )}
 
@@ -807,14 +803,14 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                 </div>
 
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900">
+                  <h4 className="ps-title font-semibold">
                     {form.userName || 'Tên người dùng'}
                   </h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm ps-muted">
                     {buildAddress() || form.address || 'Địa chỉ'}
                   </p>
                   {form.gender && (
-                    <p className="text-sm text-gray-600 capitalize">
+                    <p className="text-sm ps-muted capitalize">
                       {form.gender === 'male' ? 'Nam' : form.gender === 'female' ? 'Nữ' : 'Khác'}
                     </p>
                   )}
@@ -823,7 +819,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               {/* Bio */}
               {form.bio && (
                 <div className="pt-2">
-                  <p className="text-sm text-gray-700 leading-relaxed">
+                  <p className="text-sm ps-body leading-relaxed">
                     {form.bio}
                   </p>
                 </div>
@@ -832,7 +828,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               {/* Contact Info */}
               <div className="pt-2 space-y-1">
                 {form.phone && (
-                  <p className="text-sm text-gray-600 flex items-center">
+                  <p className="text-sm ps-muted flex items-center">
                     <span className="mr-2">📞</span>
                     {form.phone}
                   </p>
@@ -841,9 +837,9 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
             </div>
 
             {/* Tips */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-xl">
-              <h4 className="font-medium text-blue-900 mb-2">💡 Mẹo hay</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
+            <div className="mt-6 p-4 ps-subtle rounded-xl">
+              <h4 className="ps-title font-medium mb-2">💡 Mẹo hay</h4>
+              <ul className="text-sm ps-muted space-y-1">
                 <li>• Sử dụng ảnh chất lượng cao cho avatar</li>
                 <li>• Viết bio ngắn gọn, thú vị</li>
                 <li>• Cập nhật thông tin liên hệ chính xác</li>

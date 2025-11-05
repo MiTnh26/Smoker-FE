@@ -51,7 +51,7 @@
   height: 40px;
   border-radius: 50%;
   background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
-  color: white;
+  color: rgb(var(--primary-foreground));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,12 +110,12 @@
 }
 
 .chatwin__body::-webkit-scrollbar-thumb {
-  background: rgba(var(--muted-foreground-rgb), 0.3);
+  background: rgba(var(--muted-foreground) / 0.3);
   border-radius: 3px;
 }
 
 .chatwin__body::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--muted-foreground-rgb), 0.5);
+  background: rgba(var(--muted-foreground) / 0.5);
 }
 
 /* Message bubbles - Facebook style */

@@ -32,6 +32,13 @@
   --input: 243 244 246; /* Màu nền input, textfield */
   --input-border: 229 231 235; /* Màu viền input */
   --overlay: 0 0 0 / 0.4; /* Màu lớp phủ cho modal, backdrop, overlay */
+
+  /* ===== 🎯 EXTRA SEMANTIC TOKENS (for legacy replacements) ===== */
+  --white: 255 255 255; /* Dùng thay cho #fff */
+  --black: 0 0 0;       /* Dùng thay cho #000 */
+  --accent: 255 107 0;  /* Cam — thay thế tạm cho #FF6B00 (audio progress) */
+  --highlight: 255 0 122; /* Hồng đậm — thay thế ring story (#ff007a) */
+  --primary-hover: 99 102 241; /* fallback nếu có nơi dùng --primary-hover */
 }
 
 /* ===== 🌙 DARK MODE ===== */
@@ -62,6 +69,13 @@
   --input: 55 65 81; /* Màu nền input tối */
   --input-border: 75 85 99; /* Viền input tối hơn một chút */
   --overlay: 0 0 0 / 0.6; /* Lớp phủ modal đậm hơn */
+
+  /* Keep extra tokens consistent across themes */
+  --white: 255 255 255;
+  --black: 0 0 0;
+  --accent: 255 107 0;
+  --highlight: 255 0 122;
+  --primary-hover: 147 51 234; /* hover gần primary trong dark */
 }
 [data-theme='dj'] {
   --primary: 255 0 128;

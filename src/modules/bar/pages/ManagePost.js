@@ -32,8 +32,10 @@ const ManagePost = () => {
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const res = await getPosts();
-      setPosts(res.data.data || []);
+      const res = await getPosts({ includeMedias: true, includeMusic: true });
+      // Support both shapes
+      const list = res?.data?.data || res?.data || res || [];
+      setPosts(Array.isArray(list) ? list : []);
     } catch (err) {
       setError("Lỗi tải bài viết");
     }
@@ -598,6 +600,14 @@ const ManagePost = () => {
                   {post.images && (
                     <img
                       src={typeof post.images === "string" ? post.images : Object.values(post.images)[0]?.url}
+                      alt=""
+                      className="max-h-32 rounded mt-1"
+                    />
+                  )}
+                  {/* Fallback to medias[0] or music.coverUrl if available */}
+                  {!post.images && (post.medias?.[0]?.url || post.music?.coverUrl) && (
+                    <img
+                      src={post.medias?.[0]?.url || post.music?.coverUrl}
                       alt=""
                       className="max-h-32 rounded mt-1"
                     />

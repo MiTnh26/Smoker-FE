@@ -66,6 +66,21 @@ export default function CommentSection({ postId, onClose, inline = false }) {
     return String(id);
   };
 
+  // Resolve avatar for an account id using session (fallback to placeholder)
+  const getAvatarForAccount = (accountId) => {
+    try {
+      const raw = localStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      const me = session?.account;
+      const active = session?.activeEntity || me;
+      const myIds = [me?.id, active?.id].filter(Boolean).map(String);
+      if (accountId && myIds.includes(String(accountId))) {
+        return active?.avatar || me?.avatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz48L3N2Zz4=";
+      }
+    } catch {}
+    return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz48cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjgiIHI9IjQiIGZpbGw9IiM5Y2EzYWYiLz48L3N2Zz4=";
+  };
+
   const loadComments = async () => {
     try {
       setLoading(true);
@@ -606,11 +621,14 @@ export default function CommentSection({ postId, onClose, inline = false }) {
           ) : (
             comments.map((comment) => (
               <div key={comment.id} className="comment-item">
-                <div className="comment-content">
+                <div className="comment-row">
+                  <img className="comment-avatar" src={getAvatarForAccount(comment.accountId)} alt="avatar" />
+                  <div className="comment-content">
                   <div className="comment-text">{comment.content}</div>
                   {comment.images && (
                     <img src={comment.images} alt="comment" className="comment-image" />
                   )}
+                  </div>
                 </div>
                 
                 <div className="comment-actions">
@@ -678,11 +696,14 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                   <div className="replies-list">
                     {comment.replies.map((reply) => (
                       <div key={reply.id} className="reply-item">
-                        <div className="reply-content">
+                        <div className="reply-row">
+                          <img className="reply-avatar" src={getAvatarForAccount(reply.accountId)} alt="avatar" />
+                          <div className="reply-content">
                           <div className="reply-text">{reply.content}</div>
                           {reply.images && (
                             <img src={reply.images} alt="reply" className="reply-image" />
                           )}
+                          </div>
                         </div>
                         <div className="reply-actions">
                           <button

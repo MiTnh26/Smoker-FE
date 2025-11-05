@@ -86,13 +86,13 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
               )}
             </div>
           )}
-          <input
+          {/* <input
             type="text"
             placeholder="Tiêu đề"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="media-caption-input"
-          />
+          /> */}
           <textarea
             rows={5}
             placeholder="Nội dung"

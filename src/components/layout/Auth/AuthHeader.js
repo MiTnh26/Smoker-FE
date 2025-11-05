@@ -14,16 +14,15 @@ export default function AuthHeader() {
         <span className="header-title">Smoker</span>
         <div className="header-buttons">
           <Button
-            variant="outline"
             size="default"
-            className="rounded-xl bg-transparent"
+            className="btn-login rounded-xl"
             onClick={() => navigate("/login")} // điều hướng đến trang login
           >
             Đăng nhập
           </Button>
           <Button
             size="default"
-            className="rounded-xl bg-primary hover:bg-primary/90"
+            className="btn-register rounded-xl"
             onClick={() => navigate("/register")} // điều hướng đến trang register
           >
             Đăng ký

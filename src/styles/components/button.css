@@ -5,7 +5,7 @@
 
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium text-white transition;
+    @apply px-4 py-2 rounded-lg font-medium transition;
     background-color: rgb(var(--primary)); /* dùng biến theme */
     color: rgb(var(--primary-foreground)); /* chữ trên nền primary */
   }
@@ -17,5 +17,32 @@
   .btn:disabled {
     @apply opacity-60 cursor-not-allowed;
     background-color: rgb(var(--primary) / 0.5); /* nhạt hơn */
+  }
+
+  /* Outline variant */
+  .btn-outline {
+    background-color: transparent;
+    color: rgb(var(--primary));
+    border: 1px solid rgb(var(--primary));
+  }
+  .btn-outline:hover {
+    background-color: rgba(var(--primary) / 0.08);
+  }
+
+  /* Color variants */
+  .btn-blue {
+    background-color: rgb(var(--primary));
+    color: rgb(var(--primary-foreground));
+  }
+  .btn-blue:hover {
+    background-color: rgb(var(--primary-hover));
+  }
+
+  .btn-purple {
+    background-color: rgb(var(--secondary));
+    color: rgb(var(--secondary-foreground));
+  }
+  .btn-purple:hover {
+    filter: brightness(0.95);
   }
 }

@@ -229,6 +229,23 @@
   padding: 0.75rem 0;
 }
 
+.comment-row,
+.reply-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.comment-avatar,
+.reply-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  object-fit: cover;
+  background: rgba(var(--muted), 0.6);
+  flex-shrink: 0;
+}
+
 .comment-content,
 .reply-content {
   margin-bottom: 0.5rem;

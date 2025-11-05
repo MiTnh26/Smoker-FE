@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: #000;
+  background: rgb(var(--black));
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -31,7 +31,7 @@
 .viewer-main .video-container {
   flex: 1;
   position: relative;
-  background: #000;
+  background: rgb(var(--black));
   border-radius: var(--radius);
   overflow: hidden;
   display: flex;

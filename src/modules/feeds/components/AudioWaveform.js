@@ -99,6 +99,15 @@ export default function AudioWaveform({
     setWaveformData(data);
   };
 
+  // Always show waveform immediately even before metadata loads
+  useEffect(() => {
+    if (!waveformData.length) {
+      generateWaveform();
+    }
+    if (!isLoaded) setIsLoaded(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const drawWaveform = () => {
     if (!canvasRef.current || !waveformData.length) return;
     
@@ -109,6 +118,10 @@ export default function AudioWaveform({
     const barWidth = width / waveformData.length;
     const progress = actualDuration > 0 ? actualCurrentTime / actualDuration : 0;
 
+    // Use explicit colors to avoid CSS variable issues
+    const primaryColor = '#7c3aed';        // purple-600
+    const mutedColor = 'rgba(148, 163, 184, 0.3)'; // slate-400 @ 0.3
+
     ctx.clearRect(0, 0, width, height);
 
     waveformData.forEach((value, index) => {
@@ -116,11 +129,9 @@ export default function AudioWaveform({
       const barHeight = value * height * 0.8;
       const y = (height - barHeight) / 2;
       const isPast = index / waveformData.length < progress;
-
-      ctx.fillStyle = isPast 
-        ? 'rgba(var(--primary), 0.8)' 
-        : 'rgba(var(--muted-foreground), 0.3)';
-      
+ 
+      ctx.fillStyle = isPast ? primaryColor : mutedColor;
+       
       ctx.fillRect(x, y, barWidth - 2, barHeight);
     });
   };

@@ -95,8 +95,9 @@
   }
 
   .user-menu-avatar {
-    @apply flex items-center justify-center rounded-full p-3 text-white;
+    @apply flex items-center justify-center rounded-full p-3;
     background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+    color: rgb(var(--primary-foreground));
   }
 
   .user-menu-info h3 {
@@ -136,7 +137,7 @@
   }
   .user-menu-logout:hover {
     @apply transform translate-x-1;
-    background-color: rgba(var(--danger-rgb), 0.1);
+    background-color: rgba(var(--danger) / 0.1);
   }
 
   @keyframes slideDown {
@@ -159,7 +160,7 @@
     color: rgb(var(--foreground));
   }
   .panel-header button:hover {
-    background-color: rgba(var(--foreground-rgb), 0.1);
+    background-color: rgba(var(--foreground) / 0.1);
     color: rgb(var(--primary));
   }
 
@@ -183,8 +184,9 @@
   }
 
   .sidebar-user-avatar {
-    @apply flex items-center justify-center rounded-full p-2 text-white;
+    @apply flex items-center justify-center rounded-full p-2;
     background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+    color: rgb(var(--primary-foreground));
   }
 
   .sidebar-user-info h3 {
@@ -237,5 +239,24 @@
 
   .header-buttons {
     @apply flex items-center gap-3;
+  }
+
+  /* Explicit header button variants to avoid conflicts */
+  .header-buttons .btn-login {
+    background-color: rgb(var(--primary));
+    color: rgb(var(--primary-foreground));
+    border: 1px solid rgb(var(--primary));
+  }
+  .header-buttons .btn-login:hover {
+    filter: brightness(0.95);
+  }
+
+  .header-buttons .btn-register {
+    background-color: rgb(var(--secondary));
+    color: rgb(var(--secondary-foreground));
+    border: 1px solid rgb(var(--secondary));
+  }
+  .header-buttons .btn-register:hover {
+    filter: brightness(0.95);
   }
 }

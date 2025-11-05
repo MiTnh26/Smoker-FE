@@ -62,7 +62,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #000;
+  background: rgb(var(--black));
   min-width: 0;
   max-width: 60%;
 }

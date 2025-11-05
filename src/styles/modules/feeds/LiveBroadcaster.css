@@ -139,7 +139,7 @@
   position: relative;
   width: 100%;
   flex: 1;
-  background: #000;
+  background: rgb(var(--black));
   border-radius: var(--radius);
   overflow: hidden;
   margin-bottom: 20px;
@@ -157,7 +157,7 @@
   width: 100% !important;
   height: 100% !important;
   object-fit: cover;
-  background: #000;
+  background: rgb(var(--black));
 }
 
 .live-badge {

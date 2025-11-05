@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { userApi } from "../../../api/userApi";
 import { locationApi } from "../../../api/locationApi";
 import axiosClient from "../../../api/axiosClient";
-import { Button } from "../../../components/common/Button";
 import AddressSelector from "../../../components/common/AddressSelector";
 import "../../../styles/modules/profile.css";
-import ProfileFollowInfo from "../components/ProfileFollowInfo";
+import CreatePostBox from "../../feeds/components/CreatePostBox";
+import PostComposerModal from "../../feeds/components/PostComposerModal";
 
 export default function Profile() {
   const [profile, setProfile] = useState({
@@ -29,7 +29,10 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBackground, setUploadingBackground] = useState(false);
-  const [activeTab, setActiveTab] = useState("info"); // info, posts, videos, reviews
+  const [activeTab, setActiveTab] = useState("posts"); // posts, videos
+  const [userVideos, setUserVideos] = useState([]);
+  const [videosLoading, setVideosLoading] = useState(true);
+  const [composerOpen, setComposerOpen] = useState(false);
   
   // Location states
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -71,8 +74,8 @@ export default function Profile() {
             }
           }
           
-          // Load user posts after profile is loaded
-          await loadUserPosts(res.data.id);
+          // Load user posts and videos after profile is loaded
+          await loadUserContent();
         } else setError(res.message || "Không tải được hồ sơ");
       } catch (e) {
         setError(e?.response?.data?.message || "Không tải được hồ sơ");
@@ -82,9 +85,10 @@ export default function Profile() {
     })();
   }, []);
 
-  const loadUserPosts = async (userId) => {
+  const loadUserContent = async () => {
     try {
       setPostsLoading(true);
+      setVideosLoading(true);
       
       // Get session to determine current user
       let session;
@@ -97,8 +101,10 @@ export default function Profile() {
       
       const currentUserId = session?.activeEntity?.id || session?.account?.id;
       
-      // Load posts from posts collection
-      const postsResponse = await axiosClient.get(`/posts/author/${currentUserId}`);
+      // Load posts from posts collection (include medias for videos tab)
+      const postsResponse = await axiosClient.get(`/posts/author/${currentUserId}`, {
+        params: { includeMedias: true }
+      });
       const posts = postsResponse.success ? postsResponse.data : [];
       
       // Load music posts from musics collection  
@@ -111,7 +117,7 @@ export default function Profile() {
         type: 'post',
         title: post.title || post["Tiêu Đề"],
         content: post.content || post.caption,
-        image: post.url && post.url !== "default-post.jpg" ? post.url : null,
+        image: post.url && post.url !== "default-post.jpg" ? post.url : (post.medias && post.medias[0]?.url && !/\.(mp4|webm|mov)$/i.test(post.medias[0]?.url) ? post.medias[0].url : null),
         createdAt: post.createdAt,
         likes: post.likes ? Object.keys(post.likes).length : 0,
         comments: post.comments ? Object.keys(post.comments).length : 0,
@@ -139,10 +145,34 @@ export default function Profile() {
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       
       setUserPosts(allPosts);
+
+      // Extract videos from post medias
+      const isVideoMedia = (m) => {
+        const mime = (m?.mime || '').toLowerCase();
+        const url = m?.url || '';
+        return mime.startsWith('video/') || /\.(mp4|webm|mov|mkv|m4v)$/i.test(url);
+      };
+
+      const videos = (posts || []).flatMap(p => {
+        const medias = Array.isArray(p.medias) ? p.medias : [];
+        return medias.filter(isVideoMedia).map(m => ({
+          id: m._id || `${p._id}-${m.url}`,
+          postId: p._id,
+          url: m.url,
+          mime: m.mime || '',
+          createdAt: p.createdAt,
+          title: p.title || p.caption || 'Video',
+          authorName: p.authorEntityName || 'Người dùng',
+          authorAvatar: p.authorEntityAvatar || null
+        }));
+      }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      setUserVideos(videos);
     } catch (error) {
       console.error("Error loading user posts:", error);
     } finally {
       setPostsLoading(false);
+      setVideosLoading(false);
     }
   };
 
@@ -425,12 +455,6 @@ export default function Profile() {
       {/* --- TABS --- */}
       <div className="profile-tabs">
         <button 
-          className={activeTab === "info" ? "active" : ""}
-          onClick={() => setActiveTab("info")}
-        >
-          Thông tin
-        </button>
-        <button 
           className={activeTab === "posts" ? "active" : ""}
           onClick={() => setActiveTab("posts")}
         >
@@ -442,66 +466,24 @@ export default function Profile() {
         >
           Video
         </button>
-        <button 
-          className={activeTab === "reviews" ? "active" : ""}
-          onClick={() => setActiveTab("reviews")}
-        >
-          Đánh giá
-        </button>
       </div>
 
-      {/* --- MAIN CONTENT (TAB: INFO) --- */}
-      {activeTab === "info" && (
-        <div className="profile-body">
-          {/* LEFT */}
-          <div className="profile-left">
-            <div className="profile-card">
-              <h3 className="section-title">Sự kiện</h3>
-              <div className="event-list">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="event-circle" />
-                ))}
-              </div>
-            </div>
-
-            <div className="profile-card mt-4">
-              <h3 className="section-title">Menu</h3>
-              <div className="menu-grid">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="menu-item" />
-                ))}
-              </div>
-              {/* Chuyển nút thành biểu tượng cây bút nhỏ ở góc */}
-              <div className="flex justify-end mt-2">
-                <i className="bx bx-edit-alt text-[#a78bfa] cursor-pointer hover:text-white transition"></i>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT */}
-          <ProfileFollowInfo
-            followers={profile.followers || 2}
-            following={profile.following || 2}
-            friends={profile.friends || 2}
-            bio={profile.bio}
-          />
-        </div>
-      )}
+      {/* Info tab removed per requirement */}
 
       {/* --- TAB: POSTS --- */}
       {activeTab === "posts" && (
         <div className="profile-posts-tab">
-          {/* POST CREATE AREA */}
+          {/* POST CREATE AREA (reuse global form) */}
           <section className="post-section">
-            <div className="post-create">
-              <img
-                src={profile.avatar || "https://via.placeholder.com/40"}
-                alt="avatar"
-                className="avatar-small"
-              />
-              <input type="text" placeholder="Bạn muốn đăng gì..." />
-              <i className="bx bx-image text-[#a78bfa] text-xl"></i>
-            </div>
+            <CreatePostBox onCreate={() => setComposerOpen(true)} onMediaClick={() => setComposerOpen(true)} />
+            <PostComposerModal 
+              open={composerOpen}
+              onClose={() => setComposerOpen(false)}
+              onCreated={() => {
+                // Reload posts/videos after successful create
+                loadUserContent();
+              }}
+            />
           </section>
 
           {/* POST LIST */}
@@ -579,22 +561,53 @@ export default function Profile() {
       {/* --- TAB: VIDEOS --- */}
       {activeTab === "videos" && (
         <div className="profile-videos-tab">
-          <div className="text-center py-12">
-            <i className="bx bx-video text-6xl text-gray-300 mb-4"></i>
-            <p className="text-gray-400 text-lg">Chức năng Video đang được phát triển</p>
-          </div>
+          {videosLoading ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400">Đang tải video...</p>
+            </div>
+          ) : userVideos.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400">Chưa có video nào.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {userVideos.map((v) => (
+                <div key={v.id} className="post-card">
+                  <div className="post-header">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={v.authorAvatar || profile.avatar || "https://via.placeholder.com/40"}
+                        alt="avatar"
+                        className="avatar-small"
+                      />
+                      <div>
+                        <h4>{v.authorName || profile.userName || "Người dùng"}</h4>
+                        <p className="text-sm text-gray-400">
+                          {new Date(v.createdAt).toLocaleString('vi-VN')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">🎬 Video</span>
+                      <i className="bx bx-dots-horizontal-rounded text-[#a78bfa]"></i>
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <h5 className="font-semibold mb-2">{v.title}</h5>
+                    <video controls className="w-full rounded-lg">
+                      <source src={v.url} type={v.mime || 'video/mp4'} />
+                      Trình duyệt không hỗ trợ phát video.
+                    </video>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* --- TAB: REVIEWS --- */}
-      {activeTab === "reviews" && (
-        <div className="profile-reviews-tab">
-          <div className="text-center py-12">
-            <i className="bx bx-star text-6xl text-gray-300 mb-4"></i>
-            <p className="text-gray-400 text-lg">Chức năng Đánh giá đang được phát triển</p>
-          </div>
-        </div>
-      )}
+      {/* Reviews tab removed per requirement */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">

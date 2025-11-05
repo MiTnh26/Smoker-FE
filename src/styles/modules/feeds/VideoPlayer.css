@@ -1,7 +1,7 @@
 .video-player-container {
   position: relative;
   width: 100%;
-  background: #000;
+  background: rgb(var(--black));
   border-radius: 0.875rem;
   overflow: hidden;
   cursor: pointer;
@@ -174,8 +174,8 @@
 }
 
 .video-control-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: rgb(var(--white) / 0.1);
+  color: rgb(var(--white));
   transform: scale(1.1);
 }
 

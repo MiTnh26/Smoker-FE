@@ -17,22 +17,22 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
   });
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  
+
   if (!open) return null;
 
   // Upload audio file via backend API (safer, uses backend Cloudinary config)
   const uploadAudioToCloudinary = async (file) => {
     const formData = new FormData();
     formData.append("audio", file); // Backend expects "audio" fieldname
-    
+
     try {
       const res = await uploadPostMedia(formData);
       console.log("[MUSIC] Upload response:", res);
-      
+
       // Backend returns: { success: true, data: [...], message: "..." }
       const responseData = res.data || res;
       const files = responseData.data || responseData;
-      
+
       if (files && files.length > 0) {
         const uploadedFile = files[0]; // Get first uploaded file
         return {
@@ -54,15 +54,15 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
   const uploadImageToCloudinary = async (file) => {
     const formData = new FormData();
     formData.append("images", file); // Backend expects "images" fieldname
-    
+
     try {
       const res = await uploadPostMedia(formData);
       console.log("[MUSIC] Upload image response:", res);
-      
+
       // Backend returns: { success: true, data: [...], message: "..." }
       const responseData = res.data || res;
       const files = responseData.data || responseData;
-      
+
       if (files && files.length > 0) {
         const uploadedFile = files[0]; // Get first uploaded file
         return {
@@ -145,13 +145,13 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
       alert("Đang upload, vui lòng đợi...");
       return;
     }
-    
+
     try {
       setSubmitting(true);
       console.log("[MUSIC] Starting music post submission");
 
-      // Determine author from session.activeEntity (fallback to account)
-      let session, authorId, accountId, authorRole;
+      // Lấy session
+      let session, accountId;
       try {
         const raw = localStorage.getItem("session");
         session = raw ? JSON.parse(raw) : null;
@@ -159,10 +159,8 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
         session = null;
       }
       const activeEntity = session?.activeEntity || session?.account;
-      authorId = activeEntity?.id || session?.account?.id;
       accountId = session?.account?.id;
-      
-      // Normalize role/type to match backend enum values
+
       const rawRole = (activeEntity?.role || activeEntity?.type || session?.account?.role || "").toLowerCase();
       let normalizedEntityType;
       if (rawRole === "business" || rawRole === "businessaccount") {
@@ -170,45 +168,41 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
       } else if (rawRole === "bar" || rawRole === "barpage") {
         normalizedEntityType = "BarPage";
       } else {
-        normalizedEntityType = "Account"; // customer, account, or any other -> Account
+        normalizedEntityType = "Account";
       }
-      authorRole = normalizedEntityType;
 
-      const postData = {
+      //  Tạo Music trước
+      const musicRes = await axiosClient.post("/music", {
+        title: formData.musicTitle,
+        artist: formData.artistName,
+        details: formData.description,
+        hashTag: formData.hashTag,
+        purchaseLink: formData.musicPurchaseLink,
+        coverUrl: formData.musicBackgroundImage,
+        audioUrl: formData.audioUrl,
+        uploaderId: accountId,
+        uploaderName: activeEntity?.name || session?.account?.userName,
+        uploaderAvatar: activeEntity?.avatar || session?.account?.avatar,
+      });
+      // axiosClient already returns response.data
+      const createdMusic = musicRes?.data ? musicRes.data : (musicRes?.success ? musicRes.data : musicRes);
+      console.log("[MUSIC] Music created:", createdMusic);
+
+      //  Sau đó tạo Post liên kết
+      const postRes = await axiosClient.post("/posts", {
         title: formData.musicTitle,
         content: formData.description,
-        caption: formData.description,
-        audios: {
-          "1": {
-            url: formData.audioUrl,
-            artist: formData.artistName,
-            thumbnail: formData.musicBackgroundImage
-          }
-        },
-        // Additional music fields
-        musicTitle: formData.musicTitle,
-        artistName: formData.artistName,
-        description: formData.description,
-        hashTag: formData.hashTag,
-        musicPurchaseLink: formData.musicPurchaseLink,
-        musicBackgroundImage: formData.musicBackgroundImage,
-        authorId,
+        type: "post",
         accountId,
-        authorRole,
-        // explicit entity identifiers (UUID-safe)
-        authorEntityId: activeEntity?.id || null,
-        authorEntityType: normalizedEntityType,
-        authorEntityName: activeEntity?.name || session?.account?.userName || null,
-        authorEntityAvatar: activeEntity?.avatar || session?.account?.avatar || null
-      };
-      
-      console.log("[MUSIC] Post data:", { musicTitle: formData.musicTitle, artistName: formData.artistName });
-      
-      const res = await axiosClient.post("/posts", postData);
-      
-      const created = res?.data || res;
-      console.log("[MUSIC] Music post created successfully");
-      onCreated?.(created?.data || created);
+        musicId: (createdMusic && createdMusic._id) || (createdMusic && createdMusic.data && createdMusic.data._id) || createdMusic?.id,
+        songId: null,
+      });
+
+      console.log("[MUSIC] Post created:", postRes);
+
+      // axiosClient returns response.data -> may be {success, data}
+      const createdPost = postRes?.data ? postRes.data : (postRes?.success ? postRes.data : postRes);
+      onCreated?.(createdPost);
       setFormData({
         musicTitle: "",
         artistName: "",
@@ -220,18 +214,15 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
         audioUrl: ""
       });
       onClose?.();
+
     } catch (err) {
       console.error("[MUSIC] Create music post failed:", err);
-      console.error("[MUSIC] Error details:", {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status
-      });
       alert("Đăng nhạc không thành công. Vui lòng thử lại.");
     } finally {
       setSubmitting(false);
     }
   };
+
 
   return (
     <div
@@ -252,7 +243,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
         <div className="modal-header">
           🎵 Đăng Nhạc (SoundCloud style)
         </div>
-        
+
         <form onSubmit={handleSubmit} className="modal-body">
           <div style={{ marginBottom: "1rem" }}>
             <label htmlFor="music-title" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
@@ -360,10 +351,10 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
               required
             />
             {formData.musicBackgroundImage && (
-              <img 
-                src={formData.musicBackgroundImage} 
-                alt="preview" 
-                style={{ maxHeight: "200px", borderRadius: "8px", marginTop: "0.5rem", width: "100%", objectFit: "cover" }} 
+              <img
+                src={formData.musicBackgroundImage}
+                alt="preview"
+                style={{ maxHeight: "200px", borderRadius: "8px", marginTop: "0.5rem", width: "100%", objectFit: "cover" }}
               />
             )}
           </div>
@@ -373,19 +364,19 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
               Đang upload... Vui lòng đợi hoàn tất.
             </div>
           )}
-          
+
           <div className="modal-footer">
-            <button 
-              type="button" 
-              onClick={onClose} 
-              disabled={submitting} 
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
               className="btn-cancel"
             >
               Hủy
             </button>
-            <button 
-              type="submit" 
-              disabled={submitting || uploading} 
+            <button
+              type="submit"
+              disabled={submitting || uploading}
               className="btn-submit"
             >
               {submitting ? "Đang đăng..." : (uploading ? "Đợi upload..." : "Đăng nhạc")}

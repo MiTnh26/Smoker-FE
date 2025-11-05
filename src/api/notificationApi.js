@@ -25,6 +25,11 @@ const notificationApi = {
   createNotification: (data) => {
     return axiosClient.post("/notifications", data);
   },
+
+  // Tạo test notification (for testing)
+  createTestNotification: (type) => {
+    return axiosClient.post("/notifications/test", { type });
+  },
 };
 
 export default notificationApi;

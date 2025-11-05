@@ -1,7 +1,7 @@
 /* 🎨 Bar Tables Container */
 .bar-tables-container {
   @apply max-w-[1200px] mx-auto p-5 font-inter text-[rgb(var(--foreground))] rounded-xl shadow-lg;
-  background: linear-gradient(135deg, #9e9ef3, #ff5bf4);
+  background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--secondary)));
 }
 
 .bar-tables-container h3 {

@@ -216,7 +216,26 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
 
   const handlePostCreated = (newPost) => {
     console.log("[FEED] New post created");
-    setPosts(prevPosts => [newPost, ...prevPosts]);
+    // Normalize possible response shapes
+    const raw = newPost && newPost.data ? newPost.data : newPost;
+    const postObj = raw && raw.post ? raw.post : raw; // in case of {post, music}
+    if (!postObj) return;
+    // Ensure minimal fields
+    const ensured = {
+      _id: postObj._id || postObj.id || postObj.postId,
+      createdAt: postObj.createdAt || new Date().toISOString(),
+      content: postObj.content || postObj.caption || "",
+      title: postObj.title || "",
+      likes: postObj.likes || {},
+      comments: postObj.comments || {},
+      medias: (raw && raw.medias) || postObj.medias || postObj.mediaIds || [],
+      musicId: postObj.musicId || postObj.music || null,
+      songId: postObj.songId || null,
+      type: postObj.type || "post",
+      accountId: postObj.accountId || postObj.authorId || null,
+      ...postObj
+    };
+    setPosts(prevPosts => [ensured, ...prevPosts]);
     setShowMediaComposer(false);
     setShowMusicComposer(false);
   };
@@ -282,6 +301,14 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
 
   // Transform post data to match PostCard component expectations
   const transformPost = (post) => {
+    const formatDateSafe = (value) => {
+      try {
+        const d = value ? new Date(value) : new Date();
+        return isNaN(d.getTime()) ? new Date().toLocaleString('vi-VN') : d.toLocaleString('vi-VN');
+      } catch {
+        return new Date().toLocaleString('vi-VN');
+      }
+    };
     const countTotalComments = (comments) => {
       if (!comments) return 0;
       let total = 0;
@@ -370,6 +397,10 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
     const viewerId = activeEntity?.id || currentUser?.id || null;
     const canManage = ownerId && viewerId && String(ownerId) === String(viewerId);
 
+    // Prefer populated objects if available
+    const populatedSong = (post.song && typeof post.song === 'object') ? post.song : null;
+    const populatedMusic = (post.music && typeof post.music === 'object') ? post.music : null;
+
     return {
       id: post._id || post.postId,
       user:
@@ -387,15 +418,12 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         post.account?.avatar ||
         currentUser?.avatar ||
         "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxNC4yMDkxIDEyIDE2IDEwLjIwOTEgMTYgOEMxNiA1Ljc5MDg2IDE0LjIwOTEgNCAxMiA0QzkuNzkwODYgNCA4IDUuNzkwODYgOCA4QzggMTAuMjA5MSA5Ljc5MDg2IDEyIDEyIDEyWiIgZmlsbD0iIzljYTNhZiIvPgo8cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cjwvc3ZnPgo=",
-      time: new Date(post.createdAt).toLocaleString('vi-VN'),
+      time: formatDateSafe(post.createdAt || post.updatedAt),
       content: post.content || post.caption || post["Tiêu Đề"],
       // Extract medias from post.medias Map/Object
       ...(() => {
         const extractedMedias = extractMedias(post.medias);
-        // Get first audio if available
-        const audioMedia = extractedMedias.audios?.[0];
-        const song = post.song || post.songId || null;
-        const songIsObj = song && typeof song === 'object' && !Array.isArray(song);
+        // Determine audio from priority: populated music -> populated song -> medias
         const isAudioUrl = (url) => {
           if (!url || typeof url !== 'string') return false;
           const u = url.toLowerCase();
@@ -407,40 +435,59 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
             u.includes('.aac')
           );
         };
-        const audioFromSong = (() => {
-          if (!songIsObj) return null;
+
+        const audioFromMusic = (() => {
+          if (!populatedMusic) return null;
           const candidates = [
-            song.audioUrl,
-            song.streamUrl,
-            song.fileUrl,
-            song.url,
-            song.sourceUrl,
-            song.downloadUrl,
-            song.purchaseLink,
+            populatedMusic.audioUrl,
+            populatedMusic.streamUrl,
+            populatedMusic.fileUrl,
+            populatedMusic.url,
+            populatedMusic.sourceUrl,
+            populatedMusic.downloadUrl,
+            populatedMusic.purchaseLink,
           ];
-          for (const candidate of candidates) {
-            if (isAudioUrl(candidate)) return candidate;
-          }
+          for (const c of candidates) if (isAudioUrl(c)) return c;
           return null;
         })();
-        
+
+        const audioFromSong = (() => {
+          if (!populatedSong) return null;
+          const candidates = [
+            populatedSong.audioUrl,
+            populatedSong.streamUrl,
+            populatedSong.fileUrl,
+            populatedSong.url,
+            populatedSong.sourceUrl,
+            populatedSong.downloadUrl,
+            populatedSong.purchaseLink,
+          ];
+          for (const c of candidates) if (isAudioUrl(c)) return c;
+          return null;
+        })();
+
+        const audioMedia = extractedMedias.audios?.[0];
+
+        // Prefer music fields for display if available
+        const displayTitle = (populatedMusic?.title) || (populatedSong?.title) || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null;
+        const displayArtist = (populatedMusic?.artist) || (populatedSong?.artist) || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null;
+        const displayThumb = (populatedMusic?.coverUrl) || (populatedSong?.coverUrl) || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null;
+
         return {
           medias: {
             images: extractedMedias.images,
-            videos: extractedMedias.videos // Only real videos, audio is separate
+            videos: extractedMedias.videos
           },
-          // Backward compatibility: first image for single image display
-          image: extractedMedias.images?.[0]?.url || null,
+          image: extractedMedias.images?.[0]?.url || displayThumb || null,
           videoSrc: extractedMedias.videos?.[0]?.url || null,
-          // Audio info - extract from post or music data
-          audioSrc: audioMedia?.url || post.audioSrc || audioFromSong || null,
-          audioTitle: (songIsObj ? song.title : null) || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
-          artistName: (songIsObj ? song.artist : null) || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null,
+          audioSrc: audioFromMusic || audioFromSong || audioMedia?.url || post.audioSrc || null,
+          audioTitle: displayTitle,
+          artistName: displayArtist,
           album: post.album || null,
-          genre: post.genre || (songIsObj ? song.hashTag : null) || post.hashTag || post["HashTag"] || null,
+          genre: post.genre || (populatedMusic ? populatedMusic.hashTag : null) || (populatedSong ? populatedSong.hashTag : null) || post.hashTag || post["HashTag"] || null,
           releaseDate: post.releaseDate || post.createdAt || null,
-          description: post.description || (songIsObj ? song.details : null) || post["Chi Tiết"] || post.content || null,
-          thumbnail: post.musicBackgroundImage || (songIsObj ? song.coverUrl : null) || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
+          description: post.description || (populatedMusic ? populatedMusic.details : null) || (populatedSong ? populatedSong.details : null) || post["Chi Tiết"] || post.content || null,
+          thumbnail: displayThumb,
         };
       })(),
       likes: post.likes ? (typeof post.likes === 'object' ? Object.keys(post.likes).length : post.likes) : 0,
@@ -496,7 +543,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       <div className="feed-posts space-y-4">
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
           <button className="action-btn" onClick={() => setShowTrash(true)}>
-            🗑️ Thùng rác ({Array.from(trashedPostIds).length})
+            Thùng rác ({Array.from(trashedPostIds).length})
           </button>
         </div>
         {/* Active Livestreams */}
