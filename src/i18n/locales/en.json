@@ -22,7 +22,18 @@
     "events": "Events",
     "messages": "Messages",
     "profile": "Profile",
-    "bankInfo": "Bank info"
+    "bankInfo": "Bank info",
+    "dashboard": "Dashboard",
+    "staff": "Staff (DJ, Dancer)",
+    "barPage": "Bar page",
+    "barSettings": "Bar settings",
+    "schedule": "Schedule",
+    "partners": "Partners / Bars",
+    "reviewsStars": "Reviews & stars",
+    "tableTypesManage": "Manage table types",
+    "tablesManage": "Manage tables",
+    "vouchersManage": "Manage vouchers",
+    "combosManage": "Manage combos"
   },
   "feed": {
     "edit": "Edit",

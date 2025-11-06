@@ -22,7 +22,18 @@
     "events": "Sự kiện",
     "messages": "Tin nhắn",
     "profile": "Hồ sơ",
-    "bankInfo": "Bank info"
+    "bankInfo": "Bank info",
+    "dashboard": "Dashboard",
+    "staff": "Nhân sự (DJ, Dancer)",
+    "barPage": "Bar page",
+    "barSettings": "Cài đặt quán",
+    "schedule": "Lịch diễn",
+    "partners": "Đối tác / Bar",
+    "reviewsStars": "Đánh giá & sao",
+    "tableTypesManage": "Quản lý loại bàn",
+    "tablesManage": "Quản lý bàn",
+    "vouchersManage": "Quản lý voucher",
+    "combosManage": "Quản lý combo"
   },
   "feed": {
     "edit": "Chỉnh sửa",

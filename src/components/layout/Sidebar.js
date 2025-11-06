@@ -178,6 +178,18 @@ export default function Sidebar() {
       "Tin nhắn": "messages",
       "Hồ sơ": "profile",
       "Bank info": "bankInfo",
+      "Dashboard": "dashboard",
+      "Nhân sự (DJ, Dancer)": "staff",
+      "Lịch diễn": "schedule",
+      "Khách hàng / Bar hợp tác": "partners",
+      "Đối tác / Bar": "partners",
+      "Đánh giá & sao": "reviewsStars",
+      "Bar page": "barPage",
+      "Cài đặt quán": "barSettings",
+      "Quản lý loại bàn": "tableTypesManage",
+      "Quản lý bàn": "tablesManage",
+      "Quản lý voucher": "vouchersManage",
+      "Quản lý combo": "combosManage",
     };
     const kSub = labelKeyMap[subLabel] || subLabel;
     let resolvedSubPath = subPath;
