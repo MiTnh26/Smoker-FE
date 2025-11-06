@@ -4,8 +4,10 @@ import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import { sidebarConfig } from "../../config/sidebarConfig.js";
 import barPageApi from "../../api/barPageApi.js";
 import "../../styles/layouts/sidebarSubmenu.css";
+import { useTranslation } from "react-i18next"; // i18n
 
 export default function Sidebar() {
+  const { t } = useTranslation();
   const { barPageId: paramBarPageId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -168,6 +170,16 @@ export default function Sidebar() {
 
   // Hàm render submenu item
   const renderSubMenuItem = ({ label: subLabel, path: subPath }) => {
+    // Map Vietnamese labels to stable i18n keys without changing config structure
+    const labelKeyMap = {
+      "Trang chủ": "home",
+      "Hội nhóm": "groups",
+      "Sự kiện": "events",
+      "Tin nhắn": "messages",
+      "Hồ sơ": "profile",
+      "Bank info": "bankInfo",
+    };
+    const kSub = labelKeyMap[subLabel] || subLabel;
     let resolvedSubPath = subPath;
     if (subPath.includes(":barPageId") && resolvedBarPageId) {
       resolvedSubPath = subPath.replace(":barPageId", resolvedBarPageId);
@@ -186,7 +198,7 @@ export default function Sidebar() {
         const tableTypesPath = `/bar/settings/${resolvedBarPageId}/table-types`;
         navigate(tableTypesPath, { 
           state: { 
-            message: "Vui lòng tạo loại bàn trước.",
+            message: t('bar.needTableTypes'),
             messageType: "warning"
           } 
         });
@@ -203,9 +215,9 @@ export default function Sidebar() {
             opacity: isDisabled ? 0.5 : 1,
             cursor: isDisabled ? "not-allowed" : "pointer"
           }}
-          title={isDisabled ? "Vui lòng tạo loại bàn trước" : ""}
+          title={isDisabled ? t('bar.needTableTypes') : ""}
         >
-          {subLabel}
+          {t(`sidebar.${kSub}`, { defaultValue: subLabel })}
         </Link>
       </li>
     );
@@ -221,6 +233,16 @@ export default function Sidebar() {
     const isActive = location.pathname === resolvedPath;
     const isOpen = openSubMenu === label;
 
+    // Map Vietnamese labels to stable keys
+    const labelKeyMap = {
+      "Trang chủ": "home",
+      "Hội nhóm": "groups",
+      "Sự kiện": "events",
+      "Tin nhắn": "messages",
+      "Hồ sơ": "profile",
+      "Bank info": "bankInfo",
+    };
+    const k = labelKeyMap[label] || label;
     return (
       <div key={label + resolvedPath} className="sidebar-nav-item-wrapper">
         {subMenu ? (
@@ -230,7 +252,7 @@ export default function Sidebar() {
             onClick={() => toggleSubMenu(label)}
           >
             {Icon && <Icon size={20} />}
-            <span>{label}</span>
+            <span>{t(`sidebar.${k}`, { defaultValue: label })}</span>
             <span className="submenu-arrow">{isOpen ? "▾" : "▸"}</span>
           </div>
         ) : (
@@ -240,7 +262,7 @@ export default function Sidebar() {
             className={`sidebar-nav-item ${isActive ? "active" : ""}`}
           >
             {Icon && <Icon size={20} />}
-            <span>{label}</span>
+            <span>{t(`sidebar.${k}`, { defaultValue: label })}</span>
           </Link>
         )}
 

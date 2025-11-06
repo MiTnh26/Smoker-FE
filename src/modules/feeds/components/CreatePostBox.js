@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Video } from "lucide-react";
 import "../../../styles/modules/feeds/CreatePostBox.css"
 
 export default function CreatePostBox({ onCreate, onGoLive, onMediaClick, onMusicClick }) {
+  const { t } = useTranslation();
   const [avatar, setAvatar] = useState("https://media.techz.vn/resize_x700x/media2019/source/01TRAMY/2024MY1/mckanhnong.png");
   
   // Function to get avatar from session
@@ -64,7 +66,7 @@ export default function CreatePostBox({ onCreate, onGoLive, onMediaClick, onMusi
         />
         <input
           type="text"
-          placeholder="Bạn muốn đăng gì hôm nay?"
+          placeholder={t('feed.createPlaceholderToday')}
           className="create-input"
           onFocus={() => onCreate?.()}
         />
@@ -72,16 +74,16 @@ export default function CreatePostBox({ onCreate, onGoLive, onMediaClick, onMusi
 
       <div className="create-post-actions">
         <button className="action-btn" onClick={handleGoLive}>
-          <Video size={18} style={{ marginRight: '8px' }} /> Go Live
+          <Video size={18} style={{ marginRight: '8px' }} /> {t('feed.goLive')}
         </button>
         <button className="action-btn" onClick={handleMediaClick}>
-          <i className="fa-solid fa-image"></i> Ảnh/Video
+          <i className="fa-solid fa-image"></i> {t('feed.photoVideo')}
         </button>
         <button className="action-btn" onClick={handleMusicClick}>
-          <i className="fa-solid fa-music"></i> Âm nhạc
+          <i className="fa-solid fa-music"></i> {t('feed.music')}
         </button>
         <button className="action-btn">
-          <i className="fa-solid fa-face-smile"></i> Cảm xúc
+          <i className="fa-solid fa-face-smile"></i> {t('feed.feeling')}
         </button>
       </div>
     </div>

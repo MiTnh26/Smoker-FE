@@ -1,5 +1,6 @@
 // src/components/layout/common/RightSidebar.js
 import React from "react";
+import { useTranslation } from "react-i18next";
 import "../../../styles/layouts/rightSidebar.css";
 
 const mockContacts = [
@@ -12,10 +13,11 @@ const mockContacts = [
 ];
 
 export default function RightSidebar() {
+  const { t } = useTranslation();
   return (
     <aside className="right-sidebar">
       <div className="right-sidebar__section">
-        <h4 className="right-sidebar__title">Liên hệ</h4>
+        <h4 className="right-sidebar__title">{t('layout.contacts')}</h4>
         <ul className="right-sidebar__list">
           {mockContacts.map((c) => (
             <li

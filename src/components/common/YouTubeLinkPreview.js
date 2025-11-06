@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { getYoutubeThumbnailUrl } from "../../utils/youtube";
+import "../../styles/modules/feeds/YouTubeLinkPreview.css";
 
 const oEmbedCache = new Map();
 
@@ -46,7 +47,11 @@ export default function YouTubeLinkPreview({ url, videoId }) {
           setThumb(data.thumbnail_url || getYoutubeThumbnailUrl(videoId));
           setLoading(false);
         }
+      /* eslint-disable-next-line */
       } catch (e) {
+        // Log for diagnostics; fallback UI below
+        // eslint-disable-next-line no-console
+        console.error("YouTube oEmbed fetch failed:", e);
         if (!cancelled && mountedRef.current) {
           setTitle("YouTube Video");
           setThumb(getYoutubeThumbnailUrl(videoId));
@@ -59,9 +64,7 @@ export default function YouTubeLinkPreview({ url, videoId }) {
   }, [oembedUrl, videoId]);
 
   const openInNewTab = () => {
-    try {
-      window.open(url, "_blank", "noopener,noreferrer");
-    } catch {}
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const hostLabel = (() => {
@@ -72,40 +75,17 @@ export default function YouTubeLinkPreview({ url, videoId }) {
   })();
 
   return (
-    <button
-      type="button"
-      className="yt-preview-card"
-      onClick={openInNewTab}
-      style={{
-        textAlign: "left",
-        cursor: "pointer",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 8,
-        overflow: "hidden",
-        background: "#111",
-        marginTop: 8,
-        padding: 0
-      }}
-    >
+    <button type="button" className="yt-preview-card" onClick={openInNewTab}>
       {thumb && (
-        <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "#000" }}>
+        <div className="yt-thumb">
           <img
             src={thumb}
             alt={title || "YouTube thumbnail"}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            className="yt-thumb-img"
             loading="lazy"
           />
-          {/* Play badge */}
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{
-              width: 56,
-              height: 56,
-              borderRadius: "9999px",
-              background: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}>
+          <div className="yt-play-overlay">
+            <div className="yt-play-badge">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff">
                 <path d="M8 5v14l11-7z"></path>
               </svg>
@@ -113,9 +93,9 @@ export default function YouTubeLinkPreview({ url, videoId }) {
           </div>
         </div>
       )}
-      <div style={{ padding: 12 }}>
-        <div style={{ fontWeight: 600, lineHeight: 1.3 }}>{title || (loading ? "Đang tải..." : "YouTube Video")}</div>
-        <div style={{ color: "#9ca3af", fontSize: 12, marginTop: 4 }}>{hostLabel}</div>
+      <div className="yt-body">
+        <div className="yt-title">{title || (loading ? "Đang tải..." : "YouTube Video")}</div>
+        <div className="yt-host">{hostLabel}</div>
       </div>
     </button>
   );

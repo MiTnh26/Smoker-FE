@@ -1,4 +1,5 @@
 import React, { useState } from "react"; // ✅ import useState
+import { useTranslation } from "react-i18next";
 import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
 import { Link } from "react-router-dom";
@@ -12,6 +13,7 @@ import { fetchAllEntities } from "../../../utils/sessionHelper";
 
 export function Login() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -51,10 +53,10 @@ export function Login() {
           navigate("/profile-setup", { replace: true });
         }
       } else {
-        setError(res?.message || "Đăng nhập thất bại");
+        setError(res?.message || t('auth.loginFailed'));
       }
     } catch (err) {
-      setError(err?.response?.data?.message || "Đăng nhập thất bại");
+      setError(err?.response?.data?.message || t('auth.loginFailed'));
     }
   };
 
@@ -94,14 +96,14 @@ export function Login() {
             <form className="login-form space-y-4" onSubmit={handleSubmit}>
               <Input
                 type="text"
-                placeholder="Email or phone number"
+                placeholder={t('auth.emailOrPhone')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
               <div style={{ position: "relative" }}>
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Password"
+                  placeholder={t('auth.password')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{ paddingRight: "38px" }}
@@ -118,7 +120,7 @@ export function Login() {
                     fontSize: 18,
                     userSelect: "none",
                   }}
-                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                   tabIndex={0}
                   onKeyPress={(e) => {
                     if (e.key === "Enter" || e.key === " ") setShowPassword((v) => !v);
@@ -164,12 +166,12 @@ export function Login() {
               {error && <div style={{ color: "red", fontSize: 12 }}>{error}</div>}
 
               <Button type="submit" className="login-btn">
-                Log in
+                {t('auth.login')}
               </Button>
 
               <div className="forgot-link">
                 <Link to="/forgot-password" className="text-blue-600 hover:text-blue-800">
-                  Quên mật khẩu?
+                  {t('auth.forgot')}
                 </Link>
               </div>
 
@@ -179,12 +181,10 @@ export function Login() {
 
               {/* Google Login simple flow */}
               <div style={{ fontSize: 12, color: "#555" }}>
-                Cách 2 – Đăng nhập bằng Google: Chọn Gmail và nhập mật khẩu Gmail
-                để xác thực. Nếu là lần đầu, hệ thống sẽ gửi một <b>mật khẩu ngẫu nhiên</b>
-                về Gmail của bạn để sử dụng cho các lần <b>đăng nhập thủ công</b> sau này.
+                {t('auth.googleHow')}
               </div>
               <Button type="button" className="login-btn" onClick={() => navigate("/login/google")}>
-                Đăng nhập bằng Google
+                {t('auth.loginWithGoogle')}
               </Button>
 
               <div className="mt-2">
@@ -192,12 +192,12 @@ export function Login() {
               </div>
 
               <Button type="button" className="create-account-btn">
-                <Link to="/signup">Create new account</Link>
+                <Link to="/signup">{t('auth.createAccount')}</Link>
               </Button>
             </form>
 
             <div className="login-footer">
-              <Link to="/create-page">Create a Page</Link> for a celebrity, brand or business
+              <Link to="/create-page">{t('auth.createPage')}</Link> {t('auth.createPageFor')}
             </div>
           </div>
         </div>

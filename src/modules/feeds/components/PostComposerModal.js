@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import axiosClient from "../../../api/axiosClient";
 import { uploadPostMedia } from "../../../api/postApi";
@@ -9,6 +10,7 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
   const [submitting, setSubmitting] = useState(false);
   const [mediaFiles, setMediaFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const { t } = useTranslation();
   
   if (!open) return null;
 
@@ -41,7 +43,7 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
       throw new Error("No file data returned from server");
     } catch (err) {
       console.error("[COMPOSER] Upload error:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Upload thất bại";
+      const errorMessage = err.response?.data?.message || err.message || t('modal.uploadFailed');
       throw new Error(errorMessage);
     }
   };
@@ -64,14 +66,14 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
           });
         } else {
           console.error("[COMPOSER] Upload failed - no secure_url:", result);
-          throw new Error(result.error?.message || "Không có URL trả về");
+          throw new Error(result.error?.message || "No url returned");
         }
       }
       console.log("[COMPOSER] Files uploaded successfully");
       setMediaFiles(prev => [...prev, ...uploadedFiles]);
     } catch (err) {
       console.error("[COMPOSER] Upload failed:", err);
-      alert(`Upload thất bại: ${err.message || "Vui lòng thử lại"}`);
+      alert(`${t('modal.uploadFailed')}: ${err.message || ''}`);
     } finally {
       setUploading(false);
     }
@@ -92,7 +94,7 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
     try {
       setSubmitting(true);
       console.log("[COMPOSER] Starting post submission");
-      const title = content.trim().slice(0, 80) || "Bài viết";
+      const title = content.trim().slice(0, 80) || t('feed.shareTitle');
       
       // Prepare images and videos objects for backend
       const images = {};
@@ -171,7 +173,7 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
         response: err.response?.data,
         status: err.response?.status
       });
-      alert("Đăng bài không thành công. Vui lòng thử lại.");
+      alert(t('modal.postFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -193,21 +195,21 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          📷 Đăng Ảnh/Video
+          📷 {t('modal.composerTitle')}
         </div>
         
         <form onSubmit={handleSubmit} className="modal-body">
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Bạn muốn chia sẻ điều gì?"
+            placeholder={t('modal.composerPlaceholder')}
             rows={5}
             className="content-textarea"
           />
           
           <div className="media-upload-section">
             <label className="upload-btn">
-              📷 Ảnh
+              📷 {t('modal.photo')}
               <input 
                 type="file" 
                 accept="image/*" 
@@ -217,7 +219,7 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
             </label>
             
             <label className="upload-btn">
-              🎬 Video
+              🎬 {t('modal.video')}
               <input 
                 type="file" 
                 accept="video/*" 
@@ -229,7 +231,7 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
           
           {uploading && (
             <div className="upload-progress">
-              Đang upload media... Vui lòng đợi hoàn tất trước khi đăng.
+              {t('modal.uploading')}
             </div>
           )}
           
@@ -259,7 +261,7 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
                   {(file.type?.startsWith('image') || file.resource_type === 'image') && (
                     <input
                       type="text"
-                      placeholder={`Nhập caption cho ảnh ${index + 1}...`}
+                      placeholder={t('modal.captionPlaceholder', { index: index + 1 })}
                       value={file.caption || ""}
                       onChange={(e) => {
                         const updatedFiles = [...mediaFiles];
@@ -281,14 +283,14 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
               disabled={submitting} 
               className="btn-cancel"
             >
-              Hủy
+              {t('modal.cancel')}
             </button>
             <button 
               type="submit" 
               disabled={submitting || uploading || (!content.trim() && !mediaFiles.length)} 
               className="btn-submit"
             >
-              {submitting ? "Đang đăng..." : (uploading ? "Đợi upload..." : "Đăng")}
+              {submitting ? t('modal.posting') : (uploading ? t('modal.waitUpload') : t('modal.post'))}
             </button>
           </div>
         </form>

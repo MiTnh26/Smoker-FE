@@ -13,7 +13,7 @@ export const menuConfigs = {
       {
         id: "settings",
         label: "Cài đặt & quyền riêng tư",
-        href: "#",
+        href: "/settings",
         icon: null,
         onClick: null,
       },
@@ -27,7 +27,7 @@ export const menuConfigs = {
       {
         id: "language",
         label: "Ngôn ngữ",
-        href: "#",
+        href: "/settings/language",
         icon: null,
         onClick: null,
       },
@@ -51,7 +51,7 @@ export const menuConfigs = {
       {
         id: "settings",
         label: "Cài đặt & quyền riêng tư",
-        href: "#",
+        href: "/settings",
         icon: null,
         onClick: null,
       },
@@ -65,7 +65,7 @@ export const menuConfigs = {
       {
         id: "language",
         label: "Ngôn ngữ",
-        href: "#",
+        href: "/settings/language",
         icon: null,
         onClick: null,
       },
@@ -89,7 +89,7 @@ export const menuConfigs = {
       {
         id: "settings",
         label: "Cài đặt & quyền riêng tư",
-        href: "#",
+        href: "/settings",
         icon: null,
         onClick: null,
       },
@@ -103,7 +103,7 @@ export const menuConfigs = {
       {
         id: "language",
         label: "Ngôn ngữ",
-        href: "#",
+        href: "/settings/language",
         icon: null,
         onClick: null,
       },
@@ -127,7 +127,7 @@ export const menuConfigs = {
       {
         id: "settings",
         label: "Cài đặt & quyền riêng tư",
-        href: "#",
+        href: "/settings",
         icon: null,
         onClick: null,
       },
@@ -141,7 +141,7 @@ export const menuConfigs = {
       {
         id: "language",
         label: "Ngôn ngữ",
-        href: "#",
+        href: "/settings/language",
         icon: null,
         onClick: null,
       },
@@ -165,7 +165,7 @@ export const menuConfigs = {
       {
         id: "settings",
         label: "Cài đặt & quyền riêng tư",
-        href: "#",
+        href: "/settings",
         icon: null,
         onClick: null,
       },
@@ -179,7 +179,7 @@ export const menuConfigs = {
       {
         id: "language",
         label: "Ngôn ngữ",
-        href: "#",
+        href: "/settings/language",
         icon: null,
         onClick: null,
       },

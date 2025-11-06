@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
 import YouTubeLinkPreview from "../../../components/common/YouTubeLinkPreview"
 import { splitTextWithYouTube } from "../../../utils/youtube"
 import { likePost, unlikePost } from "../../../api/postApi"
@@ -21,6 +22,7 @@ export default function PostCard({
   onDelete,
   onReport
 }) {
+  const { t } = useTranslation()
   const isPlaying = playingPost === post.id
   const [liked, setLiked] = useState(Boolean(post.likedByCurrentUser))
   const [likeCount, setLikeCount] = useState(Number(post.likes || 0))
@@ -158,11 +160,11 @@ export default function PostCard({
           <div ref={menuRef} className="post-menu-dropdown">
             {post.canManage ? (
               <>
-                <button className="post-menu-item" onClick={() => { setMenuOpen(false); onEdit?.(post); }}>Chỉnh sửa</button>
-                <button className="post-menu-item danger" onClick={() => { setMenuOpen(false); onDelete?.(post); }}>Bỏ vào thùng rác</button>
+                <button className="post-menu-item" onClick={() => { setMenuOpen(false); onEdit?.(post); }}>{t('feed.edit')}</button>
+                <button className="post-menu-item danger" onClick={() => { setMenuOpen(false); onDelete?.(post); }}>{t('feed.trash')}</button>
               </>
             ) : (
-              <button className="post-menu-item" onClick={() => { setMenuOpen(false); onReport?.(post); }}>Báo cáo</button>
+              <button className="post-menu-item" onClick={() => { setMenuOpen(false); onReport?.(post); }}>{t('feed.report')}</button>
             )}
           </div>
         )}
