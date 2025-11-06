@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { getPostById, addComment, addReply, addReplyToReply, likeComment, unlikeComment, likeReply, unlikeReply } from "../../../api/postApi";
 import "../../../styles/modules/feeds/CommentSection.css";
 
 export default function CommentSection({ postId, onClose, inline = false }) {
+  const { t } = useTranslation();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
@@ -548,12 +550,12 @@ export default function CommentSection({ postId, onClose, inline = false }) {
       <div className={`comment-section ${inline ? 'comment-section-inline' : ''}`}>
         {!inline && (
           <div className="comment-section-header">
-            <h3>Bình luận</h3>
+            <h3>{t('comment.header')}</h3>
             <button onClick={onClose} className="close-btn">×</button>
           </div>
         )}
         <div className="comment-section-body">
-          <p>Đang tải bình luận...</p>
+          <p>{t('comment.loading')}</p>
         </div>
       </div>
     );
@@ -563,7 +565,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
     <div className={`comment-section ${inline ? 'comment-section-inline' : ''}`}>
       {!inline && (
         <div className="comment-section-header">
-          <h3>Bình luận</h3>
+          <h3>{t('comment.header')}</h3>
           <button onClick={onClose} className="close-btn">×</button>
         </div>
       )}
@@ -579,18 +581,18 @@ export default function CommentSection({ postId, onClose, inline = false }) {
         {/* Sort Options */}
         {comments.length > 0 && (
           <div className="comment-sort-options">
-            <span className="sort-label">Sắp xếp:</span>
+            <span className="sort-label">{t('comment.sort')}</span>
             <button
               className={`sort-btn ${sortOrder === "newest" ? "active" : ""}`}
               onClick={() => setSortOrder("newest")}
             >
-              Mới nhất
+              {t('comment.newest')}
             </button>
             <button
               className={`sort-btn ${sortOrder === "oldest" ? "active" : ""}`}
               onClick={() => setSortOrder("oldest")}
             >
-              Cũ nhất
+              {t('comment.oldest')}
             </button>
           </div>
         )}
@@ -600,7 +602,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
         {/* Comments List */}
         <div className="comments-list">
           {comments.length === 0 ? (
-            <p className="no-comments">Chưa có bình luận nào.</p>
+            <p className="no-comments">{t('comment.none')}</p>
           ) : (
             comments.map((comment) => (
               <div key={comment.id} className="comment-item">
@@ -629,7 +631,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                     onClick={() => setReplyingTo({ commentId: comment.id, type: "comment" })}
                     className="reply-btn"
                   >
-                    Phản hồi
+                    {t('comment.reply')}
                   </button>
                 </div>
 
@@ -638,7 +640,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                   <div className="reply-input-container">
                     <input
                       type="text"
-                      placeholder="Viết phản hồi..."
+                      placeholder={t('input.writeReply')}
                       value={replyContent[comment.id]?.replyText || ""}
                       onChange={(e) =>
                         setReplyContent((prev) => ({
@@ -655,7 +657,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                         className="submit-reply-btn"
                         disabled={submitting || !(replyContent[comment.id]?.replyText || "").trim()}
                       >
-                        {submitting ? "Đang đăng..." : "Đăng"}
+                        {submitting ? t('action.posting') : t('action.post')}
                       </button>
                       <button
                         onClick={() => {
@@ -668,7 +670,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                         }}
                         className="cancel-reply-btn"
                       >
-                        Hủy
+                        {t('action.cancel')}
                       </button>
                     </div>
                   </div>
@@ -703,7 +705,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                             onClick={() => setReplyingTo({ commentId: comment.id, replyId: reply.id, type: "reply" })}
                             className="reply-btn"
                           >
-                            Phản hồi
+                            {t('comment.reply')}
                           </button>
                         </div>
 
@@ -712,7 +714,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                           <div className="reply-input-container">
                             <input
                               type="text"
-                              placeholder="Viết phản hồi..."
+                              placeholder={t('input.writeReply')}
                               value={replyContent[`${comment.id}-${reply.id}`]?.replyText || ""}
                               onChange={(e) =>
                                 setReplyContent((prev) => ({
@@ -729,7 +731,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                                 className="submit-reply-btn"
                                 disabled={submitting || !(replyContent[`${comment.id}-${reply.id}`]?.replyText || "").trim()}
                               >
-                                {submitting ? "Đang đăng..." : "Đăng"}
+                                {submitting ? t('action.posting') : t('action.post')}
                               </button>
                               <button
                                 onClick={() => {
@@ -742,7 +744,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                                 }}
                                 className="cancel-reply-btn"
                               >
-                                Hủy
+                                {t('action.cancel')}
                               </button>
                             </div>
                           </div>
@@ -759,7 +761,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
         <form onSubmit={handleAddComment} className="add-comment-form">
           <input
             type="text"
-            placeholder="Viết bình luận..."
+            placeholder={t('input.writeComment')}
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             className="comment-input"
@@ -770,7 +772,7 @@ export default function CommentSection({ postId, onClose, inline = false }) {
             className="submit-comment-btn"
             disabled={submitting || !newComment.trim()}
           >
-            {submitting ? "Đang đăng..." : "Đăng"}
+            {submitting ? t('action.posting') : t('action.post')}
           </button>
         </form>
       </div>

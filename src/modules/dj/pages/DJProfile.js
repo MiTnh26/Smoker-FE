@@ -1,5 +1,6 @@
 // src/modules/dj/pages/DJProfile.js
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import businessApi from "../../../api/businessApi";
 import { locationApi } from "../../../api/locationApi";
@@ -9,6 +10,7 @@ import PostList from "../../../components/layout/common/PostList";
 import "../../../styles/modules/djProfile.css";
 
 export default function DJProfile() {
+    const { t } = useTranslation();
     const { businessId } = useParams();
     const [profile, setProfile] = useState({
         userName: "",
@@ -157,7 +159,7 @@ export default function DJProfile() {
         return gender;
     };
 
-    if (loading) return <div className="profile-loading">Đang tải hồ sơ...</div>;
+    if (loading) return <div className="profile-loading">{t('profile.loadingProfile')}</div>;
     if (error) return <div className="profile-error">{error}</div>;
 
     const renderTabContent = () => {
@@ -166,13 +168,13 @@ export default function DJProfile() {
                 return (
                     <div className="profile-body">
                         <div className="profile-info-card">
-                            <h3>Giới thiệu</h3>
-                            <p><strong>Giới tính:</strong> {displayGender(profile.gender)}</p>
-                            <p><strong>Địa chỉ:</strong> {profile.address || "Chưa có địa chỉ"}</p>
-                            <p><strong>Điện thoại:</strong> {profile.phone || "Chưa có"}</p>
-                            <p><strong>Giới thiệu:</strong> {profile.bio || "Chưa có mô tả"}</p>
-                            <p><strong>Giá/giờ:</strong> {profile.pricePerHours || 0} đ</p>
-                            <p><strong>Giá/buổi:</strong> {profile.pricePerSession || 0} đ</p>
+                            <h3>{t('profile.about')}</h3>
+                            <p><strong>{t('profile.gender')}:</strong> {displayGender(profile.gender)}</p>
+                            <p><strong>{t('profile.address')}:</strong> {profile.address || ''}</p>
+                            <p><strong>{t('profile.phone')}:</strong> {profile.phone || ''}</p>
+                            <p><strong>{t('profile.bio')}:</strong> {profile.bio || ''}</p>
+                            <p><strong>{t('profile.pricePerHour')}:</strong> {profile.pricePerHours || 0} đ</p>
+                            <p><strong>{t('profile.pricePerSession')}:</strong> {profile.pricePerSession || 0} đ</p>
                         </div>
                     </div>
                 );
@@ -218,8 +220,8 @@ export default function DJProfile() {
                     </div>
 
                     <div className="profile-details">
-                        <h2>{profile.userName || "DJ mới"}</h2>
-                        <p>Role: {profile.role || "DJ"}</p>
+                        <h2>{profile.userName || "DJ"}</h2>
+                        <p>{t('profile.role')}: {profile.role || "DJ"}</p>
                     </div>
 
                     <div className="profile-actions flex gap-3">
@@ -229,7 +231,7 @@ export default function DJProfile() {
                             className="flex items-center gap-1 px-3 py-1 bg-[#a78bfa] text-white rounded-xl hover:bg-[#8b5cf6] transition"
                         >
                             <i className="bx bx-edit text-lg"></i>
-                            Chỉnh sửa hồ sơ
+                            {t('profile.editProfile')}
                         </button>
                     </div>
                 </div>
@@ -241,13 +243,13 @@ export default function DJProfile() {
                     className={activeTab === "info" ? "active" : ""}
                     onClick={() => setActiveTab("info")}
                 >
-                    Thông tin
+                    {t('profile.infoTab')}
                 </button>
                 <button
                     className={activeTab === "posts" ? "active" : ""}
                     onClick={() => setActiveTab("posts")}
                 >
-                    Bài viết
+                    {t('profile.postsTab')}
                 </button>
             </div>
 
@@ -258,7 +260,7 @@ export default function DJProfile() {
             {showEditModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">
-                        <h3 className="text-2xl font-semibold mb-5 text-center">Chỉnh sửa hồ sơ DJ</h3>
+                        <h3 className="text-2xl font-semibold mb-5 text-center">{t('profile.editDJ')}</h3>
                         
                         <div className="space-y-6">
                             {/* Avatar */}
@@ -273,7 +275,7 @@ export default function DJProfile() {
                                     onClick={() => setEditingField(editingField === "avatar" ? null : "avatar")}
                                     className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
                                 >
-                                    {editingField === "avatar" ? "Đóng" : "Chỉnh sửa"}
+                                    {editingField === "avatar" ? t('profile.close') : t('profile.editProfile')}
                                 </button>
                             </div>
                             {editingField === "avatar" && (
@@ -300,7 +302,7 @@ export default function DJProfile() {
                                     onClick={() => setEditingField(editingField === "background" ? null : "background")}
                                     className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
                                 >
-                                    {editingField === "background" ? "Đóng" : "Chỉnh sửa"}
+                                    {editingField === "background" ? t('profile.close') : t('profile.editProfile')}
                                 </button>
                             </div>
                             {editingField === "background" && (
@@ -318,7 +320,7 @@ export default function DJProfile() {
                             {/* Info */}
                             <div className="flex justify-between items-start border-b pb-3">
                                 <div>
-                                    <p className="font-medium text-lg mb-1">Thông tin chi tiết</p>
+                                    <p className="font-medium text-lg mb-1">{t('profile.about')}</p>
                                     <div className="text-sm text-gray-600 space-y-1">
                                         <p><strong>Tên:</strong> {profile.userName || "Chưa có tên"}</p>
                                         <p><strong>Địa chỉ:</strong> {profile.address || "Chưa có địa chỉ"}</p>
@@ -332,7 +334,7 @@ export default function DJProfile() {
                                     onClick={() => setEditingField(editingField === "info" ? null : "info")}
                                     className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium self-start"
                                 >
-                                    {editingField === "info" ? "Đóng" : "Chỉnh sửa"}
+                                    {editingField === "info" ? t('profile.close') : t('profile.editProfile')}
                                 </button>
                             </div>
                             
@@ -373,7 +375,7 @@ export default function DJProfile() {
                                     </div>
                                     
                                     <label className="block">
-                                        <span className="text-sm font-medium">Điện thoại:</span>
+                                    <span className="text-sm font-medium">{t('profile.phone')}:</span>
                                         <input
                                             type="text"
                                             value={profile.phone || ""}
@@ -383,7 +385,7 @@ export default function DJProfile() {
                                     </label>
                                     
                                     <label className="block">
-                                        <span className="text-sm font-medium">Giới tính:</span>
+                                    <span className="text-sm font-medium">{t('profile.gender')}:</span>
                                         <select
                                             value={profile.gender || ""}
                                             onChange={(e) => setProfile(prev => ({ ...prev, gender: e.target.value }))}
@@ -397,7 +399,7 @@ export default function DJProfile() {
                                     </label>
                                     
                                     <label className="block">
-                                        <span className="text-sm font-medium">Giá/giờ (VNĐ):</span>
+                                    <span className="text-sm font-medium">{t('profile.pricePerHour')} (VNĐ):</span>
                                         <input
                                             type="number"
                                             value={profile.pricePerHours || ""}
@@ -407,7 +409,7 @@ export default function DJProfile() {
                                     </label>
                                     
                                     <label className="block">
-                                        <span className="text-sm font-medium">Giá/buổi (VNĐ):</span>
+                                    <span className="text-sm font-medium">{t('profile.pricePerSession')} (VNĐ):</span>
                                         <input
                                             type="number"
                                             value={profile.pricePerSession || ""}
@@ -417,7 +419,7 @@ export default function DJProfile() {
                                     </label>
                                     
                                     <label className="block">
-                                        <span className="text-sm font-medium">Giới thiệu:</span>
+                                    <span className="text-sm font-medium">{t('profile.bio')}:</span>
                                         <textarea
                                             rows={3}
                                             value={profile.bio || ""}
@@ -435,7 +437,7 @@ export default function DJProfile() {
                                     disabled={saving}
                                     className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50"
                                 >
-                                    Đóng
+                                    {t('profile.close')}
                                 </button>
                                 <button
                                     onClick={async () => {
@@ -605,7 +607,7 @@ export default function DJProfile() {
                                     disabled={saving}
                                     className="px-4 py-2 bg-[#a78bfa] text-white rounded-lg hover:bg-[#8b5cf6] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {saving ? "Đang lưu..." : "Lưu thay đổi"}
+                                    {saving ? t('profile.saving') : t('profile.saveChanges')}
                                 </button>
                             </div>
                         </div>

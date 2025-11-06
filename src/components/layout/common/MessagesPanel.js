@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { Search } from "lucide-react";
 import "../../../styles/layouts/messagepanel.css";
@@ -8,6 +9,7 @@ import "../../../styles/layouts/messagepanel.css";
  * Dùng DropdownPanel component chung từ BarHeader/CustomerHeader
  */
 export default function MessagesPanel({ conversations = [], onClose }) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = React.useState("");
 
   // Filter conversations based on search
@@ -31,7 +33,7 @@ export default function MessagesPanel({ conversations = [], onClose }) {
         <Search size={16} />
         <input
           type="text"
-          placeholder="Tìm kiếm cuộc trò chuyện..."
+          placeholder={t('messages.searchPlaceholder')}
           className="panel-search-input"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -42,7 +44,7 @@ export default function MessagesPanel({ conversations = [], onClose }) {
       <div className="panel-list">
         {filteredConversations.length === 0 ? (
           <div style={{ padding: "40px 20px", textAlign: "center", color: "rgb(var(--muted-foreground))" }}>
-            <p style={{ margin: 0 }}>Không có tin nhắn</p>
+            <p style={{ margin: 0 }}>{t('messages.empty')}</p>
           </div>
         ) : (
           filteredConversations.map((conv) => (

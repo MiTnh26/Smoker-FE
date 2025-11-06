@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Home, MessageCircle, User, Search, Bell } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import UnifiedMenu from "../../common/UnifiedMenu";
 import MessagesPanel from "../common/MessagesPanel";
 import NotificationPanel from "../common/NotificationPanel";
@@ -9,6 +10,7 @@ import "../../../styles/layouts/customerheader.css";
 
 export default function CustomerHeader() {
   const [activePanel, setActivePanel] = useState(null); // 'notifications' | 'messages' | 'user' | null
+  const { t } = useTranslation();
 
   const conversations = [
     { id: 1, name: "Nguyễn Văn A", lastMessage: "Tối nay đi không?", time: "10 phút", unread: 2 },
@@ -30,11 +32,11 @@ export default function CustomerHeader() {
     <>
       <header className="newsfeed-header">
         <div className="newsfeed-header-content">
-          <Link to="/customer/newsfeed" className="newsfeed-logo">Smoker</Link>
+          <Link to="/customer/newsfeed" className="newsfeed-logo">{t('layout.brand')}</Link>
 
           <div className="newsfeed-search">
             <Search className="search-icon" />
-            <input type="text" placeholder="Tìm kiếm..." className="search-input" />
+            <input type="text" placeholder={t('layout.searchPlaceholder')} className="search-input" />
           </div>
 
           <div className="newsfeed-nav">
@@ -81,9 +83,9 @@ export default function CustomerHeader() {
           setActivePanel(null);
         }}
         title={(() => {
-          if (activePanel === "user") return "User Menu";
-          if (activePanel === "messages") return "Tin nhắn";
-          if (activePanel === "notifications") return "Thông báo";
+          if (activePanel === "user") return t('layout.userMenu');
+          if (activePanel === "messages") return t('layout.messages');
+          if (activePanel === "notifications") return t('layout.notifications');
           return "";
         })()}
       >

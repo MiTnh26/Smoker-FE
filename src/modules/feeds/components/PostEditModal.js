@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { updatePost } from "../../../api/postApi";
 
 export default function PostEditModal({ open, post, onClose, onUpdated }) {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -34,7 +36,7 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("[EDIT] Update post failed", err);
-      alert("Cập nhật bài viết không thành công.");
+      alert(t('modal.postFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -43,7 +45,7 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
   return (
     <div className="post-composer-modal" role="dialog" aria-modal="true" onClick={onClose} tabIndex={-1}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">✏️ Chỉnh sửa bài viết</div>
+        <div className="modal-header">✏️ {t('feed.edit')}</div>
         <form onSubmit={handleSubmit} className="modal-body">
           {(images.length > 0 || videos.length > 0 || audioSrc) && (
             <div className="media-preview" style={{ marginBottom: 12 }}>
@@ -95,15 +97,15 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
           /> */}
           <textarea
             rows={5}
-            placeholder="Nội dung"
+            placeholder={t('input.content')}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="content-textarea"
           />
           <div className="modal-footer">
-            <button type="button" className="btn-cancel" onClick={onClose} disabled={submitting}>Hủy</button>
+            <button type="button" className="btn-cancel" onClick={onClose} disabled={submitting}>{t('action.cancel')}</button>
             <button type="submit" className="btn-submit" disabled={submitting || (!title.trim() && !content.trim())}>
-              {submitting ? "Đang lưu..." : "Lưu"}
+              {submitting ? t('action.saving') : t('action.save')}
             </button>
           </div>
         </form>

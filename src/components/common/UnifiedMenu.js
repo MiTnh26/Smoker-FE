@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next"; // i18n
 import { Link, useNavigate } from "react-router-dom";
 import { User, ChevronDown, ChevronUp } from "lucide-react";
 import {
@@ -21,6 +22,7 @@ export default function UnifiedMenu({
   showBackToAccount = false,
 }) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [session, setSession] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
@@ -67,7 +69,7 @@ export default function UnifiedMenu({
     console.warn("[UnifiedMenu] No data available to display");
     return (
       <div className="unified-menu-loading">
-        <p>Đang tải thông tin...</p>
+        <p>{t('unifiedMenu.loading')}</p>
       </div>
     );
   }
@@ -185,8 +187,8 @@ export default function UnifiedMenu({
             <h3>{activeEntity?.name || currentUser?.userName || "(User)"}</h3>
             <p>
               {activeEntity?.type === "Account"
-                ? "Xem trang cá nhân của bạn"
-                : "Xem trang doanh nghiệp của bạn"}
+                ? t('menu.viewPersonal')
+                : t('menu.viewBusiness')}
             </p>
           </div>
         </div>
@@ -201,14 +203,14 @@ export default function UnifiedMenu({
               {renderAvatar(session.account.avatar, 28)}
             </div>
             <span>{session.account.userName}</span>
-            <h4>Trở lại trang cá nhân</h4>
+            <h4>{t('menu.backToAccount')}</h4>
           </button>
         )}
 
         {/* Entities List */}
         {config.showEntities && filteredEntities.length > 0 && (
           <div className="user-menu-businesses">
-            <h4>{config.entityLabel || "Trang / Doanh nghiệp của bạn"}</h4>
+            <h4>{config.entityLabel || t('unifiedMenu.entityLabel')}</h4>
             <ul>
               {visibleEntities.map((entity) => (
                 <li
@@ -230,7 +232,9 @@ export default function UnifiedMenu({
                 className="toggle-businesses"
                 onClick={() => setShowAll(!showAll)}
               >
-                {showAll ? "Ẩn bớt" : `Xem thêm (${filteredEntities.length - 2})`}
+                {showAll 
+                  ? t('unifiedMenu.showLess') 
+                  : t('unifiedMenu.showMore', { count: filteredEntities.length - 2 })}
                 {showAll ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
             )}
@@ -239,7 +243,7 @@ export default function UnifiedMenu({
 
         {filteredEntities.length === 0 && config.showEntities && (
           <div className="user-menu-no-entities">
-            <p>Bạn chưa có Trang / Doanh nghiệp khác.</p>
+            <p>{t('unifiedMenu.noEntities')}</p>
           </div>
         )}
 
@@ -252,7 +256,7 @@ export default function UnifiedMenu({
                   className={`user-menu-item ${item.isLogout ? "logout" : ""}`}
                   onClick={() => handleMenuItemClick(item)}
                 >
-                  <span>{item.label}</span>
+                  <span>{t(`menu.${item.id}`, { defaultValue: item.label })}</span>
                   <span className="theme-label">{getThemeLabel(theme)}</span>
                 </button>
               ) : item.href ? (
@@ -266,14 +270,14 @@ export default function UnifiedMenu({
                     }
                   }}
                 >
-                  <span>{item.label}</span>
+                  <span>{t(`menu.${item.id}`, { defaultValue: item.label })}</span>
                 </Link>
               ) : (
                 <button
                   className={`user-menu-item ${item.isLogout ? "logout" : ""}`}
                   onClick={() => handleMenuItemClick(item)}
                 >
-                  <span>{item.label}</span>
+                  <span>{t(`menu.${item.id}`, { defaultValue: item.label })}</span>
                 </button>
               )}
             </React.Fragment>

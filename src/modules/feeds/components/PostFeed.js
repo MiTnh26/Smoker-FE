@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { getPosts } from "../../../api/postApi";
 import PostCard from "./PostCard";
 import PostComposerModal from "./PostComposerModal";
@@ -11,6 +12,7 @@ import ReportPostModal from "./ReportPostModal";
 import TrashModal from "./TrashModal";
 
 export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClick }) {
+  const { t } = useTranslation();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -203,11 +205,11 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         setPosts(postsData);
       } else {
         console.error("[FEED] Failed to load posts:", response?.message);
-        setError(response?.message || "Failed to load posts");
+        setError(response?.message || t('feed.loadFail'));
       }
     } catch (err) {
       console.error("[FEED] Error loading posts:", err);
-      setError("Không thể tải bài viết. Vui lòng thử lại.");
+      setError(t('feed.loadFail'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -301,10 +303,19 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
 
   // Transform post data to match PostCard component expectations
   const transformPost = (post) => {
-    const formatDateSafe = (value) => {
+    const formatTimeDisplay = (value) => {
       try {
         const d = value ? new Date(value) : new Date();
-        return isNaN(d.getTime()) ? new Date().toLocaleString('vi-VN') : d.toLocaleString('vi-VN');
+        if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
+        const now = new Date();
+        const diffMs = now.getTime() - d.getTime();
+        if (diffMs < 0) return d.toLocaleString('vi-VN');
+        const minutes = Math.floor(diffMs / 60000);
+        if (minutes < 1) return t('time.justNow');
+        if (minutes < 60) return t('time.minutesAgo', { minutes });
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return t('time.hoursAgo', { hours });
+        return d.toLocaleDateString('vi-VN');
       } catch {
         return new Date().toLocaleString('vi-VN');
       }
@@ -411,14 +422,14 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         post.accountName ||
         activeEntity?.name ||
         currentUser?.userName ||
-        "Người dùng",
+        t('common.user'),
       avatar:
         post.authorAvatar || post.authorEntityAvatar ||
         post.author?.avatar ||
         post.account?.avatar ||
         currentUser?.avatar ||
         "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxNC4yMDkxIDEyIDE2IDEwLjIwOTEgMTYgOEMxNiA1Ljc5MDg2IDE0LjIwOTEgNCAxMiA0QzkuNzkwODYgNCA4IDUuNzkwODYgOCA4QzggMTAuMjA5MSA5Ljc5MDg2IDEyIDEyIDEyWiIgZmlsbD0iIzljYTNhZiIvPgo8cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cjwvc3ZnPgo=",
-      time: formatDateSafe(post.createdAt || post.updatedAt),
+      time: formatTimeDisplay(post.createdAt || post.updatedAt),
       content: post.content || post.caption || post["Tiêu Đề"],
       // Extract medias from post.medias Map/Object
       ...(() => {
@@ -508,7 +519,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
   if (loading) {
     return (
       <div className="feed-posts space-y-4">
-        <p className="text-gray-400">Đang tải bài viết...</p>
+        <p className="text-gray-400">{t('feed.loadingPosts')}</p>
       </div>
     );
   }
@@ -517,8 +528,8 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
     return (
       <div className="feed-posts space-y-4">
         <div>
-          <p className="text-red-500">❌ {error}</p>
-          <button onClick={() => loadPosts(true)} className="btn btn-primary mt-2">Thử lại</button>
+          <p className="text-red-500">❌ {t('feed.loadFail')}</p>
+          <button onClick={() => loadPosts(true)} className="btn btn-primary mt-2">{t('common.retry')}</button>
         </div>
       </div>
     );
@@ -543,7 +554,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       <div className="feed-posts space-y-4">
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
           <button className="action-btn" onClick={() => setShowTrash(true)}>
-            Thùng rác ({Array.from(trashedPostIds).length})
+            {t('feed.trashOpen')} ({Array.from(trashedPostIds).length})
           </button>
         </div>
         {/* Active Livestreams */}
@@ -560,7 +571,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         )}
 
         {posts.length === 0 ? (
-          <p key="empty-posts" className="text-gray-400">Chưa có bài viết nào.</p>
+          <p key="empty-posts" className="text-gray-400">{t('feed.noPosts')}</p>
         ) : (
           posts.filter((p) => {
             const pid = p._id || p.postId || p.id;
@@ -589,7 +600,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
                 onSeek={handleSeek}
                 onEdit={(p) => setEditingPost(p)}
                 onDelete={(p) => {
-                  if (!window.confirm("Chuyển bài viết vào thùng rác?")) return;
+                  if (!window.confirm(t('feed.confirmTrash'))) return;
                   const idStr = String(p.id);
                   setTrashedPostIds((prev) => new Set(prev).add(idStr));
                 }}
@@ -601,7 +612,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
 
         {/* Tùy chọn nhỏ: thông báo đang làm mới, không thay đổi giao diện chính */}
         {refreshing && (
-          <p key="refreshing" className="text-gray-400">Đang làm mới...</p>
+          <p key="refreshing" className="text-gray-400">{t('feed.refreshing')}</p>
         )}
       </div>
 
@@ -642,7 +653,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         post={reportingPost}
         onClose={() => setReportingPost(null)}
         onSubmitted={() => {
-          alert("Cảm ơn bạn đã báo cáo. Chúng tôi sẽ xem xét.");
+          alert(t('feed.thanksReport'));
           setReportingPost(null);
         }}
       />
@@ -660,7 +671,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
           });
         }}
         onClear={() => {
-          if (!window.confirm("Xóa tất cả bài trong thùng rác khỏi thiết bị này?")) return;
+          if (!window.confirm(t('feed.confirmTrash'))) return;
           setTrashedPostIds(new Set());
         }}
       />

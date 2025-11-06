@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import barPageApi from "../../../api/barPageApi";
 import { locationApi } from "../../../api/locationApi";
@@ -14,6 +15,7 @@ import BarTables from "../components/BarTables";
 import TableClassificationManager from "./TableClassificationManager";
 
 export default function BarProfile() {
+  const { t } = useTranslation();
   const { barPageId } = useParams();
   const [profile, setProfile] = useState({
     BarName: "",
@@ -98,7 +100,7 @@ export default function BarProfile() {
     fetchTableTypes();
   }, [barPageId]);
 
-  if (loading) return <div className="profile-loading">Đang tải hồ sơ...</div>;
+  if (loading) return <div className="profile-loading">{t('profile.loadingProfile')}</div>;
   if (error) return <div className="profile-error">{error}</div>;
 
   // 🟢 Hàm render nội dung theo tab
@@ -169,11 +171,11 @@ export default function BarProfile() {
           </div>
 
           <div className="profile-details">
-            <h2>{profile.BarName || "Quán Bar mới"}</h2>
-            <p>Địa chỉ: {profile.Address || "Chưa có địa chỉ"}</p>
-            <p>Điện thoại: {profile.PhoneNumber || "Chưa có"}</p>
-            <p>Email: {profile.Email || "Chưa có"}</p>
-            <p>Role: {profile.Role || "Bar"}</p>
+            <h2>{profile.BarName || t('profile.barName')}</h2>
+            <p>{t('profile.address')}: {profile.Address || ''}</p>
+            <p>{t('profile.phone')}: {profile.PhoneNumber || ''}</p>
+            <p>{t('profile.email')}: {profile.Email || ''}</p>
+            <p>{t('profile.role')}: {profile.Role || 'Bar'}</p>
           </div>
 
           <div className="profile-actions flex gap-3 items-center">
@@ -185,7 +187,7 @@ export default function BarProfile() {
               className="flex items-center gap-1 px-3 py-1 bg-[#a78bfa] text-white rounded-xl hover:bg-[#8b5cf6] transition"
             >
               <i className="bx bx-edit text-lg"></i>
-              Chỉnh sửa hồ sơ
+              {t('profile.editProfile')}
             </button>
           </div>
 
@@ -198,49 +200,49 @@ export default function BarProfile() {
           className={activeTab === "info" ? "active" : ""}
           onClick={() => setActiveTab("info")}
         >
-          Thông tin
+          {t('profile.infoTab')}
         </button>
         <button
           className={activeTab === "posts" ? "active" : ""}
           onClick={() => setActiveTab("posts")}
           disabled={tableTypes.length === 0}
           style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
-          title={tableTypes.length === 0 ? "Vui lòng thêm loại bàn trước" : ""}
+          title={tableTypes.length === 0 ? t('bar.needTableTypes') : ""}
         >
-          Bài viết
+          {t('profile.postsTab')}
         </button>
         <button
           className={activeTab === "videos" ? "active" : ""}
           onClick={() => setActiveTab("videos")}
           disabled={tableTypes.length === 0}
           style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
-          title={tableTypes.length === 0 ? "Vui lòng thêm loại bàn trước" : ""}
+          title={tableTypes.length === 0 ? t('bar.needTableTypes') : ""}
         >
-          Video
+          {t('tabs.video')}
         </button>
         <button
           className={activeTab === "reviews" ? "active" : ""}
           onClick={() => setActiveTab("reviews")}
           disabled={tableTypes.length === 0}
           style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
-          title={tableTypes.length === 0 ? "Vui lòng thêm loại bàn trước" : ""}
+          title={tableTypes.length === 0 ? t('bar.needTableTypes') : ""}
         >
-          Đánh giá
+          {t('tabs.reviews')}
         </button>
         <button 
           className={activeTab === "table-types" ? "active" : ""} 
           onClick={() => setActiveTab("table-types")}
         >
-          Loại bàn
+          {t('tabs.tableTypes')}
         </button>
         <button 
           className={activeTab === "tables" ? "active" : ""} 
           onClick={() => setActiveTab("tables")}
           disabled={tableTypes.length === 0}
           style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
-          title={tableTypes.length === 0 ? "Vui lòng thêm loại bàn trước" : ""}
+          title={tableTypes.length === 0 ? t('bar.needTableTypes') : ""}
         >
-          Chỉnh sửa bàn
+          {t('tabs.editTables')}
         </button>
       </div>
 
@@ -248,9 +250,7 @@ export default function BarProfile() {
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">
-            <h3 className="text-2xl font-semibold mb-5 text-center">
-              Chỉnh sửa hồ sơ quán bar
-            </h3>
+            <h3 className="text-2xl font-semibold mb-5 text-center">{t('profile.editBar')}</h3>
 
             <div className="space-y-6">
               {/* --- Ảnh đại diện --- */}
@@ -270,7 +270,7 @@ export default function BarProfile() {
                   onClick={() => setEditingField(editingField === "avatar" ? null : "avatar")}
                   className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
                 >
-                  {editingField === "avatar" ? "Đóng" : "Chỉnh sửa"}
+                  {editingField === "avatar" ? t('profile.close') : t('profile.editProfile')}
                 </button>
               </div>
               {editingField === "avatar" && (
@@ -304,7 +304,7 @@ export default function BarProfile() {
                   onClick={() => setEditingField(editingField === "background" ? null : "background")}
                   className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
                 >
-                  {editingField === "background" ? "Đóng" : "Chỉnh sửa"}
+                  {editingField === "background" ? t('profile.close') : t('profile.editProfile')}
                 </button>
               </div>
               {editingField === "background" && (
@@ -324,7 +324,7 @@ export default function BarProfile() {
               {/* --- Tiểu sử / Bio --- */}
               <div className="flex justify-between items-center border-b pb-3">
                 <div>
-                  <p className="font-medium text-lg">Tiểu sử</p>
+                  <p className="font-medium text-lg">{t('profile.bio')}</p>
                   <p className="text-sm text-gray-500">
                     {profile.Bio || "Chưa có tiểu sử"}
                   </p>
@@ -333,14 +333,14 @@ export default function BarProfile() {
                   onClick={() => setEditingField(editingField === "bio" ? null : "bio")}
                   className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
                 >
-                  {editingField === "bio" ? "Đóng" : "Chỉnh sửa"}
+                  {editingField === "bio" ? t('profile.close') : t('profile.editProfile')}
                 </button>
               </div>
               {editingField === "bio" && (
                 <div className="mt-3">
                   <textarea
                     rows={3}
-                    placeholder="Viết vài dòng giới thiệu về quán..."
+                    placeholder={t('input.caption')}
                     value={profile.Bio || ""}
                     onChange={(e) =>
                       setProfile((prev) => ({ ...prev, Bio: e.target.value }))
@@ -354,7 +354,7 @@ export default function BarProfile() {
               {/* --- Thông tin chi tiết --- */}
               <div className="flex justify-between items-start border-b pb-3">
                 <div>
-                  <p className="font-medium text-lg mb-1">Thông tin chi tiết</p>
+                  <p className="font-medium text-lg mb-1">{t('profile.about')}</p>
                   <div className="text-sm text-gray-600 space-y-1">
                     <p><strong>Tên quán:</strong> {profile.BarName || "Chưa có tên quán"}</p>
                     <p><strong>Địa chỉ:</strong> {profile.Address || "Chưa có địa chỉ"}</p>
@@ -374,7 +374,7 @@ export default function BarProfile() {
               {editingField === "info" && (
                 <div className="mt-3 space-y-3">
                   <label className="block">
-                    <span className="text-sm font-medium">Tên quán:</span>
+                    <span className="text-sm font-medium">{t('profile.barName')}:</span>
                     <input
                       type="text"
                       value={profile.BarName}
@@ -386,7 +386,7 @@ export default function BarProfile() {
                   </label>
 
                   <div>
-                    <span className="text-sm font-medium block mb-2">Địa chỉ:</span>
+                    <span className="text-sm font-medium block mb-2">{t('profile.address')}:</span>
                     <AddressSelector
                       selectedProvinceId={selectedProvinceId}
                       selectedDistrictId={selectedDistrictId}
@@ -410,7 +410,7 @@ export default function BarProfile() {
                   </div>
 
                   <label className="block">
-                    <span className="text-sm font-medium">Điện thoại:</span>
+                    <span className="text-sm font-medium">{t('profile.phone')}:</span>
                     <input
                       type="text"
                       value={profile.PhoneNumber}
@@ -422,7 +422,7 @@ export default function BarProfile() {
                   </label>
 
                   <label className="block">
-                    <span className="text-sm font-medium">Email:</span>
+                    <span className="text-sm font-medium">{t('profile.email')}:</span>
                     <input
                       type="email"
                       value={profile.Email}
@@ -441,7 +441,7 @@ export default function BarProfile() {
                   onClick={handleCloseEdit}
                   className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
                 >
-                  Đóng
+                  {t('profile.close')}
                 </button>
                 <button
                   onClick={async () => {
@@ -495,7 +495,7 @@ export default function BarProfile() {
                   disabled={saving}
                   className="px-4 py-2 bg-[#a78bfa] text-white rounded-lg hover:bg-[#8b5cf6] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
+                  {saving ? t('profile.saving') : t('profile.saveChanges')}
                 </button>
               </div>
             </div>

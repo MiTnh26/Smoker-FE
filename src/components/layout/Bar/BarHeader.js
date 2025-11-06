@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import { Home, MessageCircle, User, Search } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import UnifiedMenu from "../../common/UnifiedMenu";
 import MessagesPanel from "../common/MessagesPanel";
 import NotificationDropdown from "../../common/NotificationDropdown";
@@ -11,6 +12,7 @@ import "../../../styles/layouts/header.css";
 export default function BarHeader() {
   const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | null
   const [barUser, setBarUser] = useState(null);
+  const { t } = useTranslation();
   const [session, setSession] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("session"));
@@ -104,12 +106,12 @@ export default function BarHeader() {
       <header className="newsfeed-header">
         <div className="newsfeed-header-content">
           <Link to={`/${role}/${activeEntityId}`} className="newsfeed-logo">
-            Smoker - Page
+            {t('layout.brandPage')}
           </Link>
 
           <div className="newsfeed-search">
             <Search className="search-icon" />
-            <input type="text" placeholder="Tìm kiếm..." className="search-input" />
+            <input type="text" placeholder={t('layout.searchPlaceholder')} className="search-input" />
           </div>
 
           <div className="newsfeed-nav">
@@ -128,8 +130,8 @@ export default function BarHeader() {
         isOpen={!!activePanel}
         onClose={() => setActivePanel(null)}
         title={(() => {
-          if (activePanel === "user") return "Business Menu";
-          if (activePanel === "messages") return "Tin nhắn";
+          if (activePanel === "user") return t('layout.businessMenu');
+          if (activePanel === "messages") return t('layout.messages');
           return "";
         })()}
       >

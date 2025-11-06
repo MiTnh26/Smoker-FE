@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import axiosClient from "../../../api/axiosClient";
 import { uploadPostMedia } from "../../../api/postApi";
 import "../../../styles/modules/feeds/PostComposerModal.css";
 
 export default function MusicPostModal({ open, onClose, onCreated }) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     musicTitle: "",
     artistName: "",
@@ -45,7 +47,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
       throw new Error("No file data returned from server");
     } catch (err) {
       console.error("[MUSIC] Upload audio error:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Upload nhạc thất bại";
+      const errorMessage = err.response?.data?.message || err.message || t('modal.uploadFailed');
       throw new Error(errorMessage);
     }
   };
@@ -75,7 +77,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
       throw new Error("No file data returned from server");
     } catch (err) {
       console.error("[MUSIC] Upload image error:", err);
-      const errorMessage = err.response?.data?.message || err.message || "Upload ảnh nền thất bại";
+      const errorMessage = err.response?.data?.message || err.message || t('modal.uploadFailed');
       throw new Error(errorMessage);
     }
   };
@@ -99,11 +101,11 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
           console.log("[MUSIC] Audio uploaded successfully:", result.secure_url);
         } else {
           console.error("[MUSIC] Upload failed - no secure_url:", result);
-          alert(`Upload nhạc thất bại: ${result.error?.message || "Không có URL trả về"}`);
+          alert(t('modal.uploadFailed'));
         }
       } catch (err) {
         console.error("[MUSIC] Upload error:", err);
-        alert(`Upload nhạc thất bại: ${err.message || "Lỗi không xác định"}`);
+        alert(t('modal.uploadFailed'));
       } finally {
         setUploading(false);
       }
@@ -124,11 +126,11 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
           console.log("[MUSIC] Image uploaded successfully:", result.secure_url);
         } else {
           console.error("[MUSIC] Upload failed - no secure_url:", result);
-          alert(`Upload ảnh nền thất bại: ${result.error?.message || "Không có URL trả về"}`);
+          alert(t('modal.uploadFailed'));
         }
       } catch (err) {
         console.error("[MUSIC] Upload error:", err);
-        alert(`Upload ảnh nền thất bại: ${err.message || "Lỗi không xác định"}`);
+        alert(t('modal.uploadFailed'));
       } finally {
         setUploading(false);
       }
@@ -138,11 +140,11 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.musicTitle || !formData.artistName || !formData.description || !formData.audioUrl || !formData.musicBackgroundImage) {
-      alert("Vui lòng điền đầy đủ thông tin bắt buộc (*)");
+      alert(t('modal.postFailed'));
       return;
     }
     if (uploading) {
-      alert("Đang upload, vui lòng đợi...");
+      alert(t('modal.waitUpload'));
       return;
     }
 
@@ -217,7 +219,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
 
     } catch (err) {
       console.error("[MUSIC] Create music post failed:", err);
-      alert("Đăng nhạc không thành công. Vui lòng thử lại.");
+      alert(t('modal.postFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -240,15 +242,11 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: "600px" }}
       >
-        <div className="modal-header">
-          🎵 Đăng Nhạc (SoundCloud style)
-        </div>
+        <div className="modal-header">🎵 {t('music.postMusic')} (SoundCloud style)</div>
 
         <form onSubmit={handleSubmit} className="modal-body">
           <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor="music-title" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
-              Tên Bài Nhạc *
-            </label>
+            <label htmlFor="music-title" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>Title *</label>
             <input
               id="music-title"
               type="text"
@@ -261,9 +259,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor="music-artist" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
-              Tên Nghệ Sĩ *
-            </label>
+            <label htmlFor="music-artist" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>Artist *</label>
             <input
               id="music-artist"
               type="text"
@@ -276,9 +272,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor="music-description" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
-              Chi Tiết/Mô Tả *
-            </label>
+            <label htmlFor="music-description" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>Description *</label>
             <textarea
               id="music-description"
               name="description"
@@ -286,15 +280,13 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
               onChange={handleInputChange}
               className="w-full border rounded px-2 py-1"
               rows={3}
-              placeholder="Mô tả về bài nhạc..."
+              placeholder={t('input.caption')}
               required
             />
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor="music-hashtag" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
-              HashTag
-            </label>
+            <label htmlFor="music-hashtag" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>#Hashtag</label>
             <input
               id="music-hashtag"
               type="text"
@@ -302,14 +294,12 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
               value={formData.hashTag}
               onChange={handleInputChange}
               className="w-full border rounded px-2 py-1"
-              placeholder="#hashtag1 #hashtag2"
+              placeholder={t('input.hashtags')}
             />
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor="music-purchase-link" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
-              Link Mua Nhạc
-            </label>
+            <label htmlFor="music-purchase-link" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>Purchase link</label>
             <input
               id="music-purchase-link"
               type="url"
@@ -317,14 +307,12 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
               value={formData.musicPurchaseLink}
               onChange={handleInputChange}
               className="w-full border rounded px-2 py-1"
-              placeholder="https://..."
+              placeholder={t('input.url')}
             />
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor="music-audio" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
-              File Nhạc (MP3, WAV, etc.) *
-            </label>
+            <label htmlFor="music-audio" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>Audio file (MP3, WAV, etc.) *</label>
             <input
               id="music-audio"
               type="file"
@@ -339,9 +327,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
           </div>
 
           <div style={{ marginBottom: "1rem" }}>
-            <label htmlFor="music-image" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>
-              Ảnh Nền Bài Nhạc *
-            </label>
+            <label htmlFor="music-image" className="block" style={{ marginBottom: "0.5rem", fontWeight: "500" }}>Cover image *</label>
             <input
               id="music-image"
               type="file"
@@ -360,9 +346,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
           </div>
 
           {uploading && (
-            <div className="upload-progress">
-              Đang upload... Vui lòng đợi hoàn tất.
-            </div>
+            <div className="upload-progress">{t('upload.uploading')}</div>
           )}
 
           <div className="modal-footer">
@@ -372,14 +356,14 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
               disabled={submitting}
               className="btn-cancel"
             >
-              Hủy
+              {t('action.cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting || uploading}
               className="btn-submit"
             >
-              {submitting ? "Đang đăng..." : (uploading ? "Đợi upload..." : "Đăng nhạc")}
+              {submitting ? t('action.posting') : (uploading ? t('modal.waitUpload') : t('music.postMusic'))}
             </button>
           </div>
         </form>
