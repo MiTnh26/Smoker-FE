@@ -102,7 +102,7 @@ export default function UnifiedMenu({
 
   const renderAvatar = (src, size = 48) =>
     src ? (
-      <img src={src} alt="avatar" style={{ width: "100%", height: "100%" }} />
+      <img src={src} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
     ) : (
       <User size={size} />
     );
