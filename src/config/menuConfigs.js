@@ -7,33 +7,33 @@ export const menuConfigs = {
   customer: {
     showBackToAccount: false, // Customer is already on their account page
     showEntities: true, // Show list of entities (bars, businesses, etc.)
-    entityLabel: "Trang / Doanh nghiệp của bạn",
+    entityLabel: null, // Will use i18n translation
     entityTypes: ["BarPage", "Business"], // Allow all entity types
     menuItems: [
       {
         id: "settings",
-        label: "Cài đặt & quyền riêng tư",
+        label: null, // Will use i18n translation
         href: "/settings",
         icon: null,
         onClick: null,
       },
       {
         id: "theme",
-        label: "Chế độ giao diện",
+        label: null, // Will use i18n translation
         href: null,
         icon: null,
         onClick: "toggleTheme", // Special handler
       },
       {
         id: "language",
-        label: "Ngôn ngữ",
+        label: null, // Will use i18n translation
         href: "/settings/language",
         icon: null,
         onClick: null,
       },
       {
         id: "logout",
-        label: "Đăng xuất",
+        label: null, // Will use i18n translation
         href: "/login",
         icon: null,
         onClick: "handleLogout", // Special handler
@@ -45,7 +45,7 @@ export const menuConfigs = {
   bar: {
     showBackToAccount: true, // Show button to go back to customer account
     showEntities: true, // Show list of other bars/entities
-    entityLabel: "Doanh nghiệp / Page của bạn",
+    entityLabel: null, // Will use i18n translation
     entityTypes: ["BarPage", "Business"], // Allow all entity types
     menuItems: [
       {
@@ -83,7 +83,7 @@ export const menuConfigs = {
   business: {
     showBackToAccount: true, // Show button to go back to customer account
     showEntities: true, // Show list of other businesses
-    entityLabel: "Doanh nghiệp của bạn",
+    entityLabel: null, // Will use i18n translation
     entityTypes: ["Business"], // Only business entities
     menuItems: [
       {
@@ -121,7 +121,7 @@ export const menuConfigs = {
   dj: {
     showBackToAccount: true,
     showEntities: true,
-    entityLabel: "Trang / Doanh nghiệp của bạn",
+    entityLabel: null, // Will use i18n translation
     entityTypes: ["BarPage", "Business"],
     menuItems: [
       {
@@ -159,7 +159,7 @@ export const menuConfigs = {
   dancer: {
     showBackToAccount: true,
     showEntities: true,
-    entityLabel: "Trang / Doanh nghiệp của bạn",
+    entityLabel: null, // Will use i18n translation
     entityTypes: ["BarPage", "Business"],
     menuItems: [
       {
@@ -227,14 +227,26 @@ export function getEntityRoute(entity) {
 /**
  * Get theme labels
  * @param {string} theme - Theme value
+ * @param {Function} t - i18n translation function
  * @returns {string} Theme label
  */
-export function getThemeLabel(theme) {
+export function getThemeLabel(theme, t) {
+  if (!t) {
+    // Fallback if t is not provided
+    const fallback = {
+      light: "🌞 Sáng",
+      dark: "🌙 Tối",
+      bw: "⚫⚪ Đen trắng",
+      liquidglass: "🪟 LiquidGlass",
+    };
+    return fallback[theme] || fallback.light;
+  }
+  
   const labels = {
-    light: "🌞 Sáng",
-    dark: "🌙 Tối",
-    bw: "⚫⚪ Đen trắng",
-    liquidglass: "🪟 LiquidGlass",
+    light: `🌞 ${t('menu.themeLight')}`,
+    dark: `🌙 ${t('menu.themeDark')}`,
+    bw: `⚫⚪ ${t('menu.themeBW')}`,
+    liquidglass: `🪟 ${t('menu.themeLiquidGlass')}`,
   };
   return labels[theme] || labels.light;
 }

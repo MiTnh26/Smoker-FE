@@ -210,7 +210,7 @@ export default function UnifiedMenu({
         {/* Entities List */}
         {config.showEntities && filteredEntities.length > 0 && (
           <div className="user-menu-businesses">
-            <h4>{config.entityLabel || t('unifiedMenu.entityLabel')}</h4>
+            <h4>{t('unifiedMenu.entityLabel')}</h4>
             <ul>
               {visibleEntities.map((entity) => (
                 <li
@@ -257,7 +257,7 @@ export default function UnifiedMenu({
                   onClick={() => handleMenuItemClick(item)}
                 >
                   <span>{t(`menu.${item.id}`, { defaultValue: item.label })}</span>
-                  <span className="theme-label">{getThemeLabel(theme)}</span>
+                  <span className="theme-label">{getThemeLabel(theme, t)}</span>
                 </button>
               ) : item.href ? (
                 <Link

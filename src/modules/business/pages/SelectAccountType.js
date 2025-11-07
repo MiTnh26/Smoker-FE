@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "../../../styles/modules/selectAccountType.css";
 
 export default function SelectAccountType() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [hasBar, setHasBar] = useState(false);
   const [hasDJ, setHasDJ] = useState(false);
   const [hasDancer, setHasDancer] = useState(false);
@@ -81,8 +83,8 @@ export default function SelectAccountType() {
     return (
       <div className="select-account-type-container">
         <div className="text-center py-8">
-          <h2 className="text-2xl font-bold mb-4">Bạn đã đăng ký tất cả loại tài khoản</h2>
-          <p className="text-gray-600 mb-4">Bạn đã có Bar, DJ và Dancer. Đang chuyển hướng...</p>
+          <h2 className="text-2xl font-bold mb-4">{t('register.allAccountTypesRegistered')}</h2>
+          <p className="text-gray-600 mb-4">{t('register.allAccountTypesDesc')}</p>
         </div>
       </div>
     );
@@ -93,7 +95,7 @@ export default function SelectAccountType() {
       <div className="select-account-type-container">
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Đang kiểm tra...</p>
+          <p className="mt-4 text-gray-600">{t('register.checking')}</p>
         </div>
       </div>
     );
@@ -101,27 +103,27 @@ export default function SelectAccountType() {
 
   return (
     <div className="select-account-type-container">
-      <h2 className="text-2xl font-bold mb-4 text-center">Chọn loại tài khoản kinh doanh</h2>
+      <h2 className="text-2xl font-bold mb-4 text-center">{t('register.selectAccountType')}</h2>
 
       <div className="account-type-grid">
         {!hasBar && (
           <button onClick={() => handleSelect("bar")} className="account-type-card">
-            <h3>Đăng ký quán Bar</h3>
-            <p>Quản lý quán bar, sự kiện, nhân viên và đặt vé.</p>
+            <h3>{t('register.registerBar')}</h3>
+            <p>{t('register.registerBarDesc')}</p>
           </button>
         )}
 
         {!hasDJ && (
           <button onClick={() => handleSelect("dj")} className="account-type-card">
-            <h3>Đăng ký DJ</h3>
-            <p>Tạo hồ sơ DJ, nhận booking và quảng bá bản thân.</p>
+            <h3>{t('register.registerDJ')}</h3>
+            <p>{t('register.registerDJDesc')}</p>
           </button>
         )}
 
         {!hasDancer && (
           <button onClick={() => handleSelect("dancer")} className="account-type-card">
-            <h3>Đăng ký Dancer</h3>
-            <p>Đăng hồ sơ biểu diễn, nhận show và kết nối với bar.</p>
+            <h3>{t('register.registerDancer')}</h3>
+            <p>{t('register.registerDancerDesc')}</p>
           </button>
         )}
       </div>
@@ -131,12 +133,14 @@ export default function SelectAccountType() {
         <div className="mt-6 p-4 bg-blue-50 rounded-lg text-center">
           <p className="text-sm text-blue-700">
             {hasBar && hasDJ && hasDancer
-              ? "Bạn đã đăng ký tất cả loại tài khoản. Đang chuyển hướng..."
-              : `Bạn đã đăng ký: ${[
-                  hasBar && "Bar",
-                  hasDJ && "DJ",
-                  hasDancer && "Dancer"
-                ].filter(Boolean).join(", ")}`}
+              ? t('register.allRegisteredRedirecting')
+              : t('register.alreadyRegistered', { 
+                  types: [
+                    hasBar && "Bar",
+                    hasDJ && "DJ",
+                    hasDancer && "Dancer"
+                  ].filter(Boolean).join(", ")
+                })}
           </p>
         </div>
       )}

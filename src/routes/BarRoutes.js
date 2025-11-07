@@ -51,7 +51,6 @@ export default function BarRoutes() {
         element={
           <ProtectedRoute roles={["bar"]}>
             <BarLayout> <ComboManager /></BarLayout>
-            <BarLayout>  <BarSettings /></BarLayout>
           </ProtectedRoute>
         }
       />

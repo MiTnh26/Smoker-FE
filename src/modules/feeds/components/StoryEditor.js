@@ -72,7 +72,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
       <div className="story-editor-content" style={{ background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px #0001', padding: 32, maxWidth: 420, width: '100%' }}>
         <h2 style={{ textAlign: 'center', color: '#6c47ff', marginBottom: 24 }}>{t('story.createTitle')}</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <label style={{ fontWeight: 500, color: '#444' }}>Chọn ảnh hoặc video</label>
+          <label style={{ fontWeight: 500, color: '#444' }}>{t('story.selectImage')}</label>
           <input
             type="file"
             accept="image/*"

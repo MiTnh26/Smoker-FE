@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { userApi } from "../../../api/userApi";
 import { locationApi } from "../../../api/locationApi";
 import axiosClient from "../../../api/axiosClient";
@@ -8,6 +9,7 @@ import CreatePostBox from "../../feeds/components/CreatePostBox";
 import PostComposerModal from "../../feeds/components/PostComposerModal";
 
 export default function Profile() {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState({
     userName: "",
     email: "",
@@ -446,7 +448,7 @@ export default function Profile() {
               className="flex items-center gap-1 px-3 py-1 bg-[#a78bfa] text-white rounded-xl hover:bg-[#8b5cf6] transition"
             >
               <i className="bx bx-edit text-lg"></i>
-              Chỉnh sửa hồ sơ
+              {t('profile.editProfile')}
             </button>
           </div>
         </div>
@@ -458,13 +460,13 @@ export default function Profile() {
           className={activeTab === "posts" ? "active" : ""}
           onClick={() => setActiveTab("posts")}
         >
-          Bài viết
+          {t('profile.postsTab')}
         </button>
         <button 
           className={activeTab === "videos" ? "active" : ""}
           onClick={() => setActiveTab("videos")}
         >
-          Video
+          {t('tabs.video')}
         </button>
       </div>
 
@@ -612,7 +614,7 @@ export default function Profile() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">
             <h3 className="text-2xl font-semibold mb-5 text-center">
-              Chỉnh sửa hồ sơ cá nhân
+              {t('profile.editPersonalProfile')}
             </h3>
 
             <div className="space-y-6">

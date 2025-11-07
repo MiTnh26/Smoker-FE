@@ -55,7 +55,7 @@ export default function Sidebar() {
 
     let menus = sidebarConfig[role] || [];
 
-    // Hide "Đăng ký tài khoản kinh doanh" menu if user has all three types (Bar, DJ, Dancer)
+    // Hide register business account menu if user has all three types (Bar, DJ, Dancer)
     if (role === "customer" && session.entities) {
       const entities = session.entities || [];
       const hasBar = entities.some(
@@ -69,8 +69,9 @@ export default function Sidebar() {
       );
 
       if (hasBar && hasDJ && hasDancer) {
+        const registerBusinessLabel = t('sidebar.registerBusiness');
         menus = menus.filter(
-          (menu) => menu.label !== "Đăng ký tài khoản kinh doanh"
+          (menu) => menu.label !== registerBusinessLabel && menu.label !== "Đăng ký tài khoản kinh doanh"
         );
       }
     }
@@ -253,6 +254,19 @@ export default function Sidebar() {
       "Tin nhắn": "messages",
       "Hồ sơ": "profile",
       "Bank info": "bankInfo",
+      "Dashboard": "dashboard",
+      "Nhân sự (DJ, Dancer)": "staff",
+      "Bar page": "barPage",
+      "Cài đặt quán": "barSettings",
+      "Lịch diễn": "schedule",
+      "Khách hàng / Bar hợp tác": "partners",
+      "Đối tác / Bar": "partners",
+      "Đánh giá & sao": "reviewsStars",
+      "Quản lý người dùng": "adminUsers",
+      "Quản lý quán / Bar": "adminBars",
+      "Báo cáo & thống kê": "adminReports",
+      "Cài đặt hệ thống": "adminSettings",
+      "Đăng ký tài khoản kinh doanh": "registerBusiness",
     };
     const k = labelKeyMap[label] || label;
     return (

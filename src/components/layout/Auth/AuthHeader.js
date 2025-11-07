@@ -1,12 +1,13 @@
 import React from "react";
 import { Button } from "../../common/Button";
 import { useNavigate } from "react-router-dom";
-
+import { useTranslation } from "react-i18next";
 
 import "../../../styles/layouts/header.css";
 
 export default function AuthHeader() {
- const navigate = useNavigate(); // hook để điều hướng
+ const navigate = useNavigate();
+ const { t } = useTranslation();
 
   return (
     <header className="header">
@@ -16,16 +17,16 @@ export default function AuthHeader() {
           <Button
             size="default"
             className="btn-login rounded-xl"
-            onClick={() => navigate("/login")} // điều hướng đến trang login
+            onClick={() => navigate("/login")}
           >
-            Đăng nhập
+            {t('auth.login')}
           </Button>
           <Button
             size="default"
             className="btn-register rounded-xl"
-            onClick={() => navigate("/register")} // điều hướng đến trang register
+            onClick={() => navigate("/register")}
           >
-            Đăng ký
+            {t('auth.signUp')}
           </Button>
         </div>
       </div>

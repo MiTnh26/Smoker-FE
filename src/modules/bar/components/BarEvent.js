@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
 import { Button } from "../../../components/common/Button";
@@ -8,6 +9,7 @@ import AddEventModal from "./AddEventModal";
 import barEventApi from "../../../api/barEventApi";
 
 export default function BarEvent({ barPageId }) {
+  const { t } = useTranslation();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openModal, setOpenModal] = useState(false);
@@ -52,25 +54,25 @@ export default function BarEvent({ barPageId }) {
     const startDate = new Date(start);
     const endDate = new Date(end);
 
-    if (now < startDate) return { label: "Sắp diễn ra", color: "bg-blue-500" };
+    if (now < startDate) return { label: t("bar.upcoming"), color: "bg-blue-500" };
     if (now >= startDate && now <= endDate)
-      return { label: "Đang diễn ra", color: "bg-green-500" };
-    return { label: "Đã kết thúc", color: "bg-gray-500" };
+      return { label: t("bar.ongoing"), color: "bg-green-500" };
+    return { label: t("bar.ended"), color: "bg-gray-500" };
   };
 
-  if (loading) return <p>Đang tải sự kiện...</p>;
+  if (loading) return <p>{t("bar.loadingEvents")}</p>;
 
   return (
     <div className="profile-card relative p-4">
       <div className="flex justify-between items-center mb-3">
-        <h3 className="section-title font-semibold text-lg">Sự kiện</h3>
+        <h3 className="section-title font-semibold text-lg">{t("bar.events")}</h3>
         <Button size="sm" onClick={() => setOpenModal(true)}>
-          + Thêm sự kiện
+          + {t("bar.addEvent")}
         </Button>
       </div>
 
       {events.length === 0 ? (
-        <p>Chưa có sự kiện nào.</p>
+        <p>{t("bar.noEvents")}</p>
       ) : (
         <div className="relative w-full max-w-[19vw] h-[240px] mx-auto overflow-hidden">
           <Swiper
@@ -100,12 +102,12 @@ export default function BarEvent({ barPageId }) {
                     <div className="absolute bottom-0 left-0 right-0 p-3 text-white z-10">
                       <h4 className="text-base font-semibold truncate">{ev.EventName}</h4>
                       <p className="text-xs opacity-90 line-clamp-2">
-                        {ev.Description || "Không có mô tả"}
+                        {ev.Description || t("bar.noDescription")}
                       </p>
 
                       <div className="mt-1 text-xs flex flex-col gap-0.5">
-                        <p>🕒 Bắt đầu: {formatDate(ev.StartTime)}</p>
-                        <p>🏁 Kết thúc: {formatDate(ev.EndTime)}</p>
+                        <p>{t("bar.startTime")} {formatDate(ev.StartTime)}</p>
+                        <p>{t("bar.endTime")} {formatDate(ev.EndTime)}</p>
                       </div>
 
                       {/* Status badge */}

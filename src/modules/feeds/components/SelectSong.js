@@ -1,8 +1,10 @@
 // SelectSong.js
 import React, { useEffect, useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import axios from "axios";
 
 export default function SelectSong({ value, onChange }) {
+  const { t } = useTranslation();
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [playingId, setPlayingId] = useState(null);
@@ -48,10 +50,10 @@ export default function SelectSong({ value, onChange }) {
 
   return (
     <div style={{ width: "100%" }}>
-      <label style={{ fontWeight: 500, color: "#444", marginBottom: 6, display: "block" }}>Chọn nhạc từ thư viện</label>
+      <label style={{ fontWeight: 500, color: "#444", marginBottom: 6, display: "block" }}>{t('story.selectMusicFromLibrary')}</label>
       <input
         type="text"
-        placeholder="Tìm kiếm tên bài hát hoặc nghệ sĩ..."
+        placeholder={t('story.searchSongPlaceholder')}
         value={search}
         onChange={e => setSearch(e.target.value)}
         style={{
@@ -64,7 +66,7 @@ export default function SelectSong({ value, onChange }) {
         }}
       />
       {loading ? (
-        <div style={{ padding: 12, color: "#888" }}>Đang tải danh sách nhạc...</div>
+        <div style={{ padding: 12, color: "#888" }}>{t('story.loadingSongs')}</div>
       ) : (
         <div style={{
           maxHeight: 220,
@@ -75,7 +77,7 @@ export default function SelectSong({ value, onChange }) {
           background: "#fafaff"
         }}>
           {filteredSongs.length === 0 && (
-            <div style={{ padding: 16, color: "#aaa", textAlign: "center" }}>Không tìm thấy bài hát phù hợp</div>
+            <div style={{ padding: 16, color: "#aaa", textAlign: "center" }}>{t('story.noSongsFound')}</div>
           )}
           {filteredSongs.map((item) => (
             <div

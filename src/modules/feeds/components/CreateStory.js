@@ -1,7 +1,9 @@
 import "../../../styles/modules/feeds/CreateStory.css"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 
 export default function CreateStory({ onStoryCreated }) {
+  const { t } = useTranslation();
   const [file, setFile] = useState(null)
 
   const handleUpload = (e) => {
@@ -30,10 +32,10 @@ export default function CreateStory({ onStoryCreated }) {
   return (
     <div className="create-story">
       <label className="story-upload-btn">
-        + Tạo Story
+        {t('story.createStoryButton')}
         <input type="file" accept="image/*,video/*" onChange={handleUpload} hidden />
       </label>
-      {file && <button onClick={handleSubmit}>Đăng</button>}
+      {file && <button onClick={handleSubmit}>{t('action.post')}</button>}
     </div>
   )
 }

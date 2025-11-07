@@ -1,9 +1,11 @@
 
 import { useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "../../../styles/modules/feeds/StoryBar.css"
 
 export default function StoryBar({ stories, onStoryClick, onStoryCreated }) {
+  const { t } = useTranslation();
   const barRef = useRef(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const navigate = useNavigate();
@@ -39,7 +41,7 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated }) {
             <div className="story-avatar" style={{ background: "#eee", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <span style={{ fontSize: 32, color: "#888" }}>+</span>
             </div>
-            <div style={{ marginTop: 8, color: "#333", fontWeight: 500 }}>Tạo Story</div>
+            <div style={{ marginTop: 8, color: "#333", fontWeight: 500 }}>{t('story.createStory')}</div>
           </div>
           {stories.map((story, idx) => {
             // key: ưu tiên _id, fallback idx

@@ -1,4 +1,7 @@
+import { useTranslation } from "react-i18next";
+
 export default function FeedHeader() {
+  const { t } = useTranslation();
   let session;
   try {
     const raw = localStorage.getItem("session");
@@ -11,7 +14,7 @@ export default function FeedHeader() {
 
   return (
     <header className="feed-header p-4 flex justify-between items-center border-b" style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))", color: "rgb(var(--foreground))" }}>
-      <h2 className="text-xl font-semibold">Bảng tin</h2>
+      <h2 className="text-xl font-semibold">{t('feed.newsfeed')}</h2>
       <div className="flex items-center gap-3">
         {/* {user && (
           <div className="flex items-center gap-2">

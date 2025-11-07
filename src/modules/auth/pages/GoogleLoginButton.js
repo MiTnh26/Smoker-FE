@@ -1,5 +1,6 @@
 import React from "react";
 import { GoogleLogin } from "@react-oauth/google";
+import { useTranslation } from "react-i18next";
 import { authApi } from "../../../api/userApi";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
@@ -7,6 +8,7 @@ import { fetchAllEntities } from "../../../utils/sessionHelper";
 
 export default function GoogleLoginButton() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [error, setError] = React.useState("");
   const [message, setMessage] = React.useState("");
@@ -37,9 +39,9 @@ export default function GoogleLoginButton() {
         };
         localStorage.setItem("session", JSON.stringify(session));
       
-        setMessage("Đăng nhập thành công!");
+        setMessage(t('auth.googleLoginSuccess'));
         setError("");
-      
+        
         if (data.needProfile) {
           setTimeout(() => navigate("/profile-setup", { replace: true }), 800);
         } else {
@@ -50,11 +52,11 @@ export default function GoogleLoginButton() {
         setMessage(data.message);
         setError("");
       } else {
-        setError("Xác thực Google thất bại.");
+        setError(t('auth.googleAuthFailed'));
         setMessage("");
       }
     } catch (err) {
-      setError(err?.response?.data?.message || "Xác thực Google thất bại 2");
+      setError(err?.response?.data?.message || t('auth.googleAuthFailed'));
       setMessage("");
     }
   };
@@ -141,9 +143,9 @@ export default function GoogleLoginButton() {
       `}</style>
       <div className="google-login-card">
         <div>
-          <h2 className="google-login-title">Đăng nhập bằng Google</h2>
+          <h2 className="google-login-title">{t('auth.loginWithGoogle')}</h2>
           <div className="google-login-subtitle">
-            Nhanh chóng và an toàn với tài khoản Google của bạn
+            {t('auth.googleLoginSubtitle')}
           </div>
         </div>
         <div className="google-login-messages">
@@ -153,7 +155,7 @@ export default function GoogleLoginButton() {
         <div className="google-btn-wrapper">
           <GoogleLogin
             onSuccess={handleSuccess}
-            onError={() => setError("Đăng nhập Google thất bại. Vui lòng thử lại.")}
+            onError={() => setError(t('auth.googleLoginFailed'))}
             width="320"
             size="large"
             shape="pill"
