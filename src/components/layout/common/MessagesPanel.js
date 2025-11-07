@@ -3,16 +3,38 @@ import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { Search } from "lucide-react";
 import "../../../styles/layouts/messagepanel.css";
-
+import messageApi from "../../../api/messageApi";
 /**
  * MessagesPanel - Hiển thị danh sách tin nhắn
  * Dùng DropdownPanel component chung từ BarHeader/CustomerHeader
  */
-export default function MessagesPanel({ conversations = [], onClose }) {
+export default function MessagesPanel({ onClose }) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [conversations, setConversations] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
 
-  // Filter conversations based on search
+  React.useEffect(() => {
+    messageApi.getConversations().then(res => {
+      // Map lại dữ liệu cho phù hợp UI
+      const userId = localStorage.getItem("userId") || JSON.parse(localStorage.getItem("session"))?.account?.id;
+      const mapped = (res.data || []).map(conv => {
+        // Lấy tin nhắn cuối cùng
+        const messages = Object.values(conv["Cuộc Trò Chuyện"] || {});
+        const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+        return {
+          id: conv._id,
+          name: conv["Người 1"] === userId ? conv["Người 2"] : conv["Người 1"],
+          lastMessage: lastMsg ? lastMsg["Nội Dung Tin Nhắn"] : "",
+          time: lastMsg ? new Date(lastMsg["Gửi Lúc"]).toLocaleString() : "",
+          unread: 0 // cần xử lý thêm nếu muốn đếm số chưa đọc
+        };
+      });
+      setConversations(mapped);
+      setLoading(false);
+    });
+  }, []);
+
   const filteredConversations = conversations.filter((conv) =>
     conv.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -42,7 +64,11 @@ export default function MessagesPanel({ conversations = [], onClose }) {
 
       {/* Conversations list */}
       <div className="panel-list">
-        {filteredConversations.length === 0 ? (
+        {loading ? (
+          <div style={{ padding: "40px 20px", textAlign: "center", color: "rgb(var(--muted-foreground))" }}>
+            <p style={{ margin: 0 }}>{t('messages.loading') || 'Đang tải...'}</p>
+          </div>
+        ) : filteredConversations.length === 0 ? (
           <div style={{ padding: "40px 20px", textAlign: "center", color: "rgb(var(--muted-foreground))" }}>
             <p style={{ margin: 0 }}>{t('messages.empty')}</p>
           </div>
@@ -53,18 +79,14 @@ export default function MessagesPanel({ conversations = [], onClose }) {
               type="button"
               className="panel-item"
               onClick={() => {
-                // eslint-disable-next-line no-undef
                 if (window.__openChat) {
-                  // eslint-disable-next-line no-undef
                   window.__openChat({ id: conv.id, name: conv.name });
                 }
                 onClose?.();
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
-                  // eslint-disable-next-line no-undef
                   if (window.__openChat) {
-                    // eslint-disable-next-line no-undef
                     window.__openChat({ id: conv.id, name: conv.name });
                   }
                   onClose?.();
@@ -91,19 +113,3 @@ export default function MessagesPanel({ conversations = [], onClose }) {
     </>
   );
 }
-
-MessagesPanel.propTypes = {
-  conversations: PropTypes.arrayOf(PropTypes.shape({
-    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
-    name: PropTypes.string.isRequired,
-    lastMessage: PropTypes.string.isRequired,
-    time: PropTypes.string.isRequired,
-    unread: PropTypes.number,
-  })),
-  onClose: PropTypes.func,
-};
-
-MessagesPanel.defaultProps = {
-  conversations: [],
-  onClose: () => {},
-};

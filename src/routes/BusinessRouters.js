@@ -61,9 +61,9 @@ export default function BusinessRoutes() {
                 <Route 
                     path="/dj/:businessId" 
                     element={
-                        <ProtectedRoute roles={["dj"]}>
+                        // <ProtectedRoute roles={["dj"]}>
                             <DJLayout><DJProfile /></DJLayout>
-                        </ProtectedRoute>
+                        // </ProtectedRoute>
                     } 
                 />
                 <Route 
