@@ -1,12 +1,40 @@
-// src/components/layout/common/ChatDock.js
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
 import "../../../styles/layouts/chatdock.css";
-
+import messageApi from "../../../api/messageApi";
+import { useAuth } from "../../../hooks/useAuth"; 
+import useChatSocket from '../../../api/useChatSocket';
 function ChatWindow(props) {
   const { chat, onClose } = props;
   const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
   const bodyRef = useRef(null);
+  const { user } = useAuth();
+    // Realtime: nhận tin nhắn mới qua socket
+  useChatSocket((message) => {
+    if (message.conversationId === chat.id) {
+      // Fetch lại toàn bộ messages để đồng bộ trạng thái
+      messageApi.getMessages(chat.id).then(res => {
+        setMessages(res.data || []);
+        setTimeout(scrollToBottom, 100);
+      });
+      // Đánh dấu đã đọc luôn nếu đang mở
+      messageApi.markMessagesRead(chat.id);
+    }
+  });
+  // Lấy tin nhắn khi mở chat
+  useEffect(() => {
+    setLoading(true);
+    messageApi.getMessages(chat.id).then(res => {
+      setMessages(res.data || []);
+      setLoading(false);
+      setTimeout(scrollToBottom, 100);
+    });
+  // Đánh dấu đã đọc (gửi conversationId qua body)
+  messageApi.markMessagesRead(chat.id);
+    // eslint-disable-next-line
+  }, [chat.id]);
 
   // Auto scroll to bottom when new messages come in
   const scrollToBottom = () => {
@@ -17,13 +45,20 @@ function ChatWindow(props) {
 
   useEffect(() => {
     scrollToBottom();
-  }, []);
+  }, [messages]);
 
   const handleSend = () => {
     if (message.trim()) {
-      // Send message to backend (implement later)
-      setMessage("");
-      scrollToBottom();
+     
+      messageApi.sendMessage(chat.id, message).then(res => {
+        setMessages(prev => [...prev, {
+          "Nội Dung Tin Nhắn": message,
+          "Người Gửi": user.id,
+          "Gửi Lúc": new Date(),
+        }]);
+        setMessage("");
+        setTimeout(scrollToBottom, 100);
+      });
     }
   };
 
@@ -53,18 +88,23 @@ function ChatWindow(props) {
         </button>
       </div>
       <div className="chatwin__body" ref={bodyRef}>
-        <div className="chatwin__bubble chatwin__bubble--other">
-          Xin chào! 👋
-        </div>
-        <div className="chatwin__bubble chatwin__bubble--me">
-          Chào bạn, bạn khỏe không?
-        </div>
-        <div className="chatwin__bubble chatwin__bubble--other">
-          Mình khỏe, cảm ơn bạn. Tối nay có đi đâu không?
-        </div>
-        <div className="chatwin__bubble chatwin__bubble--me">
-          Có nè, sẽ ra quán để chill thôi
-        </div>
+        {loading ? (
+          <div style={{ textAlign: 'center', color: '#888', padding: 16 }}>Đang tải...</div>
+        ) : (
+          messages.map((msg, idx) => (
+            <div
+              key={idx}
+              className={
+                "chatwin__bubble " +
+                (msg["Người Gửi"] === (localStorage.getItem("userId") || (JSON.parse(localStorage.getItem("session"))?.account?.id))
+                  ? "chatwin__bubble--me"
+                  : "chatwin__bubble--other")
+              }
+            >
+              {msg["Nội Dung Tin Nhắn"]}
+            </div>
+          ))
+        )}
       </div>
       <div className="chatwin__input">
         <input

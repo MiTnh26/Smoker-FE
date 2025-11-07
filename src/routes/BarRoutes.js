@@ -16,9 +16,9 @@ export default function BarRoutes() {
         <Route
           path="/bar/:barPageId"
           element={
-            <ProtectedRoute roles={["bar"]}>
+            // <ProtectedRoute roles={["bar"]}>
               <BarLayout><BarProfile /></BarLayout>
-            </ProtectedRoute>
+            // </ProtectedRoute>
           }
         />
       </>

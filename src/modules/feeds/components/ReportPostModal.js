@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
-
+import reportApi from "../../../api/reportApi";
+import { useAuth } from "../../../hooks/useAuth";
 export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { t } = useTranslation();
-
+  const { user } = useAuth();
+  console.log("Reporting post:", post);
   if (!open) return null;
 
   const handleSubmit = async (e) => {
@@ -15,9 +17,26 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
     if (!reason.trim()) return;
     try {
       setSubmitting(true);
-      // FE-only: simulate success without API
+      // Call API to create report
+      const payload = {
+        ReporterId: user?.id,
+        ReporterRole: user?.role || "user",
+        TargetType: "post",
+        TargetId: post?.id,
+        TargetOwnerId: post?.ownerId, // id chủ sở hữu bài viết
+        Reason: reason.trim(),
+        Description: details.trim(),
+        Status: "Pending",
+        CreatedAt: new Date().toISOString(),
+        UpdatedAt: new Date().toISOString(),
+      };
+      await reportApi.createReport(payload);
       onSubmitted?.({ postId: post?.id, reason: reason.trim(), details: details.trim() });
       onClose?.();
+    } catch (error) {
+      // Optionally handle error (e.g., show toast)
+      // eslint-disable-next-line no-console
+      console.error("Report submission failed", error);
     } finally {
       setSubmitting(false);
     }

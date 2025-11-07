@@ -13,6 +13,7 @@ import BarVideo from "../components/BarVideo";
 import BarReview from "../components/BarReview";
 import BarTables from "../components/BarTables";
 import TableClassificationManager from "./TableClassificationManager";
+import FollowButton from "../../../components/common/FollowButton";
 
 export default function BarProfile() {
   const { t } = useTranslation();
@@ -35,7 +36,7 @@ export default function BarProfile() {
   const [editingField, setEditingField] = useState(null);
   const [saving, setSaving] = useState(false);
   const [tableTypes, setTableTypes] = useState([]); // 🟢 Track table types for disable logic
-  
+
   // Location states
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
@@ -50,17 +51,17 @@ export default function BarProfile() {
         console.log("✅ API Response getBarPageById:", res);
         if (res.status === "success" && res.data) {
           setProfile(res.data);
-          
+
           // Load structured address data if available
           if (res.data.addressData) {
             if (res.data.addressData.provinceId) {
               setSelectedProvinceId(res.data.addressData.provinceId);
               const districtsData = await locationApi.getDistricts(res.data.addressData.provinceId);
-              
+
               if (res.data.addressData.districtId) {
                 setSelectedDistrictId(res.data.addressData.districtId);
                 const wardsData = await locationApi.getWards(res.data.addressData.districtId);
-                
+
                 if (res.data.addressData.wardId) {
                   setSelectedWardId(res.data.addressData.wardId);
                 }
@@ -85,7 +86,7 @@ export default function BarProfile() {
         setLoading(false);
       }
     };
-    
+
     const fetchTableTypes = async () => {
       try {
         const res = await barPageApi.getTableTypes(barPageId);
@@ -95,14 +96,14 @@ export default function BarProfile() {
         setTableTypes([]);
       }
     };
-    
+
     fetchProfile();
     fetchTableTypes();
   }, [barPageId]);
 
   if (loading) return <div className="profile-loading">{t('profile.loadingProfile')}</div>;
   if (error) return <div className="profile-error">{error}</div>;
-
+ console.log("🏷️ Bar Profile Data:", profile.AccountId);
   // 🟢 Hàm render nội dung theo tab
   const renderTabContent = () => {
     switch (activeTab) {
@@ -114,7 +115,12 @@ export default function BarProfile() {
               <BarMenu barPageId={barPageId} />
 
             </div>
-            <BarFollowInfo />
+            <FollowButton
+              followingId={profile?.AccountId}
+              followingType="bar"
+              onChange={isFollowing => {/* callback nếu cần */ }}
+            />
+            <BarFollowInfo entityId={barPageId} />
           </div>
         );
       case "posts":
@@ -229,14 +235,14 @@ export default function BarProfile() {
         >
           {t('tabs.reviews')}
         </button>
-        <button 
-          className={activeTab === "table-types" ? "active" : ""} 
+        <button
+          className={activeTab === "table-types" ? "active" : ""}
           onClick={() => setActiveTab("table-types")}
         >
           {t('tabs.tableTypes')}
         </button>
-        <button 
-          className={activeTab === "tables" ? "active" : ""} 
+        <button
+          className={activeTab === "tables" ? "active" : ""}
           onClick={() => setActiveTab("tables")}
           disabled={tableTypes.length === 0}
           style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
@@ -447,17 +453,17 @@ export default function BarProfile() {
                   onClick={async () => {
                     try {
                       setSaving(true);
-                      
+
                       // Build FormData
                       const formData = new FormData();
                       formData.append('barPageId', barPageId);
                       formData.append('barName', profile.BarName || '');
                       formData.append('phoneNumber', profile.PhoneNumber || '');
                       formData.append('email', profile.Email || '');
-                      
+
                       // Build address
                       let fullAddress = profile.Address || '';
-                      
+
                       // Send structured address data
                       if (selectedProvinceId || selectedDistrictId || selectedWardId) {
                         formData.append('addressData', JSON.stringify({
@@ -471,13 +477,13 @@ export default function BarProfile() {
                       } else {
                         formData.append('address', profile.Address || '');
                       }
-                      
+
                       // Send avatar and background URLs
                       if (profile.Avatar) formData.append('avatar', profile.Avatar);
                       if (profile.Background) formData.append('background', profile.Background);
-                      
+
                       const res = await barPageApi.upload(formData);
-                      
+
                       if (res.status === "success") {
                         setProfile(res.data);
                         alert("Đã lưu thay đổi!");

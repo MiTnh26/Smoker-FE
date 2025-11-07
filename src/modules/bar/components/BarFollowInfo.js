@@ -1,18 +1,34 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useFollowers, useFollowing } from "../../../hooks/useFollow";
 
-export default function BarFollowInfo({ followers = 2, following = 2, friends = 2, bio = "", contact = [] }) {
+// entityId: id của bar hoặc entity cần lấy thông tin follow
+export default function BarFollowInfo({ entityId, friends = 2, bio = "", contact = [] }) {
+  // Lấy danh sách followers và following
+  const { followers, fetchFollowers, loading: loadingFollowers } = useFollowers(entityId);
+  const { following, fetchFollowing, loading: loadingFollowing } = useFollowing(entityId);
+
+  useEffect(() => {
+    if (entityId) {
+      fetchFollowers();
+      fetchFollowing();
+    }
+  }, [entityId, fetchFollowers, fetchFollowing]);
+
   return (
     <aside className="profile-sidebar flex flex-col gap-6">
-      
       {/* --- Follow Info --- */}
       <div className="profile-card p-4 rounded-xl border border-gray-700 bg-gray-900 flex justify-around text-center">
         <div>
           <p className="text-sm text-gray-400">Followers</p>
-          <p className="font-semibold text-white text-lg">{followers}</p>
+          <p className="font-semibold text-white text-lg">
+            {loadingFollowers ? "..." : followers.length}
+          </p>
         </div>
         <div>
           <p className="text-sm text-gray-400">Following</p>
-          <p className="font-semibold text-white text-lg">{following}</p>
+          <p className="font-semibold text-white text-lg">
+            {loadingFollowing ? "..." : following.length}
+          </p>
         </div>
         <div>
           <p className="text-sm text-gray-400">Friends</p>
@@ -38,7 +54,6 @@ export default function BarFollowInfo({ followers = 2, following = 2, friends = 
           </div>
         )}
       </div>
-      
     </aside>
   );
 }
