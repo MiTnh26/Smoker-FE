@@ -4,7 +4,8 @@ import { userApi } from "../../../api/userApi";
 import { locationApi } from "../../../api/locationApi";
 import axiosClient from "../../../api/axiosClient";
 import AddressSelector from "../../../components/common/AddressSelector";
-import "../../../styles/modules/profile.css";
+import { useFollowers, useFollowing } from "../../../hooks/useFollow";
+import "../../../styles/modules/publicProfile.css";
 import CreatePostBox from "../../feeds/components/CreatePostBox";
 import PostComposerModal from "../../feeds/components/PostComposerModal";
 
@@ -35,12 +36,42 @@ export default function Profile() {
   const [userVideos, setUserVideos] = useState([]);
   const [videosLoading, setVideosLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [currentUserEntityId, setCurrentUserEntityId] = useState(null);
   
   // Location states
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
   const [selectedWardId, setSelectedWardId] = useState('');
   const [addressDetail, setAddressDetail] = useState('');
+  
+  // Get current user entity ID for followers/following
+  useEffect(() => {
+    try {
+      const sessionRaw = localStorage.getItem("session");
+      if (!sessionRaw) return;
+      const session = JSON.parse(sessionRaw);
+      const active = session?.activeEntity || {};
+      const entities = session?.entities || [];
+      const resolvedId =
+        active.EntityAccountId ||
+        active.entityAccountId ||
+        active.id ||
+        entities[0]?.EntityAccountId ||
+        entities[0]?.entityAccountId ||
+        null;
+      setCurrentUserEntityId(resolvedId || null);
+    } catch {}
+  }, []);
+  
+  const { followers, fetchFollowers } = useFollowers(currentUserEntityId);
+  const { following, fetchFollowing } = useFollowing(currentUserEntityId);
+  
+  useEffect(() => {
+    if (currentUserEntityId) {
+      fetchFollowers();
+      fetchFollowing();
+    }
+  }, [currentUserEntityId, fetchFollowers, fetchFollowing]);
 
   useEffect(() => {
     (async () => {
@@ -335,38 +366,54 @@ export default function Profile() {
           
           // IMPORTANT: Update session in localStorage so other components show new avatar
           try {
-            const sessionRaw = localStorage.getItem("session");
-            if (sessionRaw) {
-              const session = JSON.parse(sessionRaw);
+            const { getSession, updateSession } = await import("../../../utils/sessionManager");
+            const session = getSession();
+            
+            if (session) {
               console.log(`[SAVE PROFILE] Current session:`, session);
               
-              // Update avatar in session
-              if (session.account) {
-                console.log(`[SAVE PROFILE] Updating account.avatar from ${session.account.avatar} to ${res.data.avatar}`);
-                session.account.avatar = res.data.avatar;
-                session.account.userName = res.data.userName;
-              }
+              // Preserve EntityAccountId when updating account
+              const accountEntityAccountId = session.account?.EntityAccountId || session.account?.entityAccountId || null;
               
-              // Update activeEntity if exists
-              if (session.activeEntity) {
-                console.log(`[SAVE PROFILE] Updating activeEntity.avatar from ${session.activeEntity.avatar} to ${res.data.avatar}`);
-                session.activeEntity.avatar = res.data.avatar;
-                session.activeEntity.name = res.data.userName;
-              }
+              // Update account (preserve EntityAccountId)
+              const updatedAccount = {
+                ...session.account,
+                avatar: res.data.avatar,
+                userName: res.data.userName,
+                EntityAccountId: accountEntityAccountId, // Preserve EntityAccountId
+              };
+              
+              // Update activeEntity if exists (preserve EntityAccountId)
+              const updatedActiveEntity = session.activeEntity ? {
+                ...session.activeEntity,
+                avatar: res.data.avatar,
+                name: res.data.userName,
+                EntityAccountId: session.activeEntity.EntityAccountId || session.activeEntity.entityAccountId || null, // Preserve EntityAccountId
+              } : null;
               
               // Update entities array if exists
-              if (session.entities && Array.isArray(session.entities)) {
-                session.entities.forEach(entity => {
-                  if (entity.type === "Account" && entity.id === session.account?.id) {
-                    console.log(`[SAVE PROFILE] Updating entity.avatar in entities array`);
-                    entity.avatar = res.data.avatar;
-                    entity.name = res.data.userName;
-                  }
-                });
-              }
+              const updatedEntities = session.entities && Array.isArray(session.entities) 
+                ? session.entities.map(entity => {
+                    if (entity.type === "Account" && entity.id === session.account?.id) {
+                      return {
+                        ...entity,
+                        avatar: res.data.avatar,
+                        name: res.data.userName,
+                        EntityAccountId: entity.EntityAccountId || entity.entityAccountId || null, // Preserve EntityAccountId
+                      };
+                    }
+                    return entity;
+                  })
+                : session.entities;
               
-              localStorage.setItem("session", JSON.stringify(session));
-              console.log(`[SAVE PROFILE] Session updated in localStorage`);
+              // Update session using sessionManager
+              updateSession({
+                account: updatedAccount,
+                activeEntity: updatedActiveEntity || session.activeEntity,
+                entities: updatedEntities,
+              });
+              
+              console.log(`[SAVE PROFILE] Session updated via sessionManager`);
               
               // Dispatch custom event to notify other components
               const event = new Event('profileUpdated');
@@ -406,210 +453,84 @@ export default function Profile() {
     }
   };
 
-  if (loading) return <div className="profile-loading">Đang tải hồ sơ...</div>;
+  if (loading) return <div className="pp-container">{t('publicProfile.loading')}</div>;
 
   return (
-    <div className="profile-container">
-      {/* --- COVER & AVATAR --- */}
+    <div className="pp-container">
       <section
-        className="profile-cover"
+        className="pp-cover"
         style={{
-          backgroundImage: `url(${profile.background || "https://i.imgur.com/6IUbEMn.jpg"
-            })`,
+          backgroundImage: `url(${profile.background || "https://i.imgur.com/6IUbEMn.jpg"})`,
         }}
       >
-        <div className="profile-info-header">
-          <div className="avatar-container">
-            <img
-              src={profile.avatar || "https://via.placeholder.com/120"}
-              alt="avatar"
-              className="profile-avatar"
-            />
-            {/* Thay nút bằng icon nhỏ góc avatar */}
-            <i className="bx bx-camera text-[#a78bfa] text-xl cursor-pointer hover:text-white transition"></i>
+        <div className="pp-header">
+          <img
+            src={profile.avatar || "https://via.placeholder.com/120"}
+            alt="avatar"
+            className="pp-avatar"
+          />
+          <div>
+            <h2 className="pp-title">{profile.userName || t('profile.editPersonalProfile')}</h2>
+            <div className="pp-type">USER</div>
           </div>
-
-          <div className="profile-details">
-            <h2>{profile.userName || "Người dùng mới"}</h2>
-            <p>{profile.address || "Chưa có địa chỉ"}</p>
-            <p>{profile.gender || "Chưa có địa chỉ"}</p>
-            <p>
-              Giá thuê: <span className="highlight">300k/giờ</span>
-            </p>
-            <p>⭐ 4.1 (5 đánh giá)</p>
-          </div>
-
-           <div className="profile-actions flex gap-3 items-center">
-            <i className="bx bx-share-alt text-[#a78bfa] text-2xl cursor-pointer hover:text-white transition"></i>
-
-            {/* 🟢 Nút chỉnh sửa hồ sơ */}
-            <button
-              onClick={handleEditClick}
-              className="flex items-center gap-1 px-3 py-1 bg-[#a78bfa] text-white rounded-xl hover:bg-[#8b5cf6] transition"
-            >
-              <i className="bx bx-edit text-lg"></i>
-              {t('profile.editProfile')}
-            </button>
-          </div>
+        </div>
+        <div className="pp-follow">
+          <button onClick={handleEditClick} className="pp-chat-button">
+            <i className="bx bx-edit"></i>
+            {t('profile.editProfile')}
+          </button>
         </div>
       </section>
 
-      {/* --- TABS --- */}
-      <div className="profile-tabs">
-        <button 
-          className={activeTab === "posts" ? "active" : ""}
-          onClick={() => setActiveTab("posts")}
-        >
-          {t('profile.postsTab')}
-        </button>
-        <button 
-          className={activeTab === "videos" ? "active" : ""}
-          onClick={() => setActiveTab("videos")}
-        >
-          {t('tabs.video')}
-        </button>
-      </div>
-
-      {/* Info tab removed per requirement */}
-
-      {/* --- TAB: POSTS --- */}
-      {activeTab === "posts" && (
-        <div className="profile-posts-tab">
-          {/* POST CREATE AREA (reuse global form) */}
-          <section className="post-section">
-            <CreatePostBox onCreate={() => setComposerOpen(true)} onMediaClick={() => setComposerOpen(true)} />
-            <PostComposerModal 
-              open={composerOpen}
-              onClose={() => setComposerOpen(false)}
-              onCreated={() => {
-                // Reload posts/videos after successful create
-                loadUserContent();
-              }}
-            />
-          </section>
-
-          {/* POST LIST */}
-          <section className="post-list">
-            {postsLoading ? (
-              <div className="text-center py-8">
-                <p className="text-gray-400">Đang tải bài viết...</p>
-              </div>
-            ) : userPosts.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-400">Chưa có bài viết nào.</p>
-              </div>
-            ) : (
-              userPosts.map((post) => (
-                <div key={post.id} className="post-card">
-                  <div className="post-header">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={post.authorAvatar || profile.avatar || "https://via.placeholder.com/40"}
-                        alt="avatar"
-                        className="avatar-small"
-                      />
-                      <div>
-                        <h4>{post.authorName || profile.userName || "Người dùng"}</h4>
-                        <p className="text-sm text-gray-400">
-                          {new Date(post.createdAt).toLocaleString('vi-VN')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {post.type === 'music' && <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">🎵 Nhạc</span>}
-                      <i className="bx bx-dots-horizontal-rounded text-[#a78bfa]"></i>
-                    </div>
-                  </div>
-                  
-                  <div className="post-content mt-3">
-                    <h5 className="font-semibold mb-2">{post.title}</h5>
-                    <p>{post.content}</p>
-                    {post.type === 'music' && post.artist && (
-                      <p className="text-sm text-gray-500 mt-1">🎤 {post.artist}</p>
-                    )}
-                  </div>
-                  
-                  {post.image && (
-                    <div className="post-image mt-3">
-                      <img 
-                        src={post.image} 
-                        alt="post" 
-                        className="w-full h-64 object-cover rounded-lg"
-                      />
-                    </div>
-                  )}
-                  
-                  {post.type === 'music' && post.audioUrl && (
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                      <audio controls className="w-full">
-                        <source src={post.audioUrl} type="audio/mpeg" />
-                        Trình duyệt không hỗ trợ phát audio.
-                      </audio>
-                    </div>
-                  )}
-                  
-                  <div className="post-actions mt-3">
-                    <button>❤️ {post.likes}</button>
-                    <button>💬 {post.comments}</button>
-                    <button>↗️ Chia sẻ</button>
-                  </div>
-                </div>
-              ))
-            )}
-          </section>
+      <section className="pp-stats">
+        <div>
+          <div className="pp-stat-label">{t('publicProfile.posts')}</div>
+          <div className="pp-stat-value">{userPosts.length}</div>
         </div>
-      )}
-
-      {/* --- TAB: VIDEOS --- */}
-      {activeTab === "videos" && (
-        <div className="profile-videos-tab">
-          {videosLoading ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400">Đang tải video...</p>
-            </div>
-          ) : userVideos.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400">Chưa có video nào.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {userVideos.map((v) => (
-                <div key={v.id} className="post-card">
-                  <div className="post-header">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={v.authorAvatar || profile.avatar || "https://via.placeholder.com/40"}
-                        alt="avatar"
-                        className="avatar-small"
-                      />
-                      <div>
-                        <h4>{v.authorName || profile.userName || "Người dùng"}</h4>
-                        <p className="text-sm text-gray-400">
-                          {new Date(v.createdAt).toLocaleString('vi-VN')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">🎬 Video</span>
-                      <i className="bx bx-dots-horizontal-rounded text-[#a78bfa]"></i>
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <h5 className="font-semibold mb-2">{v.title}</h5>
-                    <video controls className="w-full rounded-lg">
-                      <source src={v.url} type={v.mime || 'video/mp4'} />
-                      Trình duyệt không hỗ trợ phát video.
-                    </video>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        <div>
+          <div className="pp-stat-label">{t('publicProfile.followers')}</div>
+          <div className="pp-stat-value">{followers.length}</div>
         </div>
-      )}
+        <div>
+          <div className="pp-stat-label">{t('publicProfile.following')}</div>
+          <div className="pp-stat-value">{following.length}</div>
+        </div>
+      </section>
 
-      {/* Reviews tab removed per requirement */}
+      <section className="pp-section">
+        {profile.bio && (
+          <div>
+            <h3>{t("publicProfile.about")}</h3>
+            <p style={{ whiteSpace: "pre-wrap" }}>{profile.bio}</p>
+          </div>
+        )}
+        <div style={{ marginTop: profile.bio ? 12 : 0 }}>
+          <h4>{t("publicProfile.contact")}</h4>
+          {profile.email && <div>{t("common.email")}: {profile.email}</div>}
+          {profile.phone && <div>{t("common.phone") || "Phone"}: {profile.phone}</div>}
+          {profile.address && <div>{t("common.address") || "Address"}: {profile.address}</div>}
+          {profile.gender && <div>{t("profile.gender")}: {profile.gender}</div>}
+        </div>
+      </section>
+
+      <section>
+        <h3>{t("publicProfile.posts")}</h3>
+        {postsLoading ? (
+          <div style={{ color: 'rgba(255, 255, 255, 0.5)', padding: '16px' }}>{t('common.loading')}</div>
+        ) : userPosts && userPosts.length > 0 ? (
+          <ul className="pp-posts">
+            {userPosts.map(p => (
+              <li key={p.id} className="pp-post">
+                <div className="pp-post-title">{p.title || t("publicProfile.postTitleFallback")}</div>
+                {p.content && <div className="pp-post-content">{p.content}</div>}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div style={{ color: 'rgba(255, 255, 255, 0.5)', padding: '16px' }}>{t("publicProfile.noPosts")}</div>
+        )}
+      </section>
+
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">

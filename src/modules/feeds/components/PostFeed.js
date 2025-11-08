@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getPosts } from "../../../api/postApi";
+import { getPosts, trashPost } from "../../../api/postApi";
 import PostCard from "./PostCard";
 import PostComposerModal from "./PostComposerModal";
 import MusicPostModal from "./MusicPostModal";
@@ -9,7 +9,6 @@ import LivestreamCard from "./LivestreamCard";
 import AudioPlayerBar from "./AudioPlayerBar";
 import PostEditModal from "./PostEditModal";
 import ReportPostModal from "./ReportPostModal";
-import TrashModal from "./TrashModal";
 
 export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClick }) {
   const { t } = useTranslation();
@@ -23,22 +22,20 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
   const [refreshing, setRefreshing] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [reportingPost, setReportingPost] = useState(null);
-  const [trashedPostIds, setTrashedPostIds] = useState(() => {
-    try {
-      const raw = localStorage.getItem("trashedPostIds");
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? new Set(arr) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
 
-  useEffect(() => {
+  // Lấy entityAccountId của user hiện tại (cần cho trash post)
+  const getCurrentEntityAccountId = () => {
     try {
-      localStorage.setItem("trashedPostIds", JSON.stringify(Array.from(trashedPostIds)));
-    } catch {}
-  }, [trashedPostIds]);
-  const [showTrash, setShowTrash] = useState(false);
+      const raw = localStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      if (!session) return null;
+      
+      const activeEntity = session?.activeEntity || session?.account;
+      return activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+    } catch {
+      return null;
+    }
+  };
   
   // Shared audio state for synchronization
   const sharedAudioRef = useRef(null);
@@ -200,6 +197,17 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         }
       }
       
+      // Debug: Log first post to check author info
+      if (postsData.length > 0) {
+        const firstPost = postsData[0];
+        console.log('[PostFeed] First post author info:', {
+          authorName: firstPost.authorName,
+          authorEntityName: firstPost.authorEntityName,
+          entityAccountId: firstPost.entityAccountId,
+          accountId: firstPost.accountId
+        });
+      }
+      
       // If we got posts (even if empty), set them; otherwise show error
       if (postsData.length >= 0 || response?.success) {
         setPosts(postsData);
@@ -217,7 +225,6 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
   };
 
   const handlePostCreated = (newPost) => {
-    console.log("[FEED] New post created");
     // Normalize possible response shapes
     const raw = newPost && newPost.data ? newPost.data : newPost;
     const postObj = raw && raw.post ? raw.post : raw; // in case of {post, music}
@@ -249,6 +256,61 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
     const images = [];
     const videos = [];
     const audios = [];
+    
+    // Handle Array (from populated mediaIds)
+    if (Array.isArray(medias)) {
+      for (const mediaItem of medias) {
+        if (!mediaItem?.url) continue;
+        
+        const originalUrl = mediaItem.url;
+        const caption = mediaItem.caption || "";
+        
+        const mediaData = {
+          id: mediaItem._id || mediaItem.id || null,
+          url: originalUrl,
+          caption,
+          uploadDate: mediaItem.uploadDate || mediaItem.createdAt || null,
+          type: mediaItem.type || null
+        };
+        
+        // Ưu tiên check type field từ backend (đã được set đúng)
+        if (mediaItem.type === 'audio') {
+          audios.push(mediaData);
+        } else if (mediaItem.type === 'video') {
+          videos.push(mediaData);
+        } else if (mediaItem.type === 'image') {
+          images.push(mediaData);
+        } else {
+          // Fallback: detect từ URL nếu không có type field
+          const url = originalUrl.toLowerCase();
+          const isAudio = url.includes('.mp3') || 
+                         url.includes('.wav') || 
+                         url.includes('.m4a') ||
+                         url.includes('.ogg') ||
+                         url.includes('.aac') ||
+                         url.includes('audio');
+          
+          const isVideo = !isAudio && (
+                         url.includes('.mp4') || 
+                         url.includes('.webm') || 
+                         url.includes('.mov') ||
+                         url.includes('.avi') ||
+                         url.includes('.mkv') ||
+                         url.includes('video') ||
+                         mediaItem.resource_type === 'video');
+          
+          if (isAudio) {
+            audios.push(mediaData);
+          } else if (isVideo) {
+            videos.push(mediaData);
+          } else {
+            // Default to image
+            images.push(mediaData);
+          }
+        }
+      }
+      return { images, videos, audios };
+    }
     
     // Handle both Map (MongoDB) and plain Object
     const mediasEntries = medias instanceof Map 
@@ -404,9 +466,31 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       return false;
     })();
 
-    const ownerId = post.accountId || post.authorId || post.authorEntityId || null;
-    const viewerId = activeEntity?.id || currentUser?.id || null;
-    const canManage = ownerId && viewerId && String(ownerId) === String(viewerId);
+    // So sánh ownership dựa trên entityAccountId
+    const ownerEntityAccountId = post.entityAccountId ? String(post.entityAccountId).trim() : null;
+    // Lấy EntityAccountId từ activeEntity (ưu tiên EntityAccountId, sau đó entityAccountId, cuối cùng mới là id nếu không có)
+    const viewerEntityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id 
+      ? String(activeEntity.EntityAccountId || activeEntity.entityAccountId || activeEntity.id).trim() 
+      : null;
+    
+    // Debug log để kiểm tra
+    if (!ownerEntityAccountId || !viewerEntityAccountId) {
+      console.warn('[PostFeed] Missing entityAccountId for ownership check:', {
+        postId: post._id || post.postId,
+        ownerEntityAccountId,
+        viewerEntityAccountId,
+        activeEntityId: activeEntity?.id,
+        activeEntityAccountId: activeEntity?.EntityAccountId || activeEntity?.entityAccountId,
+        postEntityAccountId: post.entityAccountId
+      });
+    }
+    
+    // Chỉ so sánh entityAccountId - phải có cả 2 và phải khác rỗng
+    const canManage = ownerEntityAccountId && 
+                      viewerEntityAccountId && 
+                      ownerEntityAccountId.length > 0 &&
+                      viewerEntityAccountId.length > 0 &&
+                      ownerEntityAccountId.toLowerCase() === viewerEntityAccountId.toLowerCase();
 
     // Prefer populated objects if available
     const populatedSong = (post.song && typeof post.song === 'object') ? post.song : null;
@@ -420,15 +504,12 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         post.author?.userName ||
         post.account?.userName ||
         post.accountName ||
-        activeEntity?.name ||
-        currentUser?.userName ||
-        t('common.user'),
+        "Người dùng", // Không fallback về activeEntity/currentUser để tránh hiển thị sai tên
       avatar:
         post.authorAvatar || post.authorEntityAvatar ||
         post.author?.avatar ||
         post.account?.avatar ||
-        currentUser?.avatar ||
-        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxNC4yMDkxIDEyIDE2IDEwLjIwOTEgMTYgOEMxNiA1Ljc5MDg2IDE0LjIwOTEgNCAxMiA0QzkuNzkwODYgNCA4IDUuNzkwODYgOCA4QzggMTAuMjA5MSA5Ljc5MDg2IDEyIDEyIDEyWiIgZmlsbD0iIzljYTNhZiIvPgo8cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cjwvc3ZnPgo=",
+        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxNC4yMDkxIDEyIDE2IDEwLjIwOTEgMTYgOEMxNiA1Ljc5MDg2IDE0LjIwOTEgNCAxMiA0QzkuNzkwODYgNCA4IDUuNzkwODYgOCA4QzggMTAuMjA5MSA5Ljc5MDg2IDEyIDEyIDEyWiIgZmlsbD0iIzljYTNhZiIvPgo8cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cjwvc3ZnPgo=", // Không fallback về currentUser avatar
       time: formatTimeDisplay(post.createdAt || post.updatedAt),
       content: post.content || post.caption || post["Tiêu Đề"],
       // Extract medias from post.medias Map/Object
@@ -501,17 +582,35 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
           thumbnail: displayThumb,
         };
       })(),
-      likes: post.likes ? (typeof post.likes === 'object' ? Object.keys(post.likes).length : post.likes) : 0,
+      likes: (() => {
+        if (!post.likes) return 0;
+        // Handle Map (trước khi toObject)
+        if (post.likes instanceof Map) {
+          return post.likes.size;
+        }
+        // Handle object (sau khi toObject từ Map)
+        if (typeof post.likes === 'object' && !Array.isArray(post.likes)) {
+          return Object.keys(post.likes).length;
+        }
+        // Handle number (nếu đã được count sẵn)
+        if (typeof post.likes === 'number') {
+          return post.likes;
+        }
+        return 0;
+      })(),
       likedByCurrentUser: isLikedByCurrentUser,
       comments: countTotalComments(post.comments),
-      shares: post.shares || 0,
+      shares: (() => {
+        if (typeof post.shares === 'number') return post.shares;
+        return Number(post.shares) || 0;
+      })(),
       views: post.views || 0,
       hashtags: post.hashtags || [],
       verified: post.verified || false,
       location: post.location || null,
       title: post.title || null,
       canManage,
-      ownerId: ownerId || null
+      ownerEntityAccountId: ownerEntityAccountId || null
     };
   };
 
@@ -552,11 +651,6 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       />
 
       <div className="feed-posts space-y-4">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-          <button className="action-btn" onClick={() => setShowTrash(true)}>
-            {t('feed.trashOpen')} ({Array.from(trashedPostIds).length})
-          </button>
-        </div>
         {/* Active Livestreams */}
         {activeLivestreams && activeLivestreams.length > 0 && (
           <div className="livestreams-section">
@@ -573,10 +667,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         {posts.length === 0 ? (
           <p key="empty-posts" className="text-gray-400">{t('feed.noPosts')}</p>
         ) : (
-          posts.filter((p) => {
-            const pid = p._id || p.postId || p.id;
-            return !trashedPostIds.has(String(pid));
-          }).map((post, index) => {
+          posts.map((post, index) => {
             const postId = post._id || post.postId || post.id || `post-${index}`;
             const transformedPost = transformPost(post);
             return (
@@ -599,10 +690,32 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
                 sharedIsPlaying={sharedIsPlaying && playingPost === postId}
                 onSeek={handleSeek}
                 onEdit={(p) => setEditingPost(p)}
-                onDelete={(p) => {
+                onDelete={async (p) => {
                   if (!window.confirm(t('feed.confirmTrash'))) return;
-                  const idStr = String(p.id);
-                  setTrashedPostIds((prev) => new Set(prev).add(idStr));
+                  
+                  try {
+                    const currentEntityAccountId = getCurrentEntityAccountId();
+                    if (!currentEntityAccountId) {
+                      alert(t('feed.errorTrash') || 'Cannot trash post: No entityAccountId');
+                      return;
+                    }
+
+                    // Gọi API trash post
+                    const response = await trashPost(p.id || p._id, {
+                      entityAccountId: currentEntityAccountId
+                    });
+
+                    // axiosClient interceptor đã unwrap response.data, nên response chính là response.data
+                    if (response?.success) {
+                      // Refresh posts để cập nhật danh sách
+                      loadPosts(true);
+                    } else {
+                      alert(response?.message || t('feed.errorTrash') || 'Failed to trash post');
+                    }
+                  } catch (error) {
+                    console.error('[PostFeed] Error trashing post:', error);
+                    alert(t('feed.errorTrash') || 'Failed to trash post');
+                  }
                 }}
                 onReport={(p) => setReportingPost(p)}
               />
@@ -658,23 +771,6 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         }}
       />
 
-      {/* Trash Modal */}
-      <TrashModal
-        open={showTrash}
-        posts={posts.filter((p) => trashedPostIds.has(String(p._id || p.postId || p.id)))}
-        onClose={() => setShowTrash(false)}
-        onRestore={(id) => {
-          setTrashedPostIds((prev) => {
-            const next = new Set(prev);
-            next.delete(String(id));
-            return next;
-          });
-        }}
-        onClear={() => {
-          if (!window.confirm(t('feed.confirmTrash'))) return;
-          setTrashedPostIds(new Set());
-        }}
-      />
       {/* Audio Player Bar - Fixed bottom bar */}
       {activePlayer?.audioSrc && (
         <AudioPlayerBar

@@ -29,7 +29,6 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
 
     try {
       const res = await uploadPostMedia(formData);
-      console.log("[MUSIC] Upload response:", res);
 
       // Backend returns: { success: true, data: [...], message: "..." }
       const responseData = res.data || res;
@@ -98,7 +97,6 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
             audioUrl: result.secure_url,
             audioFile: file
           }));
-          console.log("[MUSIC] Audio uploaded successfully:", result.secure_url);
         } else {
           console.error("[MUSIC] Upload failed - no secure_url:", result);
           alert(t('modal.uploadFailed'));
@@ -123,7 +121,6 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
             ...prev,
             musicBackgroundImage: result.secure_url
           }));
-          console.log("[MUSIC] Image uploaded successfully:", result.secure_url);
         } else {
           console.error("[MUSIC] Upload failed - no secure_url:", result);
           alert(t('modal.uploadFailed'));
@@ -150,7 +147,6 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
 
     try {
       setSubmitting(true);
-      console.log("[MUSIC] Starting music post submission");
 
       // Lấy session
       let session, accountId;
@@ -162,7 +158,10 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
       }
       const activeEntity = session?.activeEntity || session?.account;
       accountId = session?.account?.id;
-
+      
+      // Lấy entityAccountId, entityId, entityType từ activeEntity
+      const entityAccountId = activeEntity?.id || null;
+      const entityId = activeEntity?.entityId || accountId;
       const rawRole = (activeEntity?.role || activeEntity?.type || session?.account?.role || "").toLowerCase();
       let normalizedEntityType;
       if (rawRole === "business" || rawRole === "businessaccount") {
@@ -183,12 +182,14 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
         coverUrl: formData.musicBackgroundImage,
         audioUrl: formData.audioUrl,
         uploaderId: accountId,
+        entityAccountId: entityAccountId,
+        entityId: entityId,
+        entityType: normalizedEntityType,
         uploaderName: activeEntity?.name || session?.account?.userName,
         uploaderAvatar: activeEntity?.avatar || session?.account?.avatar,
       });
       // axiosClient already returns response.data
       const createdMusic = musicRes?.data ? musicRes.data : (musicRes?.success ? musicRes.data : musicRes);
-      console.log("[MUSIC] Music created:", createdMusic);
 
       //  Sau đó tạo Post liên kết
       const postRes = await axiosClient.post("/posts", {
@@ -196,11 +197,17 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
         content: formData.description,
         type: "post",
         accountId,
+        entityAccountId: entityAccountId,
+        entityId: entityId,
+        entityType: normalizedEntityType,
+        authorEntityId: entityId,
+        authorEntityType: normalizedEntityType,
+        authorEntityName: activeEntity?.name || session?.account?.userName,
+        authorEntityAvatar: activeEntity?.avatar || session?.account?.avatar,
         musicId: (createdMusic && createdMusic._id) || (createdMusic && createdMusic.data && createdMusic.data._id) || createdMusic?.id,
         songId: null,
       });
 
-      console.log("[MUSIC] Post created:", postRes);
 
       // axiosClient returns response.data -> may be {success, data}
       const createdPost = postRes?.data ? postRes.data : (postRes?.success ? postRes.data : postRes);

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next"; // i18n: translate UI strings
 import LanguageSwitcher from "../../../components/common/LanguageSwitcher"; // i18n: language buttons
+import TrashManager from "../components/TrashManager";
 import "../../../styles/modules/settings/settings.css";
 
 export default function SettingsPrivacyPage() {
@@ -78,6 +79,8 @@ export default function SettingsPrivacyPage() {
               </select>
             </div>
           </section>
+
+          <TrashManager />
         </div>
       </div>
   );

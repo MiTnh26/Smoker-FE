@@ -7,6 +7,7 @@ import MessagesPanel from "../common/MessagesPanel";
 import NotificationPanel from "../common/NotificationPanel";
 import DropdownPanel from "../../common/DropdownPanel";
 import "../../../styles/layouts/customerheader.css";
+import GlobalSearch from "../common/GlobalSearch";
 
 export default function CustomerHeader() {
   const [activePanel, setActivePanel] = useState(null); // 'notifications' | 'messages' | 'user' | null
@@ -35,8 +36,7 @@ export default function CustomerHeader() {
           <Link to="/customer/newsfeed" className="newsfeed-logo">{t('layout.brand')}</Link>
 
           <div className="newsfeed-search">
-            <Search className="search-icon" />
-            <input type="text" placeholder={t('layout.searchPlaceholder')} className="search-input" />
+            <GlobalSearch />
           </div>
 
           <div className="newsfeed-nav">

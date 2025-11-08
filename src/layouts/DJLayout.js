@@ -1,7 +1,8 @@
-// src/layouts/BarLayout.js
+// src/layouts/DJLayout.js
 import BarHeader from "../components/layout/Bar/BarHeader"; // giả sử bạn có header riêng cho bar
 import Sidebar from "../components/layout/Sidebar";
 import RightSidebar from "../components/layout/common/RightSidebar";
+import ChatDock from "../components/layout/common/ChatDock";
 import "../styles/modules/bar.css";// có thể tạo CSS riêng cho bar
 
 const DJLayout = ({ children }) => (
@@ -12,6 +13,7 @@ const DJLayout = ({ children }) => (
       <main>{children}</main>   
       <RightSidebar /> 
     </div>
+    <ChatDock />
     {/* Footer nếu cần */}
   </div>
 );

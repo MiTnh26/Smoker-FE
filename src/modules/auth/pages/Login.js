@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 import "../../../styles/modules/auth.css";
 
 import { useNavigate } from "react-router-dom";
-import { authApi } from "../../../api/userApi";
+import { authApi, userApi } from "../../../api/userApi";
 import { useAuth } from "../../../hooks/useAuth";
 import FacebookLoginButton from '../pages/FacebookLoginButton';
 import { fetchAllEntities } from "../../../utils/sessionHelper";
@@ -33,20 +33,36 @@ export function Login() {
         // Fetch all entities (bars, businesses)
         const entities = await fetchAllEntities(res.user.id, res.user);
         
-        // ✅ Thêm đoạn session chuẩn
-        const session = {
-          token: res.token,
-          account: res.user, // chính là Customer
-          entities: entities, // Tất cả entities
-          activeEntity: {
-            type: "Account",
-            id: res.user.id,
-            name: res.user.userName,
-            avatar: res.user.avatar,
-            role: "Customer"
+        // Fetch EntityAccountId for Account entity
+        let accountEntityAccountId = null;
+        try {
+          console.log("[Login] Fetching EntityAccountId for AccountId:", res.user.id);
+          const entityAccountRes = await userApi.getEntityAccountId(res.user.id);
+          accountEntityAccountId = entityAccountRes?.data?.data?.EntityAccountId || entityAccountRes?.data?.EntityAccountId || null;
+          console.log("[Login] Fetched EntityAccountId:", accountEntityAccountId);
+          
+          if (!accountEntityAccountId) {
+            console.warn("[Login] EntityAccountId is null, response:", entityAccountRes);
           }
-        };
-        localStorage.setItem("session", JSON.stringify(session));
+        } catch (err) {
+          console.error("[Login] Failed to fetch EntityAccountId for Account:", err);
+          console.error("[Login] Error details:", err?.response?.data || err?.message);
+        }
+        
+        // Find Account entity in entities array and update it with EntityAccountId
+        const accountEntity = entities.find(e => e.type === "Account");
+        if (accountEntity && accountEntityAccountId) {
+          accountEntity.EntityAccountId = accountEntityAccountId;
+        }
+        
+        // ✅ Initialize session using sessionManager
+        const { initializeSession } = await import("../../../utils/sessionManager");
+        initializeSession({
+          token: res.token,
+          user: res.user,
+          entities: entities,
+          entityAccountId: accountEntityAccountId
+        });
         if (!res.needProfile) {
           navigate("/customer/newsfeed", { replace: true });
         } else {

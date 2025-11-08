@@ -1,8 +1,10 @@
 import React, { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useFollowers, useFollowing } from "../../../hooks/useFollow";
 
 // entityId: id của bar hoặc entity cần lấy thông tin follow
 export default function BarFollowInfo({ entityId, friends = 2, bio = "", contact = [] }) {
+  const { t } = useTranslation();
   // Lấy danh sách followers và following
   const { followers, fetchFollowers, loading: loadingFollowers } = useFollowers(entityId);
   const { following, fetchFollowing, loading: loadingFollowing } = useFollowing(entityId);
@@ -15,45 +17,46 @@ export default function BarFollowInfo({ entityId, friends = 2, bio = "", contact
   }, [entityId, fetchFollowers, fetchFollowing]);
 
   return (
-    <aside className="profile-sidebar flex flex-col gap-6">
-      {/* --- Follow Info --- */}
-      <div className="profile-card p-4 rounded-xl border border-gray-700 bg-gray-900 flex justify-around text-center">
-        <div>
-          <p className="text-sm text-gray-400">Followers</p>
-          <p className="font-semibold text-white text-lg">
-            {loadingFollowers ? "..." : followers.length}
-          </p>
+    <>
+      <div className="profile-section">
+        <div className="profile-section-header">
+          <h3 className="profile-section-title">{t('publicProfile.followers')}</h3>
         </div>
-        <div>
-          <p className="text-sm text-gray-400">Following</p>
-          <p className="font-semibold text-white text-lg">
-            {loadingFollowing ? "..." : following.length}
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-400">Friends</p>
-          <p className="font-semibold text-white text-lg">{friends}</p>
+        <div className="profile-stats">
+          <div className="profile-stat-card">
+            <div className="profile-stat-label">{t('publicProfile.followers')}</div>
+            <div className="profile-stat-value">{loadingFollowers ? "..." : followers.length}</div>
+          </div>
+          <div className="profile-stat-card">
+            <div className="profile-stat-label">{t('publicProfile.following')}</div>
+            <div className="profile-stat-value">{loadingFollowing ? "..." : following.length}</div>
+          </div>
+          <div className="profile-stat-card">
+            <div className="profile-stat-label">{t('publicProfile.friends')}</div>
+            <div className="profile-stat-value">{friends}</div>
+          </div>
         </div>
       </div>
 
-      {/* --- Bio & Contact --- */}
-      <div className="profile-card p-4 rounded-xl border border-gray-700 bg-gray-900">
-        {bio && (
-          <div className="mb-3">
-            <p className="text-sm text-gray-400">Bio</p>
-            <p className="text-white text-sm">{bio}</p>
-          </div>
-        )}
+      {(bio || contact.length > 0) && (
+        <div className="profile-section">
+          {bio && (
+            <div>
+              <div className="profile-section-title text-base mb-2">{t('profile.bio')}</div>
+              <p className="profile-section-subtitle">{bio}</p>
+            </div>
+          )}
 
-        {contact.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <p className="text-sm text-gray-400">Liên hệ</p>
-            {contact.map((c, idx) => (
-              <p key={idx} className="text-white text-sm">{c}</p>
-            ))}
-          </div>
-        )}
-      </div>
-    </aside>
+          {contact.length > 0 && (
+            <div className="mt-4 space-y-2 text-sm">
+              <div className="profile-section-title text-base">{t('publicProfile.contact')}</div>
+              {contact.map((c, idx) => (
+                <p key={idx}>{c}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </>
   );
 }

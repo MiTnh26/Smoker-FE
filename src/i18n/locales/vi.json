@@ -14,10 +14,14 @@
     "retry": "Thử lại",
     "empty": "Chưa có mục nào.",
     "refreshing": "Đang làm mới...",
-    "user": "Người dùng"
+    "user": "Người dùng",
+    "email": "Email",
+    "phone": "Điện thoại",
+    "address": "Địa chỉ"
   },
   "sidebar": {
     "home": "Trang chủ",
+    "newsfeed": "Bảng tin",
     "groups": "Hội nhóm",
     "events": "Sự kiện",
     "messages": "Tin nhắn",
@@ -52,6 +56,8 @@
     "noPosts": "Chưa có bài viết nào.",
     "refreshing": "Đang làm mới...",
     "confirmTrash": "Chuyển bài viết vào thùng rác?",
+    "errorTrash": "Không thể chuyển bài viết vào thùng rác",
+    "errorRestore": "Không thể khôi phục bài viết",
     "thanksReport": "Cảm ơn bạn đã báo cáo. Chúng tôi sẽ xem xét.",
     "createPlaceholderToday": "Bạn muốn đăng gì hôm nay?",
     "goLive": "Phát trực tiếp",
@@ -155,7 +161,12 @@
     "whoSeePhone": "Ai có thể xem số điện thoại của bạn.",
     "everyone": "Mọi người",
     "friends": "Bạn bè",
-    "onlyme": "Chỉ mình tôi"
+    "onlyme": "Chỉ mình tôi",
+    "trash": "Thùng rác",
+    "trashedPosts": "Bài viết đã xóa",
+    "trashedPostsDesc": "Bạn có {{count}} bài viết đã xóa. Các bài viết sẽ tự động xóa vĩnh viễn sau 30 ngày.",
+    "viewTrash": "Xem thùng rác",
+    "postRestored": "Bài viết đã được khôi phục"
   },
   "layout": {
     "brand": "Smoker",
@@ -391,6 +402,20 @@
     "saving": "Đang lưu...",
     "saved": "Đã lưu thay đổi!",
     "saveFailed": "Lưu thất bại"
+  }
+  ,
+  "publicProfile": {
+    "loading": "Đang tải hồ sơ...",
+    "error": "Không thể tải hồ sơ.",
+    "notFound": "Không tìm thấy hồ sơ.",
+    "followers": "Followers",
+    "following": "Following",
+    "friends": "Bạn bè",
+    "about": "Giới thiệu",
+    "contact": "Liên hệ",
+    "posts": "Bài viết",
+    "postTitleFallback": "Bài viết",
+    "noPosts": "Chưa có bài viết."
   }
 }
 

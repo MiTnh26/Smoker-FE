@@ -8,6 +8,7 @@ import MessagesPanel from "../common/MessagesPanel";
 import NotificationDropdown from "../../common/NotificationDropdown";
 import DropdownPanel from "../../common/DropdownPanel";
 import "../../../styles/layouts/header.css";
+import GlobalSearch from "../common/GlobalSearch";
 
 export default function BarHeader() {
   const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | null
@@ -101,17 +102,23 @@ export default function BarHeader() {
   
   const menuConfig = getMenuConfig();
   
+  // Determine newsfeed path based on role
+  const getNewsfeedPath = () => {
+    if (role === "dj") return "/dj/newsfeed";
+    if (role === "dancer") return "/dancer/newsfeed";
+    return "/bar/newsfeed"; // default for bar
+  };
+  
   return (
     <>
       <header className="newsfeed-header">
         <div className="newsfeed-header-content">
-          <Link to={`/${role}/${activeEntityId}`} className="newsfeed-logo">
+          <Link to={getNewsfeedPath()} className="newsfeed-logo">
             {t('layout.brandPage')}
           </Link>
 
           <div className="newsfeed-search">
-            <Search className="search-icon" />
-            <input type="text" placeholder={t('layout.searchPlaceholder')} className="search-input" />
+            <GlobalSearch />
           </div>
 
           <div className="newsfeed-nav">

@@ -10,9 +10,9 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated }) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const navigate = useNavigate();
 
-  const VISIBLE_COUNT = 4
-  const ITEM_WIDTH = 140
-  const GAP = 16
+  const VISIBLE_COUNT = 5
+  const ITEM_WIDTH = 112
+  const GAP = 8
   const totalItems = (stories?.length || 0) + 1 // include CreateStory
   const maxIndex = Math.max(0, totalItems - VISIBLE_COUNT)
 
@@ -35,34 +35,41 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated }) {
         <div className="story-bar" ref={barRef} style={{ transform: `translateX(-${offset}px)` }}>
 
           {/* Nút tạo story mới chuyển sang trang editor */}
-          <div key="create" className="story-item create-story-item" onClick={() => navigate("/customer/story-editor")}
-            style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
-          >
-            <div className="story-avatar" style={{ background: "#eee", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 32, color: "#888" }}>+</span>
+          <div key="create" className="story-item create-story-item" onClick={() => navigate("/customer/story-editor")}>
+            <div className="story-preview">
+              <div className="story-create-bg"></div>
+              <button className="story-create-btn">
+                <span className="create-icon">+</span>
+              </button>
+              <p className="story-username">{t('story.createStory')}</p>
             </div>
-            <div style={{ marginTop: 8, color: "#333", fontWeight: 500 }}>{t('story.createStory')}</div>
           </div>
           {stories.map((story, idx) => {
             // key: ưu tiên _id, fallback idx
             const key = story._id || `story-${idx}`;
             // avatar src
             const avatarSrc = story.avatar || '/default-avatar.png';
-            // images src: nếu rỗng/null thì không render img
-            const hasImage = story.images && typeof story.images === 'string' && story.images.trim() !== '';
+            // preview image: ưu tiên images, sau đó thumbnail
+            const previewImage = story.images || story.thumbnail || null;
+            // username
+            const username = story.accountId || story.user || story.title || 'User';
             return (
               <div
                 key={key}
                 className="story-item"
                 onClick={() => onStoryClick(story)}
               >
-                <div className="story-avatar">
-                  <img src={avatarSrc} alt={story.accountId || 'user'} />
+                <div className="story-preview">
+                  {previewImage ? (
+                    <img src={previewImage} alt={username} className="story-preview-img" />
+                  ) : (
+                    <div className="story-preview-placeholder"></div>
+                  )}
+                  <div className="story-avatar-small">
+                    <img src={avatarSrc} alt={username} />
+                  </div>
+                  <p className="story-username">{username}</p>
                 </div>
-                {hasImage && (
-                  <img src={story.images} alt={story.title || 'story'} />
-                )}
-                <p className="story-user">{story.accountId || story.title}</p>
               </div>
             );
           })}

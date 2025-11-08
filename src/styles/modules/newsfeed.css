@@ -52,9 +52,10 @@
   max-width: 500px;
   background: rgb(var(--muted));
   border: 1px solid rgb(var(--border));
-  border-radius: 12px;
+  border-radius: 1rem;
   padding: 0 1rem;
   transition: border-color 0.2s;
+  position: relative;
 }
 
 .newsfeed-search:focus-within {
@@ -181,6 +182,17 @@
   background: rgb(var(--muted));
   color: rgb(var(--primary));
   transform: translateX(4px);
+}
+
+/* STORY SECTION */
+.story-section {
+  width: 100%;
+  background: rgb(var(--card));
+  border-bottom: 1px solid rgb(var(--border));
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  margin: 0.5rem 0;
 }
 
 /* POSTS */
@@ -365,5 +377,9 @@
 
   .newsfeed-search {
     margin: 0 1rem;
+  }
+
+  .story-section {
+    border-bottom: 1px solid rgb(var(--border));
   }
 }

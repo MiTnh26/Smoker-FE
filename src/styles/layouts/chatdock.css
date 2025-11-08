@@ -186,6 +186,50 @@
   background: rgb(var(--primary-hover));
 }
 
+/* Typing indicator */
+.chatwin__typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  align-self: flex-start;
+  background: rgb(var(--muted));
+  border-radius: 18px;
+  border-bottom-left-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.chatwin__typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(var(--muted-foreground));
+  animation: typingDot 1.4s infinite ease-in-out;
+}
+
+.chatwin__typing-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.chatwin__typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.chatwin__typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingDot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
 @media (max-width: 640px) {
   .chatdock {
     right: 6px;

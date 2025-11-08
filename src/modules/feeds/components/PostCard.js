@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import YouTubeLinkPreview from "../../../components/common/YouTubeLinkPreview"
 import { splitTextWithYouTube } from "../../../utils/youtube"
-import { likePost, unlikePost } from "../../../api/postApi"
+import { likePost, unlikePost, trackPostView, trackPostShare } from "../../../api/postApi"
 import AudioWaveform from "./AudioWaveform"
 import VideoPlayer from "./VideoPlayer"
 import ImageDetailModal from "./ImageDetailModal"
@@ -30,6 +30,7 @@ export default function PostCard({
   const [showComments, setShowComments] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
+  const hasTrackedView = useRef(false) // Track xem đã gọi API view chưa
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -40,6 +41,17 @@ export default function PostCard({
     if (menuOpen) document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [menuOpen])
+
+  // Track view khi post được render (chỉ track 1 lần)
+  useEffect(() => {
+    if (!hasTrackedView.current && post.id) {
+      hasTrackedView.current = true;
+      // Track view async, không cần đợi response
+      trackPostView(post.id).catch(err => {
+        console.warn('[PostCard] Failed to track view:', err);
+      });
+    }
+  }, [post.id])
 
   const togglePlay = () => setPlayingPost(isPlaying ? null : post.id)
   const toggleLike = async () => {
@@ -89,6 +101,13 @@ export default function PostCard({
         await navigator.clipboard.writeText(url)
         // Optionally, you could show a toast here
       }
+      
+      // Track share sau khi share thành công
+      if (post.id) {
+        trackPostShare(post.id).catch(err => {
+          console.warn('[PostCard] Failed to track share:', err);
+        });
+      }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error("Share failed", e)
@@ -113,19 +132,30 @@ export default function PostCard({
   const audioMedia = audioUrl ? { url: audioUrl } : null;
 
 
-  // Normalize medias: backend may return an array of media objects with type
+  // Normalize medias: đã được extractMedias trong PostFeed.js transformPost
+  // post.medias có thể là object { images: [], videos: [] } hoặc array từ backend
   const medias = (() => {
     const m = post.medias
+    
+    // Nếu đã là object với images/videos arrays (từ transformPost)
+    if (m && typeof m === 'object' && !Array.isArray(m)) {
+      return { 
+        images: m.images || [], 
+        videos: m.videos || [],
+        audios: m.audios || []
+      }
+    }
+    
+    // Nếu là array (từ backend, chưa qua transformPost) - filter theo type
     if (Array.isArray(m)) {
       return {
         images: m.filter((x) => x && x.type === "image"),
         videos: m.filter((x) => x && x.type === "video"),
+        audios: m.filter((x) => x && x.type === "audio")
       }
     }
-    if (m && (Array.isArray(m.images) || Array.isArray(m.videos))) {
-      return { images: m.images || [], videos: m.videos || [] }
-    }
-    return { images: [], videos: [] }
+    
+    return { images: [], videos: [], audios: [] }
   })()
 
   return (
@@ -370,3 +400,4 @@ export default function PostCard({
     </article>
   )
 }
+

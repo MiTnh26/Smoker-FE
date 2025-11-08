@@ -249,6 +249,7 @@ export default function Sidebar() {
     // Map Vietnamese labels to stable keys
     const labelKeyMap = {
       "Trang chủ": "home",
+      "Newsfeed": "newsfeed",
       "Hội nhóm": "groups",
       "Sự kiện": "events",
       "Tin nhắn": "messages",

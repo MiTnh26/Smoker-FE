@@ -28,11 +28,13 @@ export async function fetchAllEntities(accountId, user) {
     if (barsResponse && barsResponse.data && Array.isArray(barsResponse.data)) {
       barsResponse.data.forEach(bar => {
         // Ensure we use BarPageId, not AccountId
+        // Preserve EntityAccountId from API response
         const normalized = normalizeEntity({
           ...bar,
           id: bar.BarPageId,  // Force use BarPageId
           type: "BarPage",
-          role: "bar"
+          role: "bar",
+          EntityAccountId: bar.EntityAccountId || bar.entityAccountId  // Preserve EntityAccountId
         });
         if (normalized) {
           entities.push(normalized);
@@ -44,7 +46,8 @@ export async function fetchAllEntities(accountId, user) {
         ...barsResponse.data,
         id: barsResponse.data.BarPageId,  // Force use BarPageId
         type: "BarPage",
-        role: "bar"
+        role: "bar",
+        EntityAccountId: barsResponse.data.EntityAccountId || barsResponse.data.entityAccountId  // Preserve EntityAccountId
       });
       if (normalized) {
         entities.push(normalized);
@@ -67,7 +70,8 @@ export async function fetchAllEntities(accountId, user) {
           ...business,
           id: businessId,  // Force use business ID
           type: "Business",
-          role: businessRole  // Use role from backend, not hardcoded
+          role: businessRole,  // Use role from backend, not hardcoded
+          EntityAccountId: business.EntityAccountId || business.entityAccountId  // Preserve EntityAccountId
         });
         if (normalized) {
           entities.push(normalized);
@@ -82,7 +86,8 @@ export async function fetchAllEntities(accountId, user) {
         ...businessesResponse.data,
         id: businessId,  // Force use business ID
         type: "Business",
-        role: businessRole  // Use role from backend, not hardcoded
+        role: businessRole,  // Use role from backend, not hardcoded
+        EntityAccountId: businessesResponse.data.EntityAccountId || businessesResponse.data.entityAccountId  // Preserve EntityAccountId
       });
       if (normalized) {
         entities.push(normalized);

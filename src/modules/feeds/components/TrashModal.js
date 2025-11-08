@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 
-export default function TrashModal({ open, posts, onClose, onRestore, onClear }) {
+export default function TrashModal({ open, posts, loading, onClose, onRestore, onClear }) {
   const { t, i18n } = useTranslation();
   if (!open) return null;
   return (
@@ -12,7 +12,9 @@ export default function TrashModal({ open, posts, onClose, onRestore, onClear })
           <button type="button" className="btn-cancel" onClick={onClear}>{t('modal.clearAll')}</button>
         </div>
         <div className="modal-body" style={{ maxHeight: 420, overflow: 'auto' }}>
-          {posts.length === 0 ? (
+          {loading ? (
+            <p className="text-gray-400">{t('common.loading') || 'Loading...'}</p>
+          ) : posts.length === 0 ? (
             <p className="text-gray-400">{t('modal.emptyTrash')}</p>
           ) : (
             <div className="space-y-2">
@@ -42,6 +44,7 @@ export default function TrashModal({ open, posts, onClose, onRestore, onClear })
 TrashModal.propTypes = {
   open: PropTypes.bool,
   posts: PropTypes.array,
+  loading: PropTypes.bool,
   onClose: PropTypes.func,
   onRestore: PropTypes.func,
   onClear: PropTypes.func,

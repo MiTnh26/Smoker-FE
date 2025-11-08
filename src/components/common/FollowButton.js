@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useFollow, useUnfollow, useCheckFollowing } from "../../hooks/useFollow";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -14,7 +14,30 @@ export default function FollowButton({ followingId, followingType, onChange }) {
 //  const session = JSON.parse(localStorage.getItem("session")) || {};
     const { user } = useAuth();
   console.log("Auth User:", user);
- const followerId = user?.entities?.[0]?.EntityAccountId;
+ const followerId = useMemo(() => {
+    if (user?.entityAccountId) return user.entityAccountId;
+    if (user?.EntityAccountId) return user.EntityAccountId;
+    if (user?.entities?.length) {
+      const entity = user.entities.find(e => e?.EntityAccountId) || user.entities[0];
+      if (entity?.EntityAccountId) return entity.EntityAccountId;
+    }
+    try {
+      const sessionRaw = localStorage.getItem("session");
+      if (!sessionRaw) return null;
+      const session = JSON.parse(sessionRaw);
+      const active = session?.activeEntity || {};
+      return (
+        active.entityAccountId ||
+        active.EntityAccountId ||
+        active.id ||
+        session?.entities?.[0]?.EntityAccountId ||
+        session?.entities?.[0]?.entityAccountId ||
+        null
+      );
+    } catch {
+      return null;
+    }
+  }, [user]);
   console.log("Current User ID:", followerId);
   const { isFollowing, checkFollowing, loading: loadingCheck } = useCheckFollowing();
   const { follow, loading: loadingFollow } = useFollow();
@@ -49,6 +72,18 @@ export default function FollowButton({ followingId, followingType, onChange }) {
   };
 
   if (loadingCheck) return <button className="btn btn-primary" disabled>...</button>;
+  if (!followerId) {
+    return (
+      <button className="btn btn-primary" disabled>
+        Đăng nhập
+      </button>
+    );
+  }
+  
+  // Prevent following yourself
+  if (followerId && followingId && String(followerId).toLowerCase().trim() === String(followingId).toLowerCase().trim()) {
+    return null; // Don't render follow button if trying to follow yourself
+  }
 
   return internalFollowing ? (
     <button

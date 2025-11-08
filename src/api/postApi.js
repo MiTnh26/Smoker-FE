@@ -36,7 +36,7 @@ export const deleteComment = (postId, commentId) => axiosClient.delete(`/posts/$
 export const likeComment = (postId, commentId, data) => axiosClient.post(`/posts/${postId}/comments/${commentId}/like`, data);
 
 // Bỏ like comment
-export const unlikeComment = (postId, commentId) => axiosClient.delete(`/posts/${postId}/comments/${commentId}/like`);
+export const unlikeComment = (postId, commentId, data = {}) => axiosClient.delete(`/posts/${postId}/comments/${commentId}/like`, { data });
 
 // Thêm reply vào comment
 export const addReply = (postId, commentId, data) => axiosClient.post(`/posts/${postId}/comments/${commentId}/replies`, data);
@@ -54,7 +54,7 @@ export const deleteReply = (postId, commentId, replyId) => axiosClient.delete(`/
 export const likeReply = (postId, commentId, replyId, data) => axiosClient.post(`/posts/${postId}/comments/${commentId}/replies/${replyId}/like`, data);
 
 // Bỏ like reply
-export const unlikeReply = (postId, commentId, replyId) => axiosClient.delete(`/posts/${postId}/comments/${commentId}/replies/${replyId}/like`);
+export const unlikeReply = (postId, commentId, replyId, data = {}) => axiosClient.delete(`/posts/${postId}/comments/${commentId}/replies/${replyId}/like`, { data });
 
 // Tìm kiếm post
 export const searchPosts = (params) => axiosClient.get("/posts/search", { params });
@@ -64,6 +64,9 @@ export const searchPostsByTitle = (params) => axiosClient.get("/posts/search/tit
 
 // Tìm kiếm post theo author
 export const searchPostsByAuthor = (params) => axiosClient.get("/posts/search/author", { params });
+
+// Get posts by author entity id (public)
+export const getPostsByAuthor = (authorId, params) => axiosClient.get(`/posts/author/${authorId}`, { params });
 
 // Upload media for posts (images, videos, audio)
 export const uploadPostMedia = (formData) => axiosClient.post("/posts/upload", formData, {
@@ -81,3 +84,18 @@ export const getMediaByUrl = (postId, url) => {
   if (postId) params.postId = postId;
   return axiosClient.get("/medias/by-url", { params });
 };
+
+// Track post view (tăng số lượt xem)
+export const trackPostView = (postId) => axiosClient.post(`/posts/${postId}/view`);
+
+// Track post share (tăng số lượt share)
+export const trackPostShare = (postId) => axiosClient.post(`/posts/${postId}/share`);
+
+// Trash post (ẩn bài viết)
+export const trashPost = (postId, data) => axiosClient.post(`/posts/${postId}/trash`, data);
+
+// Restore post (khôi phục bài viết)
+export const restorePost = (postId, data) => axiosClient.post(`/posts/${postId}/restore`, data);
+
+// Lấy posts đã trash
+export const getTrashedPosts = (params) => axiosClient.get("/posts/trash", { params });

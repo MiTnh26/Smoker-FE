@@ -5,9 +5,10 @@ import { useParams } from "react-router-dom";
 import businessApi from "../../../api/businessApi";
 import { locationApi } from "../../../api/locationApi";
 import AddressSelector from "../../../components/common/AddressSelector";
-import PostCreate from "../../../components/layout/common/PostCreate";
-import PostList from "../../../components/layout/common/PostList";
-import "../../../styles/modules/djProfile.css";
+import PostFeed from "../../feeds/components/PostFeed";
+import { useFollowers, useFollowing } from "../../../hooks/useFollow";
+import messageApi from "../../../api/messageApi";
+import "../../../styles/modules/publicProfile.css";
 
 export default function DancerProfile() {
     const { t } = useTranslation();
@@ -30,12 +31,43 @@ export default function DancerProfile() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingField, setEditingField] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [currentUserEntityId, setCurrentUserEntityId] = useState(null);
+    const [businessEntityId, setBusinessEntityId] = useState(null);
     
     // Location states
     const [selectedProvinceId, setSelectedProvinceId] = useState('');
     const [selectedDistrictId, setSelectedDistrictId] = useState('');
     const [selectedWardId, setSelectedWardId] = useState('');
     const [addressDetail, setAddressDetail] = useState('');
+    
+    // Get current user entity ID for followers/following and chat
+    useEffect(() => {
+        try {
+            const sessionRaw = localStorage.getItem("session");
+            if (!sessionRaw) return;
+            const session = JSON.parse(sessionRaw);
+            const active = session?.activeEntity || {};
+            const entities = session?.entities || [];
+            const resolvedId =
+                active.EntityAccountId ||
+                active.entityAccountId ||
+                active.id ||
+                entities[0]?.EntityAccountId ||
+                entities[0]?.entityAccountId ||
+                null;
+            setCurrentUserEntityId(resolvedId || null);
+        } catch {}
+    }, []);
+    
+    const { followers, fetchFollowers } = useFollowers(businessEntityId);
+    const { following, fetchFollowing } = useFollowing(businessEntityId);
+    
+    useEffect(() => {
+        if (businessEntityId) {
+            fetchFollowers();
+            fetchFollowing();
+        }
+    }, [businessEntityId, fetchFollowers, fetchFollowing]);
 
     useEffect(() => {
         const fetchDancer = async () => {
@@ -49,6 +81,11 @@ export default function DancerProfile() {
                     console.log("🔍 Full API response data:", data);
                     console.log("🔍 addressData:", data.addressData);
                     console.log("🔍 Address:", data.Address);
+                    
+                    // Set business entity ID for followers/following
+                    if (data.EntityAccountId || data.entityAccountId || data.id) {
+                        setBusinessEntityId(data.EntityAccountId || data.entityAccountId || data.id);
+                    }
 
                     // Map gender from Vietnamese to English if needed
                     const mapGender = (gender) => {
@@ -159,8 +196,10 @@ export default function DancerProfile() {
         return gender;
     };
 
-    if (loading) return <div className="profile-loading">{t('profile.loadingProfile')}</div>;
-    if (error) return <div className="profile-error">{error}</div>;
+    if (loading) return <div className="pp-container">{t('profile.loadingProfile')}</div>;
+    if (error) return <div className="pp-container">{error}</div>;
+    
+    const isOwnProfile = currentUserEntityId && businessEntityId && String(currentUserEntityId).toLowerCase() === String(businessEntityId).toLowerCase();
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -181,18 +220,9 @@ export default function DancerProfile() {
 
             case "posts":
                 return (
-                    <>
-                        <section className="post-section">
-                            <PostCreate avatar={profile.avatar} />
-                        </section>
-                        <section className="post-list">
-                            <PostList
-                                posts={[]} // TODO: load bài viết DJ sau
-                                avatar={profile.avatar}
-                                userName={profile.userName}
-                            />
-                        </section>
-                    </>
+                    <div className="flex flex-col gap-6">
+                        <PostFeed />
+                    </div>
                 );
 
             default:
@@ -201,60 +231,123 @@ export default function DancerProfile() {
     };
 
     return (
-        <div className="profile-container">
-            {/* --- COVER & AVATAR --- */}
+        <div className="pp-container">
             <section
-                className="profile-cover"
+                className="pp-cover"
                 style={{
                     backgroundImage: `url(${profile.background || "https://i.imgur.com/6IUbEMn.jpg"})`,
                 }}
             >
-                <div className="profile-info-header">
-                    <div className="avatar-container">
-                        <img
-                            src={profile.avatar || "https://via.placeholder.com/120"}
-                            alt={profile.userName}
-                            className="profile-avatar"
-                        />
-                        <i className="bx bx-camera text-[#a78bfa] text-xl cursor-pointer hover:text-white transition"></i>
+                <div className="pp-header">
+                    <img
+                        src={profile.avatar || "https://via.placeholder.com/120"}
+                        alt={profile.userName}
+                        className="pp-avatar"
+                    />
+                    <div>
+                        <h2 className="pp-title">{profile.userName || "Dancer"}</h2>
+                        <div className="pp-type">{profile.role || "Dancer"}</div>
                     </div>
-
-                    <div className="profile-details">
-                        <h2>{profile.userName || "Dancer"}</h2>
-                        <p>{t('profile.role')}: {profile.role || "Dancer"}</p>
-                    </div>
-
-                    <div className="profile-actions flex gap-3">
-                        <i className="bx bx-share-alt text-[#a78bfa] text-2xl cursor-pointer hover:text-white transition"></i>
-                        <button
-                            onClick={() => setShowEditModal(true)}
-                            className="flex items-center gap-1 px-3 py-1 bg-[#a78bfa] text-white rounded-xl hover:bg-[#8b5cf6] transition"
-                        >
-                            <i className="bx bx-edit text-lg"></i>
+                </div>
+                <div className="pp-follow">
+                    {!isOwnProfile && (
+                        <>
+                            <button
+                                className="pp-chat-button"
+                                onClick={async () => {
+                                    try {
+                                        if (!currentUserEntityId || !businessEntityId) return;
+                                        const res = await messageApi.createOrGetConversation(currentUserEntityId, businessEntityId);
+                                        const conversation = res?.data?.data || res?.data;
+                                        const conversationId = conversation?._id || conversation?.conversationId || conversation?.id;
+                                        if (conversationId && window.__openChat) {
+                                            window.__openChat({
+                                                id: conversationId,
+                                                name: profile.userName || "Dancer",
+                                                avatar: profile.avatar || null, // Pass avatar
+                                                entityId: businessEntityId // Pass entityId for profile navigation
+                                            });
+                                        }
+                                    } catch (error) {
+                                        console.error("Error opening chat:", error);
+                                    }
+                                }}
+                            >
+                                <i className="bx bx-message-rounded"></i>
+                                Chat
+                            </button>
+                        </>
+                    )}
+                    {isOwnProfile && (
+                        <button onClick={() => setShowEditModal(true)} className="pp-chat-button">
+                            <i className="bx bx-edit"></i>
                             {t('profile.editProfile')}
                         </button>
-                    </div>
+                    )}
                 </div>
             </section>
 
-            {/* --- TABS --- */}
-            <div className="profile-tabs">
-                <button
-                    className={activeTab === "info" ? "active" : ""}
-                    onClick={() => setActiveTab("info")}
-                >
-                    {t('profile.infoTab')}
-                </button>
-                <button
-                    className={activeTab === "posts" ? "active" : ""}
-                    onClick={() => setActiveTab("posts")}
-                >
-                    {t('profile.postsTab')}
-                </button>
-            </div>
+            <section className="pp-stats">
+                <div>
+                    <div className="pp-stat-label">{t('publicProfile.followers')}</div>
+                    <div className="pp-stat-value">{followers.length}</div>
+                </div>
+                <div>
+                    <div className="pp-stat-label">{t('publicProfile.following')}</div>
+                    <div className="pp-stat-value">{following.length}</div>
+                </div>
+            </section>
 
-            {/* --- MAIN CONTENT --- */}
-            {renderTabContent()}
+            <section className="pp-section">
+                {profile.bio && (
+                    <div>
+                        <h3>{t("publicProfile.about")}</h3>
+                        <p style={{ whiteSpace: "pre-wrap" }}>{profile.bio}</p>
+                    </div>
+                )}
+                <div style={{ marginTop: profile.bio ? 12 : 0 }}>
+                    <h4>{t("publicProfile.contact")}</h4>
+                    {profile.phone && <div>{t("common.phone") || "Phone"}: {profile.phone}</div>}
+                    {profile.address && <div>{t("common.address") || "Address"}: {profile.address}</div>}
+                    {profile.gender && <div>{t("profile.gender")}: {displayGender(profile.gender)}</div>}
+                    {profile.pricePerHours && <div>{t("profile.pricePerHour")}: {profile.pricePerHours} đ</div>}
+                    {profile.pricePerSession && <div>{t("profile.pricePerSession")}: {profile.pricePerSession} đ</div>}
+                </div>
+            </section>
+
+            {isOwnProfile && (
+                <section style={{ padding: '0 24px 24px 24px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                        <button
+                            onClick={() => setActiveTab("info")}
+                            style={{
+                                padding: '8px 16px',
+                                background: activeTab === "info" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                borderRadius: '8px',
+                                color: '#ffffff',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {t('profile.infoTab')}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("posts")}
+                            style={{
+                                padding: '8px 16px',
+                                background: activeTab === "posts" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                borderRadius: '8px',
+                                color: '#ffffff',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            {t('profile.postsTab')}
+                        </button>
+                    </div>
+                    {renderTabContent()}
+                </section>
+            )}
             
             {/* Edit Modal - Copy từ DJProfile */}
             {showEditModal && (

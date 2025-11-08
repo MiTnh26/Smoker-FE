@@ -14,10 +14,14 @@
     "retry": "Retry",
     "empty": "No items yet.",
     "refreshing": "Refreshing...",
-    "user": "User"
+    "user": "User",
+    "email": "Email",
+    "phone": "Phone",
+    "address": "Address"
   },
   "sidebar": {
     "home": "Home",
+    "newsfeed": "Newsfeed",
     "groups": "Groups",
     "events": "Events",
     "messages": "Messages",
@@ -52,6 +56,8 @@
     "noPosts": "No posts yet.",
     "refreshing": "Refreshing...",
     "confirmTrash": "Move this post to trash?",
+    "errorTrash": "Failed to trash post",
+    "errorRestore": "Failed to restore post",
     "thanksReport": "Thanks for your report. We'll take a look.",
     "createPlaceholderToday": "What do you want to post today?",
     "goLive": "Go Live",
@@ -155,7 +161,12 @@
     "whoSeePhone": "Who can see your phone number.",
     "everyone": "Everyone",
     "friends": "Friends",
-    "onlyme": "Only me"
+    "onlyme": "Only me",
+    "trash": "Trash",
+    "trashedPosts": "Trashed posts",
+    "trashedPostsDesc": "You have {{count}} trashed posts. Posts will be permanently deleted after 30 days.",
+    "viewTrash": "View trash",
+    "postRestored": "Post has been restored"
   },
   "layout": {
     "brand": "Smoker",
@@ -391,6 +402,20 @@
     "saving": "Saving...",
     "saved": "Changes saved!",
     "saveFailed": "Save failed"
+  }
+  ,
+  "publicProfile": {
+    "loading": "Loading profile...",
+    "error": "Unable to load profile.",
+    "notFound": "Profile not found.",
+    "followers": "Followers",
+    "following": "Following",
+    "friends": "Friends",
+    "about": "About",
+    "contact": "Contact",
+    "posts": "Posts",
+    "postTitleFallback": "Post",
+    "noPosts": "No posts yet."
   }
 }
 

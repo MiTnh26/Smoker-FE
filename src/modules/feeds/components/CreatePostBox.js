@@ -7,12 +7,18 @@ export default function CreatePostBox({ onCreate, onGoLive, onMediaClick, onMusi
   const { t } = useTranslation();
   const [avatar, setAvatar] = useState("https://media.techz.vn/resize_x700x/media2019/source/01TRAMY/2024MY1/mckanhnong.png");
   
-  // Function to get avatar from session
+  // Function to get avatar from session (prioritize activeEntity/role avatar)
   const getAvatar = () => {
     try {
       const raw = localStorage.getItem("session")
       const session = raw ? JSON.parse(raw) : null
-      return session?.account?.avatar || avatar
+      if (!session) return avatar
+      
+      // Prioritize activeEntity (role) avatar, fallback to account avatar
+      const activeEntity = session?.activeEntity
+      const account = session?.account
+      
+      return activeEntity?.avatar || account?.avatar || avatar
     } catch (e) {
       return avatar
     }

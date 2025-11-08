@@ -9,10 +9,17 @@ import ComboManager from "../modules/bar/pages/ComboManager";
 import VoucherManager from "../modules/bar/pages/VoucherManager";
 import ManagePost from "../modules/bar/pages/ManagePost";
 import ManageStory from "../modules/bar/pages/ManageStory";
+import Newsfeed from "../modules/feeds/pages/Newsfeed";
 export default function BarRoutes() {
   return (
     <Fragment>
       <>
+        <Route
+          path="/bar/newsfeed"
+          element={
+            <BarLayout><Newsfeed /></BarLayout>
+          }
+        />
         <Route
           path="/bar/:barPageId"
           element={

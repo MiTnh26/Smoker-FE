@@ -93,7 +93,6 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
     
     try {
       setSubmitting(true);
-      console.log("[COMPOSER] Starting post submission");
       const title = content.trim().slice(0, 80) || t('feed.shareTitle');
       
       // Prepare images and videos objects for backend
@@ -140,6 +139,9 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
       }
       authorRole = normalizedEntityType;
 
+      // Get entityAccountId from activeEntity (prioritize EntityAccountId, then entityAccountId, finally id)
+      const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      
       const postData = { 
         title, 
         content: content,
@@ -150,18 +152,17 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
         accountId,
         authorRole,
         // explicit entity identifiers (UUID-safe)
+        entityAccountId: entityAccountId,
         authorEntityId: activeEntity?.id || null,
         authorEntityType: normalizedEntityType,
         authorEntityName: activeEntity?.name || session?.account?.userName || null,
         authorEntityAvatar: activeEntity?.avatar || session?.account?.avatar || null
       };
       
-      console.log("[COMPOSER] Post data:", { title, content: content.substring(0, 50), mediaCount: mediaFiles.length });
       
       const res = await axiosClient.post("/posts", postData);
       
       const created = res?.data || res;
-      console.log("[COMPOSER] Post created successfully");
       onCreated?.(created?.data || created);
       setContent("");
       setMediaFiles([]);

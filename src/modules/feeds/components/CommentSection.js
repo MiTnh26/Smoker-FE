@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { getPostById, addComment, addReply, addReplyToReply, likeComment, unlikeComment, likeReply, unlikeReply } from "../../../api/postApi";
 import "../../../styles/modules/feeds/CommentSection.css";
 
 export default function CommentSection({ postId, onClose, inline = false }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
@@ -15,6 +17,42 @@ export default function CommentSection({ postId, onClose, inline = false }) {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
   const [sortOrder, setSortOrder] = useState("newest"); // "newest" or "oldest"
+
+  // Format time display helper
+  const formatTimeDisplay = (value) => {
+    try {
+      const d = value ? new Date(value) : new Date();
+      if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
+      const now = new Date();
+      const diffMs = now.getTime() - d.getTime();
+      if (diffMs < 0) return d.toLocaleString('vi-VN');
+      const minutes = Math.floor(diffMs / 60000);
+      if (minutes < 1) return t('time.justNow') || 'Vừa xong';
+      if (minutes < 60) return `${minutes} phút trước`;
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return `${hours} giờ trước`;
+      const days = Math.floor(hours / 24);
+      if (days === 1) return 'Hôm qua';
+      if (days < 7) return `${days} ngày trước`;
+      return d.toLocaleDateString('vi-VN');
+    } catch {
+      return new Date().toLocaleString('vi-VN');
+    }
+  };
+
+  // Navigate to profile based on entityType
+  const handleNavigateToProfile = (entityId, entityType, entityAccountId) => {
+    if (!entityId && !entityAccountId) return;
+    
+    if (entityType === 'BarPage') {
+      navigate(`/bar/${entityId || entityAccountId}`);
+    } else if (entityType === 'BusinessAccount') {
+      navigate(`/profile/${entityAccountId || entityId}`);
+    } else {
+      // Account or default
+      navigate(`/profile/${entityAccountId || entityId}`);
+    }
+  };
 
   // Helper function to sort comments array
   const sortComments = (commentsArray, order) => {
@@ -68,27 +106,24 @@ export default function CommentSection({ postId, onClose, inline = false }) {
     return String(id);
   };
 
-  // Resolve avatar for an account id using session (fallback to placeholder)
-  const getAvatarForAccount = (accountId) => {
-    try {
-      const raw = localStorage.getItem("session");
-      const session = raw ? JSON.parse(raw) : null;
-      const me = session?.account;
-      const active = session?.activeEntity || me;
-      const myIds = [me?.id, active?.id].filter(Boolean).map(String);
-      if (accountId && myIds.includes(String(accountId))) {
-        return active?.avatar || me?.avatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz48L3N2Zz4=";
-      }
-    } catch { }
+  // Resolve avatar for an account id (fallback to placeholder)
+  // Backend should provide authorAvatar via comment.authorAvatar or reply.authorAvatar from database
+  const getAvatarForAccount = (accountId, entityAccountId) => {
+    // Always return generic placeholder - backend must provide authorAvatar from database
     return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz48cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjgiIHI9IjQiIGZpbGw9IiM5Y2EzYWYiLz48L3N2Zz4=";
+  };
+
+  // Resolve name for an account id (fallback to "Người dùng")
+  // Backend should provide authorName via comment.authorName or reply.authorName from database
+  const getNameForAccount = (accountId, entityAccountId) => {
+    // Always return generic name - backend must provide authorName from database
+    return "Người dùng";
   };
 
   const loadComments = async () => {
     try {
       setLoading(true);
       const response = await getPostById(postId);
-
-      console.log("Raw response from API:", response);
 
       // Axios interceptor already unwraps response.data, so response IS the API response
       // Response structure should be: { success: true, data: { ...post... } }
@@ -105,22 +140,9 @@ export default function CommentSection({ postId, onClose, inline = false }) {
         post = response.data;
       }
 
-      console.log("Extracted post object:", post);
-      console.log("Post.comments:", post?.comments);
-      console.log("Post.comments type:", typeof post?.comments);
-      console.log("Post.comments keys:", post?.comments ? Object.keys(post.comments) : null);
-
       if (post && post.comments) {
         // Transform comments from Map/Object to array
         const commentsArray = [];
-
-        console.log("Processing comments...");
-        console.log("post.comments value:", post.comments);
-        console.log("post.comments type:", typeof post.comments);
-        console.log("post.comments constructor:", post.comments?.constructor?.name);
-        console.log("Is Map?", post.comments instanceof Map);
-        console.log("Is Array?", Array.isArray(post.comments));
-        console.log("Object.keys(post.comments):", Object.keys(post.comments || {}));
 
         if (post.comments && typeof post.comments === 'object') {
           let commentsData = [];
@@ -128,7 +150,6 @@ export default function CommentSection({ postId, onClose, inline = false }) {
           // Try Map first
           if (post.comments instanceof Map) {
             commentsData = Array.from(post.comments.entries());
-            console.log("Using Map conversion, entries:", commentsData.length);
           }
           // Try Array
           else if (Array.isArray(post.comments)) {
@@ -136,18 +157,15 @@ export default function CommentSection({ postId, onClose, inline = false }) {
               extractId(comment._id) || extractId(comment.id) || `comment-${index}`,
               comment
             ]);
-            console.log("Using Array conversion, entries:", commentsData.length);
           }
           // Try plain object with Object.keys first
           else {
             // Try multiple methods to extract keys
             let commentKeys = Object.keys(post.comments);
-            console.log("Object.keys result:", commentKeys);
 
             // If Object.keys returns empty, try getOwnPropertyNames
             if (commentKeys.length === 0) {
               commentKeys = Object.getOwnPropertyNames(post.comments);
-              console.log("Object.getOwnPropertyNames result:", commentKeys);
             }
 
             // Try JSON.stringify/parse to force conversion
@@ -156,11 +174,9 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                 const stringified = JSON.stringify(post.comments);
                 const parsed = JSON.parse(stringified);
                 commentKeys = Object.keys(parsed);
-                console.log("After JSON stringify/parse, keys:", commentKeys);
 
                 if (commentKeys.length > 0) {
                   commentsData = commentKeys.map(key => [key, parsed[key]]);
-                  console.log("Using JSON conversion, entries:", commentsData.length);
                 }
               } catch (e) {
                 console.error("JSON conversion failed:", e);
@@ -171,19 +187,13 @@ export default function CommentSection({ postId, onClose, inline = false }) {
             if (commentKeys.length > 0 && commentsData.length === 0) {
               commentsData = commentKeys.map(key => {
                 const value = post.comments[key];
-                console.log(`Comment key "${key}":`, value);
                 return [key, value];
               });
-              console.log("Using Object.keys conversion, entries:", commentsData.length);
             } else if (commentsData.length === 0) {
               // Last resort: Object.entries
               commentsData = Object.entries(post.comments);
-              console.log("Using Object.entries fallback, entries:", commentsData.length);
             }
           }
-
-          console.log("Comments data after conversion:", commentsData);
-          console.log("Number of comments:", commentsData.length);
 
           for (const [commentId, comment] of commentsData) {
             if (!comment || typeof comment !== 'object') {
@@ -212,7 +222,13 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                   replyToId: reply.replyToId ? extractId(reply.replyToId) : null,
                   typeRole: reply.typeRole,
                   createdAt: reply.createdAt,
-                  updatedAt: reply.updatedAt
+                  updatedAt: reply.updatedAt,
+                  // Author info from backend
+                  authorName: reply.authorName,
+                  authorAvatar: reply.authorAvatar,
+                  authorEntityAccountId: reply.authorEntityAccountId,
+                  authorEntityType: reply.authorEntityType,
+                  authorEntityId: reply.authorEntityId
                 });
               }
             }
@@ -227,25 +243,21 @@ export default function CommentSection({ postId, onClose, inline = false }) {
               typeRole: comment.typeRole,
               replies: repliesArray,
               createdAt: comment.createdAt,
-              updatedAt: comment.updatedAt
+              updatedAt: comment.updatedAt,
+              // Author info from backend
+              authorName: comment.authorName,
+              authorAvatar: comment.authorAvatar,
+              authorEntityAccountId: comment.authorEntityAccountId,
+              authorEntityType: comment.authorEntityType,
+              authorEntityId: comment.authorEntityId
             });
           }
         }
 
         // Sort comments with current sortOrder
         const sortedComments = sortComments(commentsArray, sortOrder);
-
-        console.log("Transformed comments array:", sortedComments);
-        console.log("Number of transformed comments:", sortedComments.length);
         setComments(sortedComments);
       } else {
-        console.log("Post or comments not found");
-        console.log("Post exists:", !!post);
-        console.log("Post.comments exists:", !!(post && post.comments));
-        if (post && post.comments) {
-          console.log("Post.comments type:", typeof post.comments);
-          console.log("Post.comments value:", post.comments);
-        }
         setComments([]);
       }
     } catch (error) {
@@ -287,13 +299,19 @@ export default function CommentSection({ postId, onClose, inline = false }) {
 
       console.log("Submitting comment:", { postId, content: newComment, typeRole });
 
+      // Lấy entityAccountId, entityId, entityType từ activeEntity
+      const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      const entityId = activeEntity?.entityId || session?.account?.id;
+      const entityType = typeRole;
+
       // Axios interceptor unwraps response.data, so response IS the API response
       const response = await addComment(postId, {
         content: newComment,
-        typeRole: typeRole
+        typeRole: typeRole,
+        entityAccountId: entityAccountId,
+        entityId: entityId,
+        entityType: entityType
       });
-
-      console.log("Add comment response:", response);
 
       // Handle different response structures
       if (response?.success || response?.data?.success) {
@@ -352,18 +370,29 @@ export default function CommentSection({ postId, onClose, inline = false }) {
       };
       const typeRole = normalizeTypeRole(activeEntity);
 
+      // Lấy entityAccountId, entityId, entityType từ activeEntity
+      const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      const entityId = activeEntity?.entityId || currentUser?.id;
+      const entityType = typeRole;
+
       let response;
       if (replyToId) {
         // Reply to a reply - use addReplyToReply API
         response = await addReplyToReply(postId, commentId, replyToId, {
           content: text,
-          typeRole: typeRole
+          typeRole: typeRole,
+          entityAccountId: entityAccountId,
+          entityId: entityId,
+          entityType: entityType
         });
       } else {
         // Reply to a comment
         response = await addReply(postId, commentId, {
           content: text,
-          typeRole: typeRole
+          typeRole: typeRole,
+          entityAccountId: entityAccountId,
+          entityId: entityId,
+          entityType: entityType
         });
       }
 
@@ -431,9 +460,12 @@ export default function CommentSection({ postId, onClose, inline = false }) {
         return { ...c, likes: nextLikes };
       }));
 
+      // Lấy entityAccountId từ activeEntity
+      const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+
       const response = alreadyLiked
-        ? await unlikeComment(postId, commentId)
-        : await likeComment(postId, commentId, { typeRole });
+        ? await unlikeComment(postId, commentId, { entityAccountId })
+        : await likeComment(postId, commentId, { typeRole, entityAccountId });
 
       if (!(response?.success || response?.data?.success)) {
         // Rollback optimistic update on failure
@@ -502,9 +534,12 @@ export default function CommentSection({ postId, onClose, inline = false }) {
         return { ...c, replies };
       }));
 
+      // Lấy entityAccountId từ activeEntity
+      const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+
       const response = alreadyLiked
-        ? await unlikeReply(postId, commentId, replyId)
-        : await likeReply(postId, commentId, replyId, { typeRole });
+        ? await unlikeReply(postId, commentId, replyId, { entityAccountId })
+        : await likeReply(postId, commentId, replyId, { typeRole, entityAccountId });
 
       if (!(response?.success || response?.data?.success)) {
         // Rollback on failure
@@ -607,8 +642,28 @@ export default function CommentSection({ postId, onClose, inline = false }) {
             comments.map((comment) => (
               <div key={comment.id} className="comment-item">
                 <div className="comment-row">
-                  <img className="comment-avatar" src={getAvatarForAccount(comment.accountId)} alt="avatar" />
+                  <img 
+                    className="comment-avatar" 
+                    src={comment.authorAvatar || getAvatarForAccount(comment.accountId, comment.authorEntityAccountId)} 
+                    alt="avatar"
+                    onClick={() => handleNavigateToProfile(comment.authorEntityId, comment.authorEntityType, comment.authorEntityAccountId)}
+                    style={{ cursor: 'pointer' }}
+                  />
                   <div className="comment-content">
+                    <div className="comment-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span 
+                        className="comment-author-name" 
+                        onClick={() => handleNavigateToProfile(comment.authorEntityId, comment.authorEntityType, comment.authorEntityAccountId)}
+                        style={{ cursor: 'pointer', fontWeight: '600', color: '#fff' }}
+                      >
+                        {comment.authorName || getNameForAccount(comment.accountId, comment.authorEntityAccountId)}
+                      </span>
+                      {comment.createdAt && (
+                        <span className="comment-time" style={{ fontSize: '12px', color: '#999' }}>
+                          {formatTimeDisplay(comment.createdAt)}
+                        </span>
+                      )}
+                    </div>
                     <div className="comment-text">{comment.content}</div>
                     {comment.images && (
                       <img src={comment.images} alt="comment" className="comment-image" />
@@ -682,8 +737,28 @@ export default function CommentSection({ postId, onClose, inline = false }) {
                     {comment.replies.map((reply) => (
                       <div key={reply.id} className="reply-item">
                         <div className="reply-row">
-                          <img className="reply-avatar" src={getAvatarForAccount(reply.accountId)} alt="avatar" />
+                          <img 
+                            className="reply-avatar" 
+                            src={reply.authorAvatar || getAvatarForAccount(reply.accountId, reply.authorEntityAccountId)} 
+                            alt="avatar"
+                            onClick={() => handleNavigateToProfile(reply.authorEntityId, reply.authorEntityType, reply.authorEntityAccountId)}
+                            style={{ cursor: 'pointer' }}
+                          />
                           <div className="reply-content">
+                            <div className="reply-header" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <span 
+                                className="reply-author-name" 
+                                onClick={() => handleNavigateToProfile(reply.authorEntityId, reply.authorEntityType, reply.authorEntityAccountId)}
+                                style={{ cursor: 'pointer', fontWeight: '600', color: '#fff' }}
+                              >
+                                {reply.authorName || getNameForAccount(reply.accountId, reply.authorEntityAccountId)}
+                              </span>
+                              {reply.createdAt && (
+                                <span className="reply-time" style={{ fontSize: '12px', color: '#999' }}>
+                                  {formatTimeDisplay(reply.createdAt)}
+                                </span>
+                              )}
+                            </div>
                             <div className="reply-text">{reply.content}</div>
                             {reply.images && (
                               <img src={reply.images} alt="reply" className="reply-image" />

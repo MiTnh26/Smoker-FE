@@ -1,7 +1,7 @@
 import React from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useTranslation } from "react-i18next";
-import { authApi } from "../../../api/userApi";
+import { authApi, userApi } from "../../../api/userApi";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import { fetchAllEntities } from "../../../utils/sessionHelper";
@@ -24,20 +24,36 @@ export default function GoogleLoginButton() {
         // Fetch all entities (bars, businesses)
         const entities = await fetchAllEntities(data.user.id, data.user);
       
-        // ✅ Lưu session chuẩn
-        const session = {
-          token: data.token,
-          account: data.user,
-          entities: entities, // Tất cả entities
-          activeEntity: {
-            type: "Account",
-            id: data.user.id,
-            name: data.user.userName,
-            avatar: data.user.avatar,
-            role: "Customer"
+        // Fetch EntityAccountId for Account entity
+        let accountEntityAccountId = null;
+        try {
+          console.log("[GoogleLogin] Fetching EntityAccountId for AccountId:", data.user.id);
+          const entityAccountRes = await userApi.getEntityAccountId(data.user.id);
+          accountEntityAccountId = entityAccountRes?.data?.data?.EntityAccountId || entityAccountRes?.data?.EntityAccountId || null;
+          console.log("[GoogleLogin] Fetched EntityAccountId:", accountEntityAccountId);
+          
+          if (!accountEntityAccountId) {
+            console.warn("[GoogleLogin] EntityAccountId is null, response:", entityAccountRes);
           }
-        };
-        localStorage.setItem("session", JSON.stringify(session));
+        } catch (err) {
+          console.error("[GoogleLogin] Failed to fetch EntityAccountId for Account:", err);
+          console.error("[GoogleLogin] Error details:", err?.response?.data || err?.message);
+        }
+        
+        // Find Account entity in entities array and update it with EntityAccountId
+        const accountEntity = entities.find(e => e.type === "Account");
+        if (accountEntity && accountEntityAccountId) {
+          accountEntity.EntityAccountId = accountEntityAccountId;
+        }
+      
+        // ✅ Initialize session using sessionManager
+        const { initializeSession } = await import("../../../utils/sessionManager");
+        initializeSession({
+          token: data.token,
+          user: data.user,
+          entities: entities,
+          entityAccountId: accountEntityAccountId
+        });
       
         setMessage(t('auth.googleLoginSuccess'));
         setError("");

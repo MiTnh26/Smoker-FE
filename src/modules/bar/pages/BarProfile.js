@@ -4,8 +4,7 @@ import { useParams } from "react-router-dom";
 import barPageApi from "../../../api/barPageApi";
 import { locationApi } from "../../../api/locationApi";
 import AddressSelector from "../../../components/common/AddressSelector";
-import PostCreate from "../../../components/layout/common/PostCreate";
-import PostList from "../../../components/layout/common/PostList";
+import PostFeed from "../../feeds/components/PostFeed";
 import BarEvent from "../components/BarEvent";
 import BarMenu from "../components/BarMenuCombo";
 import BarFollowInfo from "../components/BarFollowInfo";
@@ -14,6 +13,11 @@ import BarReview from "../components/BarReview";
 import BarTables from "../components/BarTables";
 import TableClassificationManager from "./TableClassificationManager";
 import FollowButton from "../../../components/common/FollowButton";
+import { useFollowers, useFollowing } from "../../../hooks/useFollow";
+import messageApi from "../../../api/messageApi";
+import publicProfileApi from "../../../api/publicProfileApi";
+import { userApi } from "../../../api/userApi";
+import "../../../styles/modules/publicProfile.css";
 
 export default function BarProfile() {
   const { t } = useTranslation();
@@ -36,12 +40,91 @@ export default function BarProfile() {
   const [editingField, setEditingField] = useState(null);
   const [saving, setSaving] = useState(false);
   const [tableTypes, setTableTypes] = useState([]); // 🟢 Track table types for disable logic
+  const [currentUserEntityId, setCurrentUserEntityId] = useState(null);
 
   // Location states
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
   const [selectedWardId, setSelectedWardId] = useState('');
   const [addressDetail, setAddressDetail] = useState('');
+  
+  // Get current user entity ID for followers/following and chat
+  // When at bar, must use EntityAccountId of the bar, not Account EntityAccountId
+  useEffect(() => {
+    const resolveCurrentUserEntityId = async () => {
+      try {
+        const sessionRaw = localStorage.getItem("session");
+        if (!sessionRaw) return;
+        const session = JSON.parse(sessionRaw);
+        const active = session?.activeEntity || {};
+        const entities = session?.entities || [];
+        
+        // Priority: EntityAccountId from activeEntity > EntityAccountId from matching entity in entities list > fetch from API
+        let resolvedId =
+          active.EntityAccountId ||
+          active.entityAccountId ||
+          null;
+        
+        // If not found in activeEntity, try to find in entities list
+        if (!resolvedId && active.id && active.type) {
+          const foundEntity = entities.find(
+            e => String(e.id) === String(active.id) && 
+                 (e.type === active.type || 
+                  (e.type === "BusinessAccount" && active.type === "Business"))
+          );
+          resolvedId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
+        }
+        
+        // If still not found and we have active.id, try to fetch EntityAccountId from API
+        if (!resolvedId && active.id && active.type && session?.account?.id) {
+          try {
+            // For BarPage, try to get EntityAccountId from entities API
+            if (active.type === "BarPage" || active.type === "Business") {
+              const entitiesRes = await userApi.getEntities(session.account.id);
+              const refreshedEntities = entitiesRes?.data?.data || entitiesRes?.data || [];
+              const foundEntity = refreshedEntities.find(
+                e => String(e.id) === String(active.id) && 
+                     (e.type === active.type || 
+                      (e.type === "BusinessAccount" && active.type === "Business"))
+              );
+              resolvedId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
+              
+              // Update session with refreshed entities if found
+              if (resolvedId && refreshedEntities.length > 0) {
+                session.entities = refreshedEntities;
+                localStorage.setItem("session", JSON.stringify(session));
+              }
+            }
+          } catch (err) {
+            console.warn("[BarProfile] Failed to fetch EntityAccountId:", err);
+          }
+        }
+        
+        // Final fallback: use active.id only if it looks like a UUID (EntityAccountId format)
+        // Don't use BarPageId as EntityAccountId
+        if (!resolvedId && active.id && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(active.id)) {
+          resolvedId = active.id;
+        }
+        
+        console.log("[BarProfile] Resolved currentUserEntityId:", resolvedId, "from activeEntity:", active);
+        setCurrentUserEntityId(resolvedId || null);
+      } catch (err) {
+        console.error("[BarProfile] Error resolving currentUserEntityId:", err);
+      }
+    };
+    
+    resolveCurrentUserEntityId();
+  }, []);
+  
+  const { followers, fetchFollowers } = useFollowers(profile?.AccountId);
+  const { following, fetchFollowing } = useFollowing(profile?.AccountId);
+  
+  useEffect(() => {
+    if (profile?.AccountId) {
+      fetchFollowers();
+      fetchFollowing();
+    }
+  }, [profile?.AccountId, fetchFollowers, fetchFollowing]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -101,157 +184,309 @@ export default function BarProfile() {
     fetchTableTypes();
   }, [barPageId]);
 
-  if (loading) return <div className="profile-loading">{t('profile.loadingProfile')}</div>;
-  if (error) return <div className="profile-error">{error}</div>;
- console.log("🏷️ Bar Profile Data:", profile.AccountId);
-  // 🟢 Hàm render nội dung theo tab
+  // Check if this is own profile: compare barPageId (from URL) with activeEntity.id (BarPageId of current role)
+  // or compare EntityAccountId of current role with profile.EntityAccountId
+  const [activeBarPageId, setActiveBarPageId] = useState(null);
+  useEffect(() => {
+    try {
+      const sessionRaw = localStorage.getItem("session");
+      if (!sessionRaw) return;
+      const session = JSON.parse(sessionRaw);
+      const active = session?.activeEntity || {};
+      // If active entity is BarPage, use its id (which is BarPageId)
+      if (active.type === "BarPage") {
+        setActiveBarPageId(active.id);
+      }
+    } catch {}
+  }, []);
+
+  if (loading) return <div className="pp-container">{t('profile.loadingProfile')}</div>;
+  if (error) return <div className="pp-container">{error}</div>;
   const renderTabContent = () => {
     switch (activeTab) {
       case "info":
         return (
-          <div className="profile-body">
-            <div className="profile-left">
+          <div className="flex flex-col gap-6">
+            <div className="profile-section">
               <BarEvent barPageId={barPageId} />
-              <BarMenu barPageId={barPageId} />
-
             </div>
-            <FollowButton
-              followingId={profile?.AccountId}
-              followingType="bar"
-              onChange={isFollowing => {/* callback nếu cần */ }}
-            />
-            <BarFollowInfo entityId={barPageId} />
+            <div className="profile-section">
+              <BarMenu barPageId={barPageId} />
+            </div>
           </div>
         );
       case "posts":
         return (
-          <>
-            <section className="post-section">
-              <PostCreate avatar={profile.Avatar} />
-            </section>
-            <section className="post-list">
-              <PostList
-                posts={[]} // TODO: lấy từ API sau
-                avatar={profile.Avatar}
-                userName={profile.BarName}
-              />
-            </section>
-          </>
+          <div className="flex flex-col gap-6">
+            <PostFeed />
+          </div>
         );
       case "videos":
-        return <BarVideo barPageId={barPageId} />;
-
+        return (
+          <div className="profile-section">
+            <BarVideo barPageId={barPageId} />
+          </div>
+        );
       case "reviews":
-        return <BarReview barPageId={barPageId} />;
+        return (
+          <div className="profile-section">
+            <BarReview barPageId={barPageId} />
+          </div>
+        );
       case "tables":
-        return <BarTables barPageId={barPageId} />;
+        return (
+          <div className="profile-section">
+            <BarTables barPageId={barPageId} />
+          </div>
+        );
       case "table-types":
-        return <TableClassificationManager onTableTypesChange={() => {
-          // Refresh table types when they are updated
-          barPageApi.getTableTypes(barPageId)
-            .then(res => setTableTypes(res.data || []))
-            .catch(err => console.error("❌ Lỗi refresh loại bàn:", err));
-        }} />;
+        return (
+          <div className="profile-section">
+            <TableClassificationManager onTableTypesChange={() => {
+              barPageApi.getTableTypes(barPageId)
+                .then(res => setTableTypes(res.data || []))
+                .catch(err => console.error("❌ Lỗi refresh loại bàn:", err));
+            }} />
+          </div>
+        );
       default:
         return null;
     }
   };
 
+  const contactList = [
+    profile.Address && `${t('profile.address')}: ${profile.Address}`,
+    profile.PhoneNumber && `${t('profile.phone')}: ${profile.PhoneNumber}`,
+    profile.Email && `${t('profile.email')}: ${profile.Email}`,
+  ].filter(Boolean);
+  
+  const isOwnProfile = activeBarPageId && String(activeBarPageId).toLowerCase() === String(barPageId).toLowerCase();
+
   return (
-    <div className="profile-container">
-      {/* --- COVER & AVATAR --- */}
+    <div className="pp-container">
       <section
-        className="profile-cover"
+        className="pp-cover"
         style={{
           backgroundImage: `url(${profile.Background || "https://i.imgur.com/6IUbEMn.jpg"})`,
         }}
       >
-        <div className="profile-info-header">
-          <div className="avatar-container">
-            <img
-              src={profile.Avatar || "https://via.placeholder.com/120"}
-              alt={profile.BarName}
-              className="profile-avatar"
-            />
-            <i className="bx bx-camera text-[#a78bfa] text-xl cursor-pointer hover:text-white transition"></i>
+        <div className="pp-header">
+          <img
+            src={profile.Avatar || "https://via.placeholder.com/120"}
+            alt={profile.BarName}
+            className="pp-avatar"
+          />
+          <div>
+            <h2 className="pp-title">{profile.BarName || t('profile.barName')}</h2>
+            <div className="pp-type">BAR</div>
           </div>
-
-          <div className="profile-details">
-            <h2>{profile.BarName || t('profile.barName')}</h2>
-            <p>{t('profile.address')}: {profile.Address || ''}</p>
-            <p>{t('profile.phone')}: {profile.PhoneNumber || ''}</p>
-            <p>{t('profile.email')}: {profile.Email || ''}</p>
-            <p>{t('profile.role')}: {profile.Role || 'Bar'}</p>
-          </div>
-
-          <div className="profile-actions flex gap-3 items-center">
-            <i className="bx bx-share-alt text-[#a78bfa] text-2xl cursor-pointer hover:text-white transition"></i>
-
-            {/* 🟢 Nút chỉnh sửa hồ sơ */}
-            <button
-              onClick={handleEditClick}
-              className="flex items-center gap-1 px-3 py-1 bg-[#a78bfa] text-white rounded-xl hover:bg-[#8b5cf6] transition"
-            >
-              <i className="bx bx-edit text-lg"></i>
+        </div>
+        <div className="pp-follow">
+          {!isOwnProfile && (
+            <>
+              <button
+                className="pp-chat-button"
+                onClick={async () => {
+                  try {
+                    if (!currentUserEntityId) {
+                      console.error("[BarProfile] Cannot open chat: currentUserEntityId is null");
+                      return;
+                    }
+                    
+                    // Get EntityAccountId of the bar page (not AccountId)
+                    // Priority: profile.EntityAccountId > fetch from API using barPageId
+                    let barEntityId = profile.EntityAccountId || null;
+                    
+                    // If not found, try to fetch from API
+                    if (!barEntityId && barPageId) {
+                      try {
+                        // Try to get EntityAccountId from publicProfileApi
+                        const profileRes = await publicProfileApi.getByEntityId(barPageId);
+                        barEntityId = profileRes?.data?.data?.entityId || profileRes?.data?.entityId || null;
+                      } catch (err) {
+                        // If 404, try to find in session entities
+                        if (err?.response?.status === 404) {
+                          try {
+                            const sessionRaw = localStorage.getItem("session");
+                            if (sessionRaw) {
+                              const session = JSON.parse(sessionRaw);
+                              const entities = session?.entities || [];
+                              const foundEntity = entities.find(
+                                e => String(e.id) === String(barPageId) && e.type === "BarPage"
+                              );
+                              barEntityId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
+                            }
+                          } catch (sessionErr) {
+                            console.warn("[BarProfile] Error checking session entities:", sessionErr);
+                          }
+                        }
+                      }
+                    }
+                    
+                    // Final fallback: use barPageId if it looks like EntityAccountId (UUID format)
+                    if (!barEntityId && barPageId && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(barPageId)) {
+                      barEntityId = barPageId;
+                    }
+                    
+                    if (!barEntityId) {
+                      console.error("[BarProfile] Cannot open chat: barEntityId is null");
+                      return;
+                    }
+                    
+                    console.log("[BarProfile] Creating conversation:", { currentUserEntityId, barEntityId });
+                    const res = await messageApi.createOrGetConversation(currentUserEntityId, barEntityId);
+                    const conversation = res?.data?.data || res?.data;
+                    const conversationId = conversation?._id || conversation?.conversationId || conversation?.id;
+                    if (conversationId && window.__openChat) {
+                      window.__openChat({
+                        id: conversationId,
+                        name: profile.BarName || "Bar",
+                        avatar: profile.Avatar || null, // Pass avatar for BarPage
+                        entityId: barEntityId // Pass EntityAccountId for profile navigation
+                      });
+                    }
+                  } catch (error) {
+                    console.error("[BarProfile] Error opening chat:", error);
+                  }
+                }}
+              >
+                <i className="bx bx-message-rounded"></i>
+                Chat
+              </button>
+              <FollowButton
+                followingId={profile?.AccountId}
+                followingType="BAR"
+              />
+            </>
+          )}
+          {isOwnProfile && (
+            <button onClick={handleEditClick} className="pp-chat-button">
+              <i className="bx bx-edit"></i>
               {t('profile.editProfile')}
             </button>
-          </div>
-
+          )}
         </div>
       </section>
 
-      {/* --- TABS --- */}
-      <div className="profile-tabs">
-        <button
-          className={activeTab === "info" ? "active" : ""}
-          onClick={() => setActiveTab("info")}
-        >
-          {t('profile.infoTab')}
-        </button>
-        <button
-          className={activeTab === "posts" ? "active" : ""}
-          onClick={() => setActiveTab("posts")}
-          disabled={tableTypes.length === 0}
-          style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
-          title={tableTypes.length === 0 ? t('bar.needTableTypes') : ""}
-        >
-          {t('profile.postsTab')}
-        </button>
-        <button
-          className={activeTab === "videos" ? "active" : ""}
-          onClick={() => setActiveTab("videos")}
-          disabled={tableTypes.length === 0}
-          style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
-          title={tableTypes.length === 0 ? t('bar.needTableTypes') : ""}
-        >
-          {t('tabs.video')}
-        </button>
-        <button
-          className={activeTab === "reviews" ? "active" : ""}
-          onClick={() => setActiveTab("reviews")}
-          disabled={tableTypes.length === 0}
-          style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
-          title={tableTypes.length === 0 ? t('bar.needTableTypes') : ""}
-        >
-          {t('tabs.reviews')}
-        </button>
-        <button
-          className={activeTab === "table-types" ? "active" : ""}
-          onClick={() => setActiveTab("table-types")}
-        >
-          {t('tabs.tableTypes')}
-        </button>
-        <button
-          className={activeTab === "tables" ? "active" : ""}
-          onClick={() => setActiveTab("tables")}
-          disabled={tableTypes.length === 0}
-          style={{ opacity: tableTypes.length === 0 ? 0.5 : 1, cursor: tableTypes.length === 0 ? "not-allowed" : "pointer" }}
-          title={tableTypes.length === 0 ? t('bar.needTableTypes') : ""}
-        >
-          {t('tabs.editTables')}
-        </button>
-      </div>
+      <section className="pp-stats">
+        <div>
+          <div className="pp-stat-label">{t('publicProfile.followers')}</div>
+          <div className="pp-stat-value">{followers.length}</div>
+        </div>
+        <div>
+          <div className="pp-stat-label">{t('publicProfile.following')}</div>
+          <div className="pp-stat-value">{following.length}</div>
+        </div>
+      </section>
 
+      <section className="pp-section">
+        {profile.Bio && (
+          <div>
+            <h3>{t("publicProfile.about")}</h3>
+            <p style={{ whiteSpace: "pre-wrap" }}>{profile.Bio}</p>
+          </div>
+        )}
+        <div style={{ marginTop: profile.Bio ? 12 : 0 }}>
+          <h4>{t("publicProfile.contact")}</h4>
+          {profile.Email && <div>{t("common.email")}: {profile.Email}</div>}
+          {profile.PhoneNumber && <div>{t("common.phone") || "Phone"}: {profile.PhoneNumber}</div>}
+          {profile.Address && <div>{t("common.address") || "Address"}: {profile.Address}</div>}
+        </div>
+      </section>
+
+      {isOwnProfile && (
+        <section style={{ padding: '0 24px 24px 24px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setActiveTab("info")}
+              style={{
+                padding: '8px 16px',
+                background: activeTab === "info" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                color: '#ffffff',
+                cursor: 'pointer'
+              }}
+            >
+              {t('profile.infoTab')}
+            </button>
+            <button
+              onClick={() => setActiveTab("posts")}
+              disabled={tableTypes.length === 0}
+              style={{
+                padding: '8px 16px',
+                background: activeTab === "posts" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                color: '#ffffff',
+                cursor: 'pointer',
+                opacity: tableTypes.length === 0 ? 0.5 : 1
+              }}
+            >
+              {t('profile.postsTab')}
+            </button>
+            <button
+              onClick={() => setActiveTab("videos")}
+              disabled={tableTypes.length === 0}
+              style={{
+                padding: '8px 16px',
+                background: activeTab === "videos" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                color: '#ffffff',
+                cursor: 'pointer',
+                opacity: tableTypes.length === 0 ? 0.5 : 1
+              }}
+            >
+              {t('tabs.video')}
+            </button>
+            <button
+              onClick={() => setActiveTab("reviews")}
+              disabled={tableTypes.length === 0}
+              style={{
+                padding: '8px 16px',
+                background: activeTab === "reviews" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                color: '#ffffff',
+                cursor: 'pointer',
+                opacity: tableTypes.length === 0 ? 0.5 : 1
+              }}
+            >
+              {t('tabs.reviews')}
+            </button>
+            <button
+              onClick={() => setActiveTab("table-types")}
+              style={{
+                padding: '8px 16px',
+                background: activeTab === "table-types" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                color: '#ffffff',
+                cursor: 'pointer'
+              }}
+            >
+              {t('tabs.tableTypes')}
+            </button>
+            <button
+              onClick={() => setActiveTab("tables")}
+              disabled={tableTypes.length === 0}
+              style={{
+                padding: '8px 16px',
+                background: activeTab === "tables" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                color: '#ffffff',
+                cursor: 'pointer',
+                opacity: tableTypes.length === 0 ? 0.5 : 1
+              }}
+            >
+              {t('tabs.editTables')}
+            </button>
+          </div>
+          {renderTabContent()}
+        </section>
+      )}
 
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
