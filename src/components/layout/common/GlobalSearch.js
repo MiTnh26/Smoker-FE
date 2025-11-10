@@ -3,7 +3,7 @@ import { Search } from "lucide-react";
 import searchApi from "../../../api/searchApi";
 import FollowButton from "../../common/FollowButton";
 import { useNavigate } from "react-router-dom";
-import "../../../styles/components/globalSearch.css";
+import { cn } from "../../../utils/cn";
 
 const TABS = [
   { key: "all", label: "Tất cả" },
@@ -54,12 +54,15 @@ export default function GlobalSearch() {
   const list = active === "all" ? all : (data[active] || []);
 
   return (
-    <>
-      <Search className="search-icon" />
+    <div className={cn("relative flex items-center gap-2 flex-1")}>
+      <Search className={cn("text-muted-foreground flex-shrink-0")} size={20} />
       <input
         type="text"
         placeholder="Tìm người, bar, DJ, dancer..."
-        className="search-input"
+        className={cn(
+          "flex-1 border-none bg-transparent outline-none text-sm",
+          "text-foreground placeholder:text-muted-foreground"
+        )}
         value={q}
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={(e) => {
@@ -69,13 +72,25 @@ export default function GlobalSearch() {
         }}
       />
       {q && (
-        <div className="gs-dropdown">
-          <div className="gs-tabs">
+        <div className={cn(
+          "absolute top-[calc(100%+6px)] left-0 right-0 z-[60]",
+          "bg-card border-[0.5px] border-border/20 rounded-lg",
+          "max-h-[420px] overflow-auto p-2",
+          "shadow-[0_8px_24px_rgba(0,0,0,0.32)]"
+        )}>
+          <div className={cn("flex gap-2 px-2 py-1")}>
             {TABS.map(t => (
               <button
                 key={t.key}
                 onClick={() => setActive(t.key)}
-                className={"gs-tab" + (active === t.key ? " active" : "")}
+                className={cn(
+                  "px-2.5 py-1.5 rounded-lg border-[0.5px] border-border/20",
+                  "bg-transparent text-foreground cursor-pointer",
+                  "transition-all duration-200 text-sm",
+                  active === t.key
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "hover:bg-muted/50"
+                )}
               >
                 {t.label}
               </button>
@@ -83,22 +98,35 @@ export default function GlobalSearch() {
           </div>
 
           {loading ? (
-            <div style={{ padding: 12 }}>Đang tìm...</div>
+            <div className={cn("p-3 text-muted-foreground text-sm")}>Đang tìm...</div>
           ) : list.length === 0 ? (
-            <div style={{ padding: 12 }}>Không có kết quả</div>
+            <div className={cn("p-3 text-muted-foreground text-sm")}>Không có kết quả</div>
           ) : (
-            <ul className="gs-list">
+            <ul className={cn("list-none m-0 p-0")}>
               {list.map(item => (
-                <li key={`${item.type}-${item.id}`} className="gs-item">
-                  <div className="gs-left" onClick={() => onOpenItem(navigate, item)}>
+                <li 
+                  key={`${item.type}-${item.id}`} 
+                  className={cn(
+                    "flex items-center justify-between px-2.5 py-2",
+                    "border-b border-border/30 last:border-b-0"
+                  )}
+                >
+                  <div 
+                    className={cn("flex items-center gap-2.5 cursor-pointer flex-1")}
+                    onClick={() => onOpenItem(navigate, item)}
+                  >
                     <img
                       src={item.avatar || "https://via.placeholder.com/36"}
                       alt={item.name}
-                      className="gs-avatar"
+                      className={cn("w-9 h-9 rounded-full object-cover")}
                     />
                     <div>
-                      <div className="gs-name">{item.name}</div>
-                      <div className="gs-type">{item.type}</div>
+                      <div className={cn("font-semibold text-foreground text-sm")}>
+                        {item.name}
+                      </div>
+                      <div className={cn("text-xs text-muted-foreground/80")}>
+                        {item.type}
+                      </div>
                     </div>
                   </div>
 
@@ -115,7 +143,7 @@ export default function GlobalSearch() {
           )}
         </div>
       )}
-    </>
+    </div>
   );
 }
 

@@ -9,7 +9,7 @@ import ComboManager from "../modules/bar/pages/ComboManager";
 import VoucherManager from "../modules/bar/pages/VoucherManager";
 import ManagePost from "../modules/bar/pages/ManagePost";
 import ManageStory from "../modules/bar/pages/ManageStory";
-import Newsfeed from "../modules/feeds/pages/Newsfeed";
+import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed";
 export default function BarRoutes() {
   return (
     <Fragment>

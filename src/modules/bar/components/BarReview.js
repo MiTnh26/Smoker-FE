@@ -1,27 +1,32 @@
-
 import React, { useEffect, useState } from "react";
 import { Star } from "lucide-react";
+import { cn } from "../../../utils/cn";
 import barReviewApi from "../../../api/barReviewApi";
 import { useAuth } from "../../../hooks/useAuth";
 
 function StarInput({ value, onChange, disabled }) {
   return (
-    <div className="flex">
+    <div className={cn("flex items-center gap-1")}>
       {Array.from({ length: 5 }).map((_, i) => (
         <button
           type="button"
           key={i}
           onClick={() => !disabled && onChange(i + 1)}
-          className="focus:outline-none"
+          className={cn(
+            "bg-transparent border-none cursor-pointer",
+            "transition-all duration-200",
+            "hover:opacity-80 active:scale-95",
+            "focus:outline-none"
+          )}
           disabled={disabled}
         >
           <Star
             size={20}
-            className={
+            className={cn(
               i < value
-                ? "text-yellow-400 fill-yellow-400"
-                : "text-gray-600"
-            }
+                ? "text-warning fill-warning"
+                : "text-muted-foreground/40"
+            )}
           />
         </button>
       ))}
@@ -171,29 +176,52 @@ export default function BarReview({ barPageId }) {
     }
   };
 
-  // Log reviews mỗi khi state reviews thay đổi
-  // useEffect(() => {
-  //   console.log('Current Reviews State:', reviews);
-  // }, [reviews]);
-  if (loading) return <p>Đang tải đánh giá...</p>;
+  if (loading) {
+    return (
+      <div className={cn("w-full py-8 flex items-center justify-center")}>
+        <p className={cn("text-muted-foreground")}>Đang tải đánh giá...</p>
+      </div>
+    );
+  }
 
   // Kiểm tra user đã review chưa
   const myReview = user && reviews.find((r) => r.AccountId === user.id);
 
   return (
-    <div className="profile-content">
-      <h3 className="section-title mb-4">⭐ Đánh giá của khách hàng</h3>
+    <div className={cn("w-full")}>
+      {/* Header */}
+      <div className={cn("mb-6")}>
+        <h3 className={cn(
+          "text-xl md:text-2xl font-bold text-foreground"
+        )}>
+          ⭐ Đánh giá của khách hàng
+        </h3>
+      </div>
+
       {error && (
-        <div className="text-yellow-400 text-sm mb-2">{error}</div>
+        <div className={cn(
+          "mb-4 p-3 rounded-lg",
+          "bg-warning/10 border-[0.5px] border-warning/20",
+          "text-warning text-sm"
+        )}>
+          {error}
+        </div>
       )}
 
       {/* Form đánh giá */}
       <form
-        className="mb-6 bg-[#232323] p-4 rounded-xl flex flex-col gap-3 border border-gray-700"
+        className={cn(
+          "mb-6 bg-card rounded-lg",
+          "border-[0.5px] border-border/20",
+          "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
+          "p-4 md:p-5 flex flex-col gap-4"
+        )}
         onSubmit={handleSubmit}
       >
-        <div className="flex items-center gap-2">
-          <span className="text-white font-medium">Chọn số sao:</span>
+        <div className={cn("flex items-center gap-3 flex-wrap")}>
+          <span className={cn("text-sm font-medium text-foreground")}>
+            Chọn số sao:
+          </span>
           <StarInput
             value={form.rating}
             onChange={(v) => setForm((f) => ({ ...f, rating: v }))}
@@ -201,17 +229,33 @@ export default function BarReview({ barPageId }) {
           />
         </div>
         <textarea
-          className="rounded p-2 bg-[#181818] text-white border border-gray-600"
+          className={cn(
+            "w-full px-4 py-2.5 rounded-lg",
+            "border-[0.5px] border-border/20",
+            "bg-background text-foreground",
+            "outline-none transition-all duration-200",
+            "placeholder:text-muted-foreground/60",
+            "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
+            "resize-y",
+            "disabled:opacity-50 disabled:cursor-not-allowed"
+          )}
           rows={3}
           placeholder="Nhập nhận xét của bạn..."
           value={form.comment}
           onChange={(e) => setForm((f) => ({ ...f, comment: e.target.value }))}
           disabled={!!myReview && !editingId}
         />
-        <div className="flex gap-2">
+        <div className={cn("flex items-center gap-2 flex-wrap")}>
           <button
             type="submit"
-            className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold px-4 py-1 rounded"
+            className={cn(
+              "bg-warning text-foreground border-none",
+              "px-4 py-2 rounded-lg font-semibold text-sm",
+              "transition-all duration-200",
+              "hover:bg-warning/90",
+              "active:scale-95",
+              "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            )}
             disabled={form.rating === 0 || !form.comment.trim() || (!!myReview && !editingId)}
           >
             {editingId ? "Cập nhật" : "Gửi đánh giá"}
@@ -219,7 +263,14 @@ export default function BarReview({ barPageId }) {
           {editingId && (
             <button
               type="button"
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-1 rounded"
+              className={cn(
+                "bg-transparent border-none",
+                "text-muted-foreground font-semibold",
+                "px-4 py-2 rounded-lg text-sm",
+                "transition-all duration-200",
+                "hover:text-foreground hover:bg-muted/50",
+                "active:scale-95"
+              )}
               onClick={handleCancelEdit}
             >
               Hủy
@@ -227,55 +278,103 @@ export default function BarReview({ barPageId }) {
           )}
         </div>
         {!!myReview && !editingId && (
-          <div className="text-gray-400 text-xs">Bạn đã đánh giá quán này. Bạn có thể sửa hoặc xóa đánh giá bên dưới.</div>
+          <div className={cn(
+            "text-xs text-muted-foreground",
+            "p-2 rounded-lg bg-muted/30"
+          )}>
+            Bạn đã đánh giá quán này. Bạn có thể sửa hoặc xóa đánh giá bên dưới.
+          </div>
         )}
       </form>
 
       {/* Danh sách đánh giá */}
-      <div className="flex flex-col gap-4">
-        {reviews.length === 0 && <p>Chưa có đánh giá nào.</p>}
+      <div className={cn("flex flex-col gap-4")}>
+        {reviews.length === 0 && (
+          <div className={cn(
+            "w-full py-12 flex items-center justify-center",
+            "bg-card rounded-lg border-[0.5px] border-border/20",
+            "px-4 md:px-0"
+          )}>
+            <p className={cn("text-muted-foreground")}>Chưa có đánh giá nào.</p>
+          </div>
+        )}
         {reviews.map((r) => (
           <div
             key={r.id}
-            className="bg-[#1a1a1a] p-4 rounded-2xl shadow-md flex gap-4 items-start border border-gray-700"
+            className={cn(
+              "bg-card rounded-lg",
+              "border-[0.5px] border-border/20",
+              "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
+              "p-4 md:p-5 flex gap-4 items-start"
+            )}
           >
             <img
               src={r.avatar}
               alt={r.userName}
-              className="w-12 h-12 rounded-full object-cover"
+              className={cn(
+                "w-10 h-10 md:w-12 md:h-12 rounded-full object-cover",
+                "flex-shrink-0 border-2 border-border/20"
+              )}
             />
-            <div className="flex-1">
-              <div className="flex justify-between items-center mb-1">
-                <h4 className="font-semibold text-white">{r.userName}</h4>
-                <span className="text-xs text-gray-400">
+            <div className={cn("flex-1 min-w-0")}>
+              <div className={cn("flex justify-between items-start mb-2 gap-2")}>
+                <h4 className={cn(
+                  "font-semibold text-foreground",
+                  "text-sm md:text-base"
+                )}>
+                  {r.userName}
+                </h4>
+                <span className={cn(
+                  "text-xs text-muted-foreground",
+                  "flex-shrink-0 whitespace-nowrap"
+                )}>
                   {new Date(r.date).toLocaleDateString("vi-VN")}
                 </span>
               </div>
-              <div className="flex mb-2">
+              <div className={cn("flex items-center gap-0.5 mb-2")}>
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
-                    size={16}
-                    className={
+                    size={14}
+                    className={cn(
                       i < r.rating
-                        ? "text-yellow-400 fill-yellow-400"
-                        : "text-gray-600"
-                    }
+                        ? "text-warning fill-warning"
+                        : "text-muted-foreground/40"
+                    )}
                   />
                 ))}
               </div>
-              <p className="text-gray-300 mb-2">{r.comment}</p>
+              <p className={cn(
+                "text-sm md:text-base text-foreground mb-2",
+                "leading-relaxed whitespace-pre-wrap break-words"
+              )}>
+                {r.comment}
+              </p>
               {/* Nếu là review của user hiện tại thì hiện nút sửa/xóa */}
               {user && r.AccountId === user.id && (
-                <div className="flex gap-2 mt-1">
+                <div className={cn("flex gap-2 mt-2")}>
                   <button
-                    className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
+                    className={cn(
+                      "bg-transparent border-none",
+                      "text-primary font-semibold text-xs",
+                      "px-3 py-1.5 rounded-lg",
+                      "transition-all duration-200",
+                      "hover:bg-primary/10",
+                      "active:scale-95"
+                    )}
                     onClick={() => handleEdit(r)}
                   >
                     Sửa
                   </button>
                   <button
-                    className="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+                    className={cn(
+                      "bg-transparent border-none",
+                      "text-danger font-semibold text-xs",
+                      "px-3 py-1.5 rounded-lg",
+                      "transition-all duration-200",
+                      "hover:bg-danger/10",
+                      "active:scale-95"
+                    )}
                     onClick={() => handleDeleteReview(r.id)}
                   >
                     Xóa

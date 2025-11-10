@@ -74,7 +74,7 @@ const FacebookLoginButton = () => {
         autoLoad={false}
         fields="name,email,picture"
         callback={handleFacebookResponse}
-        cssClass="w-full flex items-center justify-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+        cssClass="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#1877F2] text-white border-none transition-all duration-200 hover:bg-[#1664CF] active:scale-95"
         icon="fa-facebook"
         textButton={t('auth.loginWithFacebook')}
         // disableMobileRedirect={true}
@@ -88,7 +88,7 @@ const FacebookLoginButton = () => {
       />
       
       {error && (
-        <div className="text-red-500 text-sm mt-2">{error}</div>
+        <div className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>
       )}
     </div>
   );

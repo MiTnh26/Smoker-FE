@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import { sidebarConfig } from "../../config/sidebarConfig.js";
 import barPageApi from "../../api/barPageApi.js";
-import "../../styles/layouts/sidebarSubmenu.css";
+import { cn } from "../../utils/cn";
 import { useTranslation } from "react-i18next"; // i18n
 
 export default function Sidebar() {
@@ -223,12 +223,20 @@ export default function Sidebar() {
         <Link
           to={resolvedSubPath}
           onClick={handleClick}
-          className={`sidebar-submenu-item ${isSubActive ? "active" : ""} ${isDisabled ? "disabled" : ""}`}
+          className={cn(
+            "px-2.5 py-1 rounded-lg text-xs transition-colors",
+            "text-muted-foreground no-underline block truncate",
+            isSubActive 
+              ? "bg-border text-foreground" 
+              : "hover:bg-muted hover:text-foreground",
+            isDisabled && "opacity-50 cursor-not-allowed",
+            !isDisabled && "cursor-pointer"
+          )}
           style={{
             opacity: isDisabled ? 0.5 : 1,
             cursor: isDisabled ? "not-allowed" : "pointer"
           }}
-          title={isDisabled ? t('bar.needTableTypes') : ""}
+          title={isDisabled ? t('bar.needTableTypes') : subLabel}
         >
           {t(`sidebar.${kSub}`, { defaultValue: subLabel })}
         </Link>
@@ -271,30 +279,49 @@ export default function Sidebar() {
     };
     const k = labelKeyMap[label] || label;
     return (
-      <div key={label + resolvedPath} className="sidebar-nav-item-wrapper">
+      <div key={label + resolvedPath}>
         {subMenu ? (
           // Menu cha có submenu
           <div
-            className={`sidebar-nav-item ${isActive ? "active" : ""}`}
+            className={cn(
+              "block px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              "text-muted-foreground no-underline cursor-pointer",
+              "flex items-center gap-2.5",
+              isActive 
+                ? "bg-primary/10 text-primary" 
+                : "hover:bg-muted hover:text-foreground"
+            )}
             onClick={() => toggleSubMenu(label)}
           >
-            {Icon && <Icon size={20} />}
-            <span>{t(`sidebar.${k}`, { defaultValue: label })}</span>
-            <span className="submenu-arrow">{isOpen ? "▾" : "▸"}</span>
+            {Icon && <Icon size={18} className="flex-shrink-0" />}
+            <span className={cn("flex-1 truncate")}>
+              {t(`sidebar.${k}`, { defaultValue: label })}
+            </span>
+            <span className="text-xs flex-shrink-0">{isOpen ? "▾" : "▸"}</span>
           </div>
         ) : (
           // Menu bình thường
           <Link
             to={resolvedPath}
-            className={`sidebar-nav-item ${isActive ? "active" : ""}`}
+            className={cn(
+              "block px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              "text-muted-foreground no-underline",
+              "flex items-center gap-2.5",
+              isActive 
+                ? "bg-primary/10 text-primary" 
+                : "hover:bg-muted hover:text-foreground"
+            )}
           >
-            {Icon && <Icon size={20} />}
-            <span>{t(`sidebar.${k}`, { defaultValue: label })}</span>
+            {Icon && <Icon size={18} className="flex-shrink-0" />}
+            <span className="truncate">{t(`sidebar.${k}`, { defaultValue: label })}</span>
           </Link>
         )}
 
         {subMenu && isOpen && (
-          <ul className="sidebar-submenu">
+          <ul className={cn(
+            "flex flex-col gap-1 mt-1 ml-5 pl-1 border-l-2",
+            "border-border/30"
+          )}>
             {subMenu.map((sub) => renderSubMenuItem(sub))}
           </ul>
         )}
@@ -303,26 +330,51 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="newsfeed-sidebar-left">
-      <div className="sidebar-user-profile">
-        <div className="sidebar-user-avatar">
+    <aside className={cn(
+      "sticky p-4 rounded-lg",
+      "w-[240px] bg-card",
+      "border-[0.5px] border-border/20",
+      "top-[4.5rem] max-h-[calc(100vh-5.5rem)]",
+      "overflow-y-auto overflow-x-hidden"
+    )}>
+      <div className={cn(
+        "flex items-center gap-2.5 mb-4 pb-4",
+        "border-b border-border/30"
+      )}>
+        <div className={cn(
+          "flex items-center justify-center rounded-full p-1.5",
+          "bg-gradient-to-br from-primary to-secondary",
+          "text-primary-foreground w-10 h-10 flex-shrink-0"
+        )}>
           {activeEntity.avatar ? (
             <img
               src={activeEntity.avatar}
               alt={activeEntity.name}
-              className="rounded-full w-12 h-12 object-cover"
+              className="rounded-full w-full h-full object-cover"
             />
           ) : (
-            <span>👤</span>
+            <span className="text-sm">👤</span>
           )}
         </div>
-        <div className="sidebar-user-info">
-          <h3>{activeEntity.name}</h3>
-          {activeEntity.email && <p>@{activeEntity.email.split("@")[0]}</p>}
+        <div className={cn("min-w-0 flex-1")}>
+          <h3 className={cn(
+            "m-0 text-sm font-semibold text-foreground",
+            "truncate"
+          )}>
+            {activeEntity.name}
+          </h3>
+          {activeEntity.email && (
+            <p className={cn(
+              "m-0 mt-0.5 text-xs text-muted-foreground",
+              "truncate"
+            )}>
+              @{activeEntity.email.split("@")[0]}
+            </p>
+          )}
         </div>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className={cn("flex flex-col gap-0.5")}>
         {menus.map((menu) => renderMenuItem(menu))}
       </nav>
     </aside>

@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom";
 import businessApi from "../../../api/businessApi";
 import { locationApi } from "../../../api/locationApi";
 import AddressSelector from "../../../components/common/AddressSelector";
-import PostFeed from "../../feeds/components/PostFeed";
+import PostFeed from "../../feeds/components/post/PostFeed";
 import { useFollowers, useFollowing } from "../../../hooks/useFollow";
 import messageApi from "../../../api/messageApi";
 import "../../../styles/modules/publicProfile.css";

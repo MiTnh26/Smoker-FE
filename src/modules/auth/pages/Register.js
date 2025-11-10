@@ -1,11 +1,10 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
 import { Link, useNavigate } from "react-router-dom";
-import "../../../styles/modules/register.css";
 import { Checkbox } from "../../../components/common/Checkbox";
 import { authApi } from "../../../api/userApi";
+import PublicHeader from "../../../components/layout/PublicHeader";
 
 export function Register() {
   const navigate = useNavigate();
@@ -96,17 +95,18 @@ export function Register() {
   };
 
   return (
-    <div className="signup-page">
-      <div className="signup-form-container">
-        <div className="signup-wrapper">
+    <div className="bg-background text-foreground">
+      <PublicHeader />
+      <div className="container mx-auto min-h-[calc(100vh-73px)] px-4 pt-[73px] pb-12 flex items-center justify-center">
+        <div className="signup-wrapper w-full max-w-2xl">
           {/* Logo */}
           <div className="signup-logo">
             <Link to="/">Smoker</Link>
           </div>
 
           {/* Signup Form */}
-          <div className="signup-form-box">
-            <form className="signup-form space-y-5" onSubmit={handleSubmit}>
+          <div className="signup-form-box bg-card rounded-lg border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-6">
+            <form className="space-y-5" onSubmit={handleSubmit}>
               <Input
                 type="email"
                 placeholder={t('auth.email') + ' (example@gmail.com)'}
@@ -251,26 +251,25 @@ export function Register() {
                 {t('auth.googleRegisterHow')}
               </div>
 
-              <Button
+              <button
                 type="button"
-                className="signup-btn"
                 onClick={handleGoogleRegister}
+                className="w-full bg-muted/40 text-foreground border-none rounded-lg py-2.5 text-sm font-semibold transition-all duration-200 hover:bg-muted/60 active:scale-95"
               >
                 {t('auth.registerWithGoogle')}
-              </Button>
+              </button>
 
               <div style={{ fontSize: 12, color: "#555", marginTop: "10px" }}>
                 {t('auth.facebookRegisterHow')}
               </div>
 
-              <Button
+              <button
                 type="button"
-                className="signup-btn"
                 onClick={handleFacebookRegister}
-                style={{ backgroundColor: "#1877f2" }}
+                className="w-full rounded-lg py-2.5 text-sm font-semibold text-white bg-[#1877F2] border-none transition-all duration-200 hover:bg-[#1664CF] active:scale-95"
               >
                 {t('auth.registerWithFacebook')}
-              </Button>
+              </button>
 
               <div className="text-center text-sm text-muted-foreground">
                 {t('auth.alreadyHave')} {" "}
@@ -279,9 +278,13 @@ export function Register() {
                 </Link>
               </div>
 
-              <Button type="submit" className="signup-btn" disabled={!agreed}>
+              <button
+                type="submit"
+                disabled={!agreed}
+                className={`w-full bg-primary text-primary-foreground border-none rounded-lg py-2.5 font-semibold transition-all duration-200 hover:bg-primary/90 active:scale-95 ${!agreed ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
                 {t('auth.signUp')}
-              </Button>
+              </button>
             </form>
           </div>
         </div>

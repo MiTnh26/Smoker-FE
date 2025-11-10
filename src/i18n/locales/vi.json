@@ -166,7 +166,11 @@
     "trashedPosts": "Bài viết đã xóa",
     "trashedPostsDesc": "Bạn có {{count}} bài viết đã xóa. Các bài viết sẽ tự động xóa vĩnh viễn sau 30 ngày.",
     "viewTrash": "Xem thùng rác",
-    "postRestored": "Bài viết đã được khôi phục"
+    "postRestored": "Bài viết đã được khôi phục",
+    "content": "Nội dung",
+    "songLibrary": "Quản lý nhạc",
+    "songLibraryDesc": "Upload và quản lý nhạc trong library của bạn",
+    "manageSongs": "Quản lý nhạc"
   },
   "layout": {
     "brand": "Smoker",
@@ -190,6 +194,17 @@
     "emptyTrash": "Không có bài trong thùng rác.",
     "restore": "Khôi phục",
     "close": "Đóng",
+    "postTypeText": "Bài viết",
+    "postTypeImage": "Ảnh",
+    "postTypeVideo": "Video",
+    "postTypeMusic": "Âm nhạc",
+    "trashedDaysAgo": "Đã xóa {{days}} ngày trước",
+    "trashedHoursAgo": "Đã xóa {{hours}} giờ trước",
+    "trashedMinutesAgo": "Đã xóa {{minutes}} phút trước",
+    "trashedJustNow": "Vừa xóa",
+    "postCreatedAt": "Đăng lúc",
+    "postLikes": "{{count}} lượt thích",
+    "postComments": "{{count}} bình luận",
     "composerTitle": "Đăng Ảnh/Video",
     "composerPlaceholder": "Bạn muốn chia sẻ điều gì?",
     "photo": "Ảnh",
@@ -209,7 +224,8 @@
   },
   "messages": {
     "searchPlaceholder": "Tìm kiếm cuộc trò chuyện...",
-    "empty": "Không có tin nhắn"
+    "empty": "Không có tin nhắn",
+    "replyYourStory": "Trả lời story"
   },
   "unifiedMenu": {
     "entityLabel": "Trang / Doanh nghiệp của bạn",
@@ -238,7 +254,6 @@
     "cannotLoadTableTypes": "Không thể tải danh sách loại bàn.",
     "noChangesToSave": "Không có thay đổi cần lưu.",
     "saved": "✅ Đã lưu!",
-    "saving": "Đang lưu...",
     "errorSaving": "Lỗi khi lưu loại bàn.",
     "statusEditing": "Đang chỉnh sửa",
     "statusSaved": "Đã lưu",
@@ -339,7 +354,10 @@
     "cancel": "Hủy",
     "save": "Lưu",
     "saving": "Đang lưu...",
-    "update": "Cập nhật"
+    "update": "Cập nhật",
+    "close": "Đóng",
+    "discard": "Hủy bỏ",
+    "remove": "Xóa"
   },
   "comment": {
     "header": "Bình luận",
@@ -352,6 +370,33 @@
   },
   "music": {
     "postMusic": "Đăng nhạc"
+  },
+          "song": {
+            "uploadTitle": "Thêm nhạc vào library",
+            "uploadNew": "Thêm nhạc mới",
+            "title": "Tên bài hát",
+            "titlePlaceholder": "Nhập tên bài hát...",
+            "artist": "Nghệ sĩ",
+            "artistPlaceholder": "Nhập tên nghệ sĩ...",
+            "album": "Album",
+            "albumPlaceholder": "Nhập tên album...",
+            "description": "Mô tả",
+            "descriptionPlaceholder": "Nhập mô tả...",
+            "file": "File nhạc",
+            "selectedFile": "File đã chọn",
+            "upload": "Upload nhạc",
+            "uploading": "Đang upload...",
+            "myLibrary": "Thư viện của tôi",
+            "loading": "Đang tải danh sách nhạc...",
+            "noSongs": "Chưa có bài hát nào trong library",
+            "uploadHint": "Hãy upload bài hát đầu tiên của bạn!",
+            "untitled": "Không có tiêu đề",
+            "unknownArtist": "Nghệ sĩ không xác định",
+            "noAlbum": "Không có album",
+            "delete": "Xóa",
+            "deleting": "Đang xóa...",
+            "confirmDelete": "Bạn có chắc muốn xóa bài hát này?",
+            "deleteFailed": "Không thể xóa bài hát"
   },
   "upload": {
     "uploading": "Đang upload... Vui lòng đợi hoàn tất."
@@ -368,7 +413,28 @@
     "searchSongPlaceholder": "Tìm kiếm tên bài hát hoặc nghệ sĩ...",
     "loadingSongs": "Đang tải danh sách nhạc...",
     "noSongsFound": "Không tìm thấy bài hát phù hợp",
-    "postStory": "Đăng story"
+    "postStory": "Đăng story",
+    "copyLink": "Sao chép liên kết",
+    "report": "Báo cáo",
+    "delete": "Xóa",
+    "linkCopied": "Link đã được copy",
+    "copyFailed": "Không thể copy link",
+    "confirmReport": "Bạn có chắc muốn báo cáo story này?",
+    "reported": "Đã báo cáo story",
+    "confirmDelete": "Bạn có chắc muốn xóa story này?",
+    "deleted": "Đã xóa story",
+    "deleteFailed": "Không thể xóa story",
+    "yourStory": "Story của bạn",
+    "reply": "Trả lời story",
+    "replyEmpty": "Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!",
+    "replyPlaceholder": "Nhập tin nhắn...",
+    "addText": "Thêm văn bản",
+    "addMusic": "Thêm nhạc",
+    "alternativeText": "Văn bản thay thế",
+    "shareToStory": "Chia sẻ lên story",
+    "preview": "Xem trước",
+    "uploadMusic": "Tải lên file nhạc",
+    "updateFailed": "Không thể cập nhật story"
   },
   "address": {
     "province": "Tỉnh/Thành phố",

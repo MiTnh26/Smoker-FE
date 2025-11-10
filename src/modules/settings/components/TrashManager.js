@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getTrashedPosts, restorePost } from "../../../api/postApi";
-import TrashModal from "../../feeds/components/TrashModal";
+import TrashModal from "../../feeds/components/modals/TrashModal";
 
 export default function TrashManager() {
   const { t } = useTranslation();

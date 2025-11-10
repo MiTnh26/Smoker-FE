@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
-import "../../../styles/layouts/chatdock.css";
+import { useTranslation } from "react-i18next";
+import { cn } from "../../../utils/cn";
 import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { userApi } from "../../../api/userApi";
@@ -10,6 +11,7 @@ import useChatSocket from '../../../api/useChatSocket';
 function ChatWindow(props) {
   const { chat, onClose } = props;
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -578,37 +580,73 @@ function ChatWindow(props) {
   const displayAvatar = otherUserInfo?.avatar;
 
   return (
-    <div className="chatwin">
-      <div className="chatwin__header">
+    <div className={cn(
+      "w-[360px] h-[500px] bg-card rounded-t-lg",
+      "border-[0.5px] border-border/20",
+      "shadow-[0_2px_16px_rgba(0,0,0,0.18),0_0.5px_1.5px_rgba(0,0,0,0.08)]",
+      "flex flex-col overflow-hidden",
+      "animate-[chatSlideUp_0.2s_ease-out]"
+    )}>
+      <div className={cn(
+        "flex items-center gap-3 px-4 py-3",
+        "bg-muted border-b border-border/30",
+        "flex-shrink-0"
+      )}>
         <div 
-          className="chatwin__avatar" 
+          className={cn(
+            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+            "bg-gradient-to-br from-primary to-secondary",
+            "text-primary-foreground font-bold text-base",
+            "overflow-hidden",
+            otherUserInfo?.entityId && "cursor-pointer"
+          )}
           onClick={handleHeaderClick}
-          style={{ cursor: otherUserInfo?.entityId ? 'pointer' : 'default' }}
         >
           {displayAvatar ? (
             <img 
               src={displayAvatar} 
               alt={displayName}
-              style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+              className="w-full h-full rounded-full object-cover"
             />
           ) : (
             getInitial(displayName)
           )}
         </div>
         <div 
-          className="chatwin__title" 
+          className={cn(
+            "flex-1 font-semibold text-foreground text-[15px]",
+            otherUserInfo?.entityId && "cursor-pointer"
+          )}
           onClick={handleHeaderClick}
-          style={{ cursor: otherUserInfo?.entityId ? 'pointer' : 'default' }}
         >
           {displayName}
         </div>
-        <button className="chatwin__close" onClick={() => onClose(chat.id)} aria-label="Đóng">
+        <button 
+          className={cn(
+            "w-9 h-9 flex items-center justify-center",
+            "bg-transparent border-none cursor-pointer",
+            "text-muted-foreground rounded-full",
+            "transition-all duration-200 text-lg",
+            "hover:bg-border/50"
+          )}
+          onClick={() => onClose(chat.id)} 
+          aria-label="Đóng"
+        >
           ✕
         </button>
       </div>
-      <div className="chatwin__body" ref={bodyRef}>
+      <div 
+        className={cn(
+          "flex-1 overflow-y-auto overflow-x-hidden",
+          "p-4 bg-background",
+          "flex flex-col gap-1"
+        )}
+        ref={bodyRef}
+      >
         {loading || !currentUserId ? (
-          <div style={{ textAlign: 'center', color: '#888', padding: 16 }}>
+          <div className={cn(
+            "text-center text-muted-foreground py-4"
+          )}>
             {loading ? 'Đang tải...' : 'Đang xác định người dùng...'}
           </div>
         ) : (
@@ -643,15 +681,67 @@ function ChatWindow(props) {
               }
             }
             
+            // Parse message content for story image
+            const rawContent = msg["Nội Dung Tin Nhắn"] || msg.content || msg.message || "";
+            const storyImageRegex = /\[STORY_IMAGE:(.+?)\]/g;
+            const storyImageMatches = [...rawContent.matchAll(storyImageRegex)];
+            
+            // Extract story image URL and text content
+            let textContent = rawContent;
+            let storyImageUrl = null;
+            
+            if (storyImageMatches.length > 0) {
+              // Get the last story image URL (in case there are multiple)
+              storyImageUrl = storyImageMatches[storyImageMatches.length - 1][1];
+              // Remove [STORY_IMAGE:url] from text content
+              textContent = rawContent.replace(/\[STORY_IMAGE:[^\]]+\]/g, '').trim();
+            }
+            
             return (
               <div
                 key={idx}
-                className={
-                  "chatwin__bubble " +
-                  (isMyMessage ? "chatwin__bubble--me" : "chatwin__bubble--other")
-                }
+                className={cn(
+                  "max-w-[75%] px-3 py-2 rounded-[18px] text-[15px] leading-[1.35]",
+                  "break-words relative",
+                  isMyMessage 
+                    ? "self-end bg-primary text-primary-foreground rounded-br-sm" 
+                    : "self-start bg-muted text-foreground rounded-bl-sm"
+                )}
               >
-                {msg["Nội Dung Tin Nhắn"] || msg.content || msg.message}
+                {/* Story image if present */}
+                {storyImageUrl && (
+                  <div className={cn(
+                    "-mx-2 -mt-1 mb-2 max-w-[calc(100%+16px)]"
+                  )}>
+                    <div className={cn(
+                      "text-xs font-medium mb-1.5 px-1",
+                      isMyMessage 
+                        ? "text-primary-foreground/90" 
+                        : "text-foreground/70"
+                    )}>
+                      {t('messages.replyYourStory') || 'Trả lời story của bạn'}
+                    </div>
+                    <div className={cn(
+                      "rounded-lg overflow-hidden max-w-[100px]",
+                      "bg-black/10"
+                    )}>
+                      <img 
+                        src={storyImageUrl} 
+                        alt="Story" 
+                        className={cn(
+                          "w-full h-auto block object-cover",
+                          "max-h-[150px] min-h-[75px]"
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* Text content */}
+                {textContent && (
+                  <div className={cn("break-words mt-0")}>
+                    {textContent}
+                  </div>
+                )}
               </div>
             );
           })
@@ -665,14 +755,33 @@ function ChatWindow(props) {
           </div>
         )} */}
       </div>
-      <div className="chatwin__input">
+      <div className={cn(
+        "flex gap-2 px-4 py-3",
+        "border-t border-border/30 bg-card",
+        "flex-shrink-0"
+      )}>
         <input
           placeholder="Aa"
           value={message}
           onChange={handleInputChange}
           onKeyPress={handleKeyPress}
+          className={cn(
+            "flex-1 border-none bg-muted rounded-[20px]",
+            "px-4 py-2 text-[15px] text-foreground outline-none",
+            "placeholder:text-muted-foreground"
+          )}
         />
-        <button onClick={handleSend}>Gửi</button>
+        <button 
+          onClick={handleSend}
+          className={cn(
+            "border-none bg-primary text-primary-foreground",
+            "px-4 py-2 rounded-[20px] cursor-pointer",
+            "font-semibold text-sm transition-all duration-200",
+            "hover:bg-primary/90 active:scale-95"
+          )}
+        >
+          Gửi
+        </button>
       </div>
     </div>
   );
@@ -698,7 +807,10 @@ export default function ChatDock() {
   }, [openChatById]);
 
   return (
-    <div className="chatdock">
+    <div className={cn(
+      "fixed right-3 bottom-0 flex gap-2",
+      "flex-row-reverse items-end z-50"
+    )}>
       {chats.map((c) => (
         <ChatWindow key={c.id} chat={c} onClose={closeChat} />
       ))}

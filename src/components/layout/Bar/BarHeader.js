@@ -7,7 +7,7 @@ import UnifiedMenu from "../../common/UnifiedMenu";
 import MessagesPanel from "../common/MessagesPanel";
 import NotificationDropdown from "../../common/NotificationDropdown";
 import DropdownPanel from "../../common/DropdownPanel";
-import "../../../styles/layouts/header.css";
+import { cn } from "../../../utils/cn";
 import GlobalSearch from "../common/GlobalSearch";
 
 export default function BarHeader() {
@@ -111,24 +111,77 @@ export default function BarHeader() {
   
   return (
     <>
-      <header className="newsfeed-header">
-        <div className="newsfeed-header-content">
-          <Link to={getNewsfeedPath()} className="newsfeed-logo">
+      <header className={cn(
+        "h-16 flex items-center px-4 md:px-8 sticky top-0 z-10",
+        "bg-card border-b border-[0.5px] border-border/20",
+        "backdrop-blur-sm"
+      )}>
+        <div className={cn(
+          "flex items-center w-full justify-between mx-auto",
+          "max-w-[1400px]"
+        )}>
+          <Link 
+            to={getNewsfeedPath()} 
+            className={cn(
+              "text-2xl font-bold no-underline",
+              "text-primary",
+              "transition-opacity duration-200",
+              "hover:opacity-80"
+            )}
+          >
             {t('layout.brandPage')}
           </Link>
 
-          <div className="newsfeed-search">
+          <div className={cn(
+            "flex items-center flex-1 max-w-md mx-4"
+          )}>
             <GlobalSearch />
           </div>
 
-          <div className="newsfeed-nav">
-            <button className="nav-icon active"><Home size={24} /></button>
-            <button className="nav-icon" onClick={() => togglePanel("messages")}><MessageCircle size={24} /></button>
+          <div className={cn("flex gap-2")}>
+            <button 
+              className={cn(
+                "rounded-lg p-2 flex items-center justify-center",
+                "transition-all duration-200 cursor-pointer relative",
+                "text-muted-foreground",
+                "hover:text-primary hover:bg-primary/10",
+                "active:scale-95"
+              )}
+            >
+              <Home size={24} />
+            </button>
+            <button 
+              className={cn(
+                "rounded-lg p-2 flex items-center justify-center",
+                "transition-all duration-200 cursor-pointer relative",
+                "text-muted-foreground",
+                activePanel === "messages" 
+                  ? "text-primary-foreground bg-primary" 
+                  : "hover:text-primary hover:bg-primary/10",
+                "active:scale-95"
+              )}
+              onClick={() => togglePanel("messages")}
+            >
+              <MessageCircle size={24} />
+            </button>
             
             {/* Notification Dropdown */}
             <NotificationDropdown />
 
-            <button className="nav-icon" onClick={() => togglePanel("user")}><User size={24} /></button>
+            <button 
+              className={cn(
+                "rounded-lg p-2 flex items-center justify-center",
+                "transition-all duration-200 cursor-pointer relative",
+                "text-muted-foreground",
+                activePanel === "user" 
+                  ? "text-primary-foreground bg-primary" 
+                  : "hover:text-primary hover:bg-primary/10",
+                "active:scale-95"
+              )}
+              onClick={() => togglePanel("user")}
+            >
+              <User size={24} />
+            </button>
           </div>
         </div>
       </header>

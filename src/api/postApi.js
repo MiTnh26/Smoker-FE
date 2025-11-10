@@ -99,3 +99,47 @@ export const restorePost = (postId, data) => axiosClient.post(`/posts/${postId}/
 
 // Lấy posts đã trash
 export const getTrashedPosts = (params) => axiosClient.get("/posts/trash", { params });
+
+// ========== MEDIA-SPECIFIC APIs ==========
+
+// Like media
+export const likeMedia = (mediaId, data) => axiosClient.post(`/medias/${mediaId}/like`, data);
+
+// Unlike media
+export const unlikeMedia = (mediaId) => axiosClient.delete(`/medias/${mediaId}/like`);
+
+// Track media share
+export const trackMediaShare = (mediaId) => axiosClient.post(`/medias/${mediaId}/share`);
+
+// Add comment to media
+export const addMediaComment = (mediaId, data) => axiosClient.post(`/medias/${mediaId}/comments`, data);
+
+// Update comment on media
+export const updateMediaComment = (mediaId, commentId, data) => axiosClient.put(`/medias/${mediaId}/comments/${commentId}`, data);
+
+// Delete comment from media
+export const deleteMediaComment = (mediaId, commentId) => axiosClient.delete(`/medias/${mediaId}/comments/${commentId}`);
+
+// Like comment on media
+export const likeMediaComment = (mediaId, commentId, data) => axiosClient.post(`/medias/${mediaId}/comments/${commentId}/like`, data);
+
+// Unlike comment on media
+export const unlikeMediaComment = (mediaId, commentId, data = {}) => axiosClient.delete(`/medias/${mediaId}/comments/${commentId}/like`, { data });
+
+// Add reply to comment on media
+export const addMediaCommentReply = (mediaId, commentId, data) => axiosClient.post(`/medias/${mediaId}/comments/${commentId}/replies`, data);
+
+// Add reply to reply on media (nested reply)
+export const addMediaReplyToReply = (mediaId, commentId, replyId, data) => axiosClient.post(`/medias/${mediaId}/comments/${commentId}/replies/${replyId}`, data);
+
+// Update reply on media
+export const updateMediaReply = (mediaId, commentId, replyId, data) => axiosClient.put(`/medias/${mediaId}/comments/${commentId}/replies/${replyId}`, data);
+
+// Delete reply from media
+export const deleteMediaReply = (mediaId, commentId, replyId) => axiosClient.delete(`/medias/${mediaId}/comments/${commentId}/replies/${replyId}`);
+
+// Like reply on media
+export const likeMediaReply = (mediaId, commentId, replyId, data) => axiosClient.post(`/medias/${mediaId}/comments/${commentId}/replies/${replyId}/like`, data);
+
+// Unlike reply on media
+export const unlikeMediaReply = (mediaId, commentId, replyId, data = {}) => axiosClient.delete(`/medias/${mediaId}/comments/${commentId}/replies/${replyId}/like`, { data });

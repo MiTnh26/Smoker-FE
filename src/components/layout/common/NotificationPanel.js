@@ -3,13 +3,37 @@ import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import PropTypes from "prop-types";
 import notificationApi from "../../../api/notificationApi";
+import publicProfileApi from "../../../api/publicProfileApi";
 import "../../../styles/components/notificationDropdown.css";
 
-export default function NotificationPanel({ onClose }) {
+export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountChange }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [senderAvatars, setSenderAvatars] = useState({}); // Cache avatars by senderEntityAccountId
   const navigate = useNavigate();
+
+  // Fetch avatar for a sender
+  const fetchSenderAvatar = async (senderEntityAccountId) => {
+    if (!senderEntityAccountId || senderAvatars[senderEntityAccountId]) {
+      return; // Already cached or no entityAccountId
+    }
+    
+    try {
+      const response = await publicProfileApi.getByEntityId(senderEntityAccountId);
+      if (response?.success && response.data) {
+        const avatar = response.data.avatar || response.data.Avatar || null;
+        if (avatar) {
+          setSenderAvatars(prev => ({
+            ...prev,
+            [senderEntityAccountId]: avatar
+          }));
+        }
+      }
+    } catch (error) {
+      console.warn(`[NotificationPanel] Failed to fetch avatar for ${senderEntityAccountId}:`, error);
+    }
+  };
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -17,12 +41,24 @@ export default function NotificationPanel({ onClose }) {
       setLoading(true);
       const response = await notificationApi.getNotifications({ limit: 20 });
       if (response.success) {
-        setNotifications(response.data || []);
+        const notifs = response.data || [];
+        setNotifications(notifs);
+        
+        // Fetch avatars for all unique senders
+        const uniqueSenders = [...new Set(notifs.map(n => n.senderEntityAccountId).filter(Boolean))];
+        uniqueSenders.forEach(senderId => {
+          fetchSenderAvatar(senderId);
+        });
+        
         // Update unread count from filtered notifications
-        const unread = response.data?.filter(
+        const unread = notifs.filter(
           (notif) => notif.status === "Unread"
         ).length || 0;
         setUnreadCount(unread);
+        // Notify parent of unread count change
+        if (onUnreadCountChange) {
+          onUnreadCountChange(unread);
+        }
       }
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -36,7 +72,12 @@ export default function NotificationPanel({ onClose }) {
     try {
       const response = await notificationApi.getUnreadCount();
       if (response.success && response.data) {
-        setUnreadCount(response.data.count || 0);
+        const count = response.data.count || 0;
+        setUnreadCount(count);
+        // Notify parent of unread count change
+        if (onUnreadCountChange) {
+          onUnreadCountChange(count);
+        }
       }
     } catch (error) {
       console.error("Error fetching unread count:", error);
@@ -77,19 +118,58 @@ export default function NotificationPanel({ onClose }) {
   };
 
   // Handle notification click
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
+    console.log('[NotificationPanel] Clicked notification:', notification);
+    
+    // Mark as read first
     if (notification.status === "Unread") {
-      handleMarkAsRead(notification._id);
+      await handleMarkAsRead(notification._id);
     }
 
-    // Navigate to the link if available
-    if (notification.link) {
-      navigate(notification.link);
-    }
+    // Close panel first
     onClose?.();
+
+    // Handle different link formats
+    if (notification.link) {
+      let targetPath = notification.link;
+      
+      // If link is /posts/:postId or /stories/:storyId, open modal instead of navigating
+      if (targetPath.startsWith('/posts/') || targetPath.startsWith('/stories/')) {
+        // Extract post/story ID and commentId (if any) from link
+        const urlParts = targetPath.split('?');
+        const pathPart = urlParts[0];
+        const queryPart = urlParts[1];
+        
+        const id = pathPart.split('/').pop();
+        let commentId = null;
+        
+        // Parse commentId from query string if present
+        if (queryPart) {
+          const params = new URLSearchParams(queryPart);
+          commentId = params.get('commentId');
+        }
+        
+        console.log('[NotificationPanel] Opening modal with postId:', id, 'commentId:', commentId);
+        
+        // Call parent's onOpenModal if provided
+        if (onOpenModal) {
+          onOpenModal(id, commentId);
+        }
+        
+        return; // Don't navigate
+      }
+      
+      // For other links, navigate normally
+      setTimeout(() => {
+        navigate(targetPath);
+      }, 100);
+    } else {
+      console.warn('[NotificationPanel] Notification has no link:', notification);
+    }
   };
 
-  // Get notification icon based on type
+
+  // Get notification icon based on type (fallback if no avatar)
   const getNotificationIcon = (type) => {
     switch (type) {
       case "Like":
@@ -105,6 +185,15 @@ export default function NotificationPanel({ onClose }) {
       default:
         return "🔔";
     }
+  };
+
+  // Get avatar for notification sender
+  const getSenderAvatar = (notification) => {
+    const senderId = notification.senderEntityAccountId;
+    if (senderId && senderAvatars[senderId]) {
+      return senderAvatars[senderId];
+    }
+    return null;
   };
 
   // Get notification text preview
@@ -201,6 +290,7 @@ export default function NotificationPanel({ onClose }) {
         {!loading && notifications.length > 0 && (
           notifications.map((notification) => {
             const isUnread = notification.status === "Unread";
+            const senderAvatar = getSenderAvatar(notification);
             return (
               <button
                 key={notification._id}
@@ -209,7 +299,23 @@ export default function NotificationPanel({ onClose }) {
                 onClick={() => handleNotificationClick(notification)}
               >
                 <div className="notification-avatar">
-                  {getNotificationIcon(notification.type)}
+                  {senderAvatar ? (
+                    <img 
+                      src={senderAvatar} 
+                      alt="avatar" 
+                      className="notification-avatar-img"
+                      onError={(e) => {
+                        // Fallback to icon if image fails to load
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                  ) : null}
+                  {!senderAvatar && (
+                    <span className="notification-avatar-icon">
+                      {getNotificationIcon(notification.type)}
+                    </span>
+                  )}
                 </div>
                 <div className="notification-content">
                   <p className="notification-text">
@@ -329,9 +435,13 @@ export default function NotificationPanel({ onClose }) {
 
 NotificationPanel.propTypes = {
   onClose: PropTypes.func,
+  onOpenModal: PropTypes.func,
+  onUnreadCountChange: PropTypes.func,
 };
 
 NotificationPanel.defaultProps = {
   onClose: () => {},
+  onOpenModal: null,
+  onUnreadCountChange: null,
 };
 

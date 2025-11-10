@@ -1,15 +1,16 @@
 import React, { useState } from "react"; // ✅ import useState
 import { useTranslation } from "react-i18next";
-import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
 import { Link } from "react-router-dom";
-import "../../../styles/modules/auth.css";
-
 import { useNavigate } from "react-router-dom";
 import { authApi, userApi } from "../../../api/userApi";
 import { useAuth } from "../../../hooks/useAuth";
 import FacebookLoginButton from '../pages/FacebookLoginButton';
 import { fetchAllEntities } from "../../../utils/sessionHelper";
+import { cn } from "../../../utils/cn";
+import { borderStyles } from "../../../utils/border-patterns";
+import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import PublicHeader from "../../../components/layout/PublicHeader";
 
 export function Login() {
   const navigate = useNavigate();
@@ -97,125 +98,192 @@ export function Login() {
   // };
 
   return (
-    <div className="login-page">
+    <div className="bg-background text-foreground">
+      <PublicHeader />
+      <div className="container mx-auto flex min-h-[calc(100vh-73px)] items-center justify-center px-4 pt-[73px] pb-12">
+        <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-[1.1fr_1fr]">
+          <section
+            className={cn(
+              borderStyles.card,
+              "hidden flex-col justify-between bg-muted/40 p-8 text-foreground lg:flex",
+              "backdrop-blur-sm"
+            )}
+          >
+            <div className="flex items-center gap-2 text-xl font-semibold text-primary">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                S
+              </span>
+              Smoker
+            </div>
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-3xl font-semibold leading-tight">
+                  Chào mừng quay lại với Smoker
+                </h2>
+                <p className="mt-3 text-muted-foreground">
+                  Kết nối với cộng đồng nightlife, đặt dịch vụ và khám phá những trải nghiệm mới mẻ mỗi đêm.
+                </p>
+              </div>
+              <div className="grid gap-4">
+                {[
+                  t("auth.benefitDiscover", "Khám phá địa điểm trending"),
+                  t("auth.benefitBook", "Đặt DJ, dancer cho sự kiện"),
+                  t("auth.benefitConnect", "Kết nối cùng bạn bè và bar yêu thích"),
+                ].map((item, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg bg-background/60 p-3",
+                      "border-[0.5px] border-border/20"
+                    )}
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      {idx + 1}
+                    </span>
+                    <span className="text-sm font-medium">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} Smoker Platform. All rights reserved.
+            </div>
+          </section>
 
-
-      <div className="login-form-container">
-        <div className="login-wrapper">
-          {/* Logo Section */}
-          <div className="login-logo">
-            <Link to="/">Smoker</Link>
+          <section
+            className={cn(
+              borderStyles.card,
+              "bg-card p-8 shadow-[0_8px_24px_rgba(15,23,42,0.08)]"
+            )}
+          >
+            <div className="mb-6 flex flex-col gap-2">
+              <h1 className="text-2xl font-semibold">{t("auth.loginTitle", "Đăng nhập vào Smoker")}</h1>
+              <p className="text-sm text-muted-foreground">
+                {t("auth.loginSubtitle", "Tiếp tục hành trình nightlife của bạn.")}
+              </p>
           </div>
 
-          {/* Login Form */}
-          <div className="login-form-box">
-            <form className="login-form space-y-4" onSubmit={handleSubmit}>
+            <form className="space-y-4" onSubmit={handleSubmit}>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    {t("auth.emailOrPhone")}
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
               <Input
                 type="text"
-                placeholder={t('auth.emailOrPhone')}
+                      placeholder={t("auth.emailOrPhone")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-              />
-              <div style={{ position: "relative" }}>
+                      className="pl-12"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    {t("auth.password")}
+                  </label>
+                  <div className="relative">
+                    <LockKeyhole className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder={t('auth.password')}
+                      placeholder={t("auth.password")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingRight: "38px" }}
-                />
-                <span
+                      className="pl-12 pr-12"
+                    />
+                    <button
+                      type="button"
+                      className={cn(
+                        "absolute right-3 top-1/2 -translate-y-1/2",
+                        "text-muted-foreground/70",
+                        "bg-transparent border-none p-1 rounded-lg",
+                        "hover:text-foreground hover:bg-muted/50",
+                        "transition-colors duration-200"
+                      )}
                   onClick={() => setShowPassword((v) => !v)}
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    cursor: "pointer",
-                    color: "#666",
-                    fontSize: 18,
-                    userSelect: "none",
-                  }}
-                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                  tabIndex={0}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter" || e.key === " ") setShowPassword((v) => !v);
-                  }}
+                      aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                 >
-                  {showPassword ? (
-                    // 👁️ Eye Open
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  ) : (
-                    // 👁️ Eye Closed
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M17.94 17.94A10.06 10.06 0 0 1 12 19c-7 0-11-7-11-7a21.75 21.75 0 0 1 5.06-5.94" />
-                      <path d="m1 1 22 22" />
-                    </svg>
-                  )}
-                </span>
-
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {error && <div style={{ color: "red", fontSize: 12 }}>{error}</div>}
+              {error ? (
+                <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+                  {error}
+                </div>
+              ) : null}
 
-              <Button type="submit" className="login-btn">
-                {t('auth.login')}
-              </Button>
+              <button
+                type="submit"
+                className={cn(
+                  "w-full bg-primary text-primary-foreground border-none",
+                  "rounded-lg py-2.5 font-semibold",
+                  "transition-all duration-200",
+                  "hover:bg-primary/90 active:scale-95"
+                )}
+              >
+                {t("auth.login")}
+              </button>
 
-              <div className="forgot-link">
-                <Link to="/forgot-password" className="text-blue-600 hover:text-blue-800">
-                  {t('auth.forgot')}
+              <div className="flex items-center justify-between text-sm">
+                <div className="text-muted-foreground">
+                  {t("auth.notHaveAccount", "Chưa có tài khoản?")}{" "}
+                  <Link
+                    to="/signup"
+                    className="font-semibold text-primary hover:text-primary/90"
+                  >
+                    {t("auth.createAccount")}
+                  </Link>
+                </div>
+                <Link
+                  to="/forgot-password"
+                  className="text-sm font-semibold text-primary hover:text-primary/90"
+                >
+                  {t("auth.forgot")}
                 </Link>
               </div>
 
-              <div className="divider">
-                <div className="divider-line"></div>
+              <div className="flex items-center gap-4">
+                <span className="h-[1px] flex-1 bg-border/30" />
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {t("auth.orContinue", "hoặc tiếp tục với")}
+                </span>
+                <span className="h-[1px] flex-1 bg-border/30" />
               </div>
 
-              {/* Google Login simple flow */}
-              <div style={{ fontSize: 12, color: "#555" }}>
-                {t('auth.googleHow')}
-              </div>
-              <Button type="button" className="login-btn" onClick={() => navigate("/login/google")}>
-                {t('auth.loginWithGoogle')}
-              </Button>
+              <button
+                type="button"
+                className={cn(
+                  "w-full bg-muted/40 text-foreground border-none",
+                  "rounded-lg py-2.5 text-sm font-semibold",
+                  "transition-all duration-200",
+                  "hover:bg-muted/60 active:scale-95"
+                )}
+                onClick={() => navigate("/login/google")}
+              >
+                {t("auth.loginWithGoogle")}
+              </button>
 
-              <div className="mt-2">
                 <FacebookLoginButton />
-              </div>
 
-              <Button type="button" className="create-account-btn">
-                <Link to="/signup">{t('auth.createAccount')}</Link>
-              </Button>
+              <div className="rounded-lg bg-primary/5 px-3 py-3 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">{t("auth.tipsTitle", "Mẹo:")}</span>{" "}
+                {t("auth.tipsContent", "Bật xác thực hai lớp để bảo vệ tài khoản của bạn tốt hơn.")}
+              </div>
             </form>
 
-            <div className="login-footer">
-              <Link to="/create-page">{t('auth.createPage')}</Link> {t('auth.createPageFor')}
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              {t("auth.createPageFor")}{" "}
+              <Link to="/create-page" className="font-semibold text-primary hover:text-primary/90">
+                {t("auth.createPage")}
+              </Link>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>

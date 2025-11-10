@@ -1,0 +1,41 @@
+.read-more-text {
+  position: relative;
+  width: 100%;
+}
+
+.read-more-content {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: rgb(var(--foreground));
+}
+
+.read-more-content:not(.expanded) {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.read-more-btn {
+  background: none;
+  border: none;
+  color: rgb(var(--primary));
+  cursor: pointer;
+  padding: 0.25rem 0;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.read-more-btn:hover {
+  color: rgb(var(--primary));
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.read-more-btn:focus {
+  outline: none;
+  text-decoration: underline;
+}
+

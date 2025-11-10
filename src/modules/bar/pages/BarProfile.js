@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import barPageApi from "../../../api/barPageApi";
 import { locationApi } from "../../../api/locationApi";
 import AddressSelector from "../../../components/common/AddressSelector";
-import PostFeed from "../../feeds/components/PostFeed";
+import PostFeed from "../../feeds/components/post/PostFeed";
 import BarEvent from "../components/BarEvent";
 import BarMenu from "../components/BarMenuCombo";
 import BarFollowInfo from "../components/BarFollowInfo";
@@ -17,7 +17,7 @@ import { useFollowers, useFollowing } from "../../../hooks/useFollow";
 import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { userApi } from "../../../api/userApi";
-import "../../../styles/modules/publicProfile.css";
+import { cn } from "../../../utils/cn";
 
 export default function BarProfile() {
   const { t } = useTranslation();
@@ -200,17 +200,27 @@ export default function BarProfile() {
     } catch {}
   }, []);
 
-  if (loading) return <div className="pp-container">{t('profile.loadingProfile')}</div>;
-  if (error) return <div className="pp-container">{error}</div>;
+  if (loading) {
+    return (
+      <div className={cn("min-h-screen bg-background flex items-center justify-center")}>
+        <div className={cn("text-muted-foreground")}>{t('profile.loadingProfile')}</div>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className={cn("min-h-screen bg-background flex items-center justify-center")}>
+        <div className={cn("text-danger")}>{error}</div>
+      </div>
+    );
+  }
   const renderTabContent = () => {
     switch (activeTab) {
       case "info":
         return (
-          <div className="flex flex-col gap-6">
-            <div className="profile-section">
-              <BarEvent barPageId={barPageId} />
-            </div>
-            <div className="profile-section">
+          <div className={cn("flex flex-col gap-6")}>
+            <BarEvent barPageId={barPageId} />
+            <div className={cn("bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]")}>
               <BarMenu barPageId={barPageId} />
             </div>
           </div>
@@ -263,29 +273,23 @@ export default function BarProfile() {
   const isOwnProfile = activeBarPageId && String(activeBarPageId).toLowerCase() === String(barPageId).toLowerCase();
 
   return (
-    <div className="pp-container">
-      <section
-        className="pp-cover"
-        style={{
-          backgroundImage: `url(${profile.Background || "https://i.imgur.com/6IUbEMn.jpg"})`,
-        }}
-      >
-        <div className="pp-header">
-          <img
-            src={profile.Avatar || "https://via.placeholder.com/120"}
-            alt={profile.BarName}
-            className="pp-avatar"
-          />
-          <div>
-            <h2 className="pp-title">{profile.BarName || t('profile.barName')}</h2>
-            <div className="pp-type">BAR</div>
-          </div>
-        </div>
-        <div className="pp-follow">
+    <div className={cn("min-h-screen bg-background")}>
+      {/* Cover Photo Section - Instagram Style */}
+      <section className={cn("relative w-full h-[200px] md:h-[250px] overflow-hidden rounded-b-lg")}>
+        <div
+          className={cn("absolute inset-0 bg-cover bg-center")}
+          style={{
+            backgroundImage: `url(${profile.Background || "https://i.imgur.com/6IUbEMn.jpg"})`,
+          }}
+        />
+        {/* Gradient Overlay */}
+        <div className={cn("absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60")} />
+        
+        {/* Action Buttons */}
+        <div className={cn("absolute top-4 right-4 z-10 flex items-center gap-2")}>
           {!isOwnProfile && (
             <>
               <button
-                className="pp-chat-button"
                 onClick={async () => {
                   try {
                     if (!currentUserEntityId) {
@@ -293,18 +297,13 @@ export default function BarProfile() {
                       return;
                     }
                     
-                    // Get EntityAccountId of the bar page (not AccountId)
-                    // Priority: profile.EntityAccountId > fetch from API using barPageId
                     let barEntityId = profile.EntityAccountId || null;
                     
-                    // If not found, try to fetch from API
                     if (!barEntityId && barPageId) {
                       try {
-                        // Try to get EntityAccountId from publicProfileApi
                         const profileRes = await publicProfileApi.getByEntityId(barPageId);
                         barEntityId = profileRes?.data?.data?.entityId || profileRes?.data?.entityId || null;
                       } catch (err) {
-                        // If 404, try to find in session entities
                         if (err?.response?.status === 404) {
                           try {
                             const sessionRaw = localStorage.getItem("session");
@@ -323,7 +322,6 @@ export default function BarProfile() {
                       }
                     }
                     
-                    // Final fallback: use barPageId if it looks like EntityAccountId (UUID format)
                     if (!barEntityId && barPageId && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(barPageId)) {
                       barEntityId = barPageId;
                     }
@@ -333,7 +331,6 @@ export default function BarProfile() {
                       return;
                     }
                     
-                    console.log("[BarProfile] Creating conversation:", { currentUserEntityId, barEntityId });
                     const res = await messageApi.createOrGetConversation(currentUserEntityId, barEntityId);
                     const conversation = res?.data?.data || res?.data;
                     const conversationId = conversation?._id || conversation?.conversationId || conversation?.id;
@@ -341,16 +338,23 @@ export default function BarProfile() {
                       window.__openChat({
                         id: conversationId,
                         name: profile.BarName || "Bar",
-                        avatar: profile.Avatar || null, // Pass avatar for BarPage
-                        entityId: barEntityId // Pass EntityAccountId for profile navigation
+                        avatar: profile.Avatar || null,
+                        entityId: barEntityId
                       });
                     }
                   } catch (error) {
                     console.error("[BarProfile] Error opening chat:", error);
                   }
                 }}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-semibold text-sm",
+                  "bg-card/80 backdrop-blur-sm text-foreground border-none",
+                  "hover:bg-card/90 transition-all duration-200",
+                  "active:scale-95",
+                  "flex items-center gap-2"
+                )}
               >
-                <i className="bx bx-message-rounded"></i>
+                <i className="bx bx-message-rounded text-base"></i>
                 Chat
               </button>
               <FollowButton
@@ -360,394 +364,684 @@ export default function BarProfile() {
             </>
           )}
           {isOwnProfile && (
-            <button onClick={handleEditClick} className="pp-chat-button">
-              <i className="bx bx-edit"></i>
+            <button
+              onClick={handleEditClick}
+              className={cn(
+                "px-4 py-2 rounded-lg font-semibold text-sm",
+                "bg-card/80 backdrop-blur-sm text-foreground border-none",
+                "hover:bg-card/90 transition-all duration-200",
+                "active:scale-95",
+                "flex items-center gap-2"
+              )}
+            >
+              <i className="bx bx-edit text-base"></i>
               {t('profile.editProfile')}
             </button>
           )}
         </div>
-      </section>
 
-      <section className="pp-stats">
-        <div>
-          <div className="pp-stat-label">{t('publicProfile.followers')}</div>
-          <div className="pp-stat-value">{followers.length}</div>
-        </div>
-        <div>
-          <div className="pp-stat-label">{t('publicProfile.following')}</div>
-          <div className="pp-stat-value">{following.length}</div>
-        </div>
-      </section>
-
-      <section className="pp-section">
-        {profile.Bio && (
-          <div>
-            <h3>{t("publicProfile.about")}</h3>
-            <p style={{ whiteSpace: "pre-wrap" }}>{profile.Bio}</p>
-          </div>
-        )}
-        <div style={{ marginTop: profile.Bio ? 12 : 0 }}>
-          <h4>{t("publicProfile.contact")}</h4>
-          {profile.Email && <div>{t("common.email")}: {profile.Email}</div>}
-          {profile.PhoneNumber && <div>{t("common.phone") || "Phone"}: {profile.PhoneNumber}</div>}
-          {profile.Address && <div>{t("common.address") || "Address"}: {profile.Address}</div>}
-        </div>
-      </section>
-
-      {isOwnProfile && (
-        <section style={{ padding: '0 24px 24px 24px' }}>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setActiveTab("info")}
-              style={{
-                padding: '8px 16px',
-                background: activeTab === "info" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                color: '#ffffff',
-                cursor: 'pointer'
-              }}
-            >
-              {t('profile.infoTab')}
-            </button>
-            <button
-              onClick={() => setActiveTab("posts")}
-              disabled={tableTypes.length === 0}
-              style={{
-                padding: '8px 16px',
-                background: activeTab === "posts" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                color: '#ffffff',
-                cursor: 'pointer',
-                opacity: tableTypes.length === 0 ? 0.5 : 1
-              }}
-            >
-              {t('profile.postsTab')}
-            </button>
-            <button
-              onClick={() => setActiveTab("videos")}
-              disabled={tableTypes.length === 0}
-              style={{
-                padding: '8px 16px',
-                background: activeTab === "videos" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                color: '#ffffff',
-                cursor: 'pointer',
-                opacity: tableTypes.length === 0 ? 0.5 : 1
-              }}
-            >
-              {t('tabs.video')}
-            </button>
-            <button
-              onClick={() => setActiveTab("reviews")}
-              disabled={tableTypes.length === 0}
-              style={{
-                padding: '8px 16px',
-                background: activeTab === "reviews" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                color: '#ffffff',
-                cursor: 'pointer',
-                opacity: tableTypes.length === 0 ? 0.5 : 1
-              }}
-            >
-              {t('tabs.reviews')}
-            </button>
-            <button
-              onClick={() => setActiveTab("table-types")}
-              style={{
-                padding: '8px 16px',
-                background: activeTab === "table-types" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                color: '#ffffff',
-                cursor: 'pointer'
-              }}
-            >
-              {t('tabs.tableTypes')}
-            </button>
-            <button
-              onClick={() => setActiveTab("tables")}
-              disabled={tableTypes.length === 0}
-              style={{
-                padding: '8px 16px',
-                background: activeTab === "tables" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '8px',
-                color: '#ffffff',
-                cursor: 'pointer',
-                opacity: tableTypes.length === 0 ? 0.5 : 1
-              }}
-            >
-              {t('tabs.editTables')}
-            </button>
-          </div>
-          {renderTabContent()}
-        </section>
-      )}
-
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">
-            <h3 className="text-2xl font-semibold mb-5 text-center">{t('profile.editBar')}</h3>
-
-            <div className="space-y-6">
-              {/* --- Ảnh đại diện --- */}
-              <div className="flex justify-between items-center border-b pb-3">
-                <div className="flex items-center gap-4">
-                  <img
-                    src={profile.Avatar || "https://via.placeholder.com/100"}
-                    alt="Avatar"
-                    className="w-20 h-20 rounded-full object-cover border"
-                  />
-                  <div>
-                    <p className="font-medium text-lg">Ảnh đại diện</p>
-                    <p className="text-sm text-gray-500">Hiển thị cho người dùng</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setEditingField(editingField === "avatar" ? null : "avatar")}
-                  className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
-                >
-                  {editingField === "avatar" ? t('profile.close') : t('profile.editProfile')}
-                </button>
-              </div>
-              {editingField === "avatar" && (
-                <div className="mt-3">
-                  <input
-                    type="text"
-                    placeholder="Nhập link ảnh đại diện..."
-                    value={profile.Avatar}
-                    onChange={(e) =>
-                      setProfile((prev) => ({ ...prev, Avatar: e.target.value }))
-                    }
-                    className="w-full border rounded-lg px-3 py-2"
-                  />
-                </div>
-              )}
-
-              {/* --- Ảnh nền --- */}
-              <div className="flex justify-between items-center border-b pb-3">
-                <div className="flex items-center gap-4">
-                  <img
-                    src={profile.Background || "https://i.imgur.com/6IUbEMn.jpg"}
-                    alt="Background"
-                    className="w-24 h-16 rounded-lg object-cover border"
-                  />
-                  <div>
-                    <p className="font-medium text-lg">Ảnh bìa</p>
-                    <p className="text-sm text-gray-500">Hiển thị ở đầu trang</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setEditingField(editingField === "background" ? null : "background")}
-                  className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
-                >
-                  {editingField === "background" ? t('profile.close') : t('profile.editProfile')}
-                </button>
-              </div>
-              {editingField === "background" && (
-                <div className="mt-3">
-                  <input
-                    type="text"
-                    placeholder="Nhập link ảnh bìa..."
-                    value={profile.Background}
-                    onChange={(e) =>
-                      setProfile((prev) => ({ ...prev, Background: e.target.value }))
-                    }
-                    className="w-full border rounded-lg px-3 py-2"
-                  />
-                </div>
-              )}
-
-              {/* --- Tiểu sử / Bio --- */}
-              <div className="flex justify-between items-center border-b pb-3">
-                <div>
-                  <p className="font-medium text-lg">{t('profile.bio')}</p>
-                  <p className="text-sm text-gray-500">
-                    {profile.Bio || "Chưa có tiểu sử"}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setEditingField(editingField === "bio" ? null : "bio")}
-                  className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
-                >
-                  {editingField === "bio" ? t('profile.close') : t('profile.editProfile')}
-                </button>
-              </div>
-              {editingField === "bio" && (
-                <div className="mt-3">
-                  <textarea
-                    rows={3}
-                    placeholder={t('input.caption')}
-                    value={profile.Bio || ""}
-                    onChange={(e) =>
-                      setProfile((prev) => ({ ...prev, Bio: e.target.value }))
-                    }
-                    className="w-full border rounded-lg px-3 py-2"
-                  />
-                </div>
-              )}
-
-              {/* --- Thông tin chi tiết --- */}
-              {/* --- Thông tin chi tiết --- */}
-              <div className="flex justify-between items-start border-b pb-3">
-                <div>
-                  <p className="font-medium text-lg mb-1">{t('profile.about')}</p>
-                  <div className="text-sm text-gray-600 space-y-1">
-                    <p><strong>Tên quán:</strong> {profile.BarName || "Chưa có tên quán"}</p>
-                    <p><strong>Địa chỉ:</strong> {profile.Address || "Chưa có địa chỉ"}</p>
-                    <p><strong>Điện thoại:</strong> {profile.PhoneNumber || "Chưa có"}</p>
-                    <p><strong>Email:</strong> {profile.Email || "Chưa có"}</p>
-                    <p><strong>Vai trò:</strong> {profile.Role || "Bar"}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setEditingField(editingField === "info" ? null : "info")}
-                  className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium self-start"
-                >
-                  {editingField === "info" ? "Đóng" : "Chỉnh sửa"}
-                </button>
-              </div>
-
-              {editingField === "info" && (
-                <div className="mt-3 space-y-3">
-                  <label className="block">
-                    <span className="text-sm font-medium">{t('profile.barName')}:</span>
-                    <input
-                      type="text"
-                      value={profile.BarName}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, BarName: e.target.value }))
-                      }
-                      className="w-full border rounded-lg px-3 py-2 mt-1"
-                    />
-                  </label>
-
-                  <div>
-                    <span className="text-sm font-medium block mb-2">{t('profile.address')}:</span>
-                    <AddressSelector
-                      selectedProvinceId={selectedProvinceId}
-                      selectedDistrictId={selectedDistrictId}
-                      selectedWardId={selectedWardId}
-                      addressDetail={addressDetail}
-                      onProvinceChange={(id) => {
-                        setSelectedProvinceId(id);
-                        setSelectedDistrictId('');
-                        setSelectedWardId('');
-                      }}
-                      onDistrictChange={(id) => {
-                        setSelectedDistrictId(id);
-                        setSelectedWardId('');
-                      }}
-                      onWardChange={setSelectedWardId}
-                      onAddressDetailChange={setAddressDetail}
-                      onAddressChange={(fullAddr) => {
-                        setProfile(prev => ({ ...prev, Address: fullAddr }));
-                      }}
-                    />
-                  </div>
-
-                  <label className="block">
-                    <span className="text-sm font-medium">{t('profile.phone')}:</span>
-                    <input
-                      type="text"
-                      value={profile.PhoneNumber}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, PhoneNumber: e.target.value }))
-                      }
-                      className="w-full border rounded-lg px-3 py-2 mt-1"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="text-sm font-medium">{t('profile.email')}:</span>
-                    <input
-                      type="email"
-                      value={profile.Email}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, Email: e.target.value }))
-                      }
-                      className="w-full border rounded-lg px-3 py-2 mt-1"
-                    />
-                  </label>
-                </div>
-              )}
-
-              {/* --- Nút Lưu / Hủy --- */}
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={handleCloseEdit}
-                  className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
-                >
-                  {t('profile.close')}
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      setSaving(true);
-
-                      // Build FormData
-                      const formData = new FormData();
-                      formData.append('barPageId', barPageId);
-                      formData.append('barName', profile.BarName || '');
-                      formData.append('phoneNumber', profile.PhoneNumber || '');
-                      formData.append('email', profile.Email || '');
-
-                      // Build address
-                      let fullAddress = profile.Address || '';
-
-                      // Send structured address data
-                      if (selectedProvinceId || selectedDistrictId || selectedWardId) {
-                        formData.append('addressData', JSON.stringify({
-                          provinceId: selectedProvinceId,
-                          districtId: selectedDistrictId,
-                          wardId: selectedWardId,
-                          fullAddress: fullAddress,
-                          detail: addressDetail
-                        }));
-                        formData.append('address', fullAddress);
-                      } else {
-                        formData.append('address', profile.Address || '');
-                      }
-
-                      // Send avatar and background URLs
-                      if (profile.Avatar) formData.append('avatar', profile.Avatar);
-                      if (profile.Background) formData.append('background', profile.Background);
-
-                      const res = await barPageApi.upload(formData);
-
-                      if (res.status === "success") {
-                        setProfile(res.data);
-                        alert("Đã lưu thay đổi!");
-                        handleCloseEdit();
-                      } else {
-                        alert("Lưu thất bại: " + (res.message || "Lỗi không xác định"));
-                      }
-                    } catch (error) {
-                      console.error("Error saving bar profile:", error);
-                      alert("Lưu thất bại: " + (error.response?.data?.message || error.message));
-                    } finally {
-                      setSaving(false);
-                    }
-                  }}
-                  disabled={saving}
-                  className="px-4 py-2 bg-[#a78bfa] text-white rounded-lg hover:bg-[#8b5cf6] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? t('profile.saving') : t('profile.saveChanges')}
-                </button>
+        {/* Profile Info Overlay */}
+        <div className={cn("absolute bottom-0 left-0 right-0 p-4 md:p-6")}>
+          <div className={cn("flex items-end gap-3 md:gap-4")}>
+            {/* Avatar */}
+            <div className={cn("relative")}>
+              <img
+                src={profile.Avatar || "https://via.placeholder.com/150"}
+                alt={profile.BarName}
+                className={cn(
+                  "w-20 h-20 md:w-24 md:h-24 rounded-full object-cover",
+                  "border-4 border-card shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
+                  "bg-card"
+                )}
+              />
+            </div>
+            <div className={cn("flex-1 pb-1")}>
+              <h1 className={cn(
+                "text-xl md:text-2xl font-bold text-primary-foreground mb-0.5",
+                "drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+              )}>
+                {profile.BarName || t('profile.barName')}
+              </h1>
+              <div className={cn(
+                "text-xs md:text-sm text-primary-foreground/90",
+                "drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
+              )}>
+                BAR
               </div>
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Main Content Container */}
+      <div className={cn("max-w-6xl mx-auto px-4 md:px-6 py-6")}>
+        {/* Stats Bar - Refined & Balanced Design */}
+        <section className={cn(
+          "flex items-center justify-center gap-8 md:gap-12 lg:gap-16",
+          "py-6 px-4",
+          "border-b border-border/30"
+        )}>
+          <button className={cn(
+            "flex flex-col items-center gap-1.5 cursor-pointer",
+            "group transition-all duration-200",
+            "hover:opacity-90 active:scale-95"
+          )}>
+            <span className={cn(
+              "text-2xl md:text-3xl font-bold text-foreground",
+              "tracking-tight leading-none",
+              "group-hover:text-primary transition-colors duration-200"
+            )}>
+              {followers.length}
+            </span>
+            <span className={cn(
+              "text-[11px] md:text-xs text-muted-foreground",
+              "font-medium uppercase tracking-wider",
+              "group-hover:text-foreground/80 transition-colors duration-200"
+            )}>
+              {t('publicProfile.followers')}
+            </span>
+          </button>
+          
+          <div className={cn(
+            "h-10 w-px bg-border/20",
+            "hidden md:block"
+          )} />
+          
+          <button className={cn(
+            "flex flex-col items-center gap-1.5 cursor-pointer",
+            "group transition-all duration-200",
+            "hover:opacity-90 active:scale-95"
+          )}>
+            <span className={cn(
+              "text-2xl md:text-3xl font-bold text-foreground",
+              "tracking-tight leading-none",
+              "group-hover:text-primary transition-colors duration-200"
+            )}>
+              {following.length}
+            </span>
+            <span className={cn(
+              "text-[11px] md:text-xs text-muted-foreground",
+              "font-medium uppercase tracking-wider",
+              "group-hover:text-foreground/80 transition-colors duration-200"
+            )}>
+              {t('publicProfile.following')}
+            </span>
+          </button>
+        </section>
+
+        {/* Bio & Info Section */}
+        {(profile.Bio || profile.Email || profile.PhoneNumber || profile.Address) && (
+          <section className={cn(
+            "py-6 border-b border-border/30",
+            "bg-card rounded-lg p-6 mb-6",
+            "border-[0.5px] border-border/20",
+            "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+          )}>
+            {profile.Bio && (
+              <div className={cn("mb-4")}>
+                <h3 className={cn("text-lg font-semibold text-foreground mb-2")}>
+                  {t("publicProfile.about")}
+                </h3>
+                <p className={cn("text-foreground whitespace-pre-wrap leading-relaxed")}>
+                  {profile.Bio}
+                </p>
+              </div>
+            )}
+            {(profile.Email || profile.PhoneNumber || profile.Address) && (
+              <div className={cn("mt-4 pt-4 border-t border-border/30")}>
+                <h4 className={cn("text-base font-semibold text-foreground mb-3")}>
+                  {t("publicProfile.contact")}
+                </h4>
+                <div className={cn("space-y-2 text-sm text-muted-foreground")}>
+                  {profile.Email && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-envelope text-base"></i>
+                      <span>{t("common.email")}: {profile.Email}</span>
+                    </div>
+                  )}
+                  {profile.PhoneNumber && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-phone text-base"></i>
+                      <span>{t("common.phone") || "Phone"}: {profile.PhoneNumber}</span>
+                    </div>
+                  )}
+                  {profile.Address && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-map text-base"></i>
+                      <span>{t("common.address") || "Address"}: {profile.Address}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Tabs Section - Only for Own Profile */}
+        {isOwnProfile && (
+          <section className={cn("py-6")}>
+            {/* Tabs Navigation */}
+            <div className={cn("flex items-center gap-1 mb-6 border-b border-border/30 overflow-x-auto")}>
+              <button
+                onClick={() => setActiveTab("info")}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "info"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t('profile.infoTab')}
+                {activeTab === "info" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("posts")}
+                disabled={tableTypes.length === 0}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "posts"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {t('profile.postsTab')}
+                {activeTab === "posts" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("videos")}
+                disabled={tableTypes.length === 0}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "videos"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {t('tabs.video')}
+                {activeTab === "videos" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("reviews")}
+                disabled={tableTypes.length === 0}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "reviews"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {t('tabs.reviews')}
+                {activeTab === "reviews" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("table-types")}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "table-types"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t('tabs.tableTypes')}
+                {activeTab === "table-types" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("tables")}
+                disabled={tableTypes.length === 0}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "tables"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {t('tabs.editTables')}
+                {activeTab === "tables" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+            </div>
+            
+            {/* Tab Content */}
+            <div className={cn("mt-6")}>
+              {renderTabContent()}
+            </div>
+          </section>
+        )}
+      </div>
+
+      {showEditModal && (
+        <div className={cn(
+          "fixed inset-0 bg-black/50 backdrop-blur-sm",
+          "flex items-center justify-center z-50 p-4"
+        )}>
+          <div className={cn(
+            "bg-card text-card-foreground rounded-lg",
+            "border-[0.5px] border-border/20",
+            "shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
+            "w-full max-w-2xl max-h-[90vh] overflow-y-auto",
+            "flex flex-col"
+          )}>
+            {/* Header */}
+            <div className={cn(
+              "p-4 border-b border-border/30",
+              "flex items-center justify-between flex-shrink-0"
+            )}>
+              <h3 className={cn("text-xl font-semibold text-foreground")}>
+                {t('profile.editBar')}
+              </h3>
+              <button
+                onClick={handleCloseEdit}
+                className={cn(
+                  "w-8 h-8 flex items-center justify-center",
+                  "bg-transparent border-none text-muted-foreground",
+                  "rounded-lg transition-all duration-200",
+                  "hover:bg-muted/50 hover:text-foreground",
+                  "active:scale-95"
+                )}
+              >
+                <i className="bx bx-x text-xl"></i>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className={cn("p-6 flex-1 overflow-y-auto")}>
+              <div className={cn("space-y-6")}>
+                {/* --- Ảnh đại diện --- */}
+                <div className={cn("flex justify-between items-center border-b border-border/30 pb-4")}>
+                  <div className={cn("flex items-center gap-4")}>
+                    <div className={cn("relative")}>
+                      <img
+                        src={profile.Avatar || "https://via.placeholder.com/100"}
+                        alt="Avatar"
+                        className={cn(
+                          "w-20 h-20 rounded-full object-cover",
+                          "border-2 border-border/20"
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <p className={cn("font-semibold text-base text-foreground")}>
+                        Ảnh đại diện
+                      </p>
+                      <p className={cn("text-sm text-muted-foreground")}>
+                        Hiển thị cho người dùng
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEditingField(editingField === "avatar" ? null : "avatar")}
+                    className={cn(
+                      "px-4 py-2 rounded-lg font-medium text-sm",
+                      "bg-transparent border-none text-primary",
+                      "hover:bg-primary/10 transition-all duration-200",
+                      "active:scale-95"
+                    )}
+                  >
+                    {editingField === "avatar" ? t('profile.close') : t('profile.editProfile')}
+                  </button>
+                </div>
+                {editingField === "avatar" && (
+                  <div className={cn("mt-4")}>
+                    <input
+                      type="text"
+                      placeholder="Nhập link ảnh đại diện..."
+                      value={profile.Avatar || ""}
+                      onChange={(e) =>
+                        setProfile((prev) => ({ ...prev, Avatar: e.target.value }))
+                      }
+                      className={cn(
+                        "w-full px-4 py-2.5 rounded-lg",
+                        "border-[0.5px] border-border/20",
+                        "bg-background text-foreground",
+                        "outline-none transition-all duration-200",
+                        "placeholder:text-muted-foreground/60",
+                        "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* --- Ảnh nền --- */}
+                <div className={cn("flex justify-between items-center border-b border-border/30 pb-4")}>
+                  <div className={cn("flex items-center gap-4")}>
+                    <div className={cn("relative")}>
+                      <img
+                        src={profile.Background || "https://i.imgur.com/6IUbEMn.jpg"}
+                        alt="Background"
+                        className={cn(
+                          "w-24 h-16 rounded-lg object-cover",
+                          "border-2 border-border/20"
+                        )}
+                      />
+                    </div>
+                    <div>
+                      <p className={cn("font-semibold text-base text-foreground")}>
+                        Ảnh bìa
+                      </p>
+                      <p className={cn("text-sm text-muted-foreground")}>
+                        Hiển thị ở đầu trang
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEditingField(editingField === "background" ? null : "background")}
+                    className={cn(
+                      "px-4 py-2 rounded-lg font-medium text-sm",
+                      "bg-transparent border-none text-primary",
+                      "hover:bg-primary/10 transition-all duration-200",
+                      "active:scale-95"
+                    )}
+                  >
+                    {editingField === "background" ? t('profile.close') : t('profile.editProfile')}
+                  </button>
+                </div>
+                {editingField === "background" && (
+                  <div className={cn("mt-4")}>
+                    <input
+                      type="text"
+                      placeholder="Nhập link ảnh bìa..."
+                      value={profile.Background || ""}
+                      onChange={(e) =>
+                        setProfile((prev) => ({ ...prev, Background: e.target.value }))
+                      }
+                      className={cn(
+                        "w-full px-4 py-2.5 rounded-lg",
+                        "border-[0.5px] border-border/20",
+                        "bg-background text-foreground",
+                        "outline-none transition-all duration-200",
+                        "placeholder:text-muted-foreground/60",
+                        "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* --- Tiểu sử / Bio --- */}
+                <div className={cn("flex justify-between items-center border-b border-border/30 pb-4")}>
+                  <div>
+                    <p className={cn("font-semibold text-base text-foreground")}>
+                      {t('profile.bio')}
+                    </p>
+                    <p className={cn("text-sm text-muted-foreground mt-1")}>
+                      {profile.Bio || "Chưa có tiểu sử"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setEditingField(editingField === "bio" ? null : "bio")}
+                    className={cn(
+                      "px-4 py-2 rounded-lg font-medium text-sm",
+                      "bg-transparent border-none text-primary",
+                      "hover:bg-primary/10 transition-all duration-200",
+                      "active:scale-95"
+                    )}
+                  >
+                    {editingField === "bio" ? t('profile.close') : t('profile.editProfile')}
+                  </button>
+                </div>
+                {editingField === "bio" && (
+                  <div className={cn("mt-4")}>
+                    <textarea
+                      rows={3}
+                      placeholder={t('input.caption')}
+                      value={profile.Bio || ""}
+                      onChange={(e) =>
+                        setProfile((prev) => ({ ...prev, Bio: e.target.value }))
+                      }
+                      className={cn(
+                        "w-full px-4 py-2.5 rounded-lg",
+                        "border-[0.5px] border-border/20",
+                        "bg-background text-foreground",
+                        "outline-none transition-all duration-200",
+                        "placeholder:text-muted-foreground/60",
+                        "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
+                        "resize-y"
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* --- Thông tin chi tiết --- */}
+                <div className={cn("flex justify-between items-start border-b border-border/30 pb-4")}>
+                  <div>
+                    <p className={cn("font-semibold text-base text-foreground mb-2")}>
+                      {t('profile.about')}
+                    </p>
+                    <div className={cn("text-sm text-muted-foreground space-y-1")}>
+                      <p><strong className={cn("text-foreground")}>Tên quán:</strong> {profile.BarName || "Chưa có tên quán"}</p>
+                      <p><strong className={cn("text-foreground")}>Địa chỉ:</strong> {profile.Address || "Chưa có địa chỉ"}</p>
+                      <p><strong className={cn("text-foreground")}>Điện thoại:</strong> {profile.PhoneNumber || "Chưa có"}</p>
+                      <p><strong className={cn("text-foreground")}>Email:</strong> {profile.Email || "Chưa có"}</p>
+                      <p><strong className={cn("text-foreground")}>Vai trò:</strong> {profile.Role || "Bar"}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEditingField(editingField === "info" ? null : "info")}
+                    className={cn(
+                      "px-4 py-2 rounded-lg font-medium text-sm",
+                      "bg-transparent border-none text-primary",
+                      "hover:bg-primary/10 transition-all duration-200",
+                      "active:scale-95 self-start"
+                    )}
+                  >
+                    {editingField === "info" ? "Đóng" : "Chỉnh sửa"}
+                  </button>
+                </div>
+
+                {editingField === "info" && (
+                  <div className={cn("mt-4 space-y-4")}>
+                    <label className={cn("block")}>
+                      <span className={cn("text-sm font-medium text-foreground block mb-2")}>
+                        {t('profile.barName')}:
+                      </span>
+                      <input
+                        type="text"
+                        value={profile.BarName || ""}
+                        onChange={(e) =>
+                          setProfile((prev) => ({ ...prev, BarName: e.target.value }))
+                        }
+                        className={cn(
+                          "w-full px-4 py-2.5 rounded-lg",
+                          "border-[0.5px] border-border/20",
+                          "bg-background text-foreground",
+                          "outline-none transition-all duration-200",
+                          "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                        )}
+                      />
+                    </label>
+
+                    <div>
+                      <span className={cn("text-sm font-medium text-foreground block mb-2")}>
+                        {t('profile.address')}:
+                      </span>
+                      <AddressSelector
+                        selectedProvinceId={selectedProvinceId}
+                        selectedDistrictId={selectedDistrictId}
+                        selectedWardId={selectedWardId}
+                        addressDetail={addressDetail}
+                        onProvinceChange={(id) => {
+                          setSelectedProvinceId(id);
+                          setSelectedDistrictId('');
+                          setSelectedWardId('');
+                        }}
+                        onDistrictChange={(id) => {
+                          setSelectedDistrictId(id);
+                          setSelectedWardId('');
+                        }}
+                        onWardChange={setSelectedWardId}
+                        onAddressDetailChange={setAddressDetail}
+                        onAddressChange={(fullAddr) => {
+                          setProfile(prev => ({ ...prev, Address: fullAddr }));
+                        }}
+                      />
+                    </div>
+
+                    <label className={cn("block")}>
+                      <span className={cn("text-sm font-medium text-foreground block mb-2")}>
+                        {t('profile.phone')}:
+                      </span>
+                      <input
+                        type="text"
+                        value={profile.PhoneNumber || ""}
+                        onChange={(e) =>
+                          setProfile((prev) => ({ ...prev, PhoneNumber: e.target.value }))
+                        }
+                        className={cn(
+                          "w-full px-4 py-2.5 rounded-lg",
+                          "border-[0.5px] border-border/20",
+                          "bg-background text-foreground",
+                          "outline-none transition-all duration-200",
+                          "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                        )}
+                      />
+                    </label>
+
+                    <label className={cn("block")}>
+                      <span className={cn("text-sm font-medium text-foreground block mb-2")}>
+                        {t('profile.email')}:
+                      </span>
+                      <input
+                        type="email"
+                        value={profile.Email || ""}
+                        onChange={(e) =>
+                          setProfile((prev) => ({ ...prev, Email: e.target.value }))
+                        }
+                        className={cn(
+                          "w-full px-4 py-2.5 rounded-lg",
+                          "border-[0.5px] border-border/20",
+                          "bg-background text-foreground",
+                          "outline-none transition-all duration-200",
+                          "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                        )}
+                      />
+                    </label>
+                  </div>
+                )}
+
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className={cn(
+              "p-4 border-t border-border/30",
+              "flex items-center justify-end gap-3 flex-shrink-0"
+            )}>
+              <button
+                onClick={handleCloseEdit}
+                disabled={saving}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-semibold text-sm",
+                  "bg-transparent border-none text-muted-foreground",
+                  "hover:text-foreground hover:bg-muted/50",
+                  "transition-all duration-200",
+                  "active:scale-95",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                {t('profile.close')}
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setSaving(true);
+
+                    // Build FormData
+                    const formData = new FormData();
+                    formData.append('barPageId', barPageId);
+                    formData.append('barName', profile.BarName || '');
+                    formData.append('phoneNumber', profile.PhoneNumber || '');
+                    formData.append('email', profile.Email || '');
+
+                    // Build address
+                    let fullAddress = profile.Address || '';
+
+                    // Send structured address data
+                    if (selectedProvinceId || selectedDistrictId || selectedWardId) {
+                      formData.append('addressData', JSON.stringify({
+                        provinceId: selectedProvinceId,
+                        districtId: selectedDistrictId,
+                        wardId: selectedWardId,
+                        fullAddress: fullAddress,
+                        detail: addressDetail
+                      }));
+                      formData.append('address', fullAddress);
+                    } else {
+                      formData.append('address', profile.Address || '');
+                    }
+
+                    // Send avatar and background URLs
+                    if (profile.Avatar) formData.append('avatar', profile.Avatar);
+                    if (profile.Background) formData.append('background', profile.Background);
+
+                    const res = await barPageApi.upload(formData);
+
+                    if (res.status === "success") {
+                      setProfile(res.data);
+                      alert("Đã lưu thay đổi!");
+                      handleCloseEdit();
+                    } else {
+                      alert("Lưu thất bại: " + (res.message || "Lỗi không xác định"));
+                    }
+                  } catch (error) {
+                    console.error("Error saving bar profile:", error);
+                    alert("Lưu thất bại: " + (error.response?.data?.message || error.message));
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                disabled={saving}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-semibold text-sm",
+                  "bg-primary text-primary-foreground border-none",
+                  "hover:bg-primary/90 transition-all duration-200",
+                  "active:scale-95",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                {saving ? t('profile.saving') : t('profile.saveChanges')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-
-
-
-      {/* --- MAIN CONTENT --- */}
-      {renderTabContent()}
     </div>
   );
 }

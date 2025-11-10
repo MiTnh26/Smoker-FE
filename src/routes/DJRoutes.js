@@ -3,7 +3,7 @@ import { Route } from "react-router-dom";
 import { DJDashboard } from "../modules/dj";
 import ProtectedRoute from "./ProtectedRoute";
 import DJLayout from "../layouts/DJLayout";
-import Newsfeed from "../modules/feeds/pages/Newsfeed";
+import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed";
 
 export default function DJRoutes() {
   return (

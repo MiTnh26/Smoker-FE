@@ -5,6 +5,7 @@ import { authApi, userApi } from "../../../api/userApi";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import { fetchAllEntities } from "../../../utils/sessionHelper";
+import PublicHeader from "../../../components/layout/PublicHeader";
 
 export default function GoogleLoginButton() {
   const navigate = useNavigate();
@@ -79,106 +80,34 @@ export default function GoogleLoginButton() {
   
 
   return (
-    <div className="google-login-page">
-      <style>{`
-        .google-login-page {
-          min-height: 100vh;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          background: #f2f5fa;
-          padding: 16px;
-        }
-        .google-login-card {
-          background: #fff;
-          max-width: 420px;
-          width: 100%;
-          padding: 2rem 1.5rem;
-          margin: 0 auto;
-          border-radius: 16px;
-          box-shadow: 0 2px 16px rgba(60, 60, 130, 0.09), 0 1.5px 8px rgba(0,0,0,0.06);
-          display: flex;
-          flex-direction: column;
-          gap: 1.7rem;
-        }
-        .google-login-title {
-          font-size: 2rem;
-          font-weight: 700;
-          margin: 0 0 4px 0;
-          text-align: center;
-          color: #24292f;
-          letter-spacing: -0.01em;
-        }
-        .google-login-subtitle {
-          font-size: 1.05rem;
-          color: #697179;
-          text-align: center;
-          font-weight: 400;
-          margin-bottom: 8px;
-        }
-        .google-login-messages {
-          min-height: 28px;
-        }
-        .google-login-error {
-          background: #fdecea;
-          color: #d92d20;
-          border: 1px solid #faa7a2;
-          border-radius: 7px;
-          padding: 0.6em 0.9em;
-          font-size: 1rem;
-          text-align: center;
-          margin-bottom: 0.4em;
-        }
-        .google-login-success {
-          background: #e9fbe7;
-          color: #148414;
-          border: 1px solid #84e4a1;
-          border-radius: 7px;
-          padding: 0.6em 0.9em;
-          font-size: 1rem;
-          text-align: center;
-          margin-bottom: 0.4em;
-        }
-        .google-btn-wrapper {
-          display: flex;
-          justify-content: center;
-        }
-        .google-btn-wrapper > div {
-          box-shadow: 0 2px 8px rgba(60, 60, 130, 0.08);
-          border-radius: 7px;
-        }
-        @media (max-width: 600px) {
-          .google-login-card {
-            padding: 1.25rem 0.6rem;
-            border-radius: 10px;
-          }
-          .google-login-title {
-            font-size: 1.3rem;
-          }
-        }
-      `}</style>
-      <div className="google-login-card">
-        <div>
-          <h2 className="google-login-title">{t('auth.loginWithGoogle')}</h2>
-          <div className="google-login-subtitle">
-            {t('auth.googleLoginSubtitle')}
+    <div className="bg-background text-foreground">
+      <PublicHeader />
+      <div className="container mx-auto min-h-[calc(100vh-73px)] px-4 pt-[73px] pb-12 flex items-center justify-center">
+        <div className="w-full max-w-md rounded-lg border-[0.5px] border-border/20 bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+          <div className="mb-4 text-center">
+            <h2 className="text-2xl font-semibold">{t('auth.loginWithGoogle')}</h2>
+            <p className="text-sm text-muted-foreground">{t('auth.googleLoginSubtitle')}</p>
           </div>
-        </div>
-        <div className="google-login-messages">
-          {error && <div className="google-login-error">{error}</div>}
-          {message && !error && <div className="google-login-success">{message}</div>}
-        </div>
-        <div className="google-btn-wrapper">
-          <GoogleLogin
-            onSuccess={handleSuccess}
-            onError={() => setError(t('auth.googleLoginFailed'))}
-            width="320"
-            size="large"
-            shape="pill"
-            text="signin_with"
-            theme="outline"
-            useOneTap
-          />
+          <div className="min-h-[28px]">
+            {error ? (
+              <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger text-center">{error}</div>
+            ) : null}
+            {message && !error ? (
+              <div className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success text-center">{message}</div>
+            ) : null}
+          </div>
+          <div className="mt-4 flex justify-center">
+            <GoogleLogin
+              onSuccess={handleSuccess}
+              onError={() => setError(t('auth.googleLoginFailed'))}
+              width="320"
+              size="large"
+              shape="pill"
+              text="signin_with"
+              theme="outline"
+              useOneTap
+            />
+          </div>
         </div>
       </div>
     </div>

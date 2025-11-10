@@ -4,8 +4,8 @@ import CustomerLayout from "../layouts/CustomerLayout";
 import {  Profile, AddBankInfo } from "../modules/customer";
 import PublicProfile from "../modules/customer/pages/PublicProfile";
 import ProtectedRoute from "./ProtectedRoute";
-import Newsfeed from "../modules/feeds/pages/Newsfeed"
-import StoryEditor from "../modules/feeds/components/StoryEditor";
+import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed"
+import { StoryEditor } from "../modules/feeds/components/story";
 export default function CustomerRoutes() {
   return (
     <Fragment>

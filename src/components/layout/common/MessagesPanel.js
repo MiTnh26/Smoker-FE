@@ -2,14 +2,14 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { Search } from "lucide-react";
-import "../../../styles/layouts/messagepanel.css";
+import { cn } from "../../../utils/cn";
 import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 /**
  * MessagesPanel - Hiển thị danh sách tin nhắn
  * Dùng DropdownPanel component chung từ BarHeader/CustomerHeader
  */
-export default function MessagesPanel({ onClose }) {
+export default function MessagesPanel({ onClose, onUnreadCountChange }) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [conversations, setConversations] = React.useState([]);
@@ -326,15 +326,28 @@ export default function MessagesPanel({ onClose }) {
         }
         
         setConversations(mapped);
+        
+        // Calculate total unread messages
+        const totalUnread = mapped.reduce((sum, conv) => sum + (conv.unread || 0), 0);
+        
+        // Notify parent of unread count change
+        if (onUnreadCountChange) {
+          onUnreadCountChange(totalUnread);
+        }
+        
         setLoading(false);
       } catch (error) {
         console.error("[MessagesPanel] Error fetching conversations:", error);
         setLoading(false);
+        // Notify parent that there are no unread messages on error
+        if (onUnreadCountChange) {
+          onUnreadCountChange(0);
+        }
       }
     };
     
     fetchConversations();
-  }, [activeEntityId]); // Re-fetch when activeEntityId changes
+  }, [activeEntityId, onUnreadCountChange]); // Re-fetch when activeEntityId changes
 
   const filteredConversations = conversations.filter((conv) =>
     conv.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -352,40 +365,59 @@ export default function MessagesPanel({ onClose }) {
   return (
     <>
       {/* Search bar */}
-      <div className="panel-search">
-        <Search size={16} />
+      <div className={cn(
+        "flex items-center gap-2 px-4 py-3",
+        "border-b border-border/30"
+      )}>
+        <Search size={16} className="text-muted-foreground flex-shrink-0" />
         <input
           type="text"
           placeholder={t('messages.searchPlaceholder')}
-          className="panel-search-input"
+          className={cn(
+            "flex-1 border-none bg-transparent outline-none text-sm",
+            "text-foreground placeholder:text-muted-foreground"
+          )}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
       {/* Conversations list */}
-      <div className="panel-list">
+      <div className={cn(
+        "flex flex-col overflow-y-auto overflow-x-hidden",
+        "max-h-[400px]"
+      )}>
         {loading ? (
-          <div style={{ padding: "40px 20px", textAlign: "center", color: "rgb(var(--muted-foreground))" }}>
-            <p style={{ margin: 0 }}>{t('messages.loading') || 'Đang tải...'}</p>
+          <div className={cn(
+            "py-10 px-5 text-center text-muted-foreground"
+          )}>
+            <p className={cn("m-0")}>{t('messages.loading') || 'Đang tải...'}</p>
           </div>
         ) : filteredConversations.length === 0 ? (
-          <div style={{ padding: "40px 20px", textAlign: "center", color: "rgb(var(--muted-foreground))" }}>
-            <p style={{ margin: 0 }}>{t('messages.empty')}</p>
+          <div className={cn(
+            "py-10 px-5 text-center text-muted-foreground"
+          )}>
+            <p className={cn("m-0")}>{t('messages.empty')}</p>
           </div>
         ) : (
           filteredConversations.map((conv) => (
             <button
               key={conv.id}
               type="button"
-              className="panel-item"
+              className={cn(
+                "flex items-start gap-3 px-4 py-3",
+                "bg-transparent border-none cursor-pointer",
+                "text-left w-full transition-all duration-200",
+                "hover:bg-muted/50",
+                "active:scale-[0.98]"
+              )}
               onClick={() => {
                 if (window.__openChat) {
                   window.__openChat({ 
                     id: conv.id, 
                     name: conv.name,
-                    avatar: conv.avatar, // Pass avatar to avoid re-fetching
-                    entityId: conv.entityId // Pass entityId for profile navigation
+                    avatar: conv.avatar,
+                    entityId: conv.entityId
                   });
                 }
                 onClose?.();
@@ -396,7 +428,7 @@ export default function MessagesPanel({ onClose }) {
                     window.__openChat({ 
                       id: conv.id, 
                       name: conv.name,
-                      avatar: conv.avatar, // Pass avatar to avoid re-fetching
+                      avatar: conv.avatar,
                       entityId: conv.entityId
                     });
                   }
@@ -404,25 +436,51 @@ export default function MessagesPanel({ onClose }) {
                 }
               }}
             >
-              <div className="panel-avatar">
+              <div className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                "bg-gradient-to-br from-primary to-secondary",
+                "text-primary-foreground text-sm font-semibold"
+              )}>
                 {conv.avatar ? (
                   <img 
                     src={conv.avatar} 
                     alt={conv.name}
-                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                    className="w-full h-full rounded-full object-cover"
                   />
                 ) : (
                   getInitial(conv.name)
                 )}
               </div>
-              <div className="panel-info">
-                <h4>{conv.name}</h4>
-                <p>{conv.lastMessage}</p>
+              <div className={cn("flex-1 min-w-0")}>
+                <h4 className={cn(
+                  "m-0 mb-1 text-foreground text-[15px] font-semibold",
+                  "overflow-hidden text-ellipsis whitespace-nowrap"
+                )}>
+                  {conv.name}
+                </h4>
+                <p className={cn(
+                  "m-0 text-muted-foreground text-[13px]",
+                  "overflow-hidden text-ellipsis whitespace-nowrap"
+                )}>
+                  {conv.lastMessage}
+                </p>
               </div>
-              <div className="panel-meta">
-                <span className="panel-time">{conv.time}</span>
+              <div className={cn(
+                "flex flex-col items-end gap-1 flex-shrink-0"
+              )}>
+                <span className={cn(
+                  "text-muted-foreground text-[12px]"
+                )}>
+                  {conv.time}
+                </span>
                 {conv.unread > 0 && (
-                  <span className="panel-unread">{conv.unread > 9 ? '9+' : conv.unread}</span>
+                  <span className={cn(
+                    "bg-primary text-primary-foreground rounded-full",
+                    "px-1.5 py-0.5 text-[11px] font-bold min-w-[18px]",
+                    "text-center"
+                  )}>
+                    {conv.unread > 9 ? '9+' : conv.unread}
+                  </span>
                 )}
               </div>
             </button>
@@ -432,3 +490,13 @@ export default function MessagesPanel({ onClose }) {
     </>
   );
 }
+
+MessagesPanel.propTypes = {
+  onClose: PropTypes.func,
+  onUnreadCountChange: PropTypes.func,
+};
+
+MessagesPanel.defaultProps = {
+  onClose: () => {},
+  onUnreadCountChange: null,
+};

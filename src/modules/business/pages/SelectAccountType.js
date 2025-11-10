@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import "../../../styles/modules/selectAccountType.css";
+import { cn } from "../../../utils/cn";
 
 export default function SelectAccountType() {
   const navigate = useNavigate();
@@ -81,10 +81,20 @@ export default function SelectAccountType() {
   // If user has all three types, show message
   if (hasBar && hasDJ && hasDancer) {
     return (
-      <div className="select-account-type-container">
-        <div className="text-center py-8">
-          <h2 className="text-2xl font-bold mb-4">{t('register.allAccountTypesRegistered')}</h2>
-          <p className="text-gray-600 mb-4">{t('register.allAccountTypesDesc')}</p>
+      <div className={cn(
+        "container mx-auto px-4 py-8 max-w-4xl"
+      )}>
+        <div className={cn("text-center py-8")}>
+          <h2 className={cn(
+            "text-2xl font-bold mb-4 text-foreground"
+          )}>
+            {t('register.allAccountTypesRegistered')}
+          </h2>
+          <p className={cn(
+            "text-muted-foreground mb-4"
+          )}>
+            {t('register.allAccountTypesDesc')}
+          </p>
         </div>
       </div>
     );
@@ -92,46 +102,111 @@ export default function SelectAccountType() {
 
   if (loading) {
     return (
-      <div className="select-account-type-container">
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">{t('register.checking')}</p>
+      <div className={cn(
+        "container mx-auto px-4 py-8 max-w-4xl"
+      )}>
+        <div className={cn("text-center py-8")}>
+          <div className={cn(
+            "animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"
+          )}></div>
+          <p className={cn("mt-4 text-muted-foreground")}>
+            {t('register.checking')}
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="select-account-type-container">
-      <h2 className="text-2xl font-bold mb-4 text-center">{t('register.selectAccountType')}</h2>
+    <div className={cn(
+      "container mx-auto px-4 py-8 max-w-4xl"
+    )}>
+      <h2 className={cn(
+        "text-2xl font-bold mb-6 text-center text-foreground"
+      )}>
+        {t('register.selectAccountType')}
+      </h2>
 
-      <div className="account-type-grid">
+      <div className={cn(
+        "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6"
+      )}>
         {!hasBar && (
-          <button onClick={() => handleSelect("bar")} className="account-type-card">
-            <h3>{t('register.registerBar')}</h3>
-            <p>{t('register.registerBarDesc')}</p>
+          <button 
+            onClick={() => handleSelect("bar")} 
+            className={cn(
+              "p-6 rounded-lg bg-card border-[0.5px] border-border/20",
+              "text-left transition-all duration-200",
+              "hover:border-primary/40 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
+              "active:scale-[0.98]"
+            )}
+          >
+            <h3 className={cn(
+              "text-lg font-semibold mb-2 text-foreground"
+            )}>
+              {t('register.registerBar')}
+            </h3>
+            <p className={cn(
+              "text-sm text-muted-foreground"
+            )}>
+              {t('register.registerBarDesc')}
+            </p>
           </button>
         )}
 
         {!hasDJ && (
-          <button onClick={() => handleSelect("dj")} className="account-type-card">
-            <h3>{t('register.registerDJ')}</h3>
-            <p>{t('register.registerDJDesc')}</p>
+          <button 
+            onClick={() => handleSelect("dj")} 
+            className={cn(
+              "p-6 rounded-lg bg-card border-[0.5px] border-border/20",
+              "text-left transition-all duration-200",
+              "hover:border-primary/40 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
+              "active:scale-[0.98]"
+            )}
+          >
+            <h3 className={cn(
+              "text-lg font-semibold mb-2 text-foreground"
+            )}>
+              {t('register.registerDJ')}
+            </h3>
+            <p className={cn(
+              "text-sm text-muted-foreground"
+            )}>
+              {t('register.registerDJDesc')}
+            </p>
           </button>
         )}
 
         {!hasDancer && (
-          <button onClick={() => handleSelect("dancer")} className="account-type-card">
-            <h3>{t('register.registerDancer')}</h3>
-            <p>{t('register.registerDancerDesc')}</p>
+          <button 
+            onClick={() => handleSelect("dancer")} 
+            className={cn(
+              "p-6 rounded-lg bg-card border-[0.5px] border-border/20",
+              "text-left transition-all duration-200",
+              "hover:border-primary/40 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
+              "active:scale-[0.98]"
+            )}
+          >
+            <h3 className={cn(
+              "text-lg font-semibold mb-2 text-foreground"
+            )}>
+              {t('register.registerDancer')}
+            </h3>
+            <p className={cn(
+              "text-sm text-muted-foreground"
+            )}>
+              {t('register.registerDancerDesc')}
+            </p>
           </button>
         )}
       </div>
 
       {/* Show message if all cards are hidden */}
       {(hasBar || hasDJ || hasDancer) && (
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg text-center">
-          <p className="text-sm text-blue-700">
+        <div className={cn(
+          "mt-6 p-4 rounded-lg text-center",
+          "bg-primary/10 border-[0.5px] border-primary/20"
+        )}>
+          <p className={cn("text-sm text-primary")}>
             {hasBar && hasDJ && hasDancer
               ? t('register.allRegisteredRedirecting')
               : t('register.alreadyRegistered', { 

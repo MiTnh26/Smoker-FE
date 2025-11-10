@@ -1,0 +1,348 @@
+/* TrashModal.css */
+.trash-modal-content {
+  width: 600px;
+  max-width: 92vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.trash-modal-body {
+  max-height: calc(90vh - 140px);
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.trash-empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.trash-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.trash-post-card {
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--border));
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.trash-post-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: rgb(var(--primary));
+  transform: translateY(-2px);
+}
+
+/* Header */
+.trash-post-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.trash-post-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.trash-post-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgb(var(--border));
+}
+
+.trash-post-author-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.trash-post-author-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: rgb(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trash-post-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgb(var(--muted));
+  border-radius: 12px;
+  font-size: 11px;
+  color: rgb(var(--muted-foreground));
+  width: fit-content;
+}
+
+.trash-post-type-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.trash-post-type-label {
+  font-weight: 500;
+}
+
+.trash-restore-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  border: 1px solid rgb(var(--primary));
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.trash-restore-btn:hover {
+  background: rgb(var(--secondary));
+  border-color: rgb(var(--secondary));
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(var(--primary), 0.3);
+}
+
+.trash-restore-btn:active {
+  transform: translateY(0);
+}
+
+.trash-restore-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.5;
+}
+
+/* Preview */
+.trash-post-preview {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.trash-post-thumbnail {
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  background: rgb(var(--muted));
+  border: 1px solid rgb(var(--border));
+}
+
+.trash-thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.trash-thumbnail-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 6px;
+}
+
+.trash-thumbnail-icon {
+  font-size: 16px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.trash-post-thumbnail-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(var(--muted));
+  border: 1px dashed rgb(var(--border));
+}
+
+.trash-thumbnail-icon-large {
+  font-size: 32px;
+  opacity: 0.5;
+}
+
+.trash-post-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+}
+
+.trash-post-content-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgb(var(--foreground));
+  margin: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+/* Footer */
+.trash-post-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgb(var(--border));
+  flex-wrap: wrap;
+}
+
+.trash-post-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.trash-post-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: rgb(var(--muted-foreground));
+  font-weight: 500;
+}
+
+.trash-post-stat-item svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+}
+
+.trash-post-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  font-size: 11px;
+  color: rgb(var(--muted-foreground));
+}
+
+.trash-post-meta-item {
+  white-space: nowrap;
+}
+
+.trash-post-meta-trashed {
+  color: rgb(var(--destructive));
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .trash-modal-content {
+    width: 100%;
+    max-width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .trash-modal-body {
+    padding: 16px;
+    max-height: calc(100vh - 120px);
+  }
+
+  .trash-post-card {
+    padding: 12px;
+  }
+
+  .trash-post-header {
+    flex-wrap: wrap;
+  }
+
+  .trash-restore-btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: 8px;
+  }
+
+  .trash-post-preview {
+    flex-direction: column;
+  }
+
+  .trash-post-thumbnail {
+    width: 100%;
+    height: 180px;
+  }
+
+  .trash-post-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .trash-post-meta {
+    align-items: flex-start;
+    width: 100%;
+  }
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .trash-post-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .trash-post-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* LiquidGlass theme specific styles */
+[data-theme='liquidglass'] .trash-post-card {
+  background: rgba(var(--card), 0.25);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(var(--border), 0.2);
+}
+
+[data-theme='liquidglass'] .trash-post-card:hover {
+  background: rgba(var(--card), 0.35);
+  border-color: rgba(var(--primary), 0.4);
+}
+
+[data-theme='liquidglass'] .trash-restore-btn {
+  background: rgba(var(--primary), 0.8);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px rgba(var(--primary), 0.2);
+}
+
+[data-theme='liquidglass'] .trash-restore-btn:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+

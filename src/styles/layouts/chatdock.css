@@ -145,6 +145,50 @@
   border-bottom-left-radius: 4px;
 }
 
+/* Story image in message */
+.chatwin__story-image-container {
+  margin: -4px -8px 8px -8px; /* Negative margin to extend to bubble edges */
+  max-width: calc(100% + 16px);
+}
+
+.chatwin__story-image-label {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.8;
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+
+.chatwin__bubble--me .chatwin__story-image-label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.chatwin__bubble--other .chatwin__story-image-label {
+  color: rgb(var(--foreground));
+  opacity: 0.7;
+}
+
+.chatwin__story-image {
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 100px; /* Giảm xuống 1 nửa (từ 200px) */
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.chatwin__story-image-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  max-height: 150px; /* Giảm xuống 1 nửa (từ 300px) */
+  min-height: 75px; /* Giảm xuống 1 nửa (từ 150px) */
+}
+
+.chatwin__message-text {
+  word-wrap: break-word;
+  margin-top: 0;
+}
+
 /* Input area */
 .chatwin__input {
   display: flex;

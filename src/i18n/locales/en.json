@@ -166,7 +166,11 @@
     "trashedPosts": "Trashed posts",
     "trashedPostsDesc": "You have {{count}} trashed posts. Posts will be permanently deleted after 30 days.",
     "viewTrash": "View trash",
-    "postRestored": "Post has been restored"
+    "postRestored": "Post has been restored",
+    "content": "Content",
+    "songLibrary": "Song Library",
+    "songLibraryDesc": "Upload and manage songs in your library",
+    "manageSongs": "Manage Songs"
   },
   "layout": {
     "brand": "Smoker",
@@ -190,6 +194,17 @@
     "emptyTrash": "No posts in trash.",
     "restore": "Restore",
     "close": "Close",
+    "postTypeText": "Post",
+    "postTypeImage": "Image",
+    "postTypeVideo": "Video",
+    "postTypeMusic": "Music",
+    "trashedDaysAgo": "Trashed {{days}} days ago",
+    "trashedHoursAgo": "Trashed {{hours}} hours ago",
+    "trashedMinutesAgo": "Trashed {{minutes}} minutes ago",
+    "trashedJustNow": "Just trashed",
+    "postCreatedAt": "Posted at",
+    "postLikes": "{{count}} likes",
+    "postComments": "{{count}} comments",
     "composerTitle": "Post Photos/Videos",
     "composerPlaceholder": "What do you want to share?",
     "photo": "Photo",
@@ -209,7 +224,8 @@
   },
   "messages": {
     "searchPlaceholder": "Search conversations...",
-    "empty": "No messages"
+    "empty": "No messages",
+    "replyYourStory": "Reply story"
   },
   "unifiedMenu": {
     "entityLabel": "Your Pages / Businesses",
@@ -339,7 +355,10 @@
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving...",
-    "update": "Update"
+    "update": "Update",
+    "close": "Close",
+    "discard": "Discard",
+    "remove": "Remove"
   },
   "comment": {
     "header": "Comments",
@@ -352,6 +371,33 @@
   },
   "music": {
     "postMusic": "Post music"
+  },
+          "song": {
+            "uploadTitle": "Add song to library",
+            "uploadNew": "Upload new song",
+            "title": "Song title",
+            "titlePlaceholder": "Enter song title...",
+            "artist": "Artist",
+            "artistPlaceholder": "Enter artist name...",
+            "album": "Album",
+            "albumPlaceholder": "Enter album name...",
+            "description": "Description",
+            "descriptionPlaceholder": "Enter description...",
+            "file": "Audio file",
+            "selectedFile": "Selected file",
+            "upload": "Upload song",
+            "uploading": "Uploading...",
+            "myLibrary": "My Library",
+            "loading": "Loading songs...",
+            "noSongs": "No songs in library yet",
+            "uploadHint": "Upload your first song!",
+            "untitled": "Untitled",
+            "unknownArtist": "Unknown Artist",
+            "noAlbum": "No Album",
+            "delete": "Delete",
+            "deleting": "Deleting...",
+            "confirmDelete": "Are you sure you want to delete this song?",
+            "deleteFailed": "Failed to delete song"
   },
   "upload": {
     "uploading": "Uploading... Please wait."
@@ -368,7 +414,28 @@
     "searchSongPlaceholder": "Search song name or artist...",
     "loadingSongs": "Loading songs...",
     "noSongsFound": "No songs found",
-    "postStory": "Post story"
+    "postStory": "Post story",
+    "copyLink": "Copy link",
+    "report": "Report",
+    "delete": "Delete",
+    "linkCopied": "Link copied",
+    "copyFailed": "Failed to copy link",
+    "confirmReport": "Are you sure you want to report this story?",
+    "reported": "Story reported",
+    "confirmDelete": "Are you sure you want to delete this story?",
+    "deleted": "Story deleted",
+    "deleteFailed": "Failed to delete story",
+    "yourStory": "Your story",
+    "reply": "Reply to story",
+    "replyEmpty": "No messages yet. Start the conversation!",
+    "replyPlaceholder": "Type a message...",
+    "addText": "Add text",
+    "addMusic": "Add music",
+    "alternativeText": "Alternative text",
+    "shareToStory": "Share to story",
+    "preview": "Preview",
+    "uploadMusic": "Upload music file",
+    "updateFailed": "Failed to update story"
   },
   "address": {
     "province": "Province/City",

@@ -5,9 +5,10 @@ import { locationApi } from "../../../api/locationApi";
 import axiosClient from "../../../api/axiosClient";
 import AddressSelector from "../../../components/common/AddressSelector";
 import { useFollowers, useFollowing } from "../../../hooks/useFollow";
-import "../../../styles/modules/publicProfile.css";
-import CreatePostBox from "../../feeds/components/CreatePostBox";
-import PostComposerModal from "../../feeds/components/PostComposerModal";
+import { cn } from "../../../utils/cn";
+import CreatePostBox from "../../feeds/components/shared/CreatePostBox";
+import PostComposerModal from "../../feeds/components/modals/PostComposerModal";
+import PostCard from "../../feeds/components/post/PostCard";
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -453,149 +454,443 @@ export default function Profile() {
     }
   };
 
-  if (loading) return <div className="pp-container">{t('publicProfile.loading')}</div>;
+  if (loading) {
+    return (
+      <div className={cn("min-h-screen bg-background flex items-center justify-center")}>
+        <div className={cn("text-muted-foreground")}>{t('publicProfile.loading')}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="pp-container">
-      <section
-        className="pp-cover"
-        style={{
-          backgroundImage: `url(${profile.background || "https://i.imgur.com/6IUbEMn.jpg"})`,
-        }}
-      >
-        <div className="pp-header">
-          <img
-            src={profile.avatar || "https://via.placeholder.com/120"}
-            alt="avatar"
-            className="pp-avatar"
-          />
-          <div>
-            <h2 className="pp-title">{profile.userName || t('profile.editPersonalProfile')}</h2>
-            <div className="pp-type">USER</div>
-          </div>
-        </div>
-        <div className="pp-follow">
-          <button onClick={handleEditClick} className="pp-chat-button">
-            <i className="bx bx-edit"></i>
+    <div className={cn("min-h-screen bg-background")}>
+      {/* Cover Photo Section - Instagram Style */}
+      <section className={cn("relative w-full h-[200px] md:h-[250px] overflow-hidden rounded-b-lg")}>
+        <div
+          className={cn("absolute inset-0 bg-cover bg-center")}
+          style={{
+            backgroundImage: `url(${profile.background || "https://i.imgur.com/6IUbEMn.jpg"})`,
+          }}
+        />
+        {/* Gradient Overlay */}
+        <div className={cn("absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60")} />
+        
+        {/* Edit Button */}
+        <div className={cn("absolute top-4 right-4 z-10")}>
+          <button
+            onClick={handleEditClick}
+            className={cn(
+              "px-4 py-2 rounded-lg font-semibold text-sm",
+              "bg-card/80 backdrop-blur-sm text-foreground border-none",
+              "hover:bg-card/90 transition-all duration-200",
+              "active:scale-95",
+              "flex items-center gap-2"
+            )}
+          >
+            <i className="bx bx-edit text-base"></i>
             {t('profile.editProfile')}
           </button>
         </div>
-      </section>
 
-      <section className="pp-stats">
-        <div>
-          <div className="pp-stat-label">{t('publicProfile.posts')}</div>
-          <div className="pp-stat-value">{userPosts.length}</div>
-        </div>
-        <div>
-          <div className="pp-stat-label">{t('publicProfile.followers')}</div>
-          <div className="pp-stat-value">{followers.length}</div>
-        </div>
-        <div>
-          <div className="pp-stat-label">{t('publicProfile.following')}</div>
-          <div className="pp-stat-value">{following.length}</div>
-        </div>
-      </section>
-
-      <section className="pp-section">
-        {profile.bio && (
-          <div>
-            <h3>{t("publicProfile.about")}</h3>
-            <p style={{ whiteSpace: "pre-wrap" }}>{profile.bio}</p>
-          </div>
-        )}
-        <div style={{ marginTop: profile.bio ? 12 : 0 }}>
-          <h4>{t("publicProfile.contact")}</h4>
-          {profile.email && <div>{t("common.email")}: {profile.email}</div>}
-          {profile.phone && <div>{t("common.phone") || "Phone"}: {profile.phone}</div>}
-          {profile.address && <div>{t("common.address") || "Address"}: {profile.address}</div>}
-          {profile.gender && <div>{t("profile.gender")}: {profile.gender}</div>}
-        </div>
-      </section>
-
-      <section>
-        <h3>{t("publicProfile.posts")}</h3>
-        {postsLoading ? (
-          <div style={{ color: 'rgba(255, 255, 255, 0.5)', padding: '16px' }}>{t('common.loading')}</div>
-        ) : userPosts && userPosts.length > 0 ? (
-          <ul className="pp-posts">
-            {userPosts.map(p => (
-              <li key={p.id} className="pp-post">
-                <div className="pp-post-title">{p.title || t("publicProfile.postTitleFallback")}</div>
-                {p.content && <div className="pp-post-content">{p.content}</div>}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div style={{ color: 'rgba(255, 255, 255, 0.5)', padding: '16px' }}>{t("publicProfile.noPosts")}</div>
-        )}
-      </section>
-
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">
-            <h3 className="text-2xl font-semibold mb-5 text-center">
-              {t('profile.editPersonalProfile')}
-            </h3>
-
-            <div className="space-y-6">
-              {/* --- Ảnh đại diện --- */}
-              <div className="flex justify-between items-center border-b pb-3">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <img
-                      src={profile.avatar || "https://via.placeholder.com/100"}
-                      alt="Avatar"
-                      className="w-20 h-20 rounded-full object-cover border"
-                    />
-                    {uploadingAvatar && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
-                        <div className="text-white text-xs">Đang upload...</div>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-lg">Ảnh đại diện</p>
-                    <p className="text-sm text-gray-500">Hiển thị cho người dùng</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setEditingField(editingField === "avatar" ? null : "avatar")}
-                  className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
-                >
-                  {editingField === "avatar" ? "Đóng" : "Chỉnh sửa"}
-                </button>
+        {/* Profile Info Overlay */}
+        <div className={cn("absolute bottom-0 left-0 right-0 p-4 md:p-6")}>
+          <div className={cn("flex items-end gap-3 md:gap-4")}>
+            {/* Avatar - Large & Prominent */}
+            <div className={cn("relative")}>
+              <img
+                src={profile.avatar || "https://via.placeholder.com/150"}
+                alt="avatar"
+                className={cn(
+                  "w-20 h-20 md:w-24 md:h-24 rounded-full object-cover",
+                  "border-4 border-card shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
+                  "bg-card"
+                )}
+              />
+            </div>
+            <div className={cn("flex-1 pb-1")}>
+              <h1 className={cn(
+                "text-xl md:text-2xl font-bold text-primary-foreground mb-0.5",
+                "drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+              )}>
+                {profile.userName || t('profile.editPersonalProfile')}
+              </h1>
+              <div className={cn(
+                "text-xs md:text-sm text-primary-foreground/90",
+                "drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
+              )}>
+                USER
               </div>
-              {editingField === "avatar" && (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Upload ảnh từ máy tính:</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      disabled={uploadingAvatar}
-                      className="w-full border rounded-lg px-3 py-2"
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Content Container */}
+      <div className={cn("max-w-6xl mx-auto px-4 md:px-6 py-6")}>
+        {/* Stats Bar - Refined & Balanced Design */}
+        <section className={cn(
+          "flex items-center justify-center gap-8 md:gap-12 lg:gap-16",
+          "py-6 px-4",
+          "border-b border-border/30"
+        )}>
+          <button className={cn(
+            "flex flex-col items-center gap-1.5 cursor-pointer",
+            "group transition-all duration-200",
+            "hover:opacity-90 active:scale-95"
+          )}>
+            <span className={cn(
+              "text-2xl md:text-3xl font-bold text-foreground",
+              "tracking-tight leading-none",
+              "group-hover:text-primary transition-colors duration-200"
+            )}>
+              {userPosts.length}
+            </span>
+            <span className={cn(
+              "text-[11px] md:text-xs text-muted-foreground",
+              "font-medium uppercase tracking-wider",
+              "group-hover:text-foreground/80 transition-colors duration-200"
+            )}>
+              {t('publicProfile.posts')}
+            </span>
+          </button>
+          
+          <div className={cn(
+            "h-10 w-px bg-border/20",
+            "hidden md:block"
+          )} />
+          
+          <button className={cn(
+            "flex flex-col items-center gap-1.5 cursor-pointer",
+            "group transition-all duration-200",
+            "hover:opacity-90 active:scale-95"
+          )}>
+            <span className={cn(
+              "text-2xl md:text-3xl font-bold text-foreground",
+              "tracking-tight leading-none",
+              "group-hover:text-primary transition-colors duration-200"
+            )}>
+              {followers.length}
+            </span>
+            <span className={cn(
+              "text-[11px] md:text-xs text-muted-foreground",
+              "font-medium uppercase tracking-wider",
+              "group-hover:text-foreground/80 transition-colors duration-200"
+            )}>
+              {t('publicProfile.followers')}
+            </span>
+          </button>
+          
+          <div className={cn(
+            "h-10 w-px bg-border/20",
+            "hidden md:block"
+          )} />
+          
+          <button className={cn(
+            "flex flex-col items-center gap-1.5 cursor-pointer",
+            "group transition-all duration-200",
+            "hover:opacity-90 active:scale-95"
+          )}>
+            <span className={cn(
+              "text-2xl md:text-3xl font-bold text-foreground",
+              "tracking-tight leading-none",
+              "group-hover:text-primary transition-colors duration-200"
+            )}>
+              {following.length}
+            </span>
+            <span className={cn(
+              "text-[11px] md:text-xs text-muted-foreground",
+              "font-medium uppercase tracking-wider",
+              "group-hover:text-foreground/80 transition-colors duration-200"
+            )}>
+              {t('publicProfile.following')}
+            </span>
+          </button>
+        </section>
+
+        {/* Bio & Info Section */}
+        {(profile.bio || profile.email || profile.phone || profile.address || profile.gender) && (
+          <section className={cn(
+            "py-6 border-b border-border/30",
+            "bg-card rounded-lg p-6 mb-6",
+            "border-[0.5px] border-border/20",
+            "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+          )}>
+            {profile.bio && (
+              <div className={cn("mb-4")}>
+                <h3 className={cn("text-lg font-semibold text-foreground mb-2")}>
+                  {t("publicProfile.about")}
+                </h3>
+                <p className={cn("text-foreground whitespace-pre-wrap leading-relaxed")}>
+                  {profile.bio}
+                </p>
+              </div>
+            )}
+            {(profile.email || profile.phone || profile.address || profile.gender) && (
+              <div className={cn("mt-4 pt-4 border-t border-border/30")}>
+                <h4 className={cn("text-base font-semibold text-foreground mb-3")}>
+                  {t("publicProfile.contact")}
+                </h4>
+                <div className={cn("space-y-2 text-sm text-muted-foreground")}>
+                  {profile.email && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-envelope text-base"></i>
+                      <span>{t("common.email")}: {profile.email}</span>
+                    </div>
+                  )}
+                  {profile.phone && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-phone text-base"></i>
+                      <span>{t("common.phone") || "Phone"}: {profile.phone}</span>
+                    </div>
+                  )}
+                  {profile.address && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-map text-base"></i>
+                      <span>{t("common.address") || "Address"}: {profile.address}</span>
+                    </div>
+                  )}
+                  {profile.gender && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-user text-base"></i>
+                      <span>{t("profile.gender")}: {profile.gender}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Posts Section - Instagram Grid Style */}
+        <section className={cn("py-6")}>
+          {/* Tabs */}
+          <div className={cn("flex items-center gap-1 mb-6 border-b border-border/30")}>
+            <button
+              onClick={() => setActiveTab("posts")}
+              className={cn(
+                "px-6 py-3 text-sm font-semibold border-none bg-transparent",
+                "transition-all duration-200 relative",
+                activeTab === "posts"
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t("publicProfile.posts")}
+              {activeTab === "posts" && (
+                <span className={cn(
+                  "absolute bottom-0 left-0 right-0 h-0.5",
+                  "bg-primary"
+                )} />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("videos")}
+              className={cn(
+                "px-6 py-3 text-sm font-semibold border-none bg-transparent",
+                "transition-all duration-200 relative",
+                activeTab === "videos"
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Videos
+              {activeTab === "videos" && (
+                <span className={cn(
+                  "absolute bottom-0 left-0 right-0 h-0.5",
+                  "bg-primary"
+                )} />
+              )}
+            </button>
+          </div>
+
+          {/* Content */}
+          {activeTab === "posts" ? (
+            <>
+              {postsLoading ? (
+                <div className={cn("text-center py-12 text-muted-foreground")}>
+                  {t('common.loading')}
+                </div>
+              ) : userPosts && userPosts.length > 0 ? (
+                <div className={cn("space-y-4")}>
+                  {userPosts.map(post => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onShared={() => loadUserContent()}
                     />
-                    {uploadingAvatar && (
-                      <p className="text-sm text-blue-600 mt-1">Đang upload ảnh...</p>
-                    )}
-                  </div>
-                  <div className="text-center text-gray-500">hoặc</div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Nhập link ảnh:</label>
-                    <input
-                      type="text"
-                      placeholder="Nhập link ảnh đại diện..."
-                      value={profile.avatar || ""}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, avatar: e.target.value }))
-                      }
-                      className="w-full border rounded-lg px-3 py-2"
-                    />
-                  </div>
+                  ))}
+                </div>
+              ) : (
+                <div className={cn(
+                  "text-center py-12 text-muted-foreground",
+                  "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+                )}>
+                  {t("publicProfile.noPosts")}
                 </div>
               )}
+            </>
+          ) : (
+            <>
+              {videosLoading ? (
+                <div className={cn("text-center py-12 text-muted-foreground")}>
+                  {t('common.loading')}
+                </div>
+              ) : userVideos && userVideos.length > 0 ? (
+                <div className={cn("space-y-4")}>
+                  {userVideos.map(video => (
+                    <PostCard
+                      key={video.id}
+                      post={video}
+                      onShared={() => loadUserContent()}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className={cn(
+                  "text-center py-12 text-muted-foreground",
+                  "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+                )}>
+                  Không có video
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      </div>
+
+      {showEditModal && (
+        <div className={cn(
+          "fixed inset-0 bg-black/50 backdrop-blur-sm",
+          "flex items-center justify-center z-50 p-4"
+        )}>
+          <div className={cn(
+            "bg-card text-card-foreground rounded-lg",
+            "border-[0.5px] border-border/20",
+            "shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
+            "w-full max-w-2xl max-h-[90vh] overflow-y-auto",
+            "flex flex-col"
+          )}>
+            {/* Header */}
+            <div className={cn(
+              "p-4 border-b border-border/30",
+              "flex items-center justify-between flex-shrink-0"
+            )}>
+              <h3 className={cn("text-xl font-semibold text-foreground")}>
+                {t('profile.editPersonalProfile')}
+              </h3>
+              <button
+                onClick={handleCloseEdit}
+                className={cn(
+                  "w-8 h-8 flex items-center justify-center",
+                  "bg-transparent border-none text-muted-foreground",
+                  "rounded-lg transition-all duration-200",
+                  "hover:bg-muted/50 hover:text-foreground",
+                  "active:scale-95"
+                )}
+              >
+                <i className="bx bx-x text-xl"></i>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className={cn("p-6 flex-1 overflow-y-auto")}>
+              <div className={cn("space-y-6")}>
+                {/* --- Ảnh đại diện --- */}
+                <div className={cn("flex justify-between items-center border-b border-border/30 pb-4")}>
+                  <div className={cn("flex items-center gap-4")}>
+                    <div className={cn("relative")}>
+                      <img
+                        src={profile.avatar || "https://via.placeholder.com/100"}
+                        alt="Avatar"
+                        className={cn(
+                          "w-20 h-20 rounded-full object-cover",
+                          "border-2 border-border/20"
+                        )}
+                      />
+                      {uploadingAvatar && (
+                        <div className={cn(
+                          "absolute inset-0 bg-black/50 rounded-full",
+                          "flex items-center justify-center"
+                        )}>
+                          <div className={cn("text-primary-foreground text-xs")}>
+                            Đang upload...
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className={cn("font-semibold text-base text-foreground")}>
+                        Ảnh đại diện
+                      </p>
+                      <p className={cn("text-sm text-muted-foreground")}>
+                        Hiển thị cho người dùng
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEditingField(editingField === "avatar" ? null : "avatar")}
+                    className={cn(
+                      "px-4 py-2 rounded-lg font-medium text-sm",
+                      "bg-transparent border-none text-primary",
+                      "hover:bg-primary/10 transition-all duration-200",
+                      "active:scale-95"
+                    )}
+                  >
+                    {editingField === "avatar" ? "Đóng" : "Chỉnh sửa"}
+                  </button>
+                </div>
+                {editingField === "avatar" && (
+                  <div className={cn("mt-4 space-y-4")}>
+                    <div>
+                      <label className={cn("block text-sm font-medium mb-2 text-foreground")}>
+                        Upload ảnh từ máy tính:
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        disabled={uploadingAvatar}
+                        className={cn(
+                          "w-full px-4 py-2.5 rounded-lg",
+                          "border-[0.5px] border-border/20",
+                          "bg-background text-foreground",
+                          "outline-none transition-all duration-200",
+                          "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
+                          "disabled:opacity-50 disabled:cursor-not-allowed"
+                        )}
+                      />
+                      {uploadingAvatar && (
+                        <p className={cn("text-sm text-primary mt-2")}>
+                          Đang upload ảnh...
+                        </p>
+                      )}
+                    </div>
+                    <div className={cn("text-center text-muted-foreground text-sm")}>
+                      hoặc
+                    </div>
+                    <div>
+                      <label className={cn("block text-sm font-medium mb-2 text-foreground")}>
+                        Nhập link ảnh:
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Nhập link ảnh đại diện..."
+                        value={profile.avatar || ""}
+                        onChange={(e) =>
+                          setProfile((prev) => ({ ...prev, avatar: e.target.value }))
+                        }
+                        className={cn(
+                          "w-full px-4 py-2.5 rounded-lg",
+                          "border-[0.5px] border-border/20",
+                          "bg-background text-foreground",
+                          "outline-none transition-all duration-200",
+                          "placeholder:text-muted-foreground/60",
+                          "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
 
               {/* --- Ảnh nền --- */}
               <div className="flex justify-between items-center border-b pb-3">
@@ -772,23 +1067,41 @@ export default function Profile() {
                 </div>
               )}
 
-              {/* --- Nút Lưu / Hủy --- */}
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={handleCloseEdit}
-                  disabled={saving}
-                  className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50"
-                >
-                  Đóng
-                </button>
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={saving}
-                  className="px-4 py-2 bg-[#a78bfa] text-white rounded-lg hover:bg-[#8b5cf6] disabled:opacity-50"
-                >
-                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
-                </button>
               </div>
+            </div>
+
+            {/* Footer */}
+            <div className={cn(
+              "p-4 border-t border-border/30",
+              "flex items-center justify-end gap-3 flex-shrink-0"
+            )}>
+              <button
+                onClick={handleCloseEdit}
+                disabled={saving}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-semibold text-sm",
+                  "bg-transparent border-none text-muted-foreground",
+                  "hover:text-foreground hover:bg-muted/50",
+                  "transition-all duration-200",
+                  "active:scale-95",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                Đóng
+              </button>
+              <button
+                onClick={handleSaveProfile}
+                disabled={saving}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-semibold text-sm",
+                  "bg-primary text-primary-foreground border-none",
+                  "hover:bg-primary/90 transition-all duration-200",
+                  "active:scale-95",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                {saving ? "Đang lưu..." : "Lưu thay đổi"}
+              </button>
             </div>
           </div>
         </div>
