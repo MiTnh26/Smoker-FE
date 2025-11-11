@@ -147,6 +147,21 @@ function ConversationView({ chat }) {
     socket.on("typing:start", onTypingStart);
     socket.on("typing:stop", onTypingStop);
     socket.on("presence:update", onPresence);
+    // reaction updates from other devices/users
+    const onReaction = (p) => {
+      const mid = p?.messageId || p?.id;
+      const emoji = p?.emoji;
+      if (!mid || !emoji) return;
+      setMessages((prev) =>
+        prev.map((m) => {
+          const id = m.id || m._id;
+          if (String(id) !== String(mid)) return m;
+          const count = (m.reactions?.[emoji] || 0) + 1;
+          return { ...m, reactions: { ...(m.reactions || {}), [emoji]: count } };
+        })
+      );
+    };
+    socket.on("message:reaction", onReaction);
     return () => {
       socket.off("connect", join);
       socket.off("message:ack", onAck);
@@ -154,6 +169,7 @@ function ConversationView({ chat }) {
       socket.off("typing:start", onTypingStart);
       socket.off("typing:stop", onTypingStop);
       socket.off("presence:update", onPresence);
+      socket.off("message:reaction", onReaction);
       if (socket.connected) socket.emit("leave_conversation", chat.id);
     };
   }, [socket, chat?.id]);
@@ -236,7 +252,7 @@ function ConversationView({ chat }) {
   const [presence, setPresence] = useState({ online: false, lastSeen: null });
 
   return (
-    <div className="flex h-[calc(100vh-104px)] flex-1 flex-col rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+    <div className="flex h-[calc(100vh-130px)] flex-1 flex-col rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
       {/* Header inline */}
       <div className="flex items-center gap-3 border-b border-border/30 bg-muted px-4 py-3">
         <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-primary to-secondary text-center font-semibold text-primary-foreground">
@@ -249,29 +265,47 @@ function ConversationView({ chat }) {
           </div>
         </div>
         <div className="ml-auto">
-          <input
-            type="search"
-            placeholder={t('action.search') || "Search"}
-            className="h-8 rounded-md border border-border/30 bg-background px-2 text-sm outline-none"
-            onChange={(e) => {
-              const q = e.target.value.trim().toLowerCase();
-              if (!q) {
-                if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
-                return;
-              }
-              const idx = messages.findIndex((m) => {
-                const text = (m["Nội Dung Tin Nhắn"] || m.content || m.message || "").toString().toLowerCase();
-                return text.includes(q);
-              });
-              if (idx >= 0) {
-                // scroll to approx position
-                if (bodyRef.current) {
-                  const ratio = idx / Math.max(1, messages.length - 1);
-                  bodyRef.current.scrollTop = ratio * (bodyRef.current.scrollHeight - bodyRef.current.clientHeight);
+          <div className="relative">
+            <svg
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="search"
+              aria-label="Search in conversation"
+              placeholder={t('action.search', { defaultValue: 'Search' })}
+              className="h-9 w-[220px] rounded-full border border-border/30 bg-background pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-border/60 focus:ring-0"
+              onChange={(e) => {
+                const q = e.target.value.trim().toLowerCase();
+                if (!q) {
+                  if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+                  return;
                 }
-              }
-            }}
-          />
+                const idx = messages.findIndex((m) => {
+                  const text = (m['Nội Dung Tin Nhắn'] || m.content || m.message || '').toString().toLowerCase();
+                  return text.includes(q);
+                });
+                if (idx >= 0) {
+                  // scroll to approx position
+                  if (bodyRef.current) {
+                    const ratio = idx / Math.max(1, messages.length - 1);
+                    bodyRef.current.scrollTop = ratio * (bodyRef.current.scrollHeight - bodyRef.current.clientHeight);
+                  }
+                }
+              }}
+            />
+          </div>
         </div>
       </div>
       {/* Body */}
@@ -353,8 +387,8 @@ function ConversationView({ chat }) {
               <div
                 key={i}
                 className={cn(
-                  "max-w-[60%] break-words rounded-[16px] px-3 py-2 text-[15px] leading-[1.35]",
-                  isMine ? "self-end rounded-br-sm bg-primary text-primary-foreground" : "self-start rounded-bl-sm bg-muted text-foreground"
+                  "max-w-[60%] break-words rounded-[16px] px-3 py-2 text-[15px] leading-[1.35] font-medium",
+                  isMine ? "self-end rounded-br-sm bg-primary text-primary-foreground" : "self-start rounded-bl-sm bg-muted text-card-foreground"
                 )}
                 onClick={() => {
                   setReplyTarget({
@@ -379,6 +413,11 @@ function ConversationView({ chat }) {
                             setMessages((prev) => prev.map(mm => mm === m ? { ...mm, reactions: { ...(mm.reactions||{}), [e]: (mm.reactions?.[e]||0)+1 } } : mm));
                             if (messageApi.reactMessage) {
                               messageApi.reactMessage(mid, e).catch(()=>{});
+                            }
+                            if (socket && chat?.id) {
+                              try {
+                                socket.emit("message:reaction", { convId: chat.id, messageId: mid, emoji: e });
+                              } catch {}
                             }
                           }}
                         >
@@ -448,7 +487,7 @@ export default function CustomerMessages() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-2.5">
       <div className="grid grid-cols-[360px_1fr] gap-4">
-        <div className="h-[calc(100vh-104px)] overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+        <div className="h-[calc(100vh-130px)] overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
           <MessagesPanel onClose={() => {}} onUnreadCountChange={() => {}} />
         </div>
         {selectedChat ? (
@@ -456,7 +495,7 @@ export default function CustomerMessages() {
         ) : (
           <div
             className={cn(
-              "h-[calc(100vh-104px)] rounded-lg border-[0.5px] border-dashed border-border/30",
+              "h-[calc(100vh-160px)] rounded-lg border-[0.5px] border-dashed border-border/30",
               "bg-card flex items-center justify-center text-sm text-muted-foreground"
             )}
           >
