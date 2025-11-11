@@ -94,6 +94,7 @@
   },
   "auth": {
     "loginTitle": "Đăng nhập",
+    "loginSubtitle": "Tiếp tục hành trình nightlife của bạn.",
     "emailOrPhone": "Email hoặc số điện thoại",
     "password": "Mật khẩu",
     "showPassword": "Hiện mật khẩu",
@@ -120,6 +121,14 @@
     "termsAgree": "Tôi đã đọc và đồng ý với các điều khoản",
     "registerWithGoogle": "Đăng ký bằng Google",
     "registerWithFacebook": "Đăng ký bằng Facebook",
+    "orContinue": "hoặc tiếp tục với",
+    "benefitDiscover": "Khám phá địa điểm trending",
+    "benefitBook": "Đặt DJ, dancer cho sự kiện",
+    "benefitConnect": "Kết nối cùng bạn bè và bar yêu thích",
+    "tipsTitle": "Mẹo:",
+    "tipsContent": "Bật xác thực hai lớp để bảo vệ tài khoản của bạn tốt hơn.",
+    "welcomeTitle": "Chào mừng quay lại với Smoker",
+    "welcomeDesc": "Kết nối với cộng đồng nightlife, đặt dịch vụ và khám phá những trải nghiệm mới mẻ mỗi đêm.",
     "googleRegisterHow": "Cách 2 – Đăng ký bằng Google: Xác thực Gmail. Hệ thống sẽ gửi mật khẩu ngẫu nhiên về Gmail để đăng nhập thủ công lần đầu.",
     "facebookRegisterHow": "Cách 3 – Đăng ký bằng Facebook: Xác thực email. Hệ thống sẽ gửi mật khẩu ngẫu nhiên về hộp thư để đăng nhập thủ công lần đầu.",
     "emailExists": "Email đã tồn tại",
@@ -182,6 +191,11 @@
     "notifications": "Thông báo",
     "contacts": "Liên hệ"
   },
+  "landing": {
+    "searchPlaceholder": "Tìm kiếm quán bar, DJ, sự kiện...",
+    "searchButton": "Tìm kiếm",
+    "loadFailed": "Không thể tải dữ liệu"
+  },
   "modal": {
     "reportTitle": "Báo cáo bài viết",
     "reportReason": "Lý do báo cáo (bắt buộc)",
@@ -220,12 +234,17 @@
   "time": {
     "justNow": "vừa xong",
     "minutesAgo": "{{minutes}} phút trước",
-    "hoursAgo": "{{hours}} giờ trước"
+    "hoursAgo": "{{hours}} giờ trước",
+    "daysAgo": "{{days}} ngày trước",
+    "minutesAgoSuffix": "phút trước",
+    "hoursAgoSuffix": "giờ trước",
+    "daysAgoSuffix": "ngày trước"
   },
   "messages": {
     "searchPlaceholder": "Tìm kiếm cuộc trò chuyện...",
     "empty": "Không có tin nhắn",
-    "replyYourStory": "Trả lời story"
+    "replyYourStory": "Trả lời story",
+    "selectConversation": "Chọn một cuộc trò chuyện"
   },
   "unifiedMenu": {
     "entityLabel": "Trang / Doanh nghiệp của bạn",
@@ -341,6 +360,7 @@
   "input": {
     "writeComment": "Viết bình luận...",
     "writeReply": "Viết phản hồi...",
+    "messagePlaceholder": "Aa",
     "title": "Tiêu đề",
     "content": "Nội dung",
     "caption": "Caption",
@@ -351,6 +371,7 @@
   "action": {
     "post": "Đăng",
     "posting": "Đang đăng...",
+    "send": "Gửi",
     "cancel": "Hủy",
     "save": "Lưu",
     "saving": "Đang lưu...",

@@ -1,17 +1,16 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { markStoriesAsViewed, markStoryAsViewed, deleteStory, likeStory, unlikeStory } from "../../../../api/storyApi";
-import messageApi from "../../../../api/messageApi";
 import { useAllUserGroups } from "./hooks/useAllUserGroups";
 import { useStoryProgress } from "./hooks/useStoryProgress";
 import { useStoryControls } from "./hooks/useStoryControls";
 import { getActiveId, getUserIdentifier } from "./utils/storyUtils";
+import { cn } from "../../../../utils/cn";
 import StoryProgressBars from "./StoryProgressBars";
 import StoryControls from "./StoryControls";
 import StoryInfo from "./StoryInfo";
 import StoryContent from "./StoryContent";
 import StoryViewers from "./StoryViewers";
-import "../../../../styles/modules/feeds/story/StoryViewer.css";
 
 export default function StoryViewer({ stories, activeStory, onClose, entityAccountId, onStoryDeleted }) {
   const { t } = useTranslation();
@@ -54,12 +53,6 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
   const currentUserGroup = allUserGroups[userIndex];
   const groupedStories = currentUserGroup?.allStories || [];
   const story = groupedStories[storyIndex];
-
-  // Reply state - always show input for non-own stories
-  const [conversationId, setConversationId] = useState(null);
-  const [replyMessage, setReplyMessage] = useState("");
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const [initializingConversation, setInitializingConversation] = useState(false);
 
   // Like state
   const [liked, setLiked] = useState(() => {
@@ -398,156 +391,6 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
   }, [story, liked]);
 
 
-  // Initialize conversation when story is displayed (for non-own stories)
-  useEffect(() => {
-    if (!story || isOwnStory || conversationId || initializingConversation) return;
-
-    const initializeConversation = async () => {
-      try {
-        setInitializingConversation(true);
-        
-        // Get current user's entityAccountId from session
-        const sessionRaw = localStorage.getItem("session");
-        if (!sessionRaw) {
-          console.warn('[StoryViewer] No session found for reply');
-          return;
-        }
-
-        const session = JSON.parse(sessionRaw);
-        const active = session?.activeEntity || {};
-        const entities = session?.entities || [];
-        
-        const currentUserEntityId =
-          active.EntityAccountId ||
-          active.entityAccountId ||
-          entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
-          entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.entityAccountId ||
-          entities[0]?.EntityAccountId ||
-          null;
-
-        if (!currentUserEntityId) {
-          console.warn('[StoryViewer] Cannot reply: current user entityAccountId not found');
-          return;
-        }
-
-        // Get story owner's entityAccountId
-        const storyOwnerEntityId = 
-          story.authorEntityAccountId || 
-          story.entityAccountId || 
-          null;
-
-        if (!storyOwnerEntityId) {
-          console.warn('[StoryViewer] Cannot reply: story owner entityAccountId not found');
-          return;
-        }
-
-        // Don't allow replying to own story
-        if (String(currentUserEntityId).toLowerCase().trim() === String(storyOwnerEntityId).toLowerCase().trim()) {
-          return;
-        }
-
-        // Create or get conversation
-        const res = await messageApi.createOrGetConversation(currentUserEntityId, storyOwnerEntityId);
-        const conversation = res?.data?.data || res?.data;
-        const convId = conversation?._id || conversation?.conversationId || conversation?.id;
-
-        if (convId) {
-          setConversationId(convId);
-        }
-      } catch (error) {
-        console.error('[StoryViewer] Error initializing conversation:', error);
-      } finally {
-        setInitializingConversation(false);
-      }
-    };
-
-    initializeConversation();
-  }, [story?._id || story?.id, isOwnStory, conversationId, initializingConversation]);
-
-  // Send message with story image
-  const handleSendMessage = useCallback(async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!conversationId || !replyMessage.trim() || sendingMessage) return;
-
-    try {
-      setSendingMessage(true);
-      
-      // Get current user's entityAccountId and entity details
-      const sessionRaw = localStorage.getItem("session");
-      if (!sessionRaw) {
-        console.warn('[StoryViewer] No session found for sending message');
-        return;
-      }
-
-      const session = JSON.parse(sessionRaw);
-      const active = session?.activeEntity || {};
-      const entities = session?.entities || [];
-      
-      const currentUserEntityId =
-        active.EntityAccountId ||
-        active.entityAccountId ||
-        entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
-        entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.entityAccountId ||
-        entities[0]?.EntityAccountId ||
-        null;
-
-      if (!currentUserEntityId) {
-        console.warn('[StoryViewer] Cannot send message: current user entityAccountId not found');
-        return;
-      }
-
-      // Get entity type and id
-      let entityType = active.type || "Account";
-      let entityId = active.id || null;
-      
-      if (entityType === "Business") entityType = "BusinessAccount";
-      if (entityType === "Bar") entityType = "BarPage";
-
-      // Get story image URL to include in message
-      let storyImageUrl = null;
-      if (story.images && story.images !== "") {
-        storyImageUrl = story.images;
-      } else if (story.mediaIds && story.mediaIds.length > 0) {
-        const firstMedia = Array.isArray(story.mediaIds) ? story.mediaIds[0] : story.mediaIds;
-        if (firstMedia && firstMedia.url) {
-          storyImageUrl = firstMedia.url;
-        }
-      }
-
-      // Build message content with story image
-      let messageContent = replyMessage.trim();
-      if (storyImageUrl) {
-        // Include story image URL in message (backend can parse and display as attachment)
-        messageContent = `${messageContent}\n[STORY_IMAGE:${storyImageUrl}]`;
-      }
-
-      // Send message
-      await messageApi.sendMessage(
-        conversationId,
-        messageContent,
-        storyImageUrl ? "story" : "text", // Use "story" messageType if has image
-        currentUserEntityId,
-        entityType,
-        entityId
-      );
-
-      // Clear input after sending
-      setReplyMessage("");
-    } catch (error) {
-      console.error('[StoryViewer] Error sending message:', error);
-    } finally {
-      setSendingMessage(false);
-    }
-  }, [conversationId, replyMessage, sendingMessage, story]);
-
-  // Reset conversation when story changes
-  useEffect(() => {
-    setConversationId(null);
-    setReplyMessage("");
-  }, [story?._id || story?.id]);
-
   // Handle story progression
   const handleStoryComplete = useCallback(() => {
     // Nếu còn story trong user hiện tại
@@ -644,8 +487,19 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
   if (!story || !currentUserGroup) return null;
 
   return (
-    <div className="story-viewer-overlay" onClick={handleClose}>
-      <div className="story-viewer" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60"
+      onClick={handleClose}
+    >
+      <div
+        className={cn(
+          "relative flex w-[400px] max-w-[92%] flex-col overflow-hidden",
+          "bg-card text-card-foreground",
+          "rounded-lg border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
+          "max-h-[98vh]"
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Progress indicators */}
         <StoryProgressBars 
           stories={groupedStories} 
@@ -655,38 +509,6 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
         
         {/* Story content */}
         <StoryContent story={story} />
-
-        {/* Reply chat interface - always visible for non-own stories */}
-        {!isOwnStory && (
-          <div className="story-reply-chat" onClick={(e) => e.stopPropagation()}>
-            <form className="story-reply-input-form" onSubmit={handleSendMessage}>
-              <input
-                type="text"
-                className="story-reply-input"
-                placeholder={t('story.replyPlaceholder') || 'Nhập tin nhắn...'}
-                value={replyMessage}
-                onChange={(e) => setReplyMessage(e.target.value)}
-                disabled={sendingMessage || !conversationId || initializingConversation}
-                onClick={(e) => e.stopPropagation()}
-              />
-              <button
-                type="submit"
-                className="story-reply-send-btn"
-                disabled={!replyMessage.trim() || sendingMessage || !conversationId || initializingConversation}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {sendingMessage ? (
-                  <span>{t('common.loading') || 'Đang gửi...'}</span>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                  </svg>
-                )}
-              </button>
-            </form>
-          </div>
-        )}
 
         {/* Audio player if has music */}
         {audioUrl && (
@@ -733,16 +555,29 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
 
         {/* Like button - chỉ hiển thị nếu không phải story của chính chủ */}
         {!isOwnStory && (
-          <div className="story-like-container" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="absolute bottom-3 left-3 z-20"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button 
-              className={`story-like-btn ${liked ? 'liked' : ''}`}
+              className={cn(
+                "flex h-11 w-11 items-center justify-center rounded-lg bg-black/60 text-white transition-colors duration-200 hover:bg-black/80",
+                liked && "text-[#ff3040]"
+              )}
               onClick={toggleLike}
-              aria-label={liked ? 'Unlike story' : 'Like story'}
+              aria-label={liked ? "Unlike story" : "Like story"}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill={liked ? "#ff3040" : "white"}>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill={liked ? "#ff3040" : "white"}
+              >
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
               </svg>
-              {likeCount > 0 && <span className="story-like-count">{likeCount}</span>}
+              {likeCount > 0 && (
+                <span className="ml-2 text-sm text-white">{likeCount}</span>
+              )}
             </button>
           </div>
         )}
@@ -754,13 +589,35 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
         />
 
         {/* Navigation controls */}
-        <div className="story-controls">
-          <button onClick={prevStory}>←</button>
-          <button onClick={nextStory}>→</button>
+        <div className="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between px-3">
+          <button
+            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-lg bg-black/35 text-white transition-colors duration-200 hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            onClick={prevStory}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <button
+            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-lg bg-black/35 text-white transition-colors duration-200 hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            onClick={nextStory}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
         </div>
 
         {/* Close button */}
-        <button className="close-btn" onClick={handleClose}>✕</button>
+        <button
+          className="absolute right-3 top-12 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-black/40 text-white transition-colors duration-200 hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          onClick={handleClose}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
     </div>
   );

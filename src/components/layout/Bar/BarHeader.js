@@ -1,5 +1,5 @@
 // src/components/layout/BarHeader.js
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Home, MessageCircle, User, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,6 +11,7 @@ import { cn } from "../../../utils/cn";
 import GlobalSearch from "../common/GlobalSearch";
 
 export default function BarHeader() {
+  const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | null
   const [barUser, setBarUser] = useState(null);
   const { t } = useTranslation();
@@ -147,6 +148,7 @@ export default function BarHeader() {
                 "hover:text-primary hover:bg-primary/10",
                 "active:scale-95"
               )}
+              onClick={() => navigate(getNewsfeedPath())}
             >
               <Home size={24} />
             </button>

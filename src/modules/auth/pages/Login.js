@@ -118,10 +118,13 @@ export function Login() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-3xl font-semibold leading-tight">
-                  Chào mừng quay lại với Smoker
+                  {t("auth.welcomeTitle", "Welcome back to Smoker")}
                 </h2>
                 <p className="mt-3 text-muted-foreground">
-                  Kết nối với cộng đồng nightlife, đặt dịch vụ và khám phá những trải nghiệm mới mẻ mỗi đêm.
+                  {t(
+                    "auth.welcomeDesc",
+                    "Connect with the nightlife community, book services, and discover new experiences every night."
+                  )}
                 </p>
               </div>
               <div className="grid gap-4">

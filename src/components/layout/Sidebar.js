@@ -303,6 +303,11 @@ export default function Sidebar() {
           // Menu bình thường
           <Link
             to={resolvedPath}
+            onClick={(e) => {
+              // Ensure navigation always happens (prevent any interference)
+              e.preventDefault();
+              navigate(resolvedPath);
+            }}
             className={cn(
               "block px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
               "text-muted-foreground no-underline",

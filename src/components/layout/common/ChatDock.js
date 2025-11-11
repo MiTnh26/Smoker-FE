@@ -761,7 +761,7 @@ function ChatWindow(props) {
         "flex-shrink-0"
       )}>
         <input
-          placeholder="Aa"
+          placeholder={t('input.messagePlaceholder')}
           value={message}
           onChange={handleInputChange}
           onKeyPress={handleKeyPress}
@@ -780,7 +780,7 @@ function ChatWindow(props) {
             "hover:bg-primary/90 active:scale-95"
           )}
         >
-          Gửi
+          {t('action.send')}
         </button>
       </div>
     </div>

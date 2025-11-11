@@ -5,7 +5,6 @@ import Cropper from "react-easy-crop";
 import Slider from "@mui/material/Slider";
 import getCroppedImg from "../utils/cropImage";
 import { createStory } from "../../../../api/storyApi";
-import "../../../../styles/modules/feeds/story/StoryEditor.css";
 
 export default function StoryEditor({ onStoryCreated, onClose }) {
   const { t } = useTranslation();
@@ -114,14 +113,14 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
   const renderPreviewContent = () => {
     if (!imageUrl) {
       return (
-        <div className="story-editor-preview-placeholder">
+        <div className="flex h-[480px] w-full items-center justify-center rounded-lg border-[0.5px] border-border/20 bg-muted/40 text-sm text-muted-foreground">
           {t('story.selectImage') || 'Chọn ảnh để bắt đầu'}
         </div>
       );
     }
 
   return (
-      <div className="story-editor-cropper-container">
+      <div className="relative h-[480px] w-full overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-black/60">
               <Cropper
                 image={imageUrl}
                 crop={crop}
@@ -131,7 +130,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
                 onZoomChange={setZoom}
                 onCropComplete={onCropComplete}
               />
-        <div className="story-editor-cropper-controls">
+        <div className="absolute bottom-2 left-2 right-2 z-10 rounded-lg bg-black/60 px-3 py-2 backdrop-blur">
                 <Slider
                   value={zoom}
                   min={1}
@@ -150,7 +149,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
                 />
               </div>
         <button 
-          className="story-editor-remove-btn"
+          className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white transition-colors hover:bg-black/80"
           onClick={() => { 
             setFile(null); 
             setImageUrl(""); 
@@ -166,78 +165,77 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
   };
 
   return (
-    <div className="story-editor-modal" onClick={(e) => {
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60" onClick={(e) => {
       if (e.target === e.currentTarget && onClose) {
         onClose();
       }
     }}>
-      <div className="story-editor-container" onClick={(e) => e.stopPropagation()}>
+      <div className="grid w-[960px] max-w-[95vw] grid-cols-[280px_1fr] gap-4 rounded-lg border-[0.5px] border-border/20 bg-card p-4 text-card-foreground shadow-[0_2px_8px_rgba(0,0,0,0.12)]" onClick={(e) => e.stopPropagation()}>
         {/* Left Sidebar */}
-        <div className="story-editor-sidebar">
-          <div className="story-editor-header">
-            <h2>{t('story.yourStory') || 'Your story'}</h2>
-            <button className="story-editor-close-btn" onClick={onClose} title={t('action.close') || 'Close'}>
+        <div className="flex h-full flex-col">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-base font-semibold">{t('story.yourStory') || 'Your story'}</h2>
+            <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95" onClick={onClose} title={t('action.close') || 'Close'}>
               ×
             </button>
           </div>
           
           {/* Profile Info */}
-          <div className="story-editor-profile">
+          <div className="mb-4 flex items-center gap-3">
             <img 
               src={userInfo.avatar} 
               alt={userInfo.name}
-              className="story-editor-profile-avatar"
+              className="h-10 w-10 rounded-full object-cover"
             />
-            <div className="story-editor-profile-name">{userInfo.name}</div>
+            <div className="text-sm font-medium">{userInfo.name}</div>
           </div>
           
           {/* Options */}
-          <div className="story-editor-options">
+          <div className="space-y-2">
             {/* Add Text Option */}
             <button 
-              className={`story-editor-option ${activePanel === 'text' ? 'active' : ''}`}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${activePanel === 'text' ? 'bg-muted/60' : 'hover:bg-muted/50'}`}
               onClick={() => {
                 setActivePanel(activePanel === 'text' ? null : 'text');
               }}
             >
-              <span className="story-editor-option-icon">Aa</span>
+              <span className="rounded bg-muted px-1.5 py-0.5 text-xs">Aa</span>
               <span>{t('story.addText') || 'Add text'}</span>
             </button>
             
             {/* Add Music Option */}
             <button 
-              className={`story-editor-option ${activePanel === 'music' ? 'active' : ''}`}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${activePanel === 'music' ? 'bg-muted/60' : 'hover:bg-muted/50'}`}
               onClick={() => {
                 setActivePanel(activePanel === 'music' ? null : 'music');
               }}
             >
-              <span className="story-editor-option-icon">🎵</span>
+              <span className="">🎵</span>
               <span>{t('story.addMusic') || 'Add music'}</span>
             </button>
             
             {/* Alternative Text Option (optional) */}
             <button 
-              className={`story-editor-option ${activePanel === 'alternative' ? 'active' : ''}`}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm opacity-60 transition-colors ${activePanel === 'alternative' ? 'bg-muted/60' : 'hover:bg-muted/50'}`}
               onClick={() => {
                 setActivePanel(activePanel === 'alternative' ? null : 'alternative');
               }}
-              style={{ opacity: 0.6 }}
             >
-              <span className="story-editor-option-icon">Aa</span>
+              <span className="rounded bg-muted px-1.5 py-0.5 text-xs">Aa</span>
               <span>{t('story.alternativeText') || 'Alternative text'}</span>
             </button>
           </div>
           
           {/* Action Buttons */}
-          <div className="story-editor-actions">
+          <div className="mt-auto flex items-center gap-2">
             <button 
-              className="story-editor-btn story-editor-btn-discard"
+              className="bg-transparent border-none px-4 py-2 font-semibold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95 rounded-lg"
               onClick={onClose}
             >
               {t('action.discard') || 'Discard'}
             </button>
             <button 
-              className="story-editor-btn story-editor-btn-share"
+              className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 active:scale-95 disabled:opacity-50"
               onClick={handleSubmit}
               disabled={loading || !file}
             >
@@ -247,22 +245,22 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
         </div>
         
         {/* Right Preview Panel */}
-        <div className="story-editor-preview">
-          <div className="story-editor-preview-label">{t('story.preview') || 'Preview'}</div>
-          <div className="story-editor-preview-area">
-            <div className="story-editor-preview-content">
+        <div className="flex flex-col">
+          <div className="mb-2 text-sm font-medium text-muted-foreground">{t('story.preview') || 'Preview'}</div>
+          <div className="rounded-lg border-[0.5px] border-border/20 bg-card p-3">
+            <div className="flex items-center justify-center">
               {renderPreviewContent()}
             </div>
             </div>
           
           {/* Active Panel Content */}
           {activePanel === 'text' && (
-            <div className="story-editor-text-panel">
-              <label style={{ display: 'block', marginBottom: 8, color: '#e4e6eb', fontSize: 13, fontWeight: 600 }}>
+            <div className="mt-4">
+              <label className="mb-2 block text-[13px] font-semibold text-foreground/80">
                 {t('input.caption') || 'Caption'}
               </label>
               <textarea
-                className="story-editor-text-input"
+                className="w-full rounded-lg border-[0.5px] border-border/20 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
                 placeholder={t('input.captionStory') || 'Add a caption...'}
             value={caption}
             onChange={e => setCaption(e.target.value)}
@@ -303,7 +301,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
           
           {/* Image Upload Button (if no image) */}
           {!imageUrl && (
-            <div style={{ marginTop: 20, textAlign: 'center' }}>
+            <div className="mt-5 text-center">
               <input
                 type="file"
                 accept="image/*"
@@ -313,16 +311,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
               />
               <button 
                 onClick={() => inputFileRef.current.click()}
-                style={{
-                  padding: '16px 32px',
-                  background: '#1877f2',
-                  border: 'none',
-                  borderRadius: 8,
-                  color: '#fff',
-                  fontSize: 15,
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
+                className="rounded-lg bg-primary px-6 py-3 text-[15px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 active:scale-95"
               >
                 {t('story.selectImage') || 'Select Image'}
             </button>

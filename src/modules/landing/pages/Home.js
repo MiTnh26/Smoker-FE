@@ -4,8 +4,10 @@ import { HeroCarousel } from "../components/HeroCarousel";
 import { SearchBar } from "../components/SearchBar";
 import { FeaturedVenues } from "../components/FeaturedVenues";
 import barPageApi from "../../../api/barPageApi";
+import { useTranslation } from "react-i18next";
 
 export default function Home() {
+  const { t } = useTranslation();
   const [featuredBars, setFeaturedBars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,7 +27,7 @@ export default function Home() {
         }
       } catch (err) {
         if (isSubscribed) {
-          setError(err?.response?.data?.message || err.message || "Không thể tải dữ liệu");
+          setError(err?.response?.data?.message || err.message || t('landing.loadFailed'));
         }
       } finally {
         if (isSubscribed) {

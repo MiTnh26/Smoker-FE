@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { isViewed } from "./utils/storyUtils";
-import "../../../../styles/modules/feeds/story/StoryBar.css"
+import { cn } from "../../../../utils/cn";
 
 export default function StoryBar({ stories, onStoryClick, onStoryCreated, onOpenEditor, entityAccountId }) {
   const { t } = useTranslation();
@@ -216,14 +216,34 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated, onOpen
   }
 
   return (
-    <div className="story-bar-container">
-      <button className="story-scroll-btn left" onClick={() => go("left")} aria-label="Previous stories" disabled={currentIndex === 0}>‹</button>
+    <div className="relative flex w-full items-center">
+      <button
+        className={cn(
+          "absolute left-2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent text-2xl text-foreground transition-colors duration-200",
+          "top-1/2",
+          currentIndex === 0
+            ? "cursor-not-allowed opacity-30"
+            : "hover:bg-muted/60"
+        )}
+        onClick={() => go("left")}
+        aria-label="Previous stories"
+        disabled={currentIndex === 0}
+      >
+        ‹
+      </button>
 
-      <div className="story-viewport">
-        <div className="story-bar" ref={barRef} style={{ transform: `translateX(-${offset}px)` }}>
+      <div className="w-full overflow-hidden">
+        <div
+          ref={barRef}
+          className="flex items-start gap-2 px-3 py-3 transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(-${offset}px)` }}
+        >
 
           {/* Nút tạo story mới mở editor modal */}
-          <div key="create" className="story-item create-story-item" onClick={(e) => {
+          <div
+            key="create"
+            className="flex w-[112px] shrink-0 cursor-pointer flex-col items-center text-center"
+            onClick={(e) => {
             e.stopPropagation();
             console.log('[StoryBar] Create story clicked, onOpenEditor:', typeof onOpenEditor);
             if (onOpenEditor) {
@@ -233,13 +253,18 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated, onOpen
               console.log('[StoryBar] No onOpenEditor, navigating to /customer/story-editor');
               navigate("/customer/story-editor");
             }
-          }}>
-            <div className="story-preview">
-              <div className="story-create-bg"></div>
-              <button className="story-create-btn">
-                <span className="create-icon">+</span>
-              </button>
-              <p className="story-username">{t('story.createStory')}</p>
+          }}
+          >
+            <div className="relative h-[200px] w-full overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-muted shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10" />
+              <div className="absolute inset-0 flex flex-col items-center justify-end pb-3">
+                <button className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-xl font-light text-primary-foreground shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-colors duration-200 hover:bg-primary/90">
+                  +
+                </button>
+                <p className="px-2 text-sm font-medium text-foreground">
+                  {t('story.createStory')}
+                </p>
+              </div>
             </div>
           </div>
           {groupedByUser.map((userGroup, idx) => {
@@ -255,22 +280,47 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated, onOpen
             const displayStoryViewed = isViewed(story);
             const isViewedStory = allStoriesViewed || displayStoryViewed;
             
+            const storyItemClasses = cn(
+              "flex w-[112px] shrink-0 cursor-pointer flex-col items-center text-center",
+              "transition-colors duration-200"
+            );
+
             return (
               <div
                 key={key}
-                className={`story-item ${isViewedStory ? 'viewed' : ''}`}
+                className={storyItemClasses}
                 onClick={() => handleStoryClick(userGroup)}
               >
-                <div className="story-preview">
-                  {previewImage ? (
-                    <img src={previewImage} alt={username} className="story-preview-img" />
-                  ) : (
-                    <div className="story-preview-placeholder"></div>
+                <div
+                  className={cn(
+                    "relative h-[200px] w-full overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-muted shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
+                    isViewedStory && "opacity-90"
                   )}
-                  <div className="story-avatar-small">
-                    <img src={avatarSrc} alt={username} />
+                >
+                  {previewImage ? (
+                    <img
+                      src={previewImage}
+                      alt={username}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-muted-foreground/10" />
+                  )}
+                  <div
+                    className={cn(
+                      "absolute left-2 top-2 h-9 w-9 rounded-full border-[0.5px] border-primary/40 bg-card p-[1px] shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition-colors duration-200",
+                      isViewedStory && "border-white/40 opacity-80"
+                    )}
+                  >
+                    <img
+                      src={avatarSrc}
+                      alt={username}
+                      className="h-full w-full rounded-full object-cover"
+                    />
                   </div>
-                  <p className="story-username">{username}</p>
+                  <p className="absolute bottom-2 left-2 right-2 truncate text-left text-xs font-semibold text-white drop-shadow">
+                    {username}
+                  </p>
                 </div>
               </div>
             );
@@ -279,7 +329,20 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated, onOpen
         </div>
       </div>
 
-      <button className="story-scroll-btn right" onClick={() => go("right")} aria-label="Next stories" disabled={currentIndex === maxIndex}>›</button>
+      <button
+        className={cn(
+          "absolute right-2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent text-2xl text-foreground transition-colors duration-200",
+          "top-1/2",
+          currentIndex === maxIndex
+            ? "cursor-not-allowed opacity-30"
+            : "hover:bg-muted/60"
+        )}
+        onClick={() => go("right")}
+        aria-label="Next stories"
+        disabled={currentIndex === maxIndex}
+      >
+        ›
+      </button>
     </div>
   )
 }

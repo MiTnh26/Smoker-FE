@@ -11,17 +11,18 @@
   align-items: center;
   width: 140px;
   height: 220px;
-  border-radius: 1rem;
+  border-radius: 8px;
+  border: 0.5px solid rgb(var(--border) / 0.2);
   overflow: hidden;
   background: rgb(var(--muted));
   cursor: pointer;
   position: relative;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .create-story:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 
 /* Nút upload */
@@ -36,15 +37,15 @@
   font-weight: bold;
   color: rgb(var(--foreground));
   text-align: center;
-  background: linear-gradient(to bottom, rgb(var(--muted)), rgb(var(--card)));
-  border: 2px dashed rgb(var(--border));
-  border-radius: 1rem;
-  transition: background 0.3s ease, color 0.3s ease;
+  background: rgb(var(--card));
+  border: none;
+  border-radius: 8px;
+  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .story-upload-btn:hover {
-  background: linear-gradient(to bottom, rgb(var(--primary)), rgb(var(--secondary)));
-  color: white;
+  background: rgb(var(--muted) / 0.6);
+  color: rgb(var(--foreground));
 }
 
 /* Ẩn input file */
@@ -61,13 +62,13 @@
   background-color: rgb(var(--primary));
   color: rgb(var(--primary-foreground));
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 8px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.3s ease;
+  transition: background 0.2s ease;
 }
 
 .create-story button:hover {
-  background-color: rgb(var(--secondary));
+  background-color: rgb(var(--primary) / 0.9);
 }
 

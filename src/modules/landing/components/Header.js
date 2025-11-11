@@ -1,9 +1,24 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../../utils/cn";
 
 export function Header() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+
+  const goHome = () => {
+    try {
+      const session = JSON.parse(localStorage.getItem("session") || "null");
+      if (session && (session.account || session.activeEntity)) {
+        navigate("/customer/newsfeed");
+      } else {
+        navigate("/");
+      }
+    } catch {
+      navigate("/");
+    }
+  };
 
   return (
     <header className={cn(
@@ -17,13 +32,18 @@ export function Header() {
         "container mx-auto h-full px-4",
         "flex items-center justify-between"
       )}>
-        <span className={cn(
-          "text-2xl font-bold text-primary cursor-pointer",
-          "transition-all duration-200",
-          "hover:text-primary/90"
-        )}>
-          Smoker
-        </span>
+        <button
+          type="button"
+          onClick={goHome}
+          className={cn(
+            "text-2xl font-bold text-primary cursor-pointer",
+            "transition-all duration-200",
+            "hover:text-primary/90",
+            "bg-transparent border-none"
+          )}
+        >
+          {t('layout.brand')}
+        </button>
         <div className={cn("flex items-center gap-3")}>
           <button
             className={cn(
@@ -36,7 +56,7 @@ export function Header() {
             )}
             onClick={() => navigate("/login")}
           >
-            Đăng nhập
+            {t('auth.login')}
           </button>
           <button
             className={cn(
@@ -48,7 +68,7 @@ export function Header() {
             )}
             onClick={() => navigate("/register")}
           >
-            Đăng ký
+            {t('auth.signUp')}
           </button>
         </div>
       </div>

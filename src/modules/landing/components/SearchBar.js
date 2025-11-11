@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../../utils/cn";
+import { useTranslation } from "react-i18next";
 
 export function SearchBar() {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -35,7 +37,7 @@ export function SearchBar() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Tìm kiếm quán bar, DJ, sự kiện..."
+          placeholder={t('landing.searchPlaceholder', 'Tìm kiếm quán bar, DJ, sự kiện...')}
           className={cn(
             "w-full pl-12 pr-24 py-3.5 md:py-4",
             "text-base md:text-lg",
@@ -62,7 +64,7 @@ export function SearchBar() {
           )}
           disabled={!searchQuery.trim()}
         >
-          Tìm kiếm
+          {t('landing.searchButton', 'Tìm kiếm')}
         </button>
       </div>
     </form>

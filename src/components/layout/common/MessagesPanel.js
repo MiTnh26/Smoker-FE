@@ -15,6 +15,40 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
   const [conversations, setConversations] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
 
+  // Relative time formatter: phút/giờ/ngày trước; >7 ngày => dd/MM; >1 năm => dd/MM/yyyy
+  const formatRelativeTime = (date) => {
+    try {
+      const d = date instanceof Date ? date : new Date(date);
+      const now = new Date();
+      const diffMs = now - d;
+      const minute = 60 * 1000;
+      const hour = 60 * minute;
+      const day = 24 * hour;
+      const week = 7 * day;
+      const year = 365 * day;
+
+      if (diffMs < minute) return t('time.justNow') || 'vừa xong';
+      if (diffMs < hour) {
+        const m = Math.floor(diffMs / minute);
+        return t('time.minutesAgo', { minutes: m }) || `${m} phút trước`;
+      }
+      if (diffMs < day) {
+        const h = Math.floor(diffMs / hour);
+        return t('time.hoursAgo', { hours: h }) || `${h} giờ trước`;
+      }
+      if (diffMs < week) {
+        const dcount = Math.floor(diffMs / day);
+        return t('time.daysAgo', { days: dcount }) || `${dcount} ngày trước`;
+      }
+      if (diffMs < year) {
+        return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }); // dd/MM
+      }
+      return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }); // dd/MM/yyyy
+    } catch {
+      return '';
+    }
+  };
+
   // Track activeEntity to re-fetch when it changes
   const [activeEntityId, setActiveEntityId] = React.useState(null);
 
@@ -291,6 +325,7 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
             // Lấy tin nhắn cuối cùng
             const messages = Object.values(conv["Cuộc Trò Chuyện"] || {});
             const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
+            const lastTime = lastMsg ? new Date(lastMsg["Gửi Lúc"]) : null;
             
             // Count unread messages
             let unreadCount = 0;
@@ -308,7 +343,7 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
               avatar: userAvatar,
               entityId: entityId, // Store entityId for opening chat
               lastMessage: lastMsg ? lastMsg["Nội Dung Tin Nhắn"] : "",
-              time: lastMsg ? new Date(lastMsg["Gửi Lúc"]).toLocaleString() : "",
+              time: lastTime ? formatRelativeTime(lastTime) : "",
               unread: unreadCount
             };
           })
@@ -363,7 +398,7 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
   };
 
   return (
-    <>
+    <div className={cn("flex h-full flex-col min-h-0")}>
       {/* Search bar */}
       <div className={cn(
         "flex items-center gap-2 px-4 py-3",
@@ -384,8 +419,7 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
 
       {/* Conversations list */}
       <div className={cn(
-        "flex flex-col overflow-y-auto overflow-x-hidden",
-        "max-h-[400px]"
+        "flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden"
       )}>
         {loading ? (
           <div className={cn(
@@ -487,7 +521,7 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
           ))
         )}
       </div>
-    </>
+    </div>
   );
 }
 

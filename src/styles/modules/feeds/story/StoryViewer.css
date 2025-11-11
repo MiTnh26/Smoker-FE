@@ -18,11 +18,12 @@
   max-width: min(420px, 92%);
   background-color: rgb(var(--card));
   color: rgb(var(--card-foreground));
-  border-radius: 16px;
+  border-radius: 8px;
+  border: 0.5px solid rgb(var(--border) / 0.2);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   animation: fadeIn 0.2s ease-in-out;
 }
 
@@ -174,7 +175,7 @@
   background: rgb(var(--black) / 0.35);
   color: rgb(var(--white));
   border: none;
-  border-radius: 50%;
+  border-radius: 8px;
   width: 44px;
   height: 44px;
   cursor: pointer;
@@ -182,12 +183,12 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
   backdrop-filter: blur(4px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
 }
 
-.story-controls button:hover { background: rgba(0,0,0,0.5); transform: scale(1.03); }
+.story-controls button:hover { background: rgba(0,0,0,0.5); }
 
 .story-viewer .close-btn {
   position: absolute;
@@ -196,7 +197,7 @@
   background: rgb(var(--black) / 0.35);
   color: rgb(var(--white));
   border: none;
-  border-radius: 50%;
+  border-radius: 8px;
   width: 32px;
   height: 32px;
   font-size: 1.1rem;
@@ -204,9 +205,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
   backdrop-filter: blur(4px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
   z-index: 11;
 }
 
@@ -225,22 +226,21 @@
   background: rgba(0, 0, 0, 0.35);
   color: rgb(255, 255, 255);
   border: none;
-  border-radius: 50%;
+  border-radius: 8px;
   width: 36px;
   height: 36px;
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
   backdrop-filter: blur(4px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
   padding: 0;
 }
 
 .story-control-btn:hover {
   background: rgba(0, 0, 0, 0.5);
-  transform: scale(1.05);
 }
 
 .story-control-btn svg {
@@ -262,8 +262,9 @@
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(8px);
   border-radius: 8px;
+  border: 0.5px solid rgb(var(--border) / 0.2);
   min-width: 160px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   overflow: hidden;
   z-index: 30;
   animation: menuFadeIn 0.2s ease;
@@ -302,7 +303,7 @@
 }
 
 .story-menu-item:not(:last-child) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Menu overlay to close menu when clicking outside */
@@ -314,7 +315,7 @@
   pointer-events: auto;
 }
 
-.story-viewer .close-btn:hover { background: rgba(0,0,0,0.5); transform: scale(1.05); }
+.story-viewer .close-btn:hover { background: rgba(0,0,0,0.5); }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.95); }
@@ -353,21 +354,20 @@
 .story-like-btn {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
+  border: none;
+  border-radius: 8px;
   width: 44px;
   height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
   padding: 0;
 }
 
 .story-like-btn:hover {
   background: rgba(0, 0, 0, 0.8);
-  transform: scale(1.05);
 }
 
 .story-like-btn svg {
@@ -461,7 +461,7 @@
   right: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 0.5px solid rgba(255, 255, 255, 0.1);
   z-index: 15;
   padding: 12px 16px;
 }
@@ -477,8 +477,8 @@
 .story-reply-input {
   flex: 1;
   background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
   padding: 10px 16px;
   color: white;
   font-size: 0.9rem;
@@ -501,30 +501,28 @@
 }
 
 .story-reply-send-btn {
-  background: rgb(139, 92, 246);
+  background: rgb(var(--primary));
   border: none;
-  border-radius: 50%;
+  border-radius: 8px;
   width: 40px;
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  color: white;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+  color: rgb(var(--primary-foreground));
   padding: 0;
   flex-shrink: 0;
 }
 
 .story-reply-send-btn:hover:not(:disabled) {
-  background: rgb(124, 58, 237);
-  transform: scale(1.05);
+  background: rgb(var(--primary) / 0.9);
 }
 
 .story-reply-send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
 .story-reply-send-btn svg {

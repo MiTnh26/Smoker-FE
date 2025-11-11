@@ -7,7 +7,14 @@ export default function StoryContent({ story }) {
   if (!story) return null;
 
   if (story.type === "video" && story.video) {
-    return <video src={story.video} autoPlay muted className="story-video" />;
+    return (
+      <video
+        src={story.video}
+        autoPlay
+        muted
+        className="aspect-[9/16] w-full bg-muted object-cover"
+      />
+    );
   }
 
   // Kiểm tra nhiều nguồn ảnh:
@@ -34,7 +41,7 @@ export default function StoryContent({ story }) {
       <img 
         src={imageUrl} 
         alt={story.title || story.content || "story"} 
-        className="story-video" 
+        className="aspect-[9/16] w-full bg-muted object-cover" 
       />
     );
   }

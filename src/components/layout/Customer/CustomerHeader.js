@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Home, MessageCircle, User, Search, Bell } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,7 @@ import notificationApi from "../../../api/notificationApi";
 import messageApi from "../../../api/messageApi";
 
 export default function CustomerHeader() {
+  const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState(null); // 'notifications' | 'messages' | 'user' | null
   const [modalOpen, setModalOpen] = useState(false);
   const [modalPostId, setModalPostId] = useState(null);
@@ -146,6 +147,7 @@ export default function CustomerHeader() {
                 "hover:text-primary hover:bg-primary/10",
                 "active:scale-95"
               )}
+              onClick={() => navigate("/customer/newsfeed")}
             >
               <Home size={24} />
             </button>
