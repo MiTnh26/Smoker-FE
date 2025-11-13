@@ -11,6 +11,7 @@ import { cn } from "../../../utils/cn";
 import PostCard from "../../feeds/components/post/PostCard";
 import RequestBookingModal from "../../../components/booking/RequestBookingModal";
 import ReportEntityModal from "../../feeds/components/modals/ReportEntityModal";
+import PerformerReviews from "../../business/components/PerformerReviews";
 
 const normalizeMediaArray = (medias) => {
   const images = [];
@@ -262,6 +263,14 @@ export default function PublicProfile() {
       alert(t("publicProfile.blockError"));
     }
   };
+
+  const targetType = resolveTargetType();
+  const isPerformerProfile =
+    targetType === "BusinessAccount" &&
+    ["DJ", "DANCER"].includes((profile?.role || "").toString().toUpperCase());
+  const performerTargetId = isPerformerProfile
+    ? profile?.targetId || profile?.targetID || null
+    : null;
 
   return (
     <div className={cn("min-h-screen bg-background")}>
@@ -533,6 +542,17 @@ export default function PublicProfile() {
                 </div>
               </div>
             )}
+          </section>
+        )}
+
+        {isPerformerProfile && performerTargetId && (
+          <section className={cn("py-6")}>
+            <PerformerReviews
+              businessAccountId={performerTargetId}
+              performerName={profile.name}
+              performerRole={profile.role || undefined}
+              isOwnProfile={isOwnProfile}
+            />
           </section>
         )}
 

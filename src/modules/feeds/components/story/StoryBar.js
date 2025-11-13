@@ -215,7 +215,7 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
   }
 
   return (
-    <div className="relative flex w-full items-center">
+    <div className="story-bar-wrapper relative flex w-full items-center">
       <button
         className={cn(
           "absolute left-2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent text-2xl text-foreground transition-colors duration-200",

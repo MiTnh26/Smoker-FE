@@ -17,6 +17,7 @@ export default function LivestreamCard({ livestream, onClick }) {
   return (
     <div 
       className={cn(
+        "livestream-card",
         "p-4 rounded-lg border-[0.5px] border-border/20",
         "bg-card text-card-foreground",
         "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",

@@ -114,11 +114,13 @@ export default function CustomerHeader() {
       <header className={cn(
         "h-16 flex items-center px-4 md:px-8 sticky top-0 z-50",
         "bg-card border-b border-[0.5px] border-border/20",
-        "backdrop-blur-sm"
+        "backdrop-blur-sm",
+        "sm:h-14 sm:px-3 md:h-16 md:px-4 lg:px-8"
       )}>
         <div className={cn(
           "flex items-center w-full justify-between mx-auto",
-          "max-w-[1400px]"
+          "max-w-[1400px]",
+          "sm:gap-2 md:gap-4"
         )}>
           <Link 
             to="/customer/newsfeed" 
@@ -126,30 +128,33 @@ export default function CustomerHeader() {
               "text-2xl font-bold no-underline",
               "text-primary",
               "transition-opacity duration-200",
-              "hover:opacity-80"
+              "hover:opacity-80",
+              "sm:text-lg sm:flex-shrink-0 md:text-2xl"
             )}
           >
             {t('layout.brand')}
           </Link>
 
           <div className={cn(
-            "flex items-center flex-1 max-w-md mx-4"
+            "flex items-center flex-1 max-w-md mx-4",
+            "sm:mx-1 sm:max-w-none sm:flex-initial md:mx-4 md:max-w-md md:flex-1"
           )}>
             <GlobalSearch />
           </div>
 
-          <div className={cn("flex gap-2")}>
+          <div className={cn("flex gap-2", "sm:gap-1.5 md:gap-2")}>
             <button 
               className={cn(
                 "rounded-lg p-2 flex items-center justify-center",
                 "transition-all duration-200 cursor-pointer relative",
                 "text-muted-foreground",
                 "hover:text-primary hover:bg-primary/10",
-                "active:scale-95"
+                "active:scale-95",
+                "sm:p-1.5 md:p-2"
               )}
               onClick={() => navigate("/customer/newsfeed")}
             >
-              <Home size={24} />
+              <Home size={24} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
             </button>
 
             <button
@@ -160,14 +165,15 @@ export default function CustomerHeader() {
                 activePanel === "messages" 
                   ? "text-primary-foreground bg-primary" 
                   : "hover:text-primary hover:bg-primary/10",
-                "active:scale-95"
+                "active:scale-95",
+                "sm:p-1.5 md:p-2"
               )}
               onClick={() => {
                 console.log("[CustomerHeader] Message button clicked!");
                 togglePanel("messages");
               }}
             >
-              <MessageCircle size={24} />
+              <MessageCircle size={24} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
               {unreadMessageCount > 0 && (
                 <span className={cn(
                   "absolute -top-1 -right-1 min-w-[18px] h-[18px]",
@@ -175,7 +181,9 @@ export default function CustomerHeader() {
                   "bg-danger text-primary-foreground rounded-full",
                   "text-[11px] font-semibold leading-none",
                   "border-2 border-card z-10",
-                  "shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+                  "shadow-[0_2px_4px_rgba(0,0,0,0.2)]",
+                  "sm:min-w-[16px] sm:h-[16px] sm:text-[10px] sm:-top-0.5 sm:-right-0.5",
+                  "md:min-w-[18px] md:h-[18px] md:text-[11px] md:-top-1 md:-right-1"
                 )}>
                   {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
                 </span>
@@ -191,14 +199,15 @@ export default function CustomerHeader() {
                 activePanel === "notifications" 
                   ? "text-primary-foreground bg-primary" 
                   : "hover:text-primary hover:bg-primary/10",
-                "active:scale-95"
+                "active:scale-95",
+                "sm:p-1.5 md:p-2"
               )}
               onClick={() => {
                 console.log("[CustomerHeader] Notification button clicked!");
                 togglePanel("notifications");
               }}
             >
-              <Bell size={24} />
+              <Bell size={24} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
               {unreadNotificationCount > 0 && (
                 <span className={cn(
                   "absolute -top-1 -right-1 min-w-[18px] h-[18px]",
@@ -206,7 +215,9 @@ export default function CustomerHeader() {
                   "bg-danger text-primary-foreground rounded-full",
                   "text-[11px] font-semibold leading-none",
                   "border-2 border-card z-10",
-                  "shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+                  "shadow-[0_2px_4px_rgba(0,0,0,0.2)]",
+                  "sm:min-w-[16px] sm:h-[16px] sm:text-[10px] sm:-top-0.5 sm:-right-0.5",
+                  "md:min-w-[18px] md:h-[18px] md:text-[11px] md:-top-1 md:-right-1"
                 )}>
                   {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
                 </span>
@@ -221,14 +232,15 @@ export default function CustomerHeader() {
                 activePanel === "user" 
                   ? "text-primary-foreground bg-primary" 
                   : "hover:text-primary hover:bg-primary/10",
-                "active:scale-95"
+                "active:scale-95",
+                "sm:p-1.5 md:p-2"
               )}
               onClick={() => {
                 console.log("[CustomerHeader] User button clicked!");
                 togglePanel("user");
               }}
             >
-              <User size={24} />
+              <User size={24} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
             </button>
           </div>
         </div>

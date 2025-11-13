@@ -165,6 +165,7 @@ export default function PostCard({
 
   return (
     <article className={cn(
+      "post-card",
       /* Base Styles - Instagram-inspired Minimalist Design */
       "bg-card text-card-foreground rounded-lg",
       "shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 mb-4",

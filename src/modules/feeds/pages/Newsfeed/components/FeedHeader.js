@@ -13,7 +13,7 @@ export default function FeedHeader() {
   const user = session?.account;
 
   return (
-    <header className="feed-header p-4 flex justify-between items-center border-b" style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))", color: "rgb(var(--foreground))" }}>
+    <header className="feed-header p-4 flex justify-between items-center border-b rounded-xl" style={{ background: "rgb(var(--card))", borderColor: "rgb(var(--border))", color: "rgb(var(--foreground))" }}>
       <h2 className="text-xl font-semibold">{t('feed.newsfeed')}</h2>
       <div className="flex items-center gap-3">
         {/* {user && (

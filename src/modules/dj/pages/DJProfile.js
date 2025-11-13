@@ -9,6 +9,7 @@ import PostFeed from "../../feeds/components/post/PostFeed";
 import { useFollowers, useFollowing } from "../../../hooks/useFollow";
 import messageApi from "../../../api/messageApi";
 import "../../../styles/modules/publicProfile.css";
+import PerformerReviews from "../../business/components/PerformerReviews";
 
 export default function DJProfile() {
     const { t } = useTranslation();
@@ -33,6 +34,7 @@ export default function DJProfile() {
     const [saving, setSaving] = useState(false);
     const [currentUserEntityId, setCurrentUserEntityId] = useState(null);
     const [businessEntityId, setBusinessEntityId] = useState(null);
+    const [businessAccountId, setBusinessAccountId] = useState(null);
     
     // Location states
     const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -112,6 +114,14 @@ export default function DJProfile() {
                     };
 
                     setProfile(mappedData);
+                    
+                    const resolvedBusinessAccountId =
+                        data.BussinessAccountId ||
+                        data.BusinessAccountId ||
+                        data.BusinessId ||
+                        data.businessAccountId ||
+                        null;
+                    setBusinessAccountId(resolvedBusinessAccountId);
                     
                     // Try to get addressData - could be object or JSON string
                     let addressDataObj = null;
@@ -314,6 +324,18 @@ export default function DJProfile() {
                     {profile.pricePerSession && <div>{t("profile.pricePerSession")}: {profile.pricePerSession} đ</div>}
                 </div>
             </section>
+
+            {businessAccountId && (
+                <section className="pp-section">
+                    <PerformerReviews
+                        businessAccountId={businessAccountId}
+                        performerName={profile.userName}
+                        performerRole={profile.role || "DJ"}
+                        isOwnProfile={isOwnProfile}
+                        allowSubmission={false}
+                    />
+                </section>
+            )}
 
             {isOwnProfile && (
                 <section style={{ padding: '0 24px 24px 24px' }}>

@@ -138,9 +138,9 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
       tabIndex={-1}
       role="presentation"
       onClick={(e) => {
-        if (e.target === e.currentTarget && onClose) {
-          onClose();
-        }
+      if (e.target === e.currentTarget && onClose) {
+        onClose();
+      }
       }}
       onKeyDown={(e) => {
         if (e.key === "Escape" && onClose) {

@@ -684,9 +684,10 @@ export default function CommentSection({ postId, onClose, inline = false, always
         {!inline && alwaysOpen && (
           <div className={cn(
             "flex justify-between items-center p-5 border-b border-border/30",
-            "bg-card/80 backdrop-blur-sm flex-shrink-0"
+            "bg-card/80 backdrop-blur-sm flex-shrink-0",
+            "sm:p-4 md:p-5"
           )}>
-            <h3 className={cn("m-0 text-lg font-semibold text-foreground")}>
+            <h3 className={cn("m-0 text-lg font-semibold text-foreground", "sm:text-base md:text-lg")}>
               {t('comment.header')}
             </h3>
           </div>
@@ -711,9 +712,10 @@ export default function CommentSection({ postId, onClose, inline = false, always
         {comments.length > 0 && (
           <div className={cn(
             "flex items-center gap-2 pt-3 pb-3 px-4 flex-shrink-0",
-            "border-b border-border/30 bg-card/80 backdrop-blur-sm z-10"
+            "border-b border-border/30 bg-card/80 backdrop-blur-sm z-10",
+            "sm:pt-2 sm:pb-2 sm:px-3 sm:gap-1.5"
           )}>
-            <span className={cn("text-sm text-muted-foreground")}>
+            <span className={cn("text-sm text-muted-foreground", "sm:text-xs md:text-sm")}>
               {t('comment.sort')}
             </span>
             <button
@@ -722,7 +724,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
                 "bg-transparent border-none cursor-pointer",
                 sortOrder === "newest" 
                   ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                  : "text-muted-foreground hover:bg-muted/30 hover:text-foreground",
+                "sm:px-2 sm:py-1 sm:text-xs md:px-3 md:py-1.5 md:text-sm"
               )}
               onClick={() => setSortOrder("newest")}
             >
@@ -734,7 +737,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
                 "bg-transparent border-none cursor-pointer",
                 sortOrder === "oldest" 
                   ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+                  : "text-muted-foreground hover:bg-muted/30 hover:text-foreground",
+                "sm:px-2 sm:py-1 sm:text-xs md:px-3 md:py-1.5 md:text-sm"
               )}
               onClick={() => setSortOrder("oldest")}
             >
@@ -745,7 +749,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
 
         {/* Comments List */}
         <div className={cn(
-          "flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0"
+          "flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0",
+          "sm:p-3 md:p-4"
         )}>
           {comments.length === 0 ? (
             <p className={cn("py-8 text-center text-muted-foreground")}>
@@ -756,7 +761,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
               <div 
                 key={comment.id} 
                 className={cn(
-                  "py-3 px-4 border-b border-border/25"
+                  "py-3 px-4 border-b border-border/25",
+                  "sm:py-2 sm:px-3 md:py-3 md:px-4"
                 )}
                 ref={(el) => {
                   if (el) {
@@ -764,33 +770,35 @@ export default function CommentSection({ postId, onClose, inline = false, always
                   }
                 }}
               >
-                <div className="flex gap-3 items-start">
+                <div className="flex gap-3 items-start sm:gap-2 md:gap-3">
                   <img 
-                    className="w-8 h-8 rounded-full object-cover flex-shrink-0 cursor-pointer" 
+                    className="w-8 h-8 rounded-full object-cover flex-shrink-0 cursor-pointer sm:w-7 sm:h-7 md:w-8 md:h-8" 
                     src={comment.authorAvatar || getAvatarForAccount(comment.accountId, comment.authorEntityAccountId)} 
                     alt="avatar"
                     onClick={() => handleNavigateToProfile(comment.authorEntityId, comment.authorEntityType, comment.authorEntityAccountId)}
                   />
                   <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 sm:gap-1.5">
                       <span 
                         className={cn(
                           "text-foreground font-semibold text-sm cursor-pointer",
-                          "hover:underline"
+                          "hover:underline",
+                          "sm:text-xs md:text-sm"
                         )}
                         onClick={() => handleNavigateToProfile(comment.authorEntityId, comment.authorEntityType, comment.authorEntityAccountId)}
                       >
                         {comment.authorName || getNameForAccount(comment.accountId, comment.authorEntityAccountId)}
                       </span>
                       {comment.createdAt && (
-                        <span className="text-muted-foreground text-xs">
+                        <span className="text-muted-foreground text-xs sm:text-[0.7rem] md:text-xs">
                           {formatTimeDisplay(comment.createdAt)}
                         </span>
                       )}
                     </div>
                     <div className={cn(
                       "text-foreground text-sm leading-6 break-words",
-                      "max-w-full overflow-hidden"
+                      "max-w-full overflow-hidden",
+                      "sm:text-xs sm:leading-5 md:text-sm md:leading-6"
                     )}>
                       {comment.content}
                     </div>
@@ -807,7 +815,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-2">
+                <div className="flex gap-3 mt-2 sm:gap-2 sm:mt-1.5">
                   <button
                     onClick={() => handleLikeComment(comment.id)}
                     className={cn(
@@ -815,21 +823,23 @@ export default function CommentSection({ postId, onClose, inline = false, always
                       "text-muted-foreground text-sm px-1 py-1 rounded",
                       "cursor-pointer transition-all duration-200",
                       "hover:bg-muted/30 hover:text-foreground",
-                      likedComments.has(comment.id) && "text-danger"
+                      likedComments.has(comment.id) && "text-danger",
+                      "sm:gap-1 sm:text-xs md:text-sm"
                     )}
                     aria-label="Like comment"
                   >
-                    <svg className="w-5 h-5 flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill={likedComments.has(comment.id) ? "currentColor" : "none"} stroke="currentColor">
+                    <svg className="w-5 h-5 flex-shrink-0 sm:w-4 sm:h-4 md:w-5 md:h-5" width="20" height="20" viewBox="0 0 24 24" fill={likedComments.has(comment.id) ? "currentColor" : "none"} stroke="currentColor">
                       <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                     </svg>
-                    <span className="font-semibold min-w-[1.25rem] text-left">{comment.likes}</span>
+                    <span className="font-semibold min-w-[1.25rem] text-left sm:min-w-[1rem]">{comment.likes}</span>
                   </button>
                   <button
                     onClick={() => setReplyingTo({ commentId: comment.id, type: "comment" })}
                     className={cn(
                       "bg-transparent border-none text-muted-foreground text-sm",
                       "px-1 py-1 rounded cursor-pointer transition-all duration-200",
-                      "hover:bg-muted/30 hover:text-foreground"
+                      "hover:bg-muted/30 hover:text-foreground",
+                      "sm:text-xs md:text-sm"
                     )}
                   >
                     {t('comment.reply')}
@@ -839,7 +849,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
                 {/* Reply Input */}
                 {replyingTo?.commentId === comment.id && replyingTo.type === "comment" && (
                   <div className={cn(
-                    "flex gap-2 mt-2 p-2 bg-muted/10 rounded-lg"
+                    "flex gap-2 mt-2 p-2 bg-muted/10 rounded-lg",
+                    "sm:gap-1.5 sm:mt-1.5 sm:p-1.5"
                   )}>
                     <input
                       type="text"
@@ -856,18 +867,20 @@ export default function CommentSection({ postId, onClose, inline = false, always
                         "bg-background text-foreground text-sm outline-none",
                         "transition-all duration-200",
                         "focus:border-primary/40 focus:ring-1 focus:ring-primary/10",
-                        "disabled:opacity-50 disabled:cursor-not-allowed"
+                        "disabled:opacity-50 disabled:cursor-not-allowed",
+                        "sm:px-1.5 sm:py-1.5 sm:text-xs md:px-2 md:py-2 md:text-sm"
                       )}
                       disabled={submitting}
                     />
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 sm:gap-1.5">
                       <button
                         onClick={() => handleAddReply(comment.id)}
                         className={cn(
                           "px-4 py-2 bg-primary text-primary-foreground border-none rounded-lg",
                           "font-semibold text-sm cursor-pointer transition-all duration-200",
                           "hover:opacity-90",
-                          "disabled:opacity-50 disabled:cursor-not-allowed"
+                          "disabled:opacity-50 disabled:cursor-not-allowed",
+                          "sm:px-3 sm:py-1.5 sm:text-xs md:px-4 md:py-2 md:text-sm"
                         )}
                         disabled={submitting || !(replyContent[comment.id]?.replyText || "").trim()}
                       >
@@ -885,7 +898,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
                         className={cn(
                           "px-4 py-2 bg-muted/30 text-foreground border-none rounded",
                           "font-semibold text-sm cursor-pointer transition-all duration-200",
-                          "hover:bg-muted/50"
+                          "hover:bg-muted/50",
+                          "sm:px-3 sm:py-1.5 sm:text-xs md:px-4 md:py-2 md:text-sm"
                         )}
                       >
                         {t('action.cancel')}
@@ -896,36 +910,38 @@ export default function CommentSection({ postId, onClose, inline = false, always
 
                 {/* Replies */}
                 {comment.replies && comment.replies.length > 0 && (
-                  <div className={cn("ml-6 mt-3 pl-4 border-l-2 border-border/30")}>
+                  <div className={cn("ml-6 mt-3 pl-4 border-l-2 border-border/30", "sm:ml-4 sm:mt-2 sm:pl-3")}>
                     {comment.replies.map((reply) => (
-                      <div key={reply.id} className="py-2">
-                        <div className="flex gap-2 items-start">
+                      <div key={reply.id} className="py-2 sm:py-1.5">
+                        <div className="flex gap-2 items-start sm:gap-1.5">
                           <img 
-                            className="w-7 h-7 rounded-full object-cover flex-shrink-0 cursor-pointer" 
+                            className="w-7 h-7 rounded-full object-cover flex-shrink-0 cursor-pointer sm:w-6 sm:h-6 md:w-7 md:h-7" 
                             src={reply.authorAvatar || getAvatarForAccount(reply.accountId, reply.authorEntityAccountId)} 
                             alt="avatar"
                             onClick={() => handleNavigateToProfile(reply.authorEntityId, reply.authorEntityType, reply.authorEntityAccountId)}
                           />
                           <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 sm:gap-1.5">
                               <span 
                                 className={cn(
                                   "text-foreground font-semibold text-[0.85rem] cursor-pointer",
-                                  "hover:underline"
+                                  "hover:underline",
+                                  "sm:text-[0.75rem] md:text-[0.85rem]"
                                 )}
                                 onClick={() => handleNavigateToProfile(reply.authorEntityId, reply.authorEntityType, reply.authorEntityAccountId)}
                               >
                                 {reply.authorName || getNameForAccount(reply.accountId, reply.authorEntityAccountId)}
                               </span>
                               {reply.createdAt && (
-                                <span className="text-muted-foreground text-[0.7rem]">
+                                <span className="text-muted-foreground text-[0.7rem] sm:text-[0.65rem] md:text-[0.7rem]">
                                   {formatTimeDisplay(reply.createdAt)}
                                 </span>
                               )}
                             </div>
                             <div className={cn(
                               "text-foreground text-[0.85rem] leading-6 break-words",
-                              "max-w-full overflow-hidden"
+                              "max-w-full overflow-hidden",
+                              "sm:text-[0.75rem] sm:leading-5 md:text-[0.85rem] md:leading-6"
                             )}>
                               {reply.content}
                             </div>
@@ -941,7 +957,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
                             )}
                           </div>
                         </div>
-                        <div className="flex gap-3 mt-1">
+                        <div className="flex gap-3 mt-1 sm:gap-2">
                           <button
                             onClick={() => handleLikeReply(comment.id, reply.id)}
                             className={cn(
@@ -949,21 +965,23 @@ export default function CommentSection({ postId, onClose, inline = false, always
                               "text-muted-foreground text-sm px-1 py-1 rounded",
                               "cursor-pointer transition-all duration-200",
                               "hover:bg-muted/30 hover:text-foreground",
-                              likedReplies.has(`${comment.id}-${reply.id}`) && "text-danger"
+                              likedReplies.has(`${comment.id}-${reply.id}`) && "text-danger",
+                              "sm:gap-1 sm:text-xs md:text-sm"
                             )}
                             aria-label="Like reply"
                           >
-                            <svg className="w-5 h-5 flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill={likedReplies.has(`${comment.id}-${reply.id}`) ? "currentColor" : "none"} stroke="currentColor">
+                            <svg className="w-5 h-5 flex-shrink-0 sm:w-4 sm:h-4 md:w-5 md:h-5" width="20" height="20" viewBox="0 0 24 24" fill={likedReplies.has(`${comment.id}-${reply.id}`) ? "currentColor" : "none"} stroke="currentColor">
                               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                             </svg>
-                            <span className="font-semibold min-w-[1.25rem] text-left">{reply.likes}</span>
+                            <span className="font-semibold min-w-[1.25rem] text-left sm:min-w-[1rem]">{reply.likes}</span>
                           </button>
                           <button
                             onClick={() => setReplyingTo({ commentId: comment.id, replyId: reply.id, type: "reply" })}
                             className={cn(
                               "bg-transparent border-none text-muted-foreground text-sm",
                               "px-1 py-1 rounded cursor-pointer transition-all duration-200",
-                              "hover:bg-muted/30 hover:text-foreground"
+                              "hover:bg-muted/30 hover:text-foreground",
+                              "sm:text-xs md:text-sm"
                             )}
                           >
                             {t('comment.reply')}
@@ -973,7 +991,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
                         {/* Reply to Reply Input */}
                         {replyingTo?.replyId === reply.id && replyingTo.type === "reply" && (
                           <div className={cn(
-                            "flex gap-2 mt-2 p-2 bg-muted/10 rounded-lg"
+                            "flex gap-2 mt-2 p-2 bg-muted/10 rounded-lg",
+                            "sm:gap-1.5 sm:mt-1.5 sm:p-1.5"
                           )}>
                             <input
                               type="text"
@@ -990,18 +1009,20 @@ export default function CommentSection({ postId, onClose, inline = false, always
                                 "bg-background text-foreground text-sm outline-none",
                                 "transition-all duration-200",
                                 "focus:border-primary/40 focus:ring-1 focus:ring-primary/10",
-                                "disabled:opacity-50 disabled:cursor-not-allowed"
+                                "disabled:opacity-50 disabled:cursor-not-allowed",
+                                "sm:px-1.5 sm:py-1.5 sm:text-xs md:px-2 md:py-2 md:text-sm"
                               )}
                               disabled={submitting}
                             />
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 sm:gap-1.5">
                               <button
                                 onClick={() => handleAddReply(comment.id, reply.id)}
                                 className={cn(
                                   "px-4 py-2 bg-primary text-primary-foreground border-none rounded-lg",
                                   "font-semibold text-sm cursor-pointer transition-all duration-200",
                                   "hover:opacity-90",
-                                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                                  "sm:px-3 sm:py-1.5 sm:text-xs md:px-4 md:py-2 md:text-sm"
                                 )}
                                 disabled={submitting || !(replyContent[`${comment.id}-${reply.id}`]?.replyText || "").trim()}
                               >
@@ -1019,7 +1040,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
                                 className={cn(
                                   "px-4 py-2 bg-muted/30 text-foreground border-none rounded",
                                   "font-semibold text-sm cursor-pointer transition-all duration-200",
-                                  "hover:bg-muted/50"
+                                  "hover:bg-muted/50",
+                                  "sm:px-3 sm:py-1.5 sm:text-xs md:px-4 md:py-2 md:text-sm"
                                 )}
                               >
                                 {t('action.cancel')}
@@ -1039,7 +1061,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
       {/* Add Comment Form - Outside flex-1 container to always be visible */}
       <form onSubmit={handleAddComment} className={cn(
         "flex gap-2 p-4 border-t border-border/30 bg-card/80 backdrop-blur-sm",
-        "flex-shrink-0 relative z-10"
+        "flex-shrink-0 relative z-10",
+        "sm:gap-1.5 sm:p-3 md:p-4"
       )}>
           <input
             type="text"
@@ -1051,7 +1074,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
             "bg-background text-foreground text-sm outline-none",
             "transition-all duration-200",
             "focus:border-primary focus:ring-2 focus:ring-primary/10",
-            "disabled:opacity-50 disabled:cursor-not-allowed"
+            "disabled:opacity-50 disabled:cursor-not-allowed",
+            "sm:px-3 sm:py-2 sm:text-xs md:px-4 md:py-3 md:text-sm"
           )}
             disabled={submitting}
           />
@@ -1063,7 +1087,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
             "transition-all duration-300 shadow-[0_4px_16px_rgba(var(--primary),0.4)]",
             "hover:shadow-[0_6px_24px_rgba(var(--primary),0.5)]",
             "active:scale-95",
-            "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none",
+            "sm:px-4 sm:py-2 sm:text-xs md:px-6 md:py-3 md:text-sm"
           )}
             disabled={submitting || !newComment.trim()}
           >

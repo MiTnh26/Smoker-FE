@@ -7,6 +7,24 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+.feed-header {
+  width: 100%;
+  max-width: 960px;
+  margin: 0.75rem auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  background: rgba(var(--card), 0.96);
+  border: 1px solid rgba(var(--border), 0.6);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+}
+
+.feed-header h2 {
+  margin: 0;
+  color: rgb(var(--foreground));
+}
+
 /* HEADER */
 .newsfeed-header {
   height: 70px;
@@ -187,12 +205,18 @@
 /* STORY SECTION */
 .story-section {
   width: 100%;
+  max-width: 960px;
+  margin: 0 auto 1rem;
   background: rgb(var(--card));
-  border-bottom: 1px solid rgb(var(--border));
+  border: 1px solid rgba(var(--border), 0.6);
   position: relative;
   overflow: hidden;
   border-radius: 1rem;
-  margin: 0.5rem 0;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+}
+
+.story-bar-wrapper {
+  width: 100%;
 }
 
 /* POSTS */
@@ -201,10 +225,16 @@
   min-width: 0;
 }
 
+.create-post-box {
+  width: 100%;
+  max-width: 960px;
+  margin: 1rem auto;
+}
+
 .feed-posts {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 1rem;
 }
 
 .post-card {
@@ -359,27 +389,274 @@
   transform: translateY(-2px);
 }
 
+.livestream-card {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.livestreams-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 0;
+}
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
-  .newsfeed-container {
-    flex-direction: column;
-    padding: 1rem;
+  .newsfeed-page {
+    padding-top: 0.75rem;
   }
 
-  .newsfeed-sidebar-left {
-    width: 100%;
-    position: static;
+  .feed-header {
+    max-width: 100%;
+    margin: 0.75rem 1rem 1rem;
+    padding: 0.75rem 1rem !important;
+    border-radius: 20px;
+    gap: 1rem;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
   }
 
-  .newsfeed-header {
-    padding: 0 1rem;
+  .feed-header h2 {
+    font-size: 1.15rem;
   }
 
-  .newsfeed-search {
-    margin: 0 1rem;
+  .create-post-box {
+    margin: 0 1rem 1rem;
+    padding: 1.15rem !important;
+    border-radius: 20px;
+    box-shadow: 0 18px 32px rgba(15, 23, 42, 0.08);
+  }
+
+  .create-post-box > .flex:first-of-type {
+    gap: 0.75rem !important;
+    margin-bottom: 0.9rem !important;
+  }
+
+  .create-post-box img {
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 18px !important;
+  }
+
+  .create-post-box input {
+    font-size: 0.9rem !important;
+    padding: 0.65rem 0.9rem !important;
+  }
+
+  .create-post-box button {
+    font-size: 0.85rem !important;
+    padding: 0.5rem 0.75rem !important;
   }
 
   .story-section {
-    border-bottom: 1px solid rgb(var(--border));
+    margin: 0 1rem 1rem;
+    border-radius: 20px;
+    border: 1px solid rgba(var(--border), 0.55);
+    background: rgba(var(--card), 0.96);
+    box-shadow: 0 20px 36px rgba(15, 23, 42, 0.08);
+  }
+
+  .story-bar-wrapper > button {
+    width: 34px;
+    height: 34px;
+    font-size: 1.35rem;
+    background: rgba(0, 0, 0, 0.25);
+    border: none;
+    color: rgb(var(--white));
+  }
+
+  .story-bar-wrapper > button:hover {
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .story-bar-wrapper .flex.items-start {
+    gap: 0.75rem !important;
+    padding: 0.75rem 0.5rem !important;
+  }
+
+  .newsfeed-main {
+    padding: 0 1rem;
+  }
+
+  .feed-posts {
+    gap: 1rem;
+  }
+
+  .post-card {
+    padding: 1.25rem !important;
+    border-radius: 20px !important;
+    box-shadow: 0 18px 30px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  .post-card h4 {
+    font-size: 0.95rem !important;
+  }
+
+  .post-card p {
+    font-size: 0.92rem;
+  }
+
+  .post-card .w-14,
+  .post-card .h-14 {
+    width: 58px !important;
+    height: 58px !important;
+  }
+
+  .post-card .text-[0\\.8rem] {
+    font-size: 0.78rem !important;
+  }
+
+  .post-card .text-[0\\.75rem] {
+    font-size: 0.72rem !important;
+  }
+
+  .post-stats {
+    gap: 1rem;
+    font-size: 0.8rem;
+  }
+
+  .post-actions {
+    gap: 0.4rem;
+  }
+
+  .action-btn {
+    font-size: 0.85rem;
+    padding: 0.6rem;
+  }
+
+  .livestream-card {
+    padding: 1.1rem !important;
+    border-radius: 18px !important;
+  }
+
+  .shorts-section {
+    padding: 0 1rem;
+    margin: 0 0 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .feed-header {
+    margin: 0.75rem 0.85rem 1rem;
+    padding: 0.7rem 0.9rem !important;
+    border-radius: 18px;
+    gap: 0.75rem;
+  }
+
+  .feed-header h2 {
+    font-size: 1.05rem;
+  }
+
+  .create-post-box {
+    margin: 0 0.85rem 1rem;
+    padding: 1rem !important;
+    border-radius: 18px;
+  }
+
+  .create-post-box img {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .create-post-box button {
+    font-size: 0.8rem !important;
+    padding: 0.45rem 0.65rem !important;
+  }
+
+  .story-section {
+    margin: 0 0.85rem 1rem;
+    border-radius: 18px;
+  }
+
+  .story-bar-wrapper .flex.items-start {
+    gap: 0.6rem !important;
+  }
+
+  .newsfeed-main {
+    padding: 0 0.85rem;
+  }
+
+  .post-card {
+    padding: 1.1rem !important;
+    border-radius: 18px !important;
+  }
+
+  .post-card h4 {
+    font-size: 0.9rem !important;
+  }
+
+  .post-card p {
+    font-size: 0.88rem;
+  }
+
+  .post-stats {
+    gap: 0.85rem;
+    font-size: 0.78rem;
+  }
+
+  .post-actions {
+    gap: 0.32rem;
+  }
+
+  .action-btn {
+    font-size: 0.8rem;
+    padding: 0.55rem;
+  }
+
+  .livestream-card {
+    padding: 1rem !important;
+  }
+
+  .shorts-section {
+    padding: 0 0.85rem;
+    margin: 0 0 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .feed-header {
+    margin: 0.75rem 0.6rem 1rem;
+    padding: 0.65rem 0.8rem !important;
+    border-radius: 16px;
+  }
+
+  .create-post-box {
+    margin: 0 0.6rem 1rem;
+    padding: 0.92rem !important;
+    border-radius: 16px;
+  }
+
+  .create-post-box img {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .story-section {
+    margin: 0 0.6rem 1rem;
+    border-radius: 16px;
+  }
+
+  .newsfeed-main {
+    padding: 0 0.6rem;
+  }
+  
+  .post-card {
+    padding: 1rem !important;
+    border-radius: 16px !important;
+  }
+
+  .post-card .w-14,
+  .post-card .h-14 {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  .shorts-section {
+    padding: 0 0.6rem;
+    margin: 0 0 1rem;
+  }
+
+  .livestream-card {
+    padding: 0.95rem !important;
   }
 }

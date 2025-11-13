@@ -20,6 +20,7 @@ export default function GlobalSearch() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState({ users: [], bars: [], djs: [], dancers: [] });
   const [refreshTick, setRefreshTick] = useState(0);
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
 
   const debouncedQ = useDebounce(q, 300);
 
@@ -54,31 +55,96 @@ export default function GlobalSearch() {
   const list = active === "all" ? all : (data[active] || []);
 
   return (
-    <div className={cn("relative flex items-center gap-2 flex-1")}>
-      <Search className={cn("text-muted-foreground flex-shrink-0")} size={20} />
-      <input
-        type="text"
-        placeholder="Tìm người, bar, DJ, dancer..."
-        className={cn(
-          "flex-1 border-none bg-transparent outline-none text-sm",
-          "text-foreground placeholder:text-muted-foreground"
-        )}
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && q.trim()) {
-            navigate(`/search?q=${encodeURIComponent(q.trim())}`);
-          }
-        }}
-      />
-      {q && (
+    <>
+      {/* Mobile overlay when search is expanded */}
+      {isMobileExpanded && (
+        <div
+          className={cn(
+            "fixed inset-0 bg-black/50 backdrop-blur-sm z-40",
+            "md:hidden"
+          )}
+          onClick={() => {
+            setIsMobileExpanded(false);
+            setQ("");
+          }}
+        />
+      )}
+      <div className={cn(
+        "relative flex items-center gap-2 flex-1",
+        "sm:flex-initial sm:gap-0"
+      )}>
+        {/* Mobile: Icon only button */}
+        <button
+          onClick={() => setIsMobileExpanded(true)}
+          className={cn(
+            "md:hidden rounded-lg p-2 flex items-center justify-center",
+            "transition-all duration-200 cursor-pointer",
+            "text-muted-foreground hover:text-primary hover:bg-primary/10",
+            "active:scale-95",
+            "sm:p-1.5"
+          )}
+          aria-label="Search"
+        >
+          <Search size={20} className="sm:w-5 sm:h-5" />
+        </button>
+
+        {/* Desktop: Full search bar, Mobile: Expanded search */}
         <div className={cn(
-          "absolute top-[calc(100%+6px)] left-0 right-0 z-[60]",
-          "bg-card border-[0.5px] border-border/20 rounded-lg",
-          "max-h-[420px] overflow-auto p-2",
-          "shadow-[0_8px_24px_rgba(0,0,0,0.32)]"
+          "relative flex items-center gap-2 flex-1",
+          "max-sm:fixed max-sm:top-0 max-sm:left-0 max-sm:right-0 max-sm:z-50",
+          "max-sm:bg-card max-sm:border-b max-sm:border-border/20",
+          "max-sm:px-3 max-sm:py-2.5 max-sm:shadow-lg",
+          !isMobileExpanded && "max-sm:hidden"
         )}>
-          <div className={cn("flex gap-2 px-2 py-1")}>
+        <button
+          onClick={() => {
+            setIsMobileExpanded(false);
+            setQ("");
+          }}
+          className={cn(
+            "md:hidden rounded-lg p-1 flex items-center justify-center",
+            "transition-all duration-200 cursor-pointer",
+            "text-muted-foreground hover:text-foreground",
+            "mr-1"
+          )}
+          aria-label="Close search"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+        <Search className={cn("text-muted-foreground flex-shrink-0", "sm:w-4 sm:h-4 md:w-5 md:h-5")} size={20} />
+        <input
+          type="text"
+          placeholder="Tìm người, bar, DJ, dancer..."
+          className={cn(
+            "flex-1 border-none bg-transparent outline-none text-sm",
+            "text-foreground placeholder:text-muted-foreground",
+            "sm:text-xs md:text-sm"
+          )}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && q.trim()) {
+              navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+              setIsMobileExpanded(false);
+            }
+            if (e.key === "Escape") {
+              setIsMobileExpanded(false);
+              setQ("");
+            }
+          }}
+          autoFocus={isMobileExpanded}
+        />
+        {q && (
+          <div className={cn(
+            "absolute top-[calc(100%+6px)] left-0 right-0 z-[60]",
+            "bg-card border-[0.5px] border-border/20 rounded-lg",
+            "max-h-[420px] overflow-auto p-2",
+            "shadow-[0_8px_24px_rgba(0,0,0,0.32)]",
+            "sm:max-h-[60vh] sm:rounded-t-none sm:border-t-0"
+          )}>
+          <div className={cn("flex gap-2 px-2 py-1", "sm:gap-1 sm:px-1 sm:py-0.5 sm:overflow-x-auto")}>
             {TABS.map(t => (
               <button
                 key={t.key}
@@ -87,9 +153,11 @@ export default function GlobalSearch() {
                   "px-2.5 py-1.5 rounded-lg border-[0.5px] border-border/20",
                   "bg-transparent text-foreground cursor-pointer",
                   "transition-all duration-200 text-sm",
+                  "flex-shrink-0",
                   active === t.key
                     ? "bg-primary text-primary-foreground border-primary"
-                    : "hover:bg-muted/50"
+                    : "hover:bg-muted/50",
+                  "sm:px-2 sm:py-1 sm:text-xs"
                 )}
               >
                 {t.label}
@@ -118,13 +186,13 @@ export default function GlobalSearch() {
                     <img
                       src={item.avatar || "https://via.placeholder.com/36"}
                       alt={item.name}
-                      className={cn("w-9 h-9 rounded-full object-cover")}
+                      className={cn("w-9 h-9 rounded-full object-cover", "sm:w-8 sm:h-8")}
                     />
                     <div>
-                      <div className={cn("font-semibold text-foreground text-sm")}>
+                      <div className={cn("font-semibold text-foreground text-sm", "sm:text-xs")}>
                         {item.name}
                       </div>
-                      <div className={cn("text-xs text-muted-foreground/80")}>
+                      <div className={cn("text-xs text-muted-foreground/80", "sm:text-[0.7rem]")}>
                         {item.type}
                       </div>
                     </div>
@@ -141,9 +209,11 @@ export default function GlobalSearch() {
               ))}
             </ul>
           )}
+          </div>
+        )}
         </div>
-      )}
-    </div>
+      </div>
+    </>
   );
 }
 

@@ -49,7 +49,7 @@ export default function PostMediaLayout({ images = [], videos = [], onImageClick
                 key={video.id || video._id || index}
                 src={videoUrl}
                 poster={video.thumbnail || video.poster || null}
-                className="w-full rounded-2xl overflow-hidden"
+                className="w-full rounded-2xl overflow-hidden sm:rounded-xl md:rounded-2xl"
               />
             );
           })}
@@ -102,7 +102,7 @@ export default function PostMediaLayout({ images = [], videos = [], onImageClick
                   className={cn(
                     showGrid 
                       ? "w-full h-full object-cover rounded-none cursor-pointer block transition-all duration-300"
-                      : "w-full rounded-2xl object-cover max-h-[600px] cursor-pointer block shadow-lg",
+                      : "w-full rounded-2xl object-cover max-h-[600px] cursor-pointer block shadow-lg sm:rounded-xl md:rounded-2xl sm:max-h-[400px] md:max-h-[500px] lg:max-h-[600px]",
                     shouldShowOverlay && "brightness-[0.6] blur-[1px] opacity-80"
                   )}
                   onClick={(e) => {
@@ -119,7 +119,8 @@ export default function PostMediaLayout({ images = [], videos = [], onImageClick
                   )}>
                     <span className={cn(
                       "text-[2.5rem] font-bold text-primary-foreground",
-                      "drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+                      "drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]",
+                      "sm:text-2xl md:text-[2.5rem]"
                     )}>
                       +{remainingCount}
                     </span>
@@ -159,7 +160,7 @@ export default function PostMediaLayout({ images = [], videos = [], onImageClick
                 key={video.id || video._id || index}
                 src={videoUrl}
                 poster={video.thumbnail || video.poster || null}
-                className="w-full rounded-2xl overflow-hidden"
+                className="w-full rounded-2xl overflow-hidden sm:rounded-xl md:rounded-2xl"
               />
             );
           })}
@@ -193,7 +194,7 @@ export default function PostMediaLayout({ images = [], videos = [], onImageClick
                   className={cn(
                     showGrid 
                       ? "w-full h-full object-cover rounded-none cursor-pointer block transition-all duration-300"
-                      : "w-full rounded-2xl object-cover max-h-[600px] cursor-pointer block shadow-lg",
+                      : "w-full rounded-2xl object-cover max-h-[600px] cursor-pointer block shadow-lg sm:rounded-xl md:rounded-2xl sm:max-h-[400px] md:max-h-[500px] lg:max-h-[600px]",
                     shouldShowOverlay && "brightness-[0.6] blur-[1px] opacity-80"
                   )}
                   onClick={(e) => {
@@ -210,7 +211,8 @@ export default function PostMediaLayout({ images = [], videos = [], onImageClick
                   )}>
                     <span className={cn(
                       "text-[2.5rem] font-bold text-primary-foreground",
-                      "drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+                      "drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]",
+                      "sm:text-2xl md:text-[2.5rem]"
                     )}>
                       +{remainingCount}
                     </span>

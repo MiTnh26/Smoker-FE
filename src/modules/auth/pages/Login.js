@@ -100,8 +100,19 @@ export function Login() {
   return (
     <div className="bg-background text-foreground">
       <PublicHeader />
-      <div className="container mx-auto flex min-h-[calc(100vh-73px)] items-center justify-center px-4 pt-[73px] pb-12">
-        <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-[1.1fr_1fr]">
+      <div
+        className={cn(
+          "container mx-auto flex min-h-[calc(100vh-73px)] w-full items-center justify-center",
+          "px-4 pb-16 pt-[84px] sm:px-6 sm:pt-[96px] md:pb-20"
+        )}
+      >
+        <div
+          className={cn(
+            "grid w-full gap-8",
+            "max-w-lg md:max-w-3xl lg:max-w-5xl",
+            "grid-cols-1 lg:grid-cols-[1.05fr_1fr]"
+          )}
+        >
           <section
             className={cn(
               borderStyles.card,
@@ -156,20 +167,23 @@ export function Login() {
           <section
             className={cn(
               borderStyles.card,
-              "bg-card p-8 shadow-[0_8px_24px_rgba(15,23,42,0.08)]"
+              "bg-card p-6 shadow-[0_12px_32px_rgba(15,23,42,0.08)] sm:p-7 md:p-8",
+              "rounded-3xl md:rounded-[32px]"
             )}
           >
-            <div className="mb-6 flex flex-col gap-2">
-              <h1 className="text-2xl font-semibold">{t("auth.loginTitle", "Đăng nhập vào Smoker")}</h1>
-              <p className="text-sm text-muted-foreground">
+            <div className="mb-6 flex flex-col gap-2 text-center sm:text-left">
+              <h1 className="text-2xl font-semibold sm:text-3xl">
+                {t("auth.loginTitle", "Đăng nhập vào Smoker")}
+              </h1>
+              <p className="text-sm text-muted-foreground sm:text-base">
                 {t("auth.loginSubtitle", "Tiếp tục hành trình nightlife của bạn.")}
               </p>
           </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-muted-foreground">
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-muted-foreground sm:text-base">
                     {t("auth.emailOrPhone")}
                   </label>
                   <div className="relative">
@@ -184,8 +198,8 @@ export function Login() {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-muted-foreground">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-muted-foreground sm:text-base">
                     {t("auth.password")}
                   </label>
                   <div className="relative">
@@ -225,7 +239,7 @@ export function Login() {
                 type="submit"
                 className={cn(
                   "w-full bg-primary text-primary-foreground border-none",
-                  "rounded-lg py-2.5 font-semibold",
+                  "rounded-lg py-3 text-base font-semibold sm:rounded-xl sm:py-3.5",
                   "transition-all duration-200",
                   "hover:bg-primary/90 active:scale-95"
                 )}
@@ -233,7 +247,7 @@ export function Login() {
                 {t("auth.login")}
               </button>
 
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex flex-col gap-4 text-sm text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
                 <div className="text-muted-foreground">
                   {t("auth.notHaveAccount", "Chưa có tài khoản?")}{" "}
                   <Link
@@ -251,19 +265,19 @@ export function Login() {
                 </Link>
               </div>
 
-              <div className="flex items-center gap-4">
-                <span className="h-[1px] flex-1 bg-border/30" />
+              <div className="flex flex-col items-center gap-4 sm:flex-row">
+                <span className="h-[1px] w-full flex-1 bg-border/30 sm:w-auto" />
                 <span className="text-xs uppercase tracking-wide text-muted-foreground">
                   {t("auth.orContinue", "hoặc tiếp tục với")}
                 </span>
-                <span className="h-[1px] flex-1 bg-border/30" />
+                <span className="h-[1px] w-full flex-1 bg-border/30 sm:w-auto" />
               </div>
 
               <button
                 type="button"
                 className={cn(
                   "w-full bg-muted/40 text-foreground border-none",
-                  "rounded-lg py-2.5 text-sm font-semibold",
+                  "rounded-lg py-2.5 text-sm font-semibold sm:rounded-xl sm:py-3",
                   "transition-all duration-200",
                   "hover:bg-muted/60 active:scale-95"
                 )}
@@ -274,7 +288,7 @@ export function Login() {
 
                 <FacebookLoginButton />
 
-              <div className="rounded-lg bg-primary/5 px-3 py-3 text-xs text-muted-foreground">
+              <div className="rounded-xl bg-primary/5 px-3 py-3 text-xs text-muted-foreground sm:text-sm">
                 <span className="font-medium text-foreground">{t("auth.tipsTitle", "Mẹo:")}</span>{" "}
                 {t("auth.tipsContent", "Bật xác thực hai lớp để bảo vệ tài khoản của bạn tốt hơn.")}
               </div>

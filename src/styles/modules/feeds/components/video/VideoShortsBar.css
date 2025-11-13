@@ -85,6 +85,9 @@
   position: relative;
   display: flex;
   align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+  justify-content: center;
 }
 
 .shortsBar__list {
@@ -189,4 +192,65 @@
 
 .shortsBar__scrollButton--right {
   margin-left: 4px;
+}
+
+@media (max-width: 768px) {
+  .shortsBar {
+    gap: 0.25rem;
+    justify-content: flex-start;
+  }
+
+  .shortsBar__scrollButton {
+    display: none;
+  }
+
+  .shortsBar__list {
+    gap: 0.75rem;
+    padding: 0.75rem 0.5rem;
+  }
+
+  .shortsBar__item {
+    width: 156px;
+    height: 260px;
+    border-radius: 18px;
+  }
+
+  .shortsBar__thumbnailWrapper {
+    border-radius: 18px;
+  }
+
+  .shortsBar__avatarWrapper {
+    width: 36px;
+    height: 36px;
+  }
+
+  .shortsBar__user {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .shortsBar__list {
+    gap: 0.6rem;
+    padding: 0.65rem 0.35rem;
+  }
+
+  .shortsBar__item {
+    width: 140px;
+    height: 232px;
+    border-radius: 16px;
+  }
+
+  .shortsBar__avatarWrapper {
+    width: 32px;
+    height: 32px;
+  }
+
+  .shortsBar__captionOverlay {
+    font-size: 0.78rem;
+  }
+
+  .shortsBar__user {
+    font-size: 0.8rem;
+  }
 }

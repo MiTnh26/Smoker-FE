@@ -82,3 +82,48 @@
   background: rgb(var(--muted-foreground) / 0.5);
 }
 
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 768px) {
+  /* Modal version - increase height on mobile */
+  .comment-section {
+    height: 85vh;
+    max-height: 85vh;
+    border-radius: 0.75rem 0.75rem 0 0;
+  }
+
+  /* Inline version - adjust height */
+  .comment-section-inline {
+    height: 50vh;
+    max-height: 50vh;
+    margin-top: 0.5rem;
+    padding-top: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .comment-section {
+    height: 85vh;
+    max-height: 85vh;
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+
+  .comment-section-inline {
+    height: 45vh;
+    max-height: 45vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .comment-section {
+    height: 90vh;
+    max-height: 90vh;
+  }
+
+  .comment-section-inline {
+    height: 40vh;
+    max-height: 40vh;
+  }
+}
+

@@ -32,7 +32,7 @@ export default function NewsfeedPage() {
     addStoryOptimistic,
     entityAccountId,
   } = useStoryManager();
-
+  
   const handleOpenEditor = () => {
     console.log('[Newsfeed] Opening story editor');
     setShowStoryEditor(true);
@@ -78,7 +78,7 @@ export default function NewsfeedPage() {
       console.error("[Newsfeed] Error creating story:", error);
       await fetchStories();
       alert(t("story.createFailed") || "Không thể đăng story, vui lòng thử lại.");
-    }
+  }
   };
 
   // Load active livestreams

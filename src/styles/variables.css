@@ -6,7 +6,7 @@
 
 :root {
   /* ===== 🧱 BASE COLORS ===== */
-  --background: 252 252 252; /* Màu nền tổng thể - kem nhẹ nhàng hơn trắng thuần */
+  --background: 244 244 244; /* Màu nền tổng thể - trắng xám nhẹ để dịu mắt hơn */
   --foreground: 15 23 42; /* Màu chữ chính - đậm hơn một chút cho dễ đọc */
 
   /* ===== 🪟 SURFACE COLORS ===== */
@@ -127,11 +127,40 @@
    ========================================================= */
 [data-theme='liquidglass'] {
   --radius: 16px;
+
+  /* 🌿 Emerald Depth palette */
+  --background: 15 32 39;            /* #0F2027 */
+  --foreground: 224 245 232;         /* mint text for contrast */
+
+  --card: 40 98 58;                  /* #28623A */
+  --card-foreground: 224 245 232;
+  --muted: 25 60 44;
+  --muted-foreground: 188 219 201;
+  --border: 21 50 38;
+  --border-darker: 12 32 24;
+
+  --primary: 40 98 58;
+  --primary-foreground: 224 245 232;
+  --secondary: 20 48 36;
+  --secondary-foreground: 224 245 232;
+
+  --success: 86 179 122;
+  --warning: 240 200 120;
+  --danger: 210 90 90;
+
+  --input: 22 54 40;
+  --input-border: 28 72 50;
+  --overlay: 0 0 0 / 0.55;
 }
 
 /* Body nền tổng thể */
 [data-theme='liquidglass'] body {
-  background-color: rgb(var(--background));
+  background:
+    linear-gradient(160deg, rgba(15, 32, 39, 0.95) 0%, rgba(40, 98, 58, 0.85) 45%, rgba(18, 46, 32, 0.9) 100%),
+    radial-gradient(circle at 20% 20%, rgba(40, 98, 58, 0.55), transparent 55%),
+    radial-gradient(circle at 80% 25%, rgba(26, 62, 44, 0.75), transparent 60%),
+    radial-gradient(circle at 30% 80%, rgba(12, 32, 24, 0.6), transparent 65%),
+    rgb(var(--background));
   color: rgb(var(--foreground));
   font-family: system-ui, sans-serif;
   font-size: 1rem; /* 16px — giống Dark/Light */
@@ -168,12 +197,16 @@
 [data-theme='liquidglass'] .panel,
 [data-theme='liquidglass'] .modal {
   position: relative;
-  background: rgba(var(--card), 0.25);       /* nền bán trong suốt */
-  backdrop-filter: blur(16px);               /* kính mờ */
-  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(
+      140deg,
+      rgba(40, 98, 58, 0.9),
+      rgba(16, 39, 32, 0.95)
+    );
+  backdrop-filter: blur(18px);               /* kính mờ */
+  -webkit-backdrop-filter: blur(18px);
   border-radius: var(--radius);
-  border: 1px solid rgba(var(--border), 0.2); /* viền mờ glassy */
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* nổi khối */
+  border: 1px solid rgba(var(--border), 0.45); /* viền emerald */
+  box-shadow: 0 18px 48px rgba(7, 17, 13, 0.45);
   overflow: hidden;
   color: rgb(var(--card-foreground));
   padding: 2rem;
@@ -186,11 +219,9 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(var(--primary), 0.15) 0%,
-    rgba(var(--secondary), 0.1) 100%
-  );
+  background:
+    radial-gradient(circle at 25% 25%, rgba(224, 245, 232, 0.12), transparent 55%),
+    radial-gradient(circle at 75% 75%, rgba(64, 128, 90, 0.18), transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
@@ -205,10 +236,14 @@
 [data-theme='liquidglass'] input,
 [data-theme='liquidglass'] textarea,
 [data-theme='liquidglass'] select {
-  background: rgba(var(--input), 0.35);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--input), 0.75),
+    rgba(var(--secondary), 0.55)
+  );
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(var(--input-border), 0.2);
+  border: 1px solid rgba(var(--input-border), 0.4);
   border-radius: 12px;
   color: rgb(var(--foreground));
  
@@ -220,12 +255,17 @@
 [data-theme='liquidglass'] input:focus,
 [data-theme='liquidglass'] textarea:focus,
 [data-theme='liquidglass'] select:focus {
-  border-color: rgba(var(--primary), 0.6);
+  border-color: rgba(var(--primary), 0.75);
+  box-shadow: 0 0 0 3px rgba(86, 179, 122, 0.35);
 }
 
 /* Button primary kiểu kính */
 [data-theme='liquidglass'] .btn-primary {
-  background: rgba(var(--primary), 0.8);
+  background: linear-gradient(
+    125deg,
+    rgba(var(--primary), 0.95) 0%,
+    rgba(18, 46, 32, 0.9) 100%
+  );
   color: rgb(var(--primary-foreground));
   border-radius: 12px;
   padding: 0.7rem 1.5rem;
@@ -242,7 +282,10 @@
 
 /* Overlay / modal backdrop kiểu kính mờ */
 [data-theme='liquidglass'] .overlay {
-  background-color: rgba(var(--overlay));
+  background:
+    radial-gradient(circle at 30% 20%, rgba(40, 98, 58, 0.25), transparent 60%),
+    radial-gradient(circle at 70% 75%, rgba(12, 32, 24, 0.4), transparent 65%),
+    rgba(var(--overlay));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   position: fixed;
