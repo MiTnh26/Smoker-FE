@@ -3,6 +3,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
+import { getEntityMapFromSession } from "../../../utils/sessionHelper";
 import "../../../styles/layouts/rightSidebar.css";
 
 const MAX_CONTACTS = 6; // Chỉ hiển thị 6 liên hệ gần nhất
@@ -99,58 +100,17 @@ export default function RightSidebar() {
             let userAvatar = null;
             let entityId = otherParticipantId;
             
-            // First, check if this entityId belongs to the current user's entities (own bar/business)
+            // Ưu tiên lấy từ session map, tránh gọi API 404 cho BarPage/Business
             try {
-              const sessionRaw = localStorage.getItem("session");
-              if (sessionRaw) {
-                const session = JSON.parse(sessionRaw);
-                const entities = session?.entities || [];
-                const activeEntity = session?.activeEntity;
-                
-                // Normalize otherParticipantId for comparison (case-insensitive, trimmed)
-                const targetEntityId = String(otherParticipantId).toLowerCase().trim();
-                
-                // Check activeEntity first (most common case)
-                let ownEntity = null;
-                if (activeEntity) {
-                  const activeEntityId = String(activeEntity.id || activeEntity.EntityAccountId || activeEntity.entityAccountId || "").toLowerCase().trim();
-                  if (activeEntityId === targetEntityId) {
-                    ownEntity = activeEntity;
-                  }
-                }
-                
-                // If not found in activeEntity, check entities array
-                if (!ownEntity) {
-                  ownEntity = entities.find(e => {
-                    const entityAccountId = String(e.EntityAccountId || e.entityAccountId || e.id || "").toLowerCase().trim();
-                    return entityAccountId === targetEntityId;
-                  });
-                }
-                
-                if (ownEntity) {
-                  // Use data from session (own entity)
-                  userName = ownEntity.name || otherParticipantId;
-                  userAvatar = ownEntity.avatar || null;
-                  entityId = otherParticipantId;
-                } else {
-                  // If not found in session, try API call
-                  try {
-                    const profileRes = await publicProfileApi.getByEntityId(otherParticipantId);
-                    const profile = profileRes?.data?.data || profileRes?.data || {};
-                    userName = profile.name || profile.BarName || profile.userName || otherParticipantId;
-                    userAvatar = profile.avatar || profile.Avatar || null;
-                    entityId = profile.entityId || otherParticipantId;
-                  } catch (err) {
-                    // Handle 404 and other errors gracefully
-                    if (err?.response?.status === 404) {
-                      console.warn(`[RightSidebar] Entity not found in API for ${otherParticipantId}, using fallback`);
-                    } else {
-                      console.warn(`[RightSidebar] Failed to fetch profile for ${otherParticipantId}:`, err);
-                    }
-                  }
-                }
+              const map = getEntityMapFromSession();
+              const targetId = String(otherParticipantId).toLowerCase().trim();
+              const cached = map.get(targetId);
+              if (cached) {
+                userName = cached.name || otherParticipantId;
+                userAvatar = cached.avatar || null;
+                entityId = otherParticipantId;
               } else {
-                // No session, try API call
+                // Fallback: vẫn thử API nếu backend có
                 try {
                   const profileRes = await publicProfileApi.getByEntityId(otherParticipantId);
                   const profile = profileRes?.data?.data || profileRes?.data || {};
@@ -158,29 +118,14 @@ export default function RightSidebar() {
                   userAvatar = profile.avatar || profile.Avatar || null;
                   entityId = profile.entityId || otherParticipantId;
                 } catch (err) {
-                  if (err?.response?.status === 404) {
-                    console.warn(`[RightSidebar] Entity not found in API for ${otherParticipantId}, using fallback`);
-                  } else {
-                    console.warn(`[RightSidebar] Failed to fetch profile for ${otherParticipantId}:`, err);
+                  // Bỏ qua 404, dùng fallback ID
+                  if (err?.response?.status !== 404) {
+                    console.warn(`[RightSidebar] Failed to fetch profile for ${otherParticipantId}:`, err?.response?.data || err?.message);
                   }
                 }
               }
             } catch (sessionErr) {
-              console.warn(`[RightSidebar] Error checking session entities:`, sessionErr);
-              // Fallback to API call
-              try {
-                const profileRes = await publicProfileApi.getByEntityId(otherParticipantId);
-                const profile = profileRes?.data?.data || profileRes?.data || {};
-                userName = profile.name || profile.BarName || profile.userName || otherParticipantId;
-                userAvatar = profile.avatar || profile.Avatar || null;
-                entityId = profile.entityId || otherParticipantId;
-              } catch (err) {
-                if (err?.response?.status === 404) {
-                  console.warn(`[RightSidebar] Entity not found in API for ${otherParticipantId}, using fallback`);
-                } else {
-                  console.warn(`[RightSidebar] Failed to fetch profile for ${otherParticipantId}:`, err);
-                }
-              }
+              console.warn(`[RightSidebar] Error resolving profile from session:`, sessionErr);
             }
             
             return {

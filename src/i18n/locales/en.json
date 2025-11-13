@@ -198,8 +198,19 @@
   },
   "modal": {
     "reportTitle": "Report post",
-    "reportReason": "Report reason (required)",
-    "reportDetails": "Details (optional)",
+    "reportReason": "Select a reason",
+    "reportReasonRequired": "Please choose a reason",
+    "reportDetails": "Additional details (optional)",
+    "reportDetailsPlaceholder": "Describe what happened (optional)",
+    "reportUserTitle": "Report {{name}}",
+    "reportReasonOptions": {
+      "spam": "Spam or misleading",
+      "violence": "Violence or dangerous activity",
+      "harassment": "Harassment or hate speech",
+      "adult": "Adult or sensitive content",
+      "fraud": "Fraud or scam",
+      "other": "Other violations"
+    },
     "cancel": "Cancel",
     "sending": "Sending...",
     "sendReport": "Send report",
@@ -443,6 +454,7 @@
     "copyFailed": "Failed to copy link",
     "confirmReport": "Are you sure you want to report this story?",
     "reported": "Story reported",
+    "reportingStoryOf": "Reporting story of {{name}}",
     "confirmDelete": "Are you sure you want to delete this story?",
     "deleted": "Story deleted",
     "deleteFailed": "Failed to delete story",
@@ -503,7 +515,14 @@
     "contact": "Contact",
     "posts": "Posts",
     "postTitleFallback": "Post",
-    "noPosts": "No posts yet."
+    "noPosts": "No posts yet.",
+    "reportProfile": "Report profile",
+    "blockProfile": "Block",
+    "blockConfirm": "Block {{name}}? You will no longer see content from this profile.",
+    "blockSuccess": "Profile blocked. You will no longer see updates from this user.",
+    "blockError": "Unable to block this profile right now. Please try again later.",
+    "reportSubmitted": "Thanks. Your report has been submitted.",
+    "thisUser": "this user"
   }
 }
 

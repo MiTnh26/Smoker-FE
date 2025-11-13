@@ -1,19 +1,21 @@
 // src/components/layout/BarHeader.js
 import { Link, useNavigate } from "react-router-dom";
-import { Home, MessageCircle, User, Search } from "lucide-react";
+import { Home, MessageCircle, User, Search, Bell } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import UnifiedMenu from "../../common/UnifiedMenu";
 import MessagesPanel from "../common/MessagesPanel";
-import NotificationDropdown from "../../common/NotificationDropdown";
+import NotificationPanel from "../common/NotificationPanel";
 import DropdownPanel from "../../common/DropdownPanel";
 import { cn } from "../../../utils/cn";
 import GlobalSearch from "../common/GlobalSearch";
+import notificationApi from "../../../api/notificationApi";
 
 export default function BarHeader() {
   const navigate = useNavigate();
-  const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | null
+  const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | 'notifications' | null
   const [barUser, setBarUser] = useState(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const { t } = useTranslation();
   const [session, setSession] = useState(() => {
     try {
@@ -85,6 +87,23 @@ export default function BarHeader() {
     }
   }, []);
 
+  useEffect(() => {
+    const fetchUnreadNotificationCount = async () => {
+      try {
+        const response = await notificationApi.getUnreadCount();
+        if (response.success && response.data) {
+          setUnreadNotificationCount(response.data.count || 0);
+        }
+      } catch (error) {
+        console.error("[BarHeader] Error fetching unread notification count:", error);
+      }
+    };
+
+    fetchUnreadNotificationCount();
+    const interval = setInterval(fetchUnreadNotificationCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
+  
   if (!session || !session.activeEntity) {
     return null; // or a loading state
   }
@@ -109,7 +128,7 @@ export default function BarHeader() {
     if (role === "dancer") return "/dancer/newsfeed";
     return "/bar/newsfeed"; // default for bar
   };
-  
+
   return (
     <>
       <header className={cn(
@@ -167,8 +186,32 @@ export default function BarHeader() {
               <MessageCircle size={24} />
             </button>
             
-            {/* Notification Dropdown */}
-            <NotificationDropdown />
+            <button 
+              className={cn(
+                "rounded-lg p-2 flex items-center justify-center",
+                "transition-all duration-200 cursor-pointer relative",
+                "text-muted-foreground",
+                activePanel === "notifications" 
+                  ? "text-primary-foreground bg-primary" 
+                  : "hover:text-primary hover:bg-primary/10",
+                "active:scale-95"
+              )}
+              onClick={() => togglePanel("notifications")}
+            >
+              <Bell size={24} />
+              {unreadNotificationCount > 0 && (
+                <span className={cn(
+                  "absolute -top-1 -right-1 min-w-[18px] h-[18px]",
+                  "px-1 flex items-center justify-center",
+                  "bg-danger text-primary-foreground rounded-full",
+                  "text-[11px] font-semibold leading-none",
+                  "border-2 border-card z-10",
+                  "shadow-[0_2px_4px_rgba(0,0,0,0.2)]"
+                )}>
+                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                </span>
+              )}
+            </button>
 
             <button 
               className={cn(
@@ -194,6 +237,7 @@ export default function BarHeader() {
         title={(() => {
           if (activePanel === "user") return t('layout.businessMenu');
           if (activePanel === "messages") return t('layout.messages');
+          if (activePanel === "notifications") return t('layout.notifications');
           return "";
         })()}
       >
@@ -207,6 +251,12 @@ export default function BarHeader() {
         )}
         {activePanel === "messages" && (
           <MessagesPanel conversations={conversations} onClose={() => setActivePanel(null)} />
+        )}
+        {activePanel === "notifications" && (
+          <NotificationPanel
+            onClose={() => setActivePanel(null)}
+            onUnreadCountChange={(count) => setUnreadNotificationCount(count)}
+          />
         )}
       </DropdownPanel>
     </>

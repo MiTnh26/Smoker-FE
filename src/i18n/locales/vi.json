@@ -198,8 +198,19 @@
   },
   "modal": {
     "reportTitle": "Báo cáo bài viết",
-    "reportReason": "Lý do báo cáo (bắt buộc)",
-    "reportDetails": "Chi tiết (tuỳ chọn)",
+    "reportReason": "Chọn lý do",
+    "reportReasonRequired": "Vui lòng chọn một lý do",
+    "reportDetails": "Chi tiết bổ sung (tùy chọn)",
+    "reportDetailsPlaceholder": "Mô tả cụ thể hơn nếu bạn muốn (tùy chọn)",
+    "reportUserTitle": "Báo cáo {{name}}",
+    "reportReasonOptions": {
+      "spam": "Spam hoặc nội dung gây hiểu lầm",
+      "violence": "Bạo lực hoặc hoạt động nguy hiểm",
+      "harassment": "Quấy rối hoặc thù ghét",
+      "adult": "Nội dung người lớn, nhạy cảm",
+      "fraud": "Lừa đảo, chiếm đoạt",
+      "other": "Vi phạm khác"
+    },
     "cancel": "Hủy",
     "sending": "Đang gửi...",
     "sendReport": "Gửi báo cáo",
@@ -442,6 +453,7 @@
     "copyFailed": "Không thể copy link",
     "confirmReport": "Bạn có chắc muốn báo cáo story này?",
     "reported": "Đã báo cáo story",
+    "reportingStoryOf": "Báo cáo story của {{name}}",
     "confirmDelete": "Bạn có chắc muốn xóa story này?",
     "deleted": "Đã xóa story",
     "deleteFailed": "Không thể xóa story",
@@ -495,14 +507,21 @@
     "loading": "Đang tải hồ sơ...",
     "error": "Không thể tải hồ sơ.",
     "notFound": "Không tìm thấy hồ sơ.",
-    "followers": "Followers",
-    "following": "Following",
+    "followers": "Người theo dõi",
+    "following": "Đang theo dõi",
     "friends": "Bạn bè",
     "about": "Giới thiệu",
     "contact": "Liên hệ",
     "posts": "Bài viết",
     "postTitleFallback": "Bài viết",
-    "noPosts": "Chưa có bài viết."
+    "noPosts": "Chưa có bài viết.",
+    "reportProfile": "Báo cáo hồ sơ",
+    "blockProfile": "Chặn",
+    "blockConfirm": "Chặn {{name}}? Bạn sẽ không còn thấy nội dung từ hồ sơ này.",
+    "blockSuccess": "Đã chặn hồ sơ. Bạn sẽ không còn thấy cập nhật từ người dùng này.",
+    "blockError": "Tạm thời không thể chặn hồ sơ. Vui lòng thử lại sau.",
+    "reportSubmitted": "Cảm ơn bạn. Báo cáo đã được gửi.",
+    "thisUser": "người dùng này"
   }
 }
 

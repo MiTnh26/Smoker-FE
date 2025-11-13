@@ -7,7 +7,14 @@ import { cn } from "../../../../utils/cn";
 
 const DEFAULT_REASON_KEY = "spam";
 
-export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
+export default function ReportEntityModal({
+  open,
+  entityId,
+  entityType,
+  entityName,
+  onClose,
+  onSubmitted,
+}) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const [reasonKey, setReasonKey] = useState(DEFAULT_REASON_KEY);
@@ -19,7 +26,7 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
       const raw = localStorage.getItem("session");
       return raw ? JSON.parse(raw) : null;
     } catch (error) {
-      console.warn("[ReportPostModal] Failed to parse session", error);
+      console.warn("[ReportEntityModal] Failed to parse session", error);
       return null;
     }
   }, []);
@@ -85,22 +92,7 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
       .map((value) => normalizeGuid(String(value)))
       .find(Boolean);
 
-  const candidateOwnerIds = [
-    post?.ownerAccountId,
-    post?.accountId &&
-      (!post?.ownerEntityAccountId ||
-        String(post.accountId).toLowerCase() !== String(post.ownerEntityAccountId).toLowerCase())
-      ? post.accountId
-      : null,
-    post?.owner?.AccountId,
-    post?.owner?.id,
-    post?.author?.AccountId,
-    post?.author?.id,
-  ];
-
-  const targetOwnerGuid = normalizeCandidateList(candidateOwnerIds);
-
-  const targetType = (post?.targetType || post?.type || "post").toString().toLowerCase();
+  const targetOwnerGuid = normalizeGuid(entityId);
   const reasonOptions = useMemo(
     () => [
       { value: "spam", label: t("modal.reportReasonOptions.spam") },
@@ -118,12 +110,22 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
     if (open) {
       setReasonKey(DEFAULT_REASON_KEY);
       setDetails("");
-    } else {
       setSubmitting(false);
     }
   }, [open]);
 
-  console.log("Reporting post:", post);
+  const resolveTargetType = () => {
+    const type = (entityType || "").toString().toUpperCase();
+    if (type === "BAR" || type.includes("BARPAGE")) return "BarPage";
+    if (
+      type.includes("BUSINESS") ||
+      type.includes("DJ") ||
+      type.includes("DANCER")
+    )
+      return "BusinessAccount";
+    return "Account";
+  };
+
   if (!open) return null;
 
   const handleSubmit = async (e) => {
@@ -137,36 +139,42 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
       if (!reporterGuid) {
         throw new Error("Không xác định được tài khoản người báo cáo");
       }
+      if (!targetOwnerGuid) {
+        throw new Error("Không xác định được tài khoản bị báo cáo");
+      }
 
       setSubmitting(true);
-      // Call API to create report
+
       const payload = {
         ReporterId: reporterGuid,
         ReporterRole: reporterRole,
-        TargetType: targetType,
-        TargetId: post?.id,
-        TargetOwnerId: targetOwnerGuid || undefined,
+        TargetType: resolveTargetType(),
+        TargetId: targetOwnerGuid,
+        TargetOwnerId: targetOwnerGuid,
         Reason: selectedReason || reasonKey,
         Description: details.trim(),
         Status: "Pending",
         CreatedAt: new Date().toISOString(),
         UpdatedAt: new Date().toISOString(),
       };
+
       await reportApi.createReport(payload);
-      onSubmitted?.({ postId: post?.id, reason: selectedReason || reasonKey, details: details.trim() });
+      onSubmitted?.({
+        entityId,
+        reason: selectedReason || reasonKey,
+        details: details.trim(),
+      });
       onClose?.();
     } catch (error) {
-      // Optionally handle error (e.g., show toast)
       alert(error?.response?.data?.message || error.message || "Gửi báo cáo thất bại");
-      // eslint-disable-next-line no-console
-      console.error("Report submission failed", error);
+      console.error("Report entity failed", error);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div 
+    <div
       className={cn(
         "fixed inset-0 z-[1000]",
         "flex items-center justify-center p-4"
@@ -196,18 +204,22 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
           "overflow-hidden"
         )}
       >
-        <div className={cn(
-          "p-5 border-b border-border/30 font-semibold text-lg",
-          "bg-card/80 backdrop-blur-sm relative z-10"
-        )}>
-          🚩 {t('modal.reportTitle')}
+        <div
+          className={cn(
+            "p-5 border-b border-border/30 font-semibold text-lg",
+            "bg-card/80 backdrop-blur-sm relative z-10"
+          )}
+        >
+          🚩 {t("modal.reportUserTitle", { name: entityName || "" })}
         </div>
         <form
           onSubmit={handleSubmit}
           className={cn("p-5 flex flex-col gap-4 relative z-10")}
         >
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-foreground">{t("modal.reportReason")}</span>
+            <span className="text-sm font-medium text-foreground">
+              {t("modal.reportReason")}
+            </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {reasonOptions.map((option) => {
                 const isActive = option.value === reasonKey;
@@ -229,7 +241,7 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
             </div>
           </div>
           <textarea
-            placeholder={t('modal.reportDetailsPlaceholder')}
+            placeholder={t("modal.reportDetailsPlaceholder")}
             rows={5}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
@@ -242,12 +254,14 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
               "placeholder:text-muted-foreground/60"
             )}
           />
-          <div className={cn(
-            "flex gap-2 justify-end pt-4 border-t border-border/30 mt-2"
-          )}>
-            <button 
-              type="button" 
-              onClick={onClose} 
+          <div
+            className={cn(
+              "flex gap-2 justify-end pt-4 border-t border-border/30 mt-2"
+            )}
+          >
+            <button
+              type="button"
+              onClick={onClose}
               disabled={submitting}
               className={cn(
                 "px-5 py-2.5 rounded-lg text-sm font-medium",
@@ -258,10 +272,10 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
                 "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               )}
             >
-              {t('modal.cancel')}
+              {t("modal.cancel")}
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={submitting || !reasonKey}
               className={cn(
                 "px-5 py-2.5 rounded-lg text-sm font-medium",
@@ -272,7 +286,7 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
                 "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               )}
             >
-              {submitting ? t('modal.sending') : t('modal.sendReport')}
+              {submitting ? t("modal.sending") : t("modal.sendReport")}
             </button>
           </div>
         </form>
@@ -281,11 +295,12 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
   );
 }
 
-ReportPostModal.propTypes = {
+ReportEntityModal.propTypes = {
   open: PropTypes.bool,
-  post: PropTypes.object,
+  entityId: PropTypes.string,
+  entityType: PropTypes.string,
+  entityName: PropTypes.string,
   onClose: PropTypes.func,
   onSubmitted: PropTypes.func,
 };
-
 

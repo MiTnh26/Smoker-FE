@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next"; // i18n
 import { Link, useNavigate } from "react-router-dom";
-import { User, ChevronDown, ChevronUp } from "lucide-react";
+import { User, ChevronDown, ChevronUp } from "lucide-react";      
 import {
   normalizeSession,
   normalizeEntity,

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+/* global globalThis */
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import FollowButton from "../../../components/common/FollowButton";
@@ -8,7 +9,110 @@ import { getPostsByAuthor } from "../../../api/postApi";
 import messageApi from "../../../api/messageApi";
 import { cn } from "../../../utils/cn";
 import PostCard from "../../feeds/components/post/PostCard";
+import RequestBookingModal from "../../../components/booking/RequestBookingModal";
+import ReportEntityModal from "../../feeds/components/modals/ReportEntityModal";
 
+const normalizeMediaArray = (medias) => {
+  const images = [];
+  const videos = [];
+
+  if (Array.isArray(medias)) {
+    for (const mediaItem of medias) {
+      if (!mediaItem) continue;
+      const url = mediaItem.url || mediaItem.src || mediaItem.path;
+      const type = (mediaItem.type || "").toLowerCase();
+      if (!url) continue;
+      if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else {
+        images.push({ url, id: mediaItem._id || mediaItem.id || url });
+      }
+    }
+  } else if (medias && typeof medias === "object") {
+    for (const key of Object.keys(medias)) {
+      const mediaItem = medias[key];
+      if (!mediaItem) continue;
+      const url = mediaItem.url || mediaItem.src || mediaItem.path;
+      const type = (mediaItem.type || "").toLowerCase();
+      if (!url) continue;
+      if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else {
+        images.push({ url, id: mediaItem._id || mediaItem.id || url });
+      }
+    }
+  }
+  return { images, videos };
+};
+
+const countCollection = (value) => {
+  if (!value) return 0;
+  if (Array.isArray(value)) return value.length;
+  if (value instanceof Map) return value.size;
+  if (typeof value === "object") return Object.keys(value).length;
+  if (typeof value === "number") return value;
+  return 0;
+};
+
+const formatPostTime = (value) => {
+  if (!value) return "";
+  try {
+    return new Date(value).toLocaleString("vi-VN");
+  } catch {
+    return "";
+  }
+};
+
+const getWindow = () => (typeof globalThis !== "undefined" ? globalThis : undefined);
+
+// eslint-disable-next-line complexity
+const mapPostForCard = (post, t) => {
+  const id = post._id || post.id || post.postId;
+  const author = post.author || post.account || {};
+  const mediaFromPost = normalizeMediaArray(post.medias);
+  const mediaFromMediaIds = normalizeMediaArray(post.mediaIds);
+  const images = [...mediaFromPost.images, ...mediaFromMediaIds.images];
+  const videos = [...mediaFromPost.videos, ...mediaFromMediaIds.videos];
+
+  const resolveUserName = () =>
+    post.authorName ||
+    post.authorEntityName ||
+    author.userName ||
+    author.name ||
+    t("common.user");
+
+  const resolveAvatar = () =>
+    post.authorAvatar ||
+    post.authorEntityAvatar ||
+    author.avatar ||
+    "https://via.placeholder.com/40";
+
+  return {
+    id,
+    user: resolveUserName(),
+    avatar: resolveAvatar(),
+    time: formatPostTime(post.createdAt),
+    content: post.content || post.caption || "",
+    medias: { images, videos },
+    image: images[0]?.url || null,
+    videoSrc: videos[0]?.url || null,
+    audioSrc: null,
+    likes: countCollection(post.likes),
+    likedByCurrentUser: false,
+    comments: countCollection(post.comments),
+    shares: post.shares || 0,
+    hashtags: post.hashtags || [],
+    verified: !!post.verified,
+   location: post.location || null,
+    title: post.title || null,
+    canManage: false,
+    ownerEntityAccountId: post.entityAccountId || null,
+    ownerAccountId: post.accountId || null,
+    targetType: post.type || "post",
+  };
+};
+
+// eslint-disable-next-line complexity
 export default function PublicProfile() {
   const { entityId } = useParams();
   const { t } = useTranslation();
@@ -20,6 +124,10 @@ export default function PublicProfile() {
   const { followers, fetchFollowers } = useFollowers(entityId);
   const { following, fetchFollowing } = useFollowing(entityId);
   const [posts, setPosts] = useState([]);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -69,12 +177,37 @@ export default function PublicProfile() {
     const loadPosts = async () => {
       try {
         const resp = await getPostsByAuthor(entityId, {});
-        if (alive) setPosts(resp?.data || resp?.data?.data || []);
+        if (!alive) return;
+
+        let rawPosts = [];
+        if (Array.isArray(resp?.data)) {
+          rawPosts = resp.data;
+        } else if (Array.isArray(resp?.data?.data)) {
+          rawPosts = resp.data.data;
+        }
+
+        const transformed = rawPosts.map((post) => mapPostForCard(post, t));
+        setPosts(transformed);
       } catch {}
     };
     if (entityId) loadPosts();
     return () => { alive = false; };
-  }, [entityId]);
+  }, [entityId, t]);
+
+  useEffect(() => {
+    if (!actionMenuOpen) return;
+    const handleOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setActionMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("touchstart", handleOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, [actionMenuOpen]);
 
   if (loading) {
     return (
@@ -100,6 +233,36 @@ export default function PublicProfile() {
 
   const isOwnProfile = currentUserEntityId && String(currentUserEntityId).toLowerCase() === String(entityId).toLowerCase();
 
+  const resolveTargetType = () => {
+    const type = (profile?.type || profile?.role || "").toString().toUpperCase();
+    if (type === "BAR" || type.includes("BARPAGE")) return "BarPage";
+    if (type.includes("BUSINESS") || type.includes("DJ") || type.includes("DANCER")) {
+      return "BusinessAccount";
+    }
+    return "Account";
+  };
+
+  const handleBlock = () => {
+    setActionMenuOpen(false);
+    const win = getWindow();
+    const confirmed = win?.confirm
+      ? win.confirm(t("publicProfile.blockConfirm", { name: profile.name || t("publicProfile.thisUser") }))
+      : false;
+    if (!confirmed) return;
+    try {
+      const blockedRaw = localStorage.getItem("blockedEntities");
+      const blocked = blockedRaw ? JSON.parse(blockedRaw) : [];
+      if (!blocked.includes(entityId)) {
+        blocked.push(entityId);
+        localStorage.setItem("blockedEntities", JSON.stringify(blocked));
+      }
+      alert(t("publicProfile.blockSuccess"));
+    } catch (err) {
+      console.error("Failed to persist block list:", err);
+      alert(t("publicProfile.blockError"));
+    }
+  };
+
   return (
     <div className={cn("min-h-screen bg-background")}>
       {/* Cover Photo Section - Instagram Style */}
@@ -112,10 +275,23 @@ export default function PublicProfile() {
         />
         {/* Gradient Overlay */}
         <div className={cn("absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60")} />
-        
+
         {/* Action Buttons */}
         {!isOwnProfile && (
           <div className={cn("absolute top-4 right-4 z-10 flex items-center gap-2")}>
+            <button
+              onClick={() => setBookingOpen(true)}
+              className={cn(
+                "px-4 py-2 rounded-lg font-semibold text-sm",
+                "bg-primary text-primary-foreground border-none",
+                "hover:bg-primary/90 transition-all duration-200",
+                "active:scale-95",
+                "flex items-center gap-2"
+              )}
+            >
+              <i className="bx bxs-calendar-check text-base" />
+              <span>Request booking</span>
+            </button>
             <button
               onClick={async () => {
                 try {
@@ -131,14 +307,15 @@ export default function PublicProfile() {
                     entities[0]?.EntityAccountId ||
                     entities[0]?.entityAccountId ||
                     null;
-                  
+
                   if (!currentUserId) return;
-                  
+
                   const res = await messageApi.createOrGetConversation(currentUserId, entityId);
                   const conversation = res?.data?.data || res?.data;
                   const conversationId = conversation?._id || conversation?.conversationId || conversation?.id;
-                  if (conversationId && window.__openChat) {
-                    window.__openChat({
+                  const win = getWindow();
+                  if (conversationId && win?.__openChat) {
+                    win.__openChat({
                       id: conversationId,
                       name: profile.name || "User",
                       avatar: profile.avatar || null,
@@ -157,14 +334,68 @@ export default function PublicProfile() {
                 "flex items-center gap-2"
               )}
             >
-              <i className="bx bx-message-rounded text-base"></i>
-              Chat
+              <i className="bx bx-message-rounded text-base" />
+              <span>Chat</span>
             </button>
             <FollowButton
               followingId={entityId}
               followingType={profile.type === 'BAR' ? 'BAR' : 'USER'}
               onChange={() => setRefreshTick(v => v + 1)}
             />
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setActionMenuOpen((prev) => !prev)}
+                className={cn(
+                  "w-10 h-10 rounded-full border border-border/40 text-foreground/80",
+                  "bg-card/70 backdrop-blur-sm flex items-center justify-center",
+                  "hover:bg-card/90 transition-all duration-200 active:scale-95"
+                )}
+                aria-haspopup="true"
+                aria-expanded={actionMenuOpen}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="5" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="12" cy="19" r="2" />
+                </svg>
+              </button>
+              {actionMenuOpen && (
+                <div
+                  className={cn(
+                    "absolute right-0 mt-2 w-48 rounded-lg border border-border/30",
+                    "bg-card/95 backdrop-blur-sm text-foreground shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
+                    "overflow-hidden z-20"
+                  )}
+                  role="menu"
+                >
+                  <button
+                    type="button"
+                    className={cn(
+                      "w-full text-left px-4 py-2 text-sm",
+                      "hover:bg-danger/10 hover:text-danger transition-all duration-150"
+                    )}
+                    onClick={() => {
+                      setActionMenuOpen(false);
+                      setReportModalOpen(true);
+                    }}
+                  >
+                    {t("publicProfile.reportProfile")}
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      "w-full text-left px-4 py-2 text-sm",
+                      "hover:bg-muted/40 transition-all duration-150"
+                    )}
+                    onClick={handleBlock}
+                  >
+                    {t("publicProfile.blockProfile")}
+                  </button>
+                </div>
+              )}
+            </div>
+        
           </div>
         )}
 
@@ -329,8 +560,30 @@ export default function PublicProfile() {
           )}
         </section>
       </div>
+
+      {bookingOpen && (
+        <RequestBookingModal
+          open={bookingOpen}
+          onClose={() => setBookingOpen(false)}
+          performerEntityAccountId={entityId}
+          performerRole={(profile.role || profile.type || "").toString().toUpperCase().includes("DANCER") ? "DANCER" : "DJ"}
+        />
+      )}
+      {reportModalOpen && (
+        <ReportEntityModal
+          open={reportModalOpen}
+          entityId={entityId}
+          entityType={resolveTargetType()}
+          entityName={profile.name}
+          onClose={() => setReportModalOpen(false)}
+          onSubmitted={() => {
+            setReportModalOpen(false);
+            alert(t("publicProfile.reportSubmitted"));
+          }}
+        />
+      )}
     </div>
   );
 }
-
-
+ 
+ 

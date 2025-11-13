@@ -4,7 +4,7 @@ import SelectSong from "../music/SelectSong";
 import Cropper from "react-easy-crop";
 import Slider from "@mui/material/Slider";
 import getCroppedImg from "../utils/cropImage";
-import { createStory } from "../../../../api/storyApi";
+import PropTypes from "prop-types";
 
 export default function StoryEditor({ onStoryCreated, onClose }) {
   const { t } = useTranslation();
@@ -17,7 +17,6 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activePanel, setActivePanel] = useState(null); // 'text', 'music', 'alternative'
-  const [songListKey, setSongListKey] = useState(0); // Key để force refresh SelectSong
   const [userInfo, setUserInfo] = useState({ name: '', avatar: '' });
   const inputFileRef = useRef();
   
@@ -59,51 +58,19 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
       croppedFile = await getCroppedImg(imageUrl, croppedAreaPixels);
     }
     
-    // Lấy entityAccountId từ activeEntity trong session
-    let session, entityAccountId, authorEntityId, authorEntityType;
     try {
-      const raw = localStorage.getItem("session");
-      session = raw ? JSON.parse(raw) : null;
-    } catch (e) {
-      session = null;
-    }
-    const activeEntity = session?.activeEntity || session?.account;
-    entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
-    authorEntityId = activeEntity?.id || session?.account?.id || null;
-    const rawRole = (activeEntity?.role || session?.account?.role || "").toLowerCase();
-    if (rawRole === "bar" || rawRole === "barpage") {
-      authorEntityType = "BarPage";
-    } else if (rawRole === "dj" || rawRole === "dancer" || rawRole === "business") {
-      authorEntityType = "BusinessAccount";
-    } else {
-      authorEntityType = "Account";
-    }
-    
-    const formData = new FormData();
-    formData.append("title", "Story");
-    formData.append("content", caption || ""); // Đảm bảo luôn có giá trị (ít nhất là empty string)
-    formData.append("caption", caption || ""); // Gửi cả caption để đảm bảo
-    formData.append("expiredAt", new Date(Date.now() + 24*60*60*1000).toISOString().slice(0,16));
-    formData.append("images", croppedFile);
-    formData.append("type", "story");
-    if (entityAccountId) formData.append("entityAccountId", entityAccountId);
-    if (authorEntityId) formData.append("authorEntityId", authorEntityId);
-    if (authorEntityType) formData.append("authorEntityType", authorEntityType);
-    // Story chỉ dùng songId (chọn từ danh sách), không upload file nhạc
-    if (selectedSongId) {
-      formData.append("songId", selectedSongId);
-    }
-    try {
-      const res = await createStory(formData);
-      if (res && res.data && res.data.data) {
-        onStoryCreated(res.data.data);
-      }
+      await onStoryCreated?.({
+        file: croppedFile,
+        caption,
+        music: selectedSongId ? { musicId: selectedSongId } : undefined,
+      });
       setFile(null);
       setCaption("");
       setImageUrl("");
       setSelectedSongId("");
       if (onClose) onClose();
     } catch (err) {
+      console.error("[StoryEditor] Failed to create story:", err);
       alert(t('modal.postFailed'));
     }
     setLoading(false);
@@ -149,6 +116,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
                 />
               </div>
         <button 
+          type="button"
           className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white transition-colors hover:bg-black/80"
           onClick={() => { 
             setFile(null); 
@@ -165,17 +133,35 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60" onClick={(e) => {
-      if (e.target === e.currentTarget && onClose) {
-        onClose();
-      }
-    }}>
-      <div className="grid w-[960px] max-w-[95vw] grid-cols-[280px_1fr] gap-4 rounded-lg border-[0.5px] border-border/20 bg-card p-4 text-card-foreground shadow-[0_2px_8px_rgba(0,0,0,0.12)]" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60"
+      tabIndex={-1}
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && onClose) {
+          onClose();
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && onClose) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="grid w-[960px] max-w-[95vw] grid-cols-[280px_1fr] gap-4 rounded-lg border-[0.5px] border-border/20 bg-card p-4 text-card-foreground shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Left Sidebar */}
         <div className="flex h-full flex-col">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-base font-semibold">{t('story.yourStory') || 'Your story'}</h2>
-            <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95" onClick={onClose} title={t('action.close') || 'Close'}>
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95"
+              onClick={onClose}
+              title={t('action.close') || 'Close'}
+            >
               ×
             </button>
           </div>
@@ -194,6 +180,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
           <div className="space-y-2">
             {/* Add Text Option */}
             <button 
+              type="button"
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${activePanel === 'text' ? 'bg-muted/60' : 'hover:bg-muted/50'}`}
               onClick={() => {
                 setActivePanel(activePanel === 'text' ? null : 'text');
@@ -205,6 +192,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
             
             {/* Add Music Option */}
             <button 
+              type="button"
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${activePanel === 'music' ? 'bg-muted/60' : 'hover:bg-muted/50'}`}
               onClick={() => {
                 setActivePanel(activePanel === 'music' ? null : 'music');
@@ -216,6 +204,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
             
             {/* Alternative Text Option (optional) */}
             <button 
+              type="button"
               className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm opacity-60 transition-colors ${activePanel === 'alternative' ? 'bg-muted/60' : 'hover:bg-muted/50'}`}
               onClick={() => {
                 setActivePanel(activePanel === 'alternative' ? null : 'alternative');
@@ -273,11 +262,11 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
             <div className="story-editor-music-panel">
               {/* Story chỉ cho phép chọn nhạc từ danh sách, không upload file */}
               {!selectedSongId && (
-                <SelectSong key={songListKey} value={selectedSongId} onChange={setSelectedSongId} />
+                <SelectSong value={selectedSongId} onChange={setSelectedSongId} />
               )}
               {selectedSongId && (
                 <div style={{ marginTop: 12 }}>
-                  <SelectSong key={songListKey} value={selectedSongId} onChange={setSelectedSongId} />
+                  <SelectSong value={selectedSongId} onChange={setSelectedSongId} />
                   <button 
                     onClick={() => setSelectedSongId("")}
                     style={{
@@ -322,4 +311,9 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
     </div>
   );
 }
+
+StoryEditor.propTypes = {
+  onStoryCreated: PropTypes.func,
+  onClose: PropTypes.func,
+};
 

@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
+import { getEntityMapFromSession } from "../../../utils/sessionHelper";
 /**
  * MessagesPanel - Hiển thị danh sách tin nhắn
  * Dùng DropdownPanel component chung từ BarHeader/CustomerHeader
@@ -14,6 +15,7 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [conversations, setConversations] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const entityMapRef = React.useRef(getEntityMapFromSession());
 
   // Relative time formatter: phút/giờ/ngày trước; >7 ngày => dd/MM; >1 năm => dd/MM/yyyy
   const formatRelativeTime = (date) => {
@@ -69,6 +71,7 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
           null;
         
         setActiveEntityId(currentEntityId);
+        entityMapRef.current = getEntityMapFromSession();
       } catch (err) {
         console.error("[MessagesPanel] Error checking session:", err);
       }
@@ -129,6 +132,35 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
         // Response structure: { success: true, data: conversations, ... }
         const conversationsData = res.data?.data || res.data || [];
         // Use Promise.allSettled instead of Promise.all to handle individual failures
+        const resolveProfile = async (entityAccountId) => {
+          if (!entityAccountId) return null;
+
+          const key = String(entityAccountId).toLowerCase();
+          const cached = entityMapRef.current.get(key);
+          if (cached) {
+            return {
+              name: cached.name || cached.raw?.displayName || entityAccountId,
+              avatar: cached.avatar || null,
+              entityId: entityAccountId,
+            };
+          }
+
+          try {
+            const res = await publicProfileApi.getByEntityId(entityAccountId);
+            const data = res?.data?.data || res?.data || {};
+            return {
+              name: data.name || data.BarName || data.BusinessName || data.userName || data.UserName || entityAccountId,
+              avatar: data.avatar || data.Avatar || null,
+              entityId: entityAccountId,
+            };
+          } catch (err) {
+            if (err?.response?.status === 404) {
+              return { name: entityAccountId, avatar: null, entityId: entityAccountId };
+            }
+            throw err;
+          }
+        };
+
         const mappedResults = await Promise.allSettled(
           conversationsData.map(async (conv) => {
             // Determine the other participant's EntityAccountId
@@ -169,157 +201,12 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
                 unread: 0
               };
             }
-            
-            // First, check if this entityId belongs to the current user's entities (own bar/business)
-            try {
-              const sessionRaw = localStorage.getItem("session");
-              if (sessionRaw) {
-                const session = JSON.parse(sessionRaw);
-                const entities = session?.entities || [];
-                
-                // Normalize otherParticipantId for comparison (case-insensitive, trimmed)
-                const targetEntityId = String(otherParticipantId).toLowerCase().trim();
-                
-                // Check if otherParticipantId matches any of user's own entities
-                const ownEntity = entities.find(e => {
-                  const entityAccountId = String(e.EntityAccountId || e.entityAccountId || "").toLowerCase().trim();
-                  return entityAccountId === targetEntityId;
-                });
-                
-                if (ownEntity) {
-                  // Use data from session (own entity)
-                  userName = ownEntity.name || otherParticipantId;
-                  userAvatar = ownEntity.avatar || null;
-                  entityId = otherParticipantId;
-                } else {
-                  // If not found in session, try API call
-                  try {
-                    const profileRes = await publicProfileApi.getByEntityId(otherParticipantId);
-                    console.log(`[MessagesPanel] Raw API response for ${otherParticipantId}:`, profileRes);
-                    
-                    // Backend returns: { success: true, data: { name, avatar, ... } }
-                    const profile = profileRes?.data?.data || profileRes?.data || {};
-                    console.log(`[MessagesPanel] Extracted profile for ${otherParticipantId}:`, profile);
-                    console.log(`[MessagesPanel] Profile fields - name: ${profile.name}, BarName: ${profile.BarName}, userName: ${profile.userName}, UserName: ${profile.UserName}`);
-                    
-                    // Backend returns: { name, avatar, ... } for all entity types
-                    // For BarPage: name = BarName (from SQL AS name)
-                    // For BusinessAccount: name = UserName (from SQL AS name)
-                    // For Account: name = UserName (from SQL AS name)
-                    userName = profile.name || profile.BarName || profile.BusinessName || profile.userName || profile.UserName || otherParticipantId;
-                    userAvatar = profile.avatar || profile.Avatar || null;
-                    entityId = profile.entityId || otherParticipantId;
-                    
-                    console.log(`[MessagesPanel] Final userName for ${otherParticipantId}: ${userName}`);
-                    
-                    if (userName === otherParticipantId) {
-                      console.warn(`[MessagesPanel] ⚠️ Could not get name for ${otherParticipantId}, using ID as fallback. Profile data:`, JSON.stringify(profile));
-                    }
-                  } catch (err) {
-                    // Handle 404 and other errors gracefully
-                    console.error(`[MessagesPanel] ❌ Error fetching profile for ${otherParticipantId}:`, {
-                      status: err?.response?.status,
-                      statusText: err?.response?.statusText,
-                      data: err?.response?.data,
-                      message: err?.message,
-                      stack: err?.stack
-                    });
-                    
-                    if (err?.response?.status === 404) {
-                      console.warn(`[MessagesPanel] Entity not found in API for ${otherParticipantId} - EntityAccountId may not exist in database`);
-                      // Don't show "Người dùng đã xóa" immediately - try to use fallback from conversation or ID
-                      // Only show "Người dùng đã xóa" if we truly cannot identify the user
-                      // For now, use a generic name or the EntityAccountId as fallback
-                      const shortId = otherParticipantId && otherParticipantId.length > 8 
-                        ? `${otherParticipantId.substring(0, 8)}...` 
-                        : otherParticipantId;
-                      userName = shortId ? `User ${shortId}` : "Người dùng";
-                    } else {
-                      console.warn(`[MessagesPanel] Failed to fetch profile for ${otherParticipantId}:`, err?.response?.data || err?.message);
-                      // Keep fallback to ID for other errors
-                      userName = otherParticipantId;
-                    }
-                  }
-                }
-              } else {
-                // No session, try API call
-                try {
-                  const profileRes = await publicProfileApi.getByEntityId(otherParticipantId);
-                  console.log(`[MessagesPanel] Raw API response for ${otherParticipantId}:`, profileRes);
-                  
-                  const profile = profileRes?.data?.data || profileRes?.data || {};
-                  console.log(`[MessagesPanel] Extracted profile for ${otherParticipantId}:`, profile);
-                  
-                  // Backend returns: { name, avatar, ... } for all entity types
-                  userName = profile.name || profile.BarName || profile.BusinessName || profile.userName || profile.UserName || otherParticipantId;
-                  userAvatar = profile.avatar || profile.Avatar || null;
-                  entityId = profile.entityId || otherParticipantId;
-                  
-                  console.log(`[MessagesPanel] Final userName for ${otherParticipantId}: ${userName}`);
-                  
-                  if (userName === otherParticipantId) {
-                    console.warn(`[MessagesPanel] ⚠️ Could not get name for ${otherParticipantId}, using ID as fallback. Profile data:`, JSON.stringify(profile));
-                  }
-                } catch (err) {
-                  console.error(`[MessagesPanel] ❌ Error fetching profile for ${otherParticipantId}:`, {
-                    status: err?.response?.status,
-                    statusText: err?.response?.statusText,
-                    data: err?.response?.data,
-                    message: err?.message
-                  });
-                  
-                  if (err?.response?.status === 404) {
-                    console.warn(`[MessagesPanel] Entity not found in API for ${otherParticipantId}, using fallback`);
-                    // Don't show "Người dùng đã xóa" - use generic name or ID
-                    const shortId = otherParticipantId && otherParticipantId.length > 8 
-                      ? `${otherParticipantId.substring(0, 8)}...` 
-                      : otherParticipantId;
-                    userName = shortId ? `User ${shortId}` : "Người dùng";
-                  } else {
-                    console.warn(`[MessagesPanel] Failed to fetch profile for ${otherParticipantId}:`, err?.response?.data || err?.message);
-                    // Keep fallback to ID for other errors
-                    userName = otherParticipantId;
-                  }
-                }
-              }
-            } catch (sessionErr) {
-              console.warn(`[MessagesPanel] Error checking session entities:`, sessionErr);
-              // Fallback to API call
-              try {
-                const profileRes = await publicProfileApi.getByEntityId(otherParticipantId);
-                console.log(`[MessagesPanel] Raw API response for ${otherParticipantId}:`, profileRes);
-                
-                const profile = profileRes?.data?.data || profileRes?.data || {};
-                console.log(`[MessagesPanel] Extracted profile for ${otherParticipantId}:`, profile);
-                
-                // Backend returns: { name, avatar, ... } for all entity types
-                userName = profile.name || profile.BarName || profile.BusinessName || profile.userName || profile.UserName || otherParticipantId;
-                userAvatar = profile.avatar || profile.Avatar || null;
-                entityId = profile.entityId || otherParticipantId;
-                
-                console.log(`[MessagesPanel] Final userName for ${otherParticipantId}: ${userName}`);
-                
-                if (userName === otherParticipantId) {
-                  console.warn(`[MessagesPanel] ⚠️ Could not get name for ${otherParticipantId}, using ID as fallback. Profile data:`, JSON.stringify(profile));
-                }
-              } catch (err) {
-                console.error(`[MessagesPanel] ❌ Error fetching profile for ${otherParticipantId}:`, {
-                  status: err?.response?.status,
-                  statusText: err?.response?.statusText,
-                  data: err?.response?.data,
-                  message: err?.message
-                });
-                
-                if (err?.response?.status === 404) {
-                  console.warn(`[MessagesPanel] Entity not found in API for ${otherParticipantId}, using fallback`);
-                  // Don't show "Người dùng đã xóa" - use generic name or ID
-                  userName = `User ${otherParticipantId.substring(0, 8)}...` || "Người dùng";
-                } else {
-                  console.warn(`[MessagesPanel] Failed to fetch profile for ${otherParticipantId}:`, err?.response?.data || err?.message);
-                  // Keep fallback to ID for other errors
-                  userName = otherParticipantId;
-                }
-              }
+
+            const profile = await resolveProfile(otherParticipantId);
+            if (profile) {
+              userName = profile.name || userName;
+              userAvatar = profile.avatar || null;
+              entityId = profile.entityId || otherParticipantId;
             }
             
             // Lấy tin nhắn cuối cùng
@@ -382,7 +269,7 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
     };
     
     fetchConversations();
-  }, [activeEntityId, onUnreadCountChange]); // Re-fetch when activeEntityId changes
+  }, [activeEntityId, onUnreadCountChange]); // Re-fetch when data changes
 
   const filteredConversations = conversations.filter((conv) =>
     conv.name.toLowerCase().includes(searchQuery.toLowerCase())

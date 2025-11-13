@@ -7,6 +7,7 @@ import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import useChatSocket from "../../../api/useChatSocket";
 import Composer from "../components/Composer";
+import { getEntityMapFromSession } from "../../../utils/sessionHelper";
 
 function ConversationView({ chat }) {
   const { t } = useTranslation();
@@ -84,7 +85,16 @@ function ConversationView({ chat }) {
 
   useEffect(() => {
     loadMessages();
-    if (chat?.entityId && (!other?.name || !other?.avatar)) {
+    if (chat?.entityId) {
+      const map = getEntityMapFromSession();
+      const cached = map.get(String(chat.entityId).toLowerCase());
+      if (cached) {
+        setOther({
+          name: cached.name || chat.name,
+          avatar: cached.avatar || chat.avatar,
+        });
+        return;
+      }
       publicProfileApi.getByEntityId(chat.entityId).then(res => {
         const p = res?.data?.data || res?.data || {};
         setOther({
@@ -93,7 +103,7 @@ function ConversationView({ chat }) {
         });
       }).catch(() => {});
     }
-  }, [chat?.id, loadMessages]);
+  }, [chat?.id, chat?.entityId, chat?.name, chat?.avatar, loadMessages]);
 
   const { socket } = useChatSocket(() => {
     if (!chat?.id) return;
@@ -182,6 +192,32 @@ function ConversationView({ chat }) {
   };
   const handleSendFromComposer = async (text, opts = {}) => {
     if (!text.trim() || !currentUserId || !chat?.id) return;
+    // derive entity context from session
+    let entityType = null;
+    let entityId = null;
+    let entityAccountIdForChat = currentUserId;
+    try {
+      const session = JSON.parse(localStorage.getItem("session") || "{}");
+      const ae = session?.activeEntity || {};
+      const raw = String(ae?.role || ae?.type || "").toLowerCase();
+      if (raw === "bar") entityType = "BarPage";
+      else if (raw === "dj" || raw === "dancer" || raw === "business") entityType = "Business";
+      else entityType = "Account";
+      entityId = ae?.id || null; // e.g., BarPageId
+      entityAccountIdForChat = ae?.EntityAccountId || ae?.entityAccountId || currentUserId;
+    } catch {}
+    // Debug log
+    try {
+      // eslint-disable-next-line no-console
+      console.log("[Messages] send text payload", {
+        conversationId: chat?.id,
+        contentPreview: text.slice(0, 50),
+        senderEntityAccountId: entityAccountIdForChat,
+        entityType,
+        entityId,
+        replyToId: opts?.replyToId,
+      });
+    } catch {}
     // optimistic pending message
     const clientId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const pending = {
@@ -199,7 +235,15 @@ function ConversationView({ chat }) {
       if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
     }, 0);
     try {
-      await messageApi.sendMessage(chat.id, text.trim(), "text", currentUserId, { clientId, replyToId: opts?.replyToId });
+      await messageApi.sendMessage(
+        chat.id,
+        text.trim(),
+        "text",
+        entityAccountIdForChat,     // senderEntityAccountId (EntityAccountId)
+        entityType,        // 'BarPage' | 'Business' | 'Account'
+        entityId,          // e.g., BarPageId
+        { clientId, replyToId: opts?.replyToId }
+      );
     } finally {
       // refresh from server (ack + persisted ids)
       loadMessages();
@@ -208,6 +252,31 @@ function ConversationView({ chat }) {
   };
   const handleSendMedia = async (files, opts = {}) => {
     if (!files?.length || !currentUserId || !chat?.id) return;
+    // derive entity context
+    let entityType = null;
+    let entityId = null;
+    let entityAccountIdForChat = currentUserId;
+    try {
+      const session = JSON.parse(localStorage.getItem("session") || "{}");
+      const ae = session?.activeEntity || {};
+      const raw = String(ae?.role || ae?.type || "").toLowerCase();
+      if (raw === "bar") entityType = "BarPage";
+      else if (raw === "dj" || raw === "dancer" || raw === "business") entityType = "Business";
+      else entityType = "Account";
+      entityId = ae?.id || null;
+      entityAccountIdForChat = ae?.EntityAccountId || ae?.entityAccountId || currentUserId;
+    } catch {}
+    try {
+      // eslint-disable-next-line no-console
+      console.log("[Messages] send media payload", {
+        conversationId: chat?.id,
+        filesCount: files?.length || 0,
+        senderEntityAccountId: entityAccountIdForChat,
+        entityType,
+        entityId,
+        replyToId: opts?.replyToId,
+      });
+    } catch {}
     for (const file of files) {
       try {
         let uploaded = null;
@@ -230,7 +299,9 @@ function ConversationView({ chat }) {
           chat.id,
           JSON.stringify(filePayload),
           file.type.startsWith("image/") ? "image" : "file",
-          currentUserId,
+          entityAccountIdForChat,
+          entityType,
+          entityId,
           { replyToId: opts?.replyToId }
         );
       } catch (e) {
@@ -252,7 +323,7 @@ function ConversationView({ chat }) {
   const [presence, setPresence] = useState({ online: false, lastSeen: null });
 
   return (
-    <div className="flex h-[calc(100vh-130px)] flex-1 flex-col rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+    <div className="flex h-[calc(100vh-144px)] flex-1 flex-col rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
       {/* Header inline */}
       <div className="flex items-center gap-3 border-b border-border/30 bg-muted px-4 py-3">
         <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-primary to-secondary text-center font-semibold text-primary-foreground">
@@ -470,7 +541,7 @@ function ConversationView({ chat }) {
   );
 }
 
-export default function CustomerMessages() {
+export default function MessagesPage() {
   const { t } = useTranslation();
   const [selectedChat, setSelectedChat] = useState(null);
 
@@ -487,7 +558,7 @@ export default function CustomerMessages() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-2.5">
       <div className="grid grid-cols-[360px_1fr] gap-4">
-        <div className="h-[calc(100vh-130px)] overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+        <div className="h-[calc(100vh-144px)] overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
           <MessagesPanel onClose={() => {}} onUnreadCountChange={() => {}} />
         </div>
         {selectedChat ? (
@@ -495,7 +566,7 @@ export default function CustomerMessages() {
         ) : (
           <div
             className={cn(
-              "h-[calc(100vh-160px)] rounded-lg border-[0.5px] border-dashed border-border/30",
+              "h-[calc(100vh-176px)] rounded-lg border-[0.5px] border-dashed border-border/30",
               "bg-card flex items-center justify-center text-sm text-muted-foreground"
             )}
           >

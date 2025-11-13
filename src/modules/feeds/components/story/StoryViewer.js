@@ -11,6 +11,7 @@ import StoryControls from "./StoryControls";
 import StoryInfo from "./StoryInfo";
 import StoryContent from "./StoryContent";
 import StoryViewers from "./StoryViewers";
+import ReportStoryModal from "./ReportStoryModal";
 
 export default function StoryViewer({ stories, activeStory, onClose, entityAccountId, onStoryDeleted }) {
   const { t } = useTranslation();
@@ -88,6 +89,23 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
     if (typeof storyLikes === 'object' && storyLikes !== null) return Object.keys(storyLikes).length;
     return 0;
   });
+
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [storyToReport, setStoryToReport] = useState(null);
+
+  const openReportModal = useCallback(
+    (targetStory) => {
+      if (!targetStory) return;
+      setStoryToReport(targetStory);
+      setReportModalOpen(true);
+    },
+    []
+  );
+
+  const closeReportModal = useCallback(() => {
+    setStoryToReport(null);
+    setReportModalOpen(false);
+  }, []);
 
   // Update like state when story changes
   useEffect(() => {
@@ -288,7 +306,7 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
     handleMute,
     handleCopyLink,
     handleReport,
-  } = useStoryControls(story);
+  } = useStoryControls(story, openReportModal);
 
   // Handle delete story
   const handleDelete = useCallback(async () => {
@@ -619,6 +637,17 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
           </svg>
         </button>
       </div>
+      {reportModalOpen && (
+        <ReportStoryModal
+          open={reportModalOpen}
+          story={storyToReport}
+          onClose={closeReportModal}
+          onSubmitted={() => {
+            closeReportModal();
+            alert(t("story.reported") || "Story reported");
+          }}
+        />
+      )}
     </div>
   );
 }

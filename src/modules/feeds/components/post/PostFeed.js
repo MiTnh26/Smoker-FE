@@ -607,7 +607,28 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       location: post.location || null,
       title: post.title || null,
       canManage,
-      ownerEntityAccountId: ownerEntityAccountId || null
+      ownerEntityAccountId: ownerEntityAccountId || null,
+      ownerAccountId:
+        post.accountId ||
+        post.ownerAccountId ||
+        post.owner?.AccountId ||
+        post.owner?.id ||
+        post.author?.AccountId ||
+        post.author?.id ||
+        post.account?.AccountId ||
+        post.account?.id ||
+        null,
+      targetType: post.type || "post",
+      accountId:
+        post.accountId ||
+        post.ownerAccountId ||
+        post.owner?.AccountId ||
+        post.owner?.id ||
+        post.author?.AccountId ||
+        post.author?.id ||
+        post.account?.AccountId ||
+        post.account?.id ||
+        null
     };
   };
 

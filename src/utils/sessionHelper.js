@@ -101,3 +101,45 @@ export async function fetchAllEntities(accountId, user) {
   return entities;
 }
 
+/**
+ * Build a map of EntityAccountId -> entity info from session stored in localStorage
+ * @returns {Map<string, {name: string, avatar: string, role: string, type: string, raw: object}>}
+ */
+export function getEntityMapFromSession() {
+  try {
+    const session = JSON.parse(localStorage.getItem("session") || "{}");
+    const entities = session?.entities || [];
+    const active = session?.activeEntity;
+    const list = [...entities];
+
+    if (active) {
+      const activeId = String(active.EntityAccountId || active.entityAccountId || active.id);
+      if (
+        activeId &&
+        !entities.some(
+          e => String(e.EntityAccountId || e.entityAccountId || e.id) === activeId
+        )
+      ) {
+        list.push(active);
+      }
+    }
+
+    const map = new Map();
+    for (const entity of list) {
+      const key = String(entity.EntityAccountId || entity.entityAccountId || entity.id).toLowerCase();
+      if (!key) return;
+      map.set(key, {
+        name: entity.name || entity.BarName || entity.BusinessName || entity.displayName || entity.UserName || entity.userName,
+        avatar: entity.avatar || entity.Avatar || null,
+        role: entity.role || entity.Role,
+        type: entity.type,
+        raw: entity,
+      });
+    }
+    return map;
+  } catch (error) {
+    console.warn("[sessionHelper] getEntityMapFromSession error:", error);
+    return new Map();
+  }
+}
+

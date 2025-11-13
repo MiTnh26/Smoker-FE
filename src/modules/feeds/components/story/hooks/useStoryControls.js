@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 /**
  * Hook to manage story controls (pause, mute, menu)
  */
-export const useStoryControls = (story) => {
+export const useStoryControls = (story, onReportStory) => {
   const { t } = useTranslation();
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -48,13 +48,17 @@ export const useStoryControls = (story) => {
   }, [story, t]);
 
   const handleReport = useCallback(() => {
+    if (onReportStory) {
+      onReportStory(story);
+      setShowMenu(false);
+      return;
+    }
     if (window.confirm(t('story.confirmReport') || 'Bạn có chắc muốn báo cáo story này?')) {
-      // TODO: Implement report functionality
-      console.log('Report story:', story._id || story.id);
+      console.log('Report story:', story?._id || story?.id);
       alert(t('story.reported') || 'Đã báo cáo story');
       setShowMenu(false);
     }
-  }, [story, t]);
+  }, [onReportStory, story, t]);
 
   return {
     isPaused,

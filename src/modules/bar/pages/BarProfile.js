@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import barPageApi from "../../../api/barPageApi";
@@ -18,6 +18,7 @@ import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { userApi } from "../../../api/userApi";
 import { cn } from "../../../utils/cn";
+import ReportEntityModal from "../../feeds/components/modals/ReportEntityModal";
 
 export default function BarProfile() {
   const { t } = useTranslation();
@@ -41,6 +42,9 @@ export default function BarProfile() {
   const [saving, setSaving] = useState(false);
   const [tableTypes, setTableTypes] = useState([]); // 🟢 Track table types for disable logic
   const [currentUserEntityId, setCurrentUserEntityId] = useState(null);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const menuRef = useRef(null);
 
   // Location states
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -130,6 +134,12 @@ export default function BarProfile() {
     const fetchProfile = async () => {
       console.log("👉 useParams barPageId:", barPageId);
       try {
+        // Guard invalid id to avoid backend 500
+        const isGuid = typeof barPageId === "string" && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(barPageId);
+        if (!barPageId || !isGuid) {
+          setLoading(false);
+          return;
+        }
         const res = await barPageApi.getBarPageById(barPageId);
         console.log("✅ API Response getBarPageById:", res);
         if (res.status === "success" && res.data) {
@@ -172,6 +182,12 @@ export default function BarProfile() {
 
     const fetchTableTypes = async () => {
       try {
+        // Guard invalid id to avoid backend 500
+        const isGuid = typeof barPageId === "string" && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(barPageId);
+        if (!barPageId || !isGuid) {
+          setTableTypes([]);
+          return;
+        }
         const res = await barPageApi.getTableTypes(barPageId);
         setTableTypes(res.data || []);
       } catch (err) {
@@ -199,6 +215,21 @@ export default function BarProfile() {
       }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (!actionMenuOpen) return;
+    const handleOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setActionMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("touchstart", handleOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("touchstart", handleOutside);
+    };
+  }, [actionMenuOpen]);
 
   if (loading) {
     return (
@@ -269,6 +300,26 @@ export default function BarProfile() {
     profile.PhoneNumber && `${t('profile.phone')}: ${profile.PhoneNumber}`,
     profile.Email && `${t('profile.email')}: ${profile.Email}`,
   ].filter(Boolean);
+
+  const handleBlock = () => {
+    setActionMenuOpen(false);
+    const confirmed = window.confirm(
+      t("publicProfile.blockConfirm", { name: profile.BarName || t("publicProfile.thisUser") })
+    );
+    if (!confirmed) return;
+    try {
+      const blockedRaw = localStorage.getItem("blockedEntities");
+      const blocked = blockedRaw ? JSON.parse(blockedRaw) : [];
+      if (!blocked.includes(barPageId)) {
+        blocked.push(barPageId);
+        localStorage.setItem("blockedEntities", JSON.stringify(blocked));
+      }
+      alert(t("publicProfile.blockSuccess"));
+    } catch (err) {
+      console.error("[BarProfile] Failed to persist block list:", err);
+      alert(t("publicProfile.blockError"));
+    }
+  };
   
   const isOwnProfile = activeBarPageId && String(activeBarPageId).toLowerCase() === String(barPageId).toLowerCase();
 
@@ -361,6 +412,59 @@ export default function BarProfile() {
                 followingId={profile?.AccountId}
                 followingType="BAR"
               />
+              <div className="relative" ref={menuRef}>
+                <button
+                  type="button"
+                  onClick={() => setActionMenuOpen((prev) => !prev)}
+                  className={cn(
+                    "w-10 h-10 rounded-full border border-border/40 text-foreground/80",
+                    "bg-card/70 backdrop-blur-sm flex items-center justify-center",
+                    "hover:bg-card/90 transition-all duration-200 active:scale-95"
+                  )}
+                  aria-haspopup="true"
+                  aria-expanded={actionMenuOpen}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="5" r="2" />
+                    <circle cx="12" cy="12" r="2" />
+                    <circle cx="12" cy="19" r="2" />
+                  </svg>
+                </button>
+                {actionMenuOpen && (
+                  <div
+                    className={cn(
+                      "absolute right-0 mt-2 w-48 rounded-lg border border-border/30",
+                      "bg-card/95 backdrop-blur-sm text-foreground shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
+                      "overflow-hidden z-20"
+                    )}
+                    role="menu"
+                  >
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full text-left px-4 py-2 text-sm",
+                        "hover:bg-danger/10 hover:text-danger transition-all duration-150"
+                      )}
+                      onClick={() => {
+                        setActionMenuOpen(false);
+                        setReportModalOpen(true);
+                      }}
+                    >
+                      {t("publicProfile.reportProfile")}
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full text-left px-4 py-2 text-sm",
+                        "hover:bg-muted/40 transition-all duration-150"
+                      )}
+                      onClick={handleBlock}
+                    >
+                      {t("publicProfile.blockProfile")}
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
           {isOwnProfile && (
@@ -1041,6 +1145,19 @@ export default function BarProfile() {
             </div>
           </div>
         </div>
+      )}
+      {reportModalOpen && (
+        <ReportEntityModal
+          open={reportModalOpen}
+          entityId={profile?.EntityAccountId || barPageId}
+          entityType="BarPage"
+          entityName={profile?.BarName}
+          onClose={() => setReportModalOpen(false)}
+          onSubmitted={() => {
+            setReportModalOpen(false);
+            alert(t("publicProfile.reportSubmitted"));
+          }}
+        />
       )}
     </div>
   );

@@ -111,7 +111,10 @@ export default function Sidebar() {
   // Fetch table types when barPageId is available
   useEffect(() => {
     const fetchTableTypes = async () => {
-      if (!barPageId) {
+      // Guard: must have a valid barPageId (GUID-like) and be on bar routes
+      const isGuid = typeof barPageId === "string" && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(barPageId);
+      const onBarRoute = location?.pathname?.startsWith?.("/bar");
+      if (!barPageId || !isGuid || !onBarRoute) {
         setTableTypes([]);
         return;
       }
@@ -125,7 +128,8 @@ export default function Sidebar() {
           setTableTypes([]);
         }
       } catch (error) {
-        console.error("[Sidebar] Error fetching table types:", error);
+        // Swallow API errors to avoid noisy console in non-bar contexts or BE downtime
+        console.warn("[Sidebar] Skipped table types fetch or backend error.");
         setTableTypes([]);
       } finally {
         setLoadingTableTypes(false);
@@ -134,12 +138,13 @@ export default function Sidebar() {
 
     // Only fetch if we're in bar context
     const role = activeEntity?.role?.toLowerCase() || activeEntity?.type?.toLowerCase();
-    if (role === "bar" || activeEntity?.type === "BarPage") {
+    const onBarRoute = location?.pathname?.startsWith?.("/bar");
+    if ((role === "bar" || activeEntity?.type === "BarPage") && onBarRoute) {
       fetchTableTypes();
     } else {
       setTableTypes([]);
     }
-  }, [barPageId, activeEntity]);
+  }, [barPageId, activeEntity, location?.pathname]);
 
   // Listen for table types updates
   useEffect(() => {

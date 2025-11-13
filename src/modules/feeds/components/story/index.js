@@ -17,6 +17,7 @@ export { useStoryGrouping } from "./hooks/useStoryGrouping";
 export { useStoryProgress } from "./hooks/useStoryProgress";
 export { useStoryControls } from "./hooks/useStoryControls";
 export { useAllUserGroups } from "./hooks/useAllUserGroups";
+export { useStoryManager } from "./hooks/useStoryManager";
 
 // Export utilities
 export * from "./utils/storyUtils";

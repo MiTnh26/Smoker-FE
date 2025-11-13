@@ -541,11 +541,11 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   }
 
   return (
-    <div className="profile-setup min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <div className="profile-setup min-h-screen py-4 px-3 sm:px-5 lg:px-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="ps-title text-3xl font-bold mb-2">
+        <div className="text-center mb-6">
+          <h1 className="ps-title text-3xl font-bold mb-1">
             Hoàn thiện hồ sơ
           </h1>
           <p className="ps-muted max-w-2xl mx-auto">
@@ -553,10 +553,10 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Form Section */}
-          <div className="ps-card rounded-2xl p-6 sm:p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="ps-card rounded-2xl p-5 sm:p-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* User Name */}
               <div>
                 <label htmlFor="userName" className="ps-label block text-sm font-medium mb-2">
@@ -818,7 +818,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`ps-btn-primary w-full py-3 px-6 rounded-xl font-medium ${isLoading ? 'ps-btn-disabled' : ''}`}
+                className={`ps-btn-primary w-full py-3 px-5 rounded-xl font-medium ${isLoading ? 'ps-btn-disabled' : ''}`}
                 aria-describedby="submit-help"
               >
                 {isLoading ? (
@@ -838,11 +838,11 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
           </div>
 
           {/* Preview Section */}
-          <div className="ps-card ps-preview rounded-2xl p-6 sm:p-8">
-            <h3 className="ps-title text-lg font-semibold mb-6">Xem trước hồ sơ</h3>
+          <div className="ps-card ps-preview rounded-2xl p-5 sm:p-6">
+            <h3 className="ps-title text-lg font-semibold mb-4">Xem trước hồ sơ</h3>
 
             {/* Profile Card Preview */}
-            <div className="ps-preview-body rounded-xl p-6 space-y-4">
+            <div className="ps-preview-body rounded-xl p-5 space-y-4">
               {/* Background Image */}
               {form.background ? (
                 <div className="relative h-32 rounded-lg overflow-hidden">
@@ -915,7 +915,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
             </div>
 
             {/* Tips */}
-            <div className="mt-6 p-4 ps-subtle rounded-xl">
+            <div className="mt-4 p-4 ps-subtle rounded-xl">
               <h4 className="ps-title font-medium mb-2">💡 Mẹo hay</h4>
               <ul className="text-sm ps-muted space-y-1">
                 <li>• Sử dụng ảnh chất lượng cao cho avatar</li>

@@ -6,7 +6,7 @@ import PublicProfile from "../modules/customer/pages/PublicProfile";
 import ProtectedRoute from "./ProtectedRoute";
 import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed"
 import { StoryEditor } from "../modules/feeds/components/story";
-import CustomerMessages from "../modules/messages/pages/CustomerMessages";
+import MessagesPage from "../modules/messages/pages/MessagesPage";
 import MessagesLayout from "../layouts/MessagesLayout";
 export default function CustomerRoutes() {
   return (
@@ -24,7 +24,7 @@ export default function CustomerRoutes() {
         path="/customer/messages"
         element={
           <ProtectedRoute roles={["customer"]}>
-            <MessagesLayout><CustomerMessages /></MessagesLayout>
+            <MessagesLayout><MessagesPage /></MessagesLayout>
           </ProtectedRoute>
         }
       />

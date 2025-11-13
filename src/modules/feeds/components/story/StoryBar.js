@@ -1,15 +1,14 @@
 
 import { useMemo, useRef, useState } from "react"
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { isViewed } from "./utils/storyUtils";
 import { cn } from "../../../../utils/cn";
+import CreateStory from "./CreateStory";
 
-export default function StoryBar({ stories, onStoryClick, onStoryCreated, onOpenEditor, entityAccountId }) {
+export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAccountId }) {
   const { t } = useTranslation();
   const barRef = useRef(null)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const navigate = useNavigate();
 
   const VISIBLE_COUNT = 5
   const ITEM_WIDTH = 112
@@ -239,34 +238,7 @@ export default function StoryBar({ stories, onStoryClick, onStoryCreated, onOpen
           style={{ transform: `translateX(-${offset}px)` }}
         >
 
-          {/* Nút tạo story mới mở editor modal */}
-          <div
-            key="create"
-            className="flex w-[112px] shrink-0 cursor-pointer flex-col items-center text-center"
-            onClick={(e) => {
-            e.stopPropagation();
-            console.log('[StoryBar] Create story clicked, onOpenEditor:', typeof onOpenEditor);
-            if (onOpenEditor) {
-              onOpenEditor();
-            } else {
-              // Fallback: navigate nếu không có onOpenEditor (backward compatibility)
-              console.log('[StoryBar] No onOpenEditor, navigating to /customer/story-editor');
-              navigate("/customer/story-editor");
-            }
-          }}
-          >
-            <div className="relative h-[200px] w-full overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-muted shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10" />
-              <div className="absolute inset-0 flex flex-col items-center justify-end pb-3">
-                <button className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-xl font-light text-primary-foreground shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-colors duration-200 hover:bg-primary/90">
-                  +
-                </button>
-                <p className="px-2 text-sm font-medium text-foreground">
-                  {t('story.createStory')}
-                </p>
-              </div>
-            </div>
-          </div>
+      <CreateStory onOpenEditor={onOpenEditor} />
           {groupedByUser.map((userGroup, idx) => {
             const story = userGroup.displayStory;
             const key = story._id || `story-${idx}`;
