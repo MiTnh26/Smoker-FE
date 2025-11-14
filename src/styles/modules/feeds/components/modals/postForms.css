@@ -1,0 +1,445 @@
+/* =========================================================
+   🎨 Shared Post Form Modal Styles - Instagram Style
+   Tinh tế, tối giản, không phô trương
+   ========================================================= */
+
+/* Modal Overlay Backdrop */
+.post-form-overlay {
+  background: rgba(var(--overlay));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Card Container - Instagram Style */
+.post-form-glass-card {
+  background: rgb(var(--card));
+  border: 0.5px solid rgba(var(--border), 0.2);
+  border-radius: 0.5rem; /* rounded-lg = 8px */
+  box-shadow: 0 2px 8px rgba(var(--black), 0.12);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Modal Header with Icon */
+.post-form-header {
+  padding: 1rem;
+  border-bottom: 0.5px solid rgba(var(--border), 0.3);
+  background: rgb(var(--card));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.post-form-header-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  font-size: 1rem;
+  color: rgb(var(--card-foreground));
+}
+
+.post-form-header-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: rgb(var(--primary));
+  flex-shrink: 0;
+}
+
+.post-form-header-close {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: rgb(var(--muted-foreground));
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.post-form-header-close:hover {
+  background: rgba(var(--muted), 0.5);
+  color: rgb(var(--foreground));
+}
+
+.post-form-header-close:active {
+  transform: scale(0.95);
+}
+
+/* Field Wrapper */
+.post-form-field-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.post-form-field-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(var(--foreground));
+  margin-bottom: 0.25rem;
+}
+
+/* Input Fields - Instagram Style */
+.post-form-input,
+.post-form-textarea {
+  width: 100%;
+  background: rgb(var(--background));
+  border: 0.5px solid rgba(var(--border), 0.2);
+  border-radius: 0.5rem; /* rounded-lg */
+  padding: 0.625rem 1rem;
+  color: rgb(var(--foreground));
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.post-form-input:focus,
+.post-form-textarea:focus {
+  border-color: rgba(var(--primary), 0.4);
+  box-shadow: 0 0 0 1px rgba(var(--primary), 0.2);
+}
+
+.post-form-input::placeholder,
+.post-form-textarea::placeholder {
+  color: rgba(var(--muted-foreground), 0.6);
+}
+
+.post-form-textarea {
+  resize: vertical;
+  min-height: 4rem;
+  line-height: 1.5;
+}
+
+/* Input with Background */
+.post-form-input-bg,
+.post-form-textarea-bg {
+  background: rgba(var(--muted), 0.4);
+}
+
+.post-form-input-bg:hover,
+.post-form-textarea-bg:hover {
+  background: rgba(var(--muted), 0.6);
+  border-color: rgba(var(--border), 0.3);
+}
+
+.post-form-input-bg:focus,
+.post-form-textarea-bg:focus {
+  background: rgb(var(--background));
+  border-color: rgba(var(--primary), 0.4);
+  box-shadow: 0 0 0 1px rgba(var(--primary), 0.2);
+}
+
+/* Pill Buttons for Media Selectors - Borderless */
+.post-form-pill-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: transparent;
+  border: none;
+  border-radius: 9999px;
+  color: rgb(var(--muted-foreground));
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.post-form-pill-button:hover {
+  background: rgba(var(--primary), 0.1);
+  color: rgb(var(--primary));
+}
+
+.post-form-pill-button:active {
+  transform: scale(0.95);
+}
+
+.post-form-pill-button input[type="file"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.post-form-pill-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* Upload Status Indicator */
+.post-form-upload-status {
+  padding: 0.75rem 1rem;
+  background: rgba(var(--primary), 0.1);
+  border: none;
+  border-radius: 0.5rem;
+  color: rgb(var(--primary));
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Media Grid */
+.post-form-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Media Chip/Card */
+.post-form-media-chip {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: rgba(var(--muted), 0.4);
+  border: 0.5px solid rgba(var(--border), 0.2);
+  box-shadow: 0 1px 2px rgba(var(--black), 0.05);
+}
+
+.post-form-media-chip img,
+.post-form-media-chip video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.post-form-media-chip-remove {
+  position: absolute;
+  top: 0.375rem;
+  right: 0.375rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: rgba(var(--danger), 0.9);
+  border: none;
+  color: rgb(var(--primary-foreground));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: bold;
+  z-index: 2;
+}
+
+.post-form-media-chip-remove:hover {
+  background: rgba(var(--danger), 1);
+}
+
+.post-form-media-chip-remove:active {
+  transform: scale(0.95);
+}
+
+.post-form-media-chip-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.5rem;
+  background: linear-gradient(
+    to top,
+    rgba(var(--black), 0.7),
+    rgba(var(--black), 0.4),
+    transparent
+  );
+}
+
+.post-form-media-chip-caption input {
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  background: rgb(var(--card));
+  border: 0.5px solid rgba(var(--border), 0.2);
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  color: rgb(var(--foreground));
+  outline: none;
+}
+
+.post-form-media-chip-caption input:focus {
+  border-color: rgba(var(--primary), 0.4);
+  box-shadow: 0 0 0 1px rgba(var(--primary), 0.2);
+}
+
+/* File Picker Card (for MusicPostModal) */
+.post-form-file-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(var(--muted), 0.4);
+  border: 0.5px dashed rgba(var(--border), 0.3);
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.post-form-file-picker:hover {
+  border-color: rgba(var(--primary), 0.4);
+  background: rgba(var(--muted), 0.6);
+}
+
+.post-form-file-picker input[type="file"] {
+  font-size: 0.875rem;
+  color: rgb(var(--foreground));
+}
+
+.post-form-file-picker-preview {
+  margin-top: 0.5rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: rgba(var(--muted), 0.3);
+}
+
+.post-form-file-picker-preview img {
+  width: 100%;
+  height: auto;
+  max-height: 12rem;
+  object-fit: cover;
+}
+
+.post-form-file-picker-preview audio {
+  width: 100%;
+  border-radius: 0.5rem;
+  background: rgb(var(--card));
+}
+
+/* Media Placeholder */
+.post-form-media-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--muted), 0.6);
+  color: rgb(var(--muted-foreground));
+  font-size: 1.5rem;
+}
+
+/* Responsive Grid Layout */
+.post-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.post-form-grid-full {
+  grid-column: 1 / -1;
+}
+
+/* Modal Footer */
+.post-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-top: 0.5px solid rgba(var(--border), 0.3);
+  background: rgb(var(--card));
+}
+
+.post-form-button {
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  outline: none;
+}
+
+.post-form-button-cancel {
+  background: transparent;
+  color: rgb(var(--muted-foreground));
+  font-weight: 600;
+}
+
+.post-form-button-cancel:hover:not(:disabled) {
+  color: rgb(var(--foreground));
+  background: rgba(var(--muted), 0.5);
+}
+
+.post-form-button-cancel:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.post-form-button-submit {
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  font-weight: 600;
+}
+
+.post-form-button-submit:hover:not(:disabled) {
+  background: rgba(var(--primary), 0.9);
+}
+
+.post-form-button-submit:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.post-form-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Dark Theme Enhancements */
+[data-theme='dark'] .post-form-glass-card {
+  box-shadow: 0 2px 8px rgba(var(--black), 0.3);
+}
+
+[data-theme='dark'] .post-form-input,
+[data-theme='dark'] .post-form-textarea {
+  background: rgb(var(--background));
+}
+
+[data-theme='dark'] .post-form-input-bg,
+[data-theme='dark'] .post-form-textarea-bg {
+  background: rgba(var(--muted), 0.4);
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 1024px) {
+  .post-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .post-form-media-grid {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 0.5rem;
+  }
+  
+  .post-form-header {
+    padding: 0.875rem;
+    font-size: 0.9375rem;
+  }
+  
+  .post-form-footer {
+    padding: 0.875rem;
+    flex-direction: column-reverse;
+  }
+  
+  .post-form-button {
+    width: 100%;
+  }
+  
+  .post-form-glass-card {
+    max-height: 95vh;
+  }
+}

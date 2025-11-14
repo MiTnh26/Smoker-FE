@@ -252,10 +252,22 @@
     "daysAgoSuffix": "days ago"
   },
   "messages": {
+    "chats": "Chats",
+    "keepInTouch": "Stay connected with your friends",
+    "tabAll": "All",
+    "tabUnread": "Unread",
+    "tabGroups": "Groups",
+    "tabCommunities": "Communities",
     "searchPlaceholder": "Search conversations...",
     "empty": "No messages",
+    "loading": "Loading...",
     "replyYourStory": "Reply story",
-    "selectConversation": "Select a conversation"
+    "selectConversation": "Select a conversation",
+    "securedInfo": "Chats are encrypted on Smoker",
+    "you": "You",
+    "attachment": "Attachment",
+    "seen": "Seen",
+    "delivered": "Delivered"
   },
   "unifiedMenu": {
     "entityLabel": "Your Pages / Businesses",

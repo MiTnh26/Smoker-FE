@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Music, Type } from "lucide-react";
 import SelectSong from "../music/SelectSong";
 import Cropper from "react-easy-crop";
 import Slider from "@mui/material/Slider";
@@ -11,12 +12,16 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
   const [file, setFile] = useState(null);
   const [imageUrl, setImageUrl] = useState("");
   const [caption, setCaption] = useState("");
+  const [captionDraft, setCaptionDraft] = useState("");
   const [selectedSongId, setSelectedSongId] = useState("");
+  const [selectedSongMeta, setSelectedSongMeta] = useState(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activePanel, setActivePanel] = useState(null); // 'text', 'music', 'alternative'
+  const [showTextModal, setShowTextModal] = useState(false);
+  const [showMusicModal, setShowMusicModal] = useState(false);
   const [userInfo, setUserInfo] = useState({ name: '', avatar: '' });
   const inputFileRef = useRef();
   
@@ -68,6 +73,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
       setCaption("");
       setImageUrl("");
       setSelectedSongId("");
+      setSelectedSongMeta(null);
       if (onClose) onClose();
     } catch (err) {
       console.error("[StoryEditor] Failed to create story:", err);
@@ -75,6 +81,8 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
     }
     setLoading(false);
   };
+
+  const hasImage = Boolean(imageUrl);
 
   // Render preview content
   const renderPreviewContent = () => {
@@ -97,6 +105,20 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
                 onZoomChange={setZoom}
                 onCropComplete={onCropComplete}
               />
+        {(caption || selectedSongMeta) && (
+          <div className="absolute left-2 right-2 top-2 z-10 space-y-1 rounded-lg bg-black/45 px-3 py-2 text-white backdrop-blur">
+            {caption && (
+              <p className="text-sm font-semibold leading-snug">
+                {caption}
+              </p>
+            )}
+            {selectedSongMeta && (
+              <p className="text-xs font-medium uppercase tracking-wide text-white/80">
+                {selectedSongMeta.title} • {selectedSongMeta.artistName}
+              </p>
+            )}
+          </div>
+        )}
         <div className="absolute bottom-2 left-2 right-2 z-10 rounded-lg bg-black/60 px-3 py-2 backdrop-blur">
                 <Slider
                   value={zoom}
@@ -124,6 +146,12 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
             setCrop({ x: 0, y: 0 });
             setZoom(1);
             setCroppedAreaPixels(null);
+            setCaption("");
+            setCaptionDraft("");
+            setSelectedSongId("");
+            setSelectedSongMeta(null);
+            setShowTextModal(false);
+            setShowMusicModal(false);
           }}
         >
           ×
@@ -181,26 +209,77 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
             {/* Add Text Option */}
             <button 
               type="button"
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${activePanel === 'text' ? 'bg-muted/60' : 'hover:bg-muted/50'}`}
+              disabled={!hasImage}
+              title={!hasImage ? (t('story.selectImageFirst') || 'Select an image first') : undefined}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                !hasImage
+                  ? 'cursor-not-allowed opacity-50'
+                  : caption
+                    ? 'bg-muted/60'
+                    : 'hover:bg-muted/50'
+              }`}
               onClick={() => {
-                setActivePanel(activePanel === 'text' ? null : 'text');
+                if (!hasImage) return;
+                setCaptionDraft(caption || "");
+                setShowTextModal(true);
               }}
             >
-              <span className="rounded bg-muted px-1.5 py-0.5 text-xs">Aa</span>
+              <Type size={18} className="flex-shrink-0" />
               <span>{t('story.addText') || 'Add text'}</span>
             </button>
+            {caption && hasImage && (
+              <div className="ml-9 mt-1 flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
+                <span className="line-clamp-1">{caption}</span>
+                <button
+                  type="button"
+                  className="text-muted-foreground transition hover:text-danger"
+                  onClick={() => {
+                    setCaption("");
+                    setCaptionDraft("");
+                  }}
+                  title={t('action.remove') || 'Remove'}
+                >
+                  ×
+                </button>
+              </div>
+            )}
             
             {/* Add Music Option */}
             <button 
               type="button"
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${activePanel === 'music' ? 'bg-muted/60' : 'hover:bg-muted/50'}`}
+              disabled={!hasImage}
+              title={!hasImage ? (t('story.selectImageFirst') || 'Select an image first') : undefined}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                !hasImage
+                  ? 'cursor-not-allowed opacity-50'
+                  : selectedSongId
+                    ? 'bg-muted/60'
+                    : 'hover:bg-muted/50'
+              }`}
               onClick={() => {
-                setActivePanel(activePanel === 'music' ? null : 'music');
+                if (!hasImage) return;
+                setShowMusicModal(true);
               }}
             >
-              <span className="">🎵</span>
+              <Music size={18} className="flex-shrink-0" />
               <span>{t('story.addMusic') || 'Add music'}</span>
             </button>
+            {selectedSongMeta && hasImage && (
+              <div className="ml-9 mt-1 flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
+                <span className="line-clamp-1">{selectedSongMeta.title} • {selectedSongMeta.artistName}</span>
+                <button
+                  type="button"
+                  className="text-muted-foreground transition hover:text-danger"
+                  onClick={() => {
+                    setSelectedSongId("");
+                    setSelectedSongMeta(null);
+                  }}
+                  title={t('action.remove') || 'Remove'}
+                >
+                  ×
+                </button>
+              </div>
+            )}
             
             {/* Alternative Text Option (optional) */}
             <button 
@@ -242,52 +321,6 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
             </div>
             </div>
           
-          {/* Active Panel Content */}
-          {activePanel === 'text' && (
-            <div className="mt-4">
-              <label className="mb-2 block text-[13px] font-semibold text-foreground/80">
-                {t('input.caption') || 'Caption'}
-              </label>
-              <textarea
-                className="w-full rounded-lg border-[0.5px] border-border/20 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
-                placeholder={t('input.captionStory') || 'Add a caption...'}
-            value={caption}
-            onChange={e => setCaption(e.target.value)}
-                rows={4}
-              />
-            </div>
-          )}
-          
-          {activePanel === 'music' && (
-            <div className="story-editor-music-panel">
-              {/* Story chỉ cho phép chọn nhạc từ danh sách, không upload file */}
-              {!selectedSongId && (
-                <SelectSong value={selectedSongId} onChange={setSelectedSongId} />
-              )}
-              {selectedSongId && (
-                <div style={{ marginTop: 12 }}>
-                  <SelectSong value={selectedSongId} onChange={setSelectedSongId} />
-                  <button 
-                    onClick={() => setSelectedSongId("")}
-                    style={{
-                      marginTop: 12,
-                      padding: '8px 16px',
-                      background: '#3a3b3c',
-                      border: 'none',
-                      borderRadius: 6,
-                      color: '#e4e6eb',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      width: '100%'
-                    }}
-                  >
-                    {t('action.remove') || 'Remove'}
-                  </button>
-                </div>
-              )}
-          </div>
-          )}
-          
           {/* Image Upload Button (if no image) */}
           {!imageUrl && (
             <div className="mt-5 text-center">
@@ -308,6 +341,120 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
           )}
         </div>
       </div>
+      
+      {/* Text Editor Modal */}
+      {hasImage && showTextModal && (
+        <div
+          className="fixed inset-0 z-[1001] flex items-center justify-center backdrop-blur-sm"
+          style={{ backgroundColor: 'rgb(var(--overlay))' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowTextModal(false);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setShowTextModal(false);
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div
+            className="w-[480px] max-w-[90vw] rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border/20 p-4">
+              <h3 className="text-lg font-semibold text-card-foreground">
+                {t('story.addText') || 'Add text'}
+              </h3>
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                onClick={() => setShowTextModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-4">
+              <label className="mb-2 block text-sm font-medium text-foreground/80">
+                {t('input.caption') || 'Caption'}
+              </label>
+              <textarea
+                className="h-40 w-full rounded-lg border-[0.5px] border-border/20 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                placeholder={t('input.captionStory') || 'Add a caption...'}
+                value={captionDraft}
+                onChange={(e) => setCaptionDraft(e.target.value)}
+              />
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg px-4 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  onClick={() => setShowTextModal(false)}
+                >
+                  {t('action.cancel') || 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  onClick={() => {
+                    setCaption(captionDraft.trim());
+                    setShowTextModal(false);
+                  }}
+                >
+                  {t('action.save') || 'Save'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Music Selection Modal */}
+      {hasImage && showMusicModal && (
+        <div
+          className="fixed inset-0 z-[1001] flex items-center justify-center backdrop-blur-sm"
+          style={{ backgroundColor: 'rgb(var(--overlay))' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowMusicModal(false);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setShowMusicModal(false);
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div
+            className="w-[500px] max-w-[90vw] max-h-[80vh] overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border/20 p-4">
+              <h3 className="text-lg font-semibold text-card-foreground">
+                {t('story.selectMusicFromLibrary') || 'Select music from library'}
+              </h3>
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                onClick={() => setShowMusicModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto p-4">
+              <SelectSong 
+                value={selectedSongId} 
+                onChange={(songId, song) => {
+                  setSelectedSongId(songId);
+                  setSelectedSongMeta(song ? { title: song.title, artistName: song.artistName } : null);
+                  setShowMusicModal(false);
+                }} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

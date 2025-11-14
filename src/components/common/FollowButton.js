@@ -8,7 +8,7 @@ import { useAuth } from "../../hooks/useAuth";
  * @param {string} followingType - loại entity (nếu cần)
  * @param {function} [onChange] - callback khi follow/unfollow thành công
  */
-export default function FollowButton({ followingId, followingType, onChange }) {
+export default function FollowButton({ followingId, followingType, onChange, compact = false }) {
   // Lấy user hiện tại từ AuthContext
 //   const { session } = useAuthContext();
 //  const session = JSON.parse(localStorage.getItem("session")) || {};
@@ -85,9 +85,13 @@ export default function FollowButton({ followingId, followingType, onChange }) {
     return null; // Don't render follow button if trying to follow yourself
   }
 
+  const baseCompact = "inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-150 active:scale-95 disabled:opacity-60";
+  const followCompactClass = `${baseCompact} ${compact ? "px-3 py-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90" : "btn btn-primary"}`;
+  const followingCompactClass = `${baseCompact} ${compact ? "px-3 py-1.5 text-xs border border-border/40 text-foreground hover:text-danger hover:border-danger/60" : "btn btn-outline btn-error"}`;
+
   return internalFollowing ? (
     <button
-      className="btn btn-outline btn-error"
+      className={followingCompactClass}
       onClick={handleUnfollow}
       disabled={loadingUnfollow}
     >
@@ -95,7 +99,7 @@ export default function FollowButton({ followingId, followingType, onChange }) {
     </button>
   ) : (
     <button
-      className="btn btn-primary"
+      className={followCompactClass}
       onClick={handleFollow}
       disabled={loadingFollow}
     >

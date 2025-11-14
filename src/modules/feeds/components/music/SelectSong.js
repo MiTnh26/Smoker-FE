@@ -1,6 +1,7 @@
 // SelectSong.js
 import React, { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { Play, Pause } from "lucide-react";
 import axios from "axios";
 
 export default function SelectSong({ value, onChange }) {
@@ -56,68 +57,71 @@ export default function SelectSong({ value, onChange }) {
   );
 
   return (
-    <div style={{ width: "100%" }}>
-      <label style={{ fontWeight: 500, color: "#444", marginBottom: 6, display: "block" }}>{t('story.selectMusicFromLibrary')}</label>
+    <div className="w-full">
       <input
         type="text"
-        placeholder={t('story.searchSongPlaceholder')}
+        placeholder={t('story.searchSongPlaceholder') || 'Search song name or artist...'}
         value={search}
         onChange={e => setSearch(e.target.value)}
-        style={{
-          width: "100%",
-          padding: 8,
-          border: "1px solid #ccc",
-          borderRadius: 8,
-          marginBottom: 10,
-          fontSize: 15
-        }}
+        className="w-full rounded-lg border-[0.5px] border-border/20 bg-input px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary/40 focus:ring-1 focus:ring-primary/20 mb-3"
       />
       {loading ? (
-        <div style={{ padding: 12, color: "#888" }}>{t('story.loadingSongs')}</div>
+        <div className="py-3 text-center text-sm text-muted-foreground">
+          {t('story.loadingSongs') || 'Loading songs...'}
+        </div>
       ) : (
-        <div style={{
-          maxHeight: 220,
-          overflowY: "auto",
-          border: "1px solid #eee",
-          borderRadius: 12,
-          marginBottom: 8,
-          background: "#fafaff"
-        }}>
+        <div className="max-h-[400px] overflow-y-auto rounded-lg border-[0.5px] border-border/20 bg-card">
           {filteredSongs.length === 0 && (
-            <div style={{ padding: 16, color: "#aaa", textAlign: "center" }}>{t('story.noSongsFound')}</div>
-          )}
-          {filteredSongs.map((item) => (
-            <div
-              key={item._id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                padding: 10,
-                borderBottom: "1px solid #f0f0f0",
-                background: playingId === item._id ? "#e6e6ff" : value === item._id ? "#f0f7ff" : "#fff",
-                borderRadius: 10,
-                transition: "background 0.2s",
-                cursor: "pointer"
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = playingId === item._id ? "#e6e6ff" : "#f5f5fa"}
-              onMouseLeave={e => e.currentTarget.style.background = playingId === item._id ? "#e6e6ff" : value === item._id ? "#f0f7ff" : "#fff"}
-            >
-              <input
-                type="radio"
-                checked={value === item._id}
-                onChange={() => onChange(item._id)}
-                style={{ marginRight: 10 }}
-              />
-              <span style={{ flex: 1, fontWeight: value === item._id ? 600 : 400, color: "#333" }}>{item.title} - {item.artistName}</span>
-              <button
-                type="button"
-                onClick={e => { e.stopPropagation(); handlePlayPause(item); }}
-                style={{ marginLeft: 10, background: playingId === item._id ? "#6c47ff" : "#eee", color: playingId === item._id ? "#fff" : "#444", border: "none", borderRadius: 6, padding: "2px 12px", cursor: "pointer", fontSize: 16, fontWeight: 600 }}
-              >
-                {playingId === item._id ? "⏸" : "▶"}
-              </button>
+            <div className="py-4 text-center text-sm text-muted-foreground">
+              {t('story.noSongsFound') || 'No songs found'}
             </div>
-          ))}
+          )}
+          {filteredSongs.map((item) => {
+            const isPlaying = playingId === item._id;
+            const isSelected = value === item._id;
+            return (
+              <div
+                key={item._id}
+                className={`flex items-center gap-3 px-3 py-2.5 transition-colors cursor-pointer ${
+                  isPlaying 
+                    ? 'bg-primary/20' 
+                    : isSelected 
+                      ? 'bg-primary/10' 
+                      : 'hover:bg-muted/50'
+                } ${isSelected ? 'border-l-2 border-l-primary' : ''}`}
+                onClick={() => onChange?.(item._id, item)}
+              >
+                <input
+                  type="radio"
+                  checked={isSelected}
+                  onChange={() => onChange?.(item._id, item)}
+                  className="h-4 w-4 cursor-pointer accent-primary"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <span className={`flex-1 text-sm ${isSelected ? 'font-semibold text-foreground' : 'font-normal text-foreground'}`}>
+                  {item.title} - {item.artistName}
+                </span>
+                <button
+                  type="button"
+                  onClick={e => { 
+                    e.stopPropagation(); 
+                    handlePlayPause(item); 
+                  }}
+                  className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${
+                    isPlaying 
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                  }`}
+                >
+                  {isPlaying ? (
+                    <Pause size={14} className="fill-current" />
+                  ) : (
+                    <Play size={14} className="fill-current" />
+                  )}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
-import { Search } from "lucide-react";
+import { Search, Bell, Video, MoreHorizontal } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
@@ -10,12 +10,36 @@ import { getEntityMapFromSession } from "../../../utils/sessionHelper";
  * MessagesPanel - Hiển thị danh sách tin nhắn
  * Dùng DropdownPanel component chung từ BarHeader/CustomerHeader
  */
-export default function MessagesPanel({ onClose, onUnreadCountChange }) {
+export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId }) {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [conversations, setConversations] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+  const [currentUserAvatar, setCurrentUserAvatar] = React.useState(null);
+  const [currentUserName, setCurrentUserName] = React.useState("");
   const entityMapRef = React.useRef(getEntityMapFromSession());
+  const themeVars = React.useMemo(() => ({
+    background: "rgb(var(--background))",
+    backgroundSoft: "rgb(var(--background) / 0.92)",
+    card: "rgb(var(--card))",
+    cardSoft: "rgb(var(--card) / 0.94)",
+    border: "rgb(var(--border))",
+    borderSoft: "rgb(var(--border) / 0.45)",
+    borderStrong: "rgb(var(--border) / 0.75)",
+    primary: "rgb(var(--primary))",
+    primarySoft: "rgb(var(--primary) / 0.18)",
+    foreground: "rgb(var(--foreground))",
+    muted: "rgb(var(--muted))",
+    mutedForeground: "rgb(var(--muted-foreground))",
+    primaryForeground: "rgb(var(--primary-foreground))",
+  }), []);
+  const tabs = [
+    { id: "all", label: t('messages.tabAll') || "All" },
+    { id: "unread", label: t('messages.tabUnread') || "Unread" },
+    { id: "groups", label: t('messages.tabGroups') || "Groups" },
+    { id: "communities", label: t('messages.tabCommunities') || "Communities" }
+  ];
+  const [activeTab, setActiveTab] = React.useState("all");
 
   // Relative time formatter: phút/giờ/ngày trước; >7 ngày => dd/MM; >1 năm => dd/MM/yyyy
   const formatRelativeTime = (date) => {
@@ -53,6 +77,30 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
 
   // Track activeEntity to re-fetch when it changes
   const [activeEntityId, setActiveEntityId] = React.useState(null);
+
+  // Get current user avatar and name from session
+  React.useEffect(() => {
+    const loadCurrentUser = () => {
+      try {
+        const session = JSON.parse(localStorage.getItem("session") || "{}");
+        const active = session?.activeEntity || {};
+        const account = session?.account || {};
+        
+        // Get avatar from activeEntity first, fallback to account
+        const avatar = active.avatar || active.Avatar || account.avatar || account.Avatar || null;
+        const name = active.name || active.BarName || active.BusinessName || account.userName || account.email || "";
+        
+        setCurrentUserAvatar(avatar);
+        setCurrentUserName(name);
+      } catch (err) {
+        console.error("[MessagesPanel] Error loading current user:", err);
+      }
+    };
+
+    loadCurrentUser();
+    window.addEventListener('profileUpdated', loadCurrentUser);
+    return () => window.removeEventListener('profileUpdated', loadCurrentUser);
+  }, []);
 
   // Listen for session changes (when switching entities)
   React.useEffect(() => {
@@ -271,9 +319,13 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
     fetchConversations();
   }, [activeEntityId, onUnreadCountChange]); // Re-fetch when data changes
 
-  const filteredConversations = conversations.filter((conv) =>
-    conv.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = conversations.filter((conv) => {
+    const matchesSearch = conv.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+    if (activeTab === "unread") return conv.unread > 0;
+    // groups & communities not implemented yet -> return all
+    return true;
+  });
 
   const getInitial = (name) => {
     if (!name) return '?';
@@ -285,29 +337,116 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
   };
 
   return (
-    <div className={cn("flex h-full flex-col min-h-0")}>
+    <div
+      className={cn("flex h-full flex-col min-h-0")}
+      style={{ background: themeVars.cardSoft, color: themeVars.foreground }}
+    >
+      {/* Top header */}
+      <div
+        className="flex items-center justify-between px-4 py-3"
+        style={{
+          borderBottom: `1px solid ${themeVars.borderSoft}`,
+          background: `linear-gradient(180deg, ${themeVars.card} 0%, ${themeVars.backgroundSoft} 100%)`,
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-full overflow-hidden flex-shrink-0"
+            style={{
+              background: currentUserAvatar ? 'transparent' : `linear-gradient(140deg, ${themeVars.primary} 0%, ${themeVars.primarySoft} 100%)`,
+              color: themeVars.primaryForeground,
+            }}
+          >
+            {currentUserAvatar ? (
+              <img 
+                src={currentUserAvatar} 
+                alt={currentUserName || "User"} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-base font-bold">
+                {getInitial(currentUserName)}
+              </span>
+            )}
+          </div>
+          <div>
+            <p className="m-0 text-base font-semibold" style={{ color: themeVars.foreground }}>
+              {t('messages.chats') || "Chats"}
+            </p>
+            <p className="m-0 text-xs" style={{ color: themeVars.mutedForeground }}>
+              {t('messages.keepInTouch') || "Stay connected with your friends"}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {[{ id: "bell", Icon: Bell }, { id: "video", Icon: Video }, { id: "ellipsis", Icon: MoreHorizontal }].map(({ id, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className="flex h-9 w-9 items-center justify-center rounded-full transition"
+              style={{
+                border: `1px solid ${themeVars.borderStrong}`,
+                background: themeVars.card,
+                color: themeVars.mutedForeground,
+              }}
+            >
+              <Icon size={16} />
+            </button>
+          ))}
+        </div>
+      </div>
       {/* Search bar */}
-      <div className={cn(
-        "flex items-center gap-2 px-4 py-3",
-        "border-b border-border/30"
-      )}>
-        <Search size={16} className="text-muted-foreground flex-shrink-0" />
+      <div className="px-4 pt-3">
+        <div
+          className="flex items-center gap-2 rounded-full px-3 py-2"
+          style={{
+            border: `1px solid ${themeVars.borderSoft}`,
+            background: themeVars.muted,
+            color: themeVars.mutedForeground,
+          }}
+        >
+          <Search size={16} className="flex-shrink-0" />
         <input
           type="text"
           placeholder={t('messages.searchPlaceholder')}
-          className={cn(
-            "flex-1 border-none bg-transparent outline-none text-sm",
-            "text-foreground placeholder:text-muted-foreground"
-          )}
+            className="flex-1 border-none bg-transparent text-sm outline-none"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-        />
+            style={{ color: themeVars.foreground }}
+          />
+        </div>
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-2 text-sm">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "rounded-full px-4 py-1.5 font-medium transition"
+              )}
+              style={
+                activeTab === tab.id
+                  ? {
+                      background: themeVars.primarySoft,
+                      color: themeVars.primary,
+                    }
+                  : {
+                      background: "transparent",
+                      color: themeVars.mutedForeground,
+                    }
+              }
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Conversations list */}
-      <div className={cn(
-        "flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden"
-      )}>
+      <div
+        className="flex-1 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden px-2 pb-2"
+        style={{ background: themeVars.cardSoft }}
+      >
         {loading ? (
           <div className={cn(
             "py-10 px-5 text-center text-muted-foreground"
@@ -326,12 +465,15 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
               key={conv.id}
               type="button"
               className={cn(
-                "flex items-start gap-3 px-4 py-3",
-                "bg-transparent border-none cursor-pointer",
-                "text-left w-full transition-all duration-200",
-                "hover:bg-muted/50",
-                "active:scale-[0.98]"
+                "flex items-start gap-3 rounded-2xl px-4 py-3",
+                "cursor-pointer text-left w-full transition-all duration-200 shadow-[0_2px_8px_rgba(15,23,42,0.04)]",
+                selectedId && String(selectedId) === String(conv.id) && "shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
               )}
+              style={{
+                background: selectedId && String(selectedId) === String(conv.id) ? themeVars.primarySoft : themeVars.card,
+                border: `1px solid ${selectedId && String(selectedId) === String(conv.id) ? themeVars.primary : themeVars.borderSoft}`,
+                color: themeVars.foreground,
+              }}
               onClick={() => {
                 if (window.__openChat) {
                   window.__openChat({ 
@@ -357,11 +499,13 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
                 }
               }}
             >
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
-                "bg-gradient-to-br from-primary to-secondary",
-                "text-primary-foreground text-sm font-semibold"
-              )}>
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold"
+                style={{
+                  background: `linear-gradient(135deg, ${themeVars.primary} 0%, ${themeVars.primarySoft} 100%)`,
+                  color: themeVars.primaryForeground,
+                }}
+              >
                 {conv.avatar ? (
                   <img 
                     src={conv.avatar} 
@@ -374,15 +518,15 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
               </div>
               <div className={cn("flex-1 min-w-0")}>
                 <h4 className={cn(
-                  "m-0 mb-1 text-foreground text-[15px] font-semibold",
+                  "m-0 mb-1 text-[15px] font-semibold",
                   "overflow-hidden text-ellipsis whitespace-nowrap"
-                )}>
+                )} style={{ color: themeVars.foreground }}>
                   {conv.name}
                 </h4>
                 <p className={cn(
                   "m-0 text-muted-foreground text-[13px]",
                   "overflow-hidden text-ellipsis whitespace-nowrap"
-                )}>
+                )} style={{ color: themeVars.mutedForeground }}>
                   {conv.lastMessage}
                 </p>
               </div>
@@ -391,15 +535,13 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
               )}>
                 <span className={cn(
                   "text-muted-foreground text-[12px]"
-                )}>
+                )} style={{ color: themeVars.mutedForeground }}>
                   {conv.time}
                 </span>
                 {conv.unread > 0 && (
                   <span className={cn(
-                    "bg-primary text-primary-foreground rounded-full",
-                    "px-1.5 py-0.5 text-[11px] font-bold min-w-[18px]",
-                    "text-center"
-                  )}>
+                    "rounded-full px-1.5 py-0.5 text-[11px] font-bold min-w-[18px] text-center"
+                  )} style={{ background: themeVars.primary, color: themeVars.primaryForeground }}>
                     {conv.unread > 9 ? '9+' : conv.unread}
                   </span>
                 )}
@@ -415,9 +557,11 @@ export default function MessagesPanel({ onClose, onUnreadCountChange }) {
 MessagesPanel.propTypes = {
   onClose: PropTypes.func,
   onUnreadCountChange: PropTypes.func,
+  selectedId: PropTypes.string,
 };
 
 MessagesPanel.defaultProps = {
   onClose: () => {},
   onUnreadCountChange: null,
+  selectedId: null,
 };

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
+import { Music, X } from "lucide-react";
 import axiosClient from "../../../../api/axiosClient";
 import { uploadPostMedia } from "../../../../api/postApi";
 import { cn } from "../../../../utils/cn";
+import "../../../../styles/modules/feeds/components/modals/postForms.css";
 
 export default function MusicPostModal({ open, onClose, onCreated }) {
   const { t } = useTranslation();
@@ -29,23 +31,39 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
 
     try {
       const res = await uploadPostMedia(formData);
+      console.log("[MUSIC] Upload audio response:", res);
 
       // Backend returns: { success: true, data: [...], message: "..." }
       const responseData = res.data || res;
       const files = responseData.data || responseData;
 
-      if (files && files.length > 0) {
+      if (files && Array.isArray(files) && files.length > 0) {
         const uploadedFile = files[0]; // Get first uploaded file
+        const url = uploadedFile.url || uploadedFile.path || uploadedFile.secure_url;
+        
+        if (!url) {
+          console.error("[MUSIC] Upload response missing URL:", uploadedFile);
+          throw new Error("Uploaded file missing URL");
+        }
+
         return {
-          secure_url: uploadedFile.url || uploadedFile.path,
-          public_id: uploadedFile.public_id,
+          secure_url: url,
+          url: url,
+          path: url,
+          public_id: uploadedFile.public_id || uploadedFile.filename,
           format: uploadedFile.format,
+          type: uploadedFile.type || file.type,
           ...uploadedFile
         };
       }
       throw new Error("No file data returned from server");
     } catch (err) {
       console.error("[MUSIC] Upload audio error:", err);
+      console.error("[MUSIC] Error details:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
       const errorMessage = err.response?.data?.message || err.message || t('modal.uploadFailed');
       throw new Error(errorMessage);
     }
@@ -64,18 +82,33 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
       const responseData = res.data || res;
       const files = responseData.data || responseData;
 
-      if (files && files.length > 0) {
+      if (files && Array.isArray(files) && files.length > 0) {
         const uploadedFile = files[0]; // Get first uploaded file
+        const url = uploadedFile.url || uploadedFile.path || uploadedFile.secure_url;
+        
+        if (!url) {
+          console.error("[MUSIC] Upload response missing URL:", uploadedFile);
+          throw new Error("Uploaded file missing URL");
+        }
+
         return {
-          secure_url: uploadedFile.url || uploadedFile.path,
-          public_id: uploadedFile.public_id,
+          secure_url: url,
+          url: url,
+          path: url,
+          public_id: uploadedFile.public_id || uploadedFile.filename,
           format: uploadedFile.format,
+          type: uploadedFile.type || file.type,
           ...uploadedFile
         };
       }
       throw new Error("No file data returned from server");
     } catch (err) {
       console.error("[MUSIC] Upload image error:", err);
+      console.error("[MUSIC] Error details:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
       const errorMessage = err.response?.data?.message || err.message || t('modal.uploadFailed');
       throw new Error(errorMessage);
     }
@@ -91,19 +124,20 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
       setUploading(true);
       try {
         const result = await uploadAudioToCloudinary(file);
-        if (result.secure_url) {
+        const audioUrl = result.secure_url || result.url || result.path;
+        if (audioUrl) {
           setFormData((prev) => ({
             ...prev,
-            audioUrl: result.secure_url,
+            audioUrl: audioUrl,
             audioFile: file
           }));
         } else {
-          console.error("[MUSIC] Upload failed - no secure_url:", result);
-          alert(t('modal.uploadFailed'));
+          console.error("[MUSIC] Upload failed - no URL:", result);
+          alert(`${t('modal.uploadFailed')}: No URL returned`);
         }
       } catch (err) {
         console.error("[MUSIC] Upload error:", err);
-        alert(t('modal.uploadFailed'));
+        alert(`${t('modal.uploadFailed')}: ${err.message || ''}`);
       } finally {
         setUploading(false);
       }
@@ -116,18 +150,19 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
       setUploading(true);
       try {
         const result = await uploadImageToCloudinary(file);
-        if (result.secure_url) {
+        const imageUrl = result.secure_url || result.url || result.path;
+        if (imageUrl) {
           setFormData((prev) => ({
             ...prev,
-            musicBackgroundImage: result.secure_url
+            musicBackgroundImage: imageUrl
           }));
         } else {
-          console.error("[MUSIC] Upload failed - no secure_url:", result);
-          alert(t('modal.uploadFailed'));
+          console.error("[MUSIC] Upload failed - no URL:", result);
+          alert(`${t('modal.uploadFailed')}: No URL returned`);
         }
       } catch (err) {
         console.error("[MUSIC] Upload error:", err);
-        alert(t('modal.uploadFailed'));
+        alert(`${t('modal.uploadFailed')}: ${err.message || ''}`);
       } finally {
         setUploading(false);
       }
@@ -173,6 +208,13 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
       }
 
       //  Tạo Music trước
+      console.log("[MUSIC] Creating music with data:", {
+        title: formData.musicTitle,
+        artist: formData.artistName,
+        audioUrl: formData.audioUrl,
+        coverUrl: formData.musicBackgroundImage
+      });
+
       const musicRes = await axiosClient.post("/music", {
         title: formData.musicTitle,
         artist: formData.artistName,
@@ -188,11 +230,28 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
         uploaderName: activeEntity?.name || session?.account?.userName,
         uploaderAvatar: activeEntity?.avatar || session?.account?.avatar,
       });
+      
+      console.log("[MUSIC] Music creation response:", musicRes);
+      
       // axiosClient already returns response.data
       const createdMusic = musicRes?.data ? musicRes.data : (musicRes?.success ? musicRes.data : musicRes);
+      
+      // Extract music ID from various possible response formats
+      const musicId = createdMusic?._id || 
+                     createdMusic?.data?._id || 
+                     createdMusic?.id ||
+                     (createdMusic?.data && createdMusic.data.id) ||
+                     null;
+
+      if (!musicId) {
+        console.error("[MUSIC] Failed to get music ID from response:", createdMusic);
+        throw new Error("Failed to create music or get music ID");
+      }
+
+      console.log("[MUSIC] Created music ID:", musicId);
 
       //  Sau đó tạo Post liên kết
-      const postRes = await axiosClient.post("/posts", {
+      const postData = {
         title: formData.musicTitle,
         content: formData.description,
         type: "post",
@@ -204,9 +263,15 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
         authorEntityType: normalizedEntityType,
         authorEntityName: activeEntity?.name || session?.account?.userName,
         authorEntityAvatar: activeEntity?.avatar || session?.account?.avatar,
-        musicId: (createdMusic && createdMusic._id) || (createdMusic && createdMusic.data && createdMusic.data._id) || createdMusic?.id,
+        musicId: musicId,
         songId: null,
-      });
+      };
+
+      console.log("[MUSIC] Creating post with data:", postData);
+
+      const postRes = await axiosClient.post("/posts", postData);
+      
+      console.log("[MUSIC] Post creation response:", postRes);
 
 
       // axiosClient returns response.data -> may be {success, data}
@@ -236,7 +301,8 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
   return (
     <div
       className={cn(
-        "fixed inset-0 bg-black/75 backdrop-blur-xl z-[1000]",
+        "post-form-overlay",
+        "fixed inset-0 z-[1000]",
         "flex items-center justify-center p-4"
       )}
       role="dialog"
@@ -249,206 +315,181 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
     >
       <div
         className={cn(
-          "w-full max-w-[600px] bg-card text-card-foreground",
-          "rounded-lg border-[0.5px] border-border/20 shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
-          "overflow-hidden relative"
+          "post-form-glass-card",
+          "w-full max-w-3xl max-h-[92vh]",
+          "flex flex-col overflow-hidden"
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={cn(
-          "p-5 border-b border-border/30 font-semibold text-lg",
-          "bg-card/80 backdrop-blur-sm relative z-10"
-        )}>
-          🎵 {t('music.postMusic')} (SoundCloud style)
+        {/* Header with Icon */}
+        <div className="post-form-header">
+          <div className="post-form-header-content">
+            <Music className="post-form-header-icon" />
+            <span>{t('music.postMusic')}</span>
+          </div>
+          <button
+            type="button"
+            className="post-form-header-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className={cn(
-          "p-5 flex flex-col gap-4 relative z-10"
-        )}>
-          <div>
-            <label htmlFor="music-title" className={cn("block mb-2 font-medium text-foreground")}>
-              Title *
-            </label>
-            <input
-              id="music-title"
-              type="text"
-              name="musicTitle"
-              value={formData.musicTitle}
-              onChange={handleInputChange}
-              className={cn(
-                "w-full px-4 py-3 border-[0.5px] border-border/20 rounded-lg",
-                "bg-background text-foreground text-sm outline-none",
-                "transition-all duration-200",
-                "focus:border-primary focus:ring-2 focus:ring-primary/10",
-                "placeholder:text-muted-foreground/60"
-              )}
-              required
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6">
+            {/* Responsive Grid Layout */}
+            <div className="post-form-grid">
+              {/* Title - Full Width */}
+              <div className="post-form-field-wrapper post-form-grid-full">
+                <label htmlFor="music-title" className="post-form-field-label">
+                  Title *
+                </label>
+                <input
+                  id="music-title"
+                  type="text"
+                  name="musicTitle"
+                  value={formData.musicTitle}
+                  onChange={handleInputChange}
+                  className="post-form-input"
+                  required
+                />
+              </div>
 
-          <div>
-            <label htmlFor="music-artist" className={cn("block mb-2 font-medium text-foreground")}>
-              Artist *
-            </label>
-            <input
-              id="music-artist"
-              type="text"
-              name="artistName"
-              value={formData.artistName}
-              onChange={handleInputChange}
-              className={cn(
-                "w-full px-4 py-3 border-[0.5px] border-border/20 rounded-lg",
-                "bg-background text-foreground text-sm outline-none",
-                "transition-all duration-200",
-                "focus:border-primary focus:ring-2 focus:ring-primary/10",
-                "placeholder:text-muted-foreground/60"
-              )}
-              required
-            />
-          </div>
+              {/* Artist - Left Column */}
+              <div className="post-form-field-wrapper">
+                <label htmlFor="music-artist" className="post-form-field-label">
+                  Artist *
+                </label>
+                <input
+                  id="music-artist"
+                  type="text"
+                  name="artistName"
+                  value={formData.artistName}
+                  onChange={handleInputChange}
+                  className="post-form-input"
+                  required
+                />
+              </div>
 
-          <div>
-            <label htmlFor="music-description" className={cn("block mb-2 font-medium text-foreground")}>
-              Description *
-            </label>
-            <textarea
-              id="music-description"
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              className={cn(
-                "w-full px-4 py-3 border-[0.5px] border-border/20 rounded-lg",
-                "bg-background text-foreground text-sm outline-none resize-y",
-                "transition-all duration-200",
-                "focus:border-primary focus:ring-2 focus:ring-primary/10",
-                "placeholder:text-muted-foreground/60"
-              )}
-              rows={3}
-              placeholder={t('input.caption')}
-              required
-            />
-          </div>
+              {/* Hashtag - Right Column */}
+              <div className="post-form-field-wrapper">
+                <label htmlFor="music-hashtag" className="post-form-field-label">
+                  #Hashtag
+                </label>
+                <input
+                  id="music-hashtag"
+                  type="text"
+                  name="hashTag"
+                  value={formData.hashTag}
+                  onChange={handleInputChange}
+                  className="post-form-input"
+                  placeholder={t('input.hashtags')}
+                />
+              </div>
 
-          <div>
-            <label htmlFor="music-hashtag" className={cn("block mb-2 font-medium text-foreground")}>
-              #Hashtag
-            </label>
-            <input
-              id="music-hashtag"
-              type="text"
-              name="hashTag"
-              value={formData.hashTag}
-              onChange={handleInputChange}
-              className={cn(
-                "w-full px-4 py-3 border-[0.5px] border-border/20 rounded-lg",
-                "bg-background text-foreground text-sm outline-none",
-                "transition-all duration-200",
-                "focus:border-primary focus:ring-2 focus:ring-primary/10",
-                "placeholder:text-muted-foreground/60"
-              )}
-              placeholder={t('input.hashtags')}
-            />
-          </div>
+              {/* Description - Full Width */}
+              <div className="post-form-field-wrapper post-form-grid-full">
+                <label htmlFor="music-description" className="post-form-field-label">
+                  Description *
+                </label>
+                <textarea
+                  id="music-description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="post-form-textarea"
+                  rows={3}
+                  placeholder={t('input.caption')}
+                  required
+                />
+              </div>
 
-          <div>
-            <label htmlFor="music-purchase-link" className={cn("block mb-2 font-medium text-foreground")}>
-              Purchase link
-            </label>
-            <input
-              id="music-purchase-link"
-              type="url"
-              name="musicPurchaseLink"
-              value={formData.musicPurchaseLink}
-              onChange={handleInputChange}
-              className={cn(
-                "w-full px-4 py-3 border-[0.5px] border-border/20 rounded-lg",
-                "bg-background text-foreground text-sm outline-none",
-                "transition-all duration-200",
-                "focus:border-primary focus:ring-2 focus:ring-primary/10",
-                "placeholder:text-muted-foreground/60"
-              )}
-              placeholder={t('input.url')}
-            />
-          </div>
+              {/* Purchase Link - Full Width */}
+              <div className="post-form-field-wrapper post-form-grid-full">
+                <label htmlFor="music-purchase-link" className="post-form-field-label">
+                  Purchase link
+                </label>
+                <input
+                  id="music-purchase-link"
+                  type="url"
+                  name="musicPurchaseLink"
+                  value={formData.musicPurchaseLink}
+                  onChange={handleInputChange}
+                  className="post-form-input"
+                  placeholder={t('input.url')}
+                />
+              </div>
 
-          <div>
-            <label htmlFor="music-audio" className={cn("block mb-2 font-medium text-foreground")}>
-              Audio file (MP3, WAV, etc.) *
-            </label>
-            <input
-              id="music-audio"
-              type="file"
-              accept="audio/*"
-              onChange={handleAudioFileChange}
-              className={cn("mb-2")}
-              required
-            />
-            {formData.audioUrl && (
-              <audio controls src={formData.audioUrl} className={cn("w-full mt-2 rounded-xl")} />
-            )}
-          </div>
+              {/* Audio File Picker - Full Width */}
+              <div className="post-form-field-wrapper post-form-grid-full">
+                <label htmlFor="music-audio" className="post-form-field-label">
+                  Audio file (MP3, WAV, etc.) *
+                </label>
+                <div className="post-form-file-picker">
+                  <input
+                    id="music-audio"
+                    type="file"
+                    accept="audio/*"
+                    onChange={handleAudioFileChange}
+                    required
+                  />
+                  {formData.audioUrl && (
+                    <div className="post-form-file-picker-preview">
+                      <audio controls src={formData.audioUrl} />
+                    </div>
+                  )}
+                </div>
+              </div>
 
-          <div>
-            <label htmlFor="music-image" className={cn("block mb-2 font-medium text-foreground")}>
-              Cover image *
-            </label>
-            <input
-              id="music-image"
-              type="file"
-              accept="image/*"
-              onChange={handleImageFileChange}
-              className={cn("mb-2")}
-              required
-            />
-            {formData.musicBackgroundImage && (
-              <img
-                src={formData.musicBackgroundImage}
-                alt="preview"
-                className={cn(
-                  "w-full max-h-[200px] rounded-xl mt-2 object-cover"
-                )}
-              />
-            )}
-          </div>
-
-          {uploading && (
-            <div className={cn(
-              "p-3 bg-primary/10 text-primary rounded-lg text-sm font-medium text-center"
-            )}>
-              {t('upload.uploading')}
+              {/* Cover Image Picker - Full Width */}
+              <div className="post-form-field-wrapper post-form-grid-full">
+                <label htmlFor="music-image" className="post-form-field-label">
+                  Cover image *
+                </label>
+                <div className="post-form-file-picker">
+                  <input
+                    id="music-image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFileChange}
+                    required
+                  />
+                  {formData.musicBackgroundImage && (
+                    <div className="post-form-file-picker-preview">
+                      <img
+                        src={formData.musicBackgroundImage}
+                        alt="Cover preview"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
 
-          <div className={cn(
-            "flex gap-2 justify-end pt-4 border-t border-border/30 mt-2"
-          )}>
+            {/* Upload Status */}
+            {uploading && (
+              <div className="post-form-upload-status mt-4">
+                {t('upload.uploading')}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="post-form-footer">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className={cn(
-                "px-5 py-2.5 rounded-lg text-sm font-medium",
-                "cursor-pointer transition-all duration-200",
-                "bg-muted/30 text-foreground",
-                "hover:bg-muted/50",
-                "active:scale-95",
-                "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              )}
+              className="post-form-button post-form-button-cancel"
             >
               {t('action.cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting || uploading}
-              className={cn(
-                "px-5 py-2.5 rounded-lg text-sm font-medium",
-                "cursor-pointer transition-all duration-200 border-none",
-                "bg-primary text-primary-foreground",
-                "shadow-[0_4px_16px_rgba(var(--primary),0.4)]",
-                "hover:shadow-[0_6px_24px_rgba(var(--primary),0.5)]",
-                "active:scale-95",
-                "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              )}
+              className="post-form-button post-form-button-submit"
             >
               {submitting ? t('action.posting') : (uploading ? t('modal.waitUpload') : t('music.postMusic'))}
             </button>

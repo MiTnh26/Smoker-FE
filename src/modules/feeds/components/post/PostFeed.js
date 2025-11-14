@@ -24,6 +24,12 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
   const [editingPost, setEditingPost] = useState(null);
   const [reportingPost, setReportingPost] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  
+  // Cursor-based pagination state
+  const [cursor, setCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadMoreTriggerRef = useRef(null); // Ref for IntersectionObserver target
 
   // Lấy entityAccountId của user hiện tại (cần cho trash post)
   const getCurrentEntityAccountId = () => {
@@ -166,36 +172,95 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
   useEffect(() => {
     let isMounted = true;
     if (isMounted) {
-      loadPosts();
+      // Always reset cursor and hasMore on mount to ensure fresh data
+      setCursor(null);
+      setHasMore(true);
+      loadPosts(false); // Load from beginning
     }
     return () => {
       isMounted = false;
     };
   }, []);
 
+  // Infinite scroll with IntersectionObserver
+  useEffect(() => {
+    if (!loadMoreTriggerRef.current || !hasMore || loadingMore) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry.isIntersecting && hasMore && !loadingMore && cursor) {
+          loadMorePosts();
+        }
+      },
+      {
+        root: null,
+        rootMargin: '200px', // Start loading 200px before reaching the bottom
+        threshold: 0.1
+      }
+    );
+
+    const currentTrigger = loadMoreTriggerRef.current;
+    if (currentTrigger) {
+      observer.observe(currentTrigger);
+    }
+
+    return () => {
+      if (currentTrigger) {
+        observer.unobserve(currentTrigger);
+      }
+    };
+  }, [hasMore, loadingMore, cursor]);
+
   const loadPosts = async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
+        // Reset cursor and hasMore on refresh
+        setCursor(null);
+        setHasMore(true);
       } else {
         setLoading(true);
       }
       setError(null);
 
-      const response = await getPosts({ includeMusic: true, includeMedias: true });
+      // Use cursor-based pagination if cursor exists, otherwise use page-based (backward compatibility)
+      const params = {
+        includeMusic: true,
+        includeMedias: true,
+        limit: 10,
+        // Add timestamp to prevent caching
+        _t: Date.now()
+      };
       
-      // Backend returns: { success: true, data: [...], pagination: {...} }
-      // Axios wraps it, so response.data = { success: true, data: [...], pagination: {...} }
+      // If refreshing or cursor is null, don't send cursor (load from beginning)
+      // Only use cursor if not refreshing AND cursor exists
+      if (!isRefresh && cursor) {
+        params.cursor = cursor;
+      }
+
+      const response = await getPosts(params);
+      
+      // Backend returns: { success: true, data: [...], nextCursor, hasMore, pagination: {...} }
+      // Axios wraps it, so response is already response.data
       let postsData = [];
-      // With axios interceptor, response is already response.data
+      let nextCursor = null;
+      let responseHasMore = false;
+      
       // Handle various shapes: array directly or { success, data }
       if (response) {
         if (Array.isArray(response)) {
           postsData = response;
         } else if (response.data && Array.isArray(response.data)) {
           postsData = response.data;
+          nextCursor = response.nextCursor || null;
+          responseHasMore = response.hasMore !== undefined ? response.hasMore : true;
         } else if (response.success && Array.isArray(response.data)) {
           postsData = response.data;
+          nextCursor = response.nextCursor || null;
+          responseHasMore = response.hasMore !== undefined ? response.hasMore : true;
         }
       }
       
@@ -212,7 +277,18 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       
       // If we got posts (even if empty), set them; otherwise show error
       if (postsData.length >= 0 || response?.success) {
+        // Always replace posts in loadPosts (initial load or refresh)
+        // loadMorePosts is used for appending
         setPosts(postsData);
+        
+        // Update cursor and hasMore
+        setCursor(nextCursor);
+        setHasMore(responseHasMore);
+        
+        // Fallback to page-based if no cursor in response
+        if (!nextCursor && responseHasMore) {
+          console.warn('[PostFeed] No cursor in response but hasMore is true, falling back to page-based pagination');
+        }
       } else {
         console.error("[FEED] Failed to load posts:", response?.message);
         setError(response?.message || t('feed.loadFail'));
@@ -223,6 +299,58 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const loadMorePosts = async () => {
+    // Don't load more if already loading, no cursor, or no more posts
+    if (loadingMore || !cursor || !hasMore) {
+      return;
+    }
+
+    try {
+      setLoadingMore(true);
+      setError(null);
+
+      const response = await getPosts({
+        includeMusic: true,
+        includeMedias: true,
+        cursor: cursor,
+        limit: 10
+      });
+
+      let postsData = [];
+      let nextCursor = null;
+      let responseHasMore = false;
+
+      if (response) {
+        if (Array.isArray(response)) {
+          postsData = response;
+        } else if (response.data && Array.isArray(response.data)) {
+          postsData = response.data;
+          nextCursor = response.nextCursor || null;
+          responseHasMore = response.hasMore !== undefined ? response.hasMore : false;
+        } else if (response.success && Array.isArray(response.data)) {
+          postsData = response.data;
+          nextCursor = response.nextCursor || null;
+          responseHasMore = response.hasMore !== undefined ? response.hasMore : false;
+        }
+      }
+
+      if (postsData.length > 0) {
+        // Append new posts to existing posts
+        setPosts(prevPosts => [...prevPosts, ...postsData]);
+        setCursor(nextCursor);
+        setHasMore(responseHasMore);
+      } else {
+        // No more posts
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("[FEED] Error loading more posts:", err);
+      setError(t('feed.loadFail'));
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -246,9 +374,16 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       accountId: postObj.accountId || postObj.authorId || null,
       ...postObj
     };
+    // Thêm post mới vào đầu danh sách (optimistic update)
     setPosts(prevPosts => [ensured, ...prevPosts]);
     setShowMediaComposer(false);
     setShowMusicComposer(false);
+    
+    // Refresh feed sau 1 giây để đảm bảo post mới được load từ server với đầy đủ thông tin
+    // và được sắp xếp đúng theo sort order mới (createdAt: -1)
+    setTimeout(() => {
+      loadPosts(true);
+    }, 1000);
   };
 
   // Helper function to extract medias from Map/Object
@@ -561,6 +696,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         const displayTitle = (populatedMusic?.title) || (populatedSong?.title) || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null;
         const displayArtist = (populatedMusic?.artist) || (populatedSong?.artist) || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null;
         const displayThumb = (populatedMusic?.coverUrl) || (populatedSong?.coverUrl) || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null;
+        const displayPurchaseLink = (populatedMusic?.purchaseLink) || (populatedSong?.purchaseLink) || post.purchaseLink || post.musicPurchaseLink || null;
 
         return {
           medias: {
@@ -577,6 +713,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
           releaseDate: post.releaseDate || post.createdAt || null,
           description: post.description || (populatedMusic ? populatedMusic.details : null) || (populatedSong ? populatedSong.details : null) || post["Chi Tiết"] || post.content || null,
           thumbnail: displayThumb,
+          purchaseLink: displayPurchaseLink,
         };
       })(),
       likes: (() => {
@@ -743,6 +880,29 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
               />
             );
           })
+        )}
+
+        {/* Infinite scroll trigger element */}
+        {hasMore && (
+          <div 
+            ref={loadMoreTriggerRef}
+            className="h-4 w-full"
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Loading more indicator */}
+        {loadingMore && (
+          <div className="flex items-center justify-center py-4">
+            <p className="text-muted-foreground text-sm">{t('feed.loadingMore') || 'Đang tải thêm...'}</p>
+          </div>
+        )}
+
+        {/* No more posts indicator */}
+        {!hasMore && posts.length > 0 && (
+          <div className="flex items-center justify-center py-4">
+            <p className="text-muted-foreground text-sm">{t('feed.noMorePosts') || 'Không còn bài viết nào'}</p>
+          </div>
         )}
 
         {/* Tùy chọn nhỏ: thông báo đang làm mới, không thay đổi giao diện chính */}

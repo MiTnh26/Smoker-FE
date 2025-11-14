@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { ArrowLeft, Phone, Video, Info, MoreVertical, Reply, Smile, Search, CheckCheck } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import MessagesPanel from "../../../components/layout/common/MessagesPanel";
 import MessageList from "../components/MessageList";
@@ -9,7 +10,23 @@ import useChatSocket from "../../../api/useChatSocket";
 import Composer from "../components/Composer";
 import { getEntityMapFromSession } from "../../../utils/sessionHelper";
 
-function ConversationView({ chat }) {
+const themeVars = {
+  background: "rgb(var(--background))",
+  backgroundSoft: "rgb(var(--background) / 0.92)",
+  card: "rgb(var(--card))",
+  cardSoft: "rgb(var(--card) / 0.94)",
+  border: "rgb(var(--border))",
+  borderSoft: "rgb(var(--border) / 0.45)",
+  borderStrong: "rgb(var(--border) / 0.75)",
+  primary: "rgb(var(--primary))",
+  primarySoft: "rgb(var(--primary) / 0.18)",
+  foreground: "rgb(var(--foreground))",
+  muted: "rgb(var(--muted))",
+  mutedForeground: "rgb(var(--muted-foreground))",
+  primaryForeground: "rgb(var(--primary-foreground))",
+};
+
+function ConversationView({ chat, onBack }) {
   const { t } = useTranslation();
   const [messages, setMessages] = useState([]);
   const [hasMore, setHasMore] = useState(true);
@@ -321,73 +338,164 @@ function ConversationView({ chat }) {
   };
   const [isTyping, setIsTyping] = useState(false);
   const [presence, setPresence] = useState({ online: false, lastSeen: null });
+  const [messageQuery, setMessageQuery] = useState("");
+
+  const formatTimestampLabel = useCallback((value) => {
+    try {
+      const date = new Date(value);
+      return date.toLocaleString(undefined, {
+        weekday: 'short',
+        hour: 'numeric',
+        minute: '2-digit'
+      });
+    } catch {
+      return '';
+    }
+  }, []);
+
+  const shouldShowTimestamp = (index, list = messages) => {
+    if (index === 0) return true;
+    const current = getTimestamp(list[index]);
+    const prev = getTimestamp(list[index - 1]);
+    return current - prev > 30 * 60 * 1000 || new Date(current).getDate() !== new Date(prev).getDate();
+  };
+
+  const displayMessages = useMemo(() => {
+    const q = messageQuery.trim().toLowerCase();
+    if (!q) return messages;
+    return messages.filter((msg) => {
+      const text = (msg["Nội Dung Tin Nhắn"] || msg.content || msg.message || "").toString().toLowerCase();
+      return text.includes(q);
+    });
+  }, [messages, messageQuery]);
+
+  const messageMap = useMemo(() => {
+    const map = new Map();
+    for (const msg of messages) {
+      const key = String(msg.id || msg._id || "");
+      if (key) map.set(key, msg);
+    }
+    return map;
+  }, [messages]);
+
+  const getSenderKey = (msg) => String(msg["Người Gửi"] || msg.senderId || "").toLowerCase().trim();
 
   return (
-    <div className="flex h-[calc(100vh-144px)] flex-1 flex-col rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+    <div
+      className="flex h-[calc(100vh-144px)] flex-1 flex-col rounded-[32px] shadow-[0_40px_120px_rgba(15,23,42,0.12)]"
+      style={{
+        background: themeVars.cardSoft,
+        border: `1px solid ${themeVars.borderSoft}`,
+      }}
+    >
       {/* Header inline */}
-      <div className="flex items-center gap-3 border-b border-border/30 bg-muted px-4 py-3">
-        <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-primary to-secondary text-center font-semibold text-primary-foreground">
+      <div
+        className="flex flex-wrap items-center gap-3 px-4 py-3"
+        style={{
+          borderBottom: `1px solid ${themeVars.borderSoft}`,
+          background: `linear-gradient(90deg, ${themeVars.card} 0%, ${themeVars.backgroundSoft} 100%)`,
+        }}
+      >
+        {onBack && (
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-sm transition lg:hidden"
+            onClick={onBack}
+            aria-label={t('action.back', { defaultValue: 'Quay lại' })}
+            style={{
+              border: `1px solid ${themeVars.borderStrong}`,
+              color: themeVars.foreground,
+              background: themeVars.card,
+            }}
+          >
+            <ArrowLeft size={18} />
+          </button>
+        )}
+        <div
+          className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full text-center font-semibold"
+          style={{
+            background: `linear-gradient(135deg, ${themeVars.primary} 0%, ${themeVars.primarySoft} 100%)`,
+            color: themeVars.primaryForeground,
+          }}
+        >
           {other?.avatar ? <img src={other.avatar} alt={other?.name} className="h-full w-full object-cover" /> : getInitial(other?.name)}
         </div>
-        <div className="flex flex-col">
-          <div className="text-[15px] font-semibold text-foreground">{other?.name || chat?.name}</div>
-          <div className="text-xs text-muted-foreground">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="text-[15px] font-semibold" style={{ color: themeVars.foreground }}>
+            {other?.name || chat?.name}
+          </div>
+          <div className="text-xs" style={{ color: themeVars.mutedForeground }}>
             {isTyping ? "Đang nhập..." : presence.online ? "Đang hoạt động" : presence.lastSeen ? `Hoạt động ${new Date(presence.lastSeen).toLocaleString()}` : ""}
           </div>
         </div>
-        <div className="ml-auto">
-          <div className="relative">
-            <svg
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-            <input
-              type="search"
-              aria-label="Search in conversation"
-              placeholder={t('action.search', { defaultValue: 'Search' })}
-              className="h-9 w-[220px] rounded-full border border-border/30 bg-background pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-border/60 focus:ring-0"
-              onChange={(e) => {
-                const q = e.target.value.trim().toLowerCase();
-                if (!q) {
-                  if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
-                  return;
-                }
-                const idx = messages.findIndex((m) => {
-                  const text = (m['Nội Dung Tin Nhắn'] || m.content || m.message || '').toString().toLowerCase();
-                  return text.includes(q);
-                });
-                if (idx >= 0) {
-                  // scroll to approx position
-                  if (bodyRef.current) {
-                    const ratio = idx / Math.max(1, messages.length - 1);
-                    bodyRef.current.scrollTop = ratio * (bodyRef.current.scrollHeight - bodyRef.current.clientHeight);
-                  }
-                }
+        <div className="ml-auto flex items-center gap-2" style={{ color: themeVars.mutedForeground }}>
+          {[
+            { id: "phone", label: "Call", Icon: Phone },
+            { id: "video", label: "Video", Icon: Video },
+            { id: "info", label: "Info", Icon: Info }
+          ].map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full transition"
+              title={label}
+              style={{
+                border: `1px solid ${themeVars.borderStrong}`,
+                background: themeVars.card,
+                color: themeVars.mutedForeground,
               }}
+            >
+              <Icon size={18} />
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            className="flex flex-1 items-center gap-2 rounded-full border px-3 py-2"
+            style={{ borderColor: themeVars.borderSoft, background: themeVars.card }}
+            >
+            <Search size={16} style={{ color: themeVars.mutedForeground }} />
+            <input
+              className="flex-1 border-none bg-transparent text-sm outline-none"
+              placeholder={t("messages.searchPlaceholder")}
+              value={messageQuery}
+              onChange={(e) => setMessageQuery(e.target.value)}
             />
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <button className="rounded-full border px-3 py-1" style={{ borderColor: themeVars.borderSoft }}>
+              {t("messages.tabAll")}
+            </button>
+            <button className="rounded-full border px-3 py-1" style={{ borderColor: themeVars.borderSoft }}>
+              {t("messages.tabUnread")}
+            </button>
           </div>
         </div>
       </div>
+      {/* subtle divider */}
+      <div
+        className="px-4 py-2 text-xs"
+        style={{
+          borderBottom: `1px solid ${themeVars.borderSoft}`,
+          background: themeVars.card,
+          color: themeVars.mutedForeground,
+        }}
+      >
+        {t('messages.securedInfo') || "Chats are encrypted on Smoker"}
+      </div>
       {/* Body */}
-      <div ref={bodyRef} className="flex flex-1 flex-col overflow-y-auto bg-background">
+      <div
+        ref={bodyRef}
+        className="flex flex-1 flex-col overflow-y-auto px-4 py-4"
+        style={{ background: themeVars.backgroundSoft }}
+      >
         <MessageList
           containerRef={bodyRef}
-          messages={messages}
+          messages={displayMessages}
           hasMore={hasMore}
           onLoadMore={loadMore}
           renderItem={(m, i) => {
-            const sender = String(m["Người Gửi"] || m.senderId || "").toLowerCase().trim();
+            const sender = getSenderKey(m);
             const isMine = me && sender === me;
             const text = m["Nội Dung Tin Nhắn"] || m.content || m.message || "";
             const status = m._status || m.status; // pending | sent | delivered | read
@@ -454,12 +562,60 @@ function ConversationView({ chat }) {
                 </span>
               );
             }
+            const actionIcons = [
+              { label: t("action.moreOptions") || "More", Icon: MoreVertical },
+              { label: t("comment.reply") || "Reply", Icon: Reply },
+              { label: t("action.react") || "React", Icon: Smile }
+            ];
+            const reactionChoices = ["👍","❤️","😂","😮","😢","😡"];
+            const handleReactionClick = async (emoji) => {
+              const mid = m.id || m._id;
+              setMessages((prev) =>
+                prev.map((mm) => {
+                  if ((mm.id || mm._id) !== mid) return mm;
+                  const currentCount = mm.reactions?.[emoji] || 0;
+                  return {
+                    ...mm,
+                    reactions: {
+                      ...(mm.reactions || {}),
+                      [emoji]: currentCount + 1
+                    }
+                  };
+                })
+              );
+              try {
+                if (messageApi.reactMessage) {
+                  await messageApi.reactMessage(mid, emoji);
+                }
+                if (socket && chat?.id) {
+                  socket.emit("message:reaction", { convId: chat.id, messageId: mid, emoji });
+                }
+              } catch (error) {
+                console.error("React message failed", error);
+              }
+            };
+            const replyPreview = (() => {
+              if (!m.replyToId) return null;
+              const ref = messageMap.get(String(m.replyToId));
+              if (!ref) return null;
+              const refText = (ref["Nội Dung Tin Nhắn"] || ref.content || ref.message || "").toString();
+              const refSender = getSenderKey(ref) === me ? t("messages.you") || "Bạn" : (ref.authorName || other?.name || "User");
             return (
               <div
-                key={i}
+                  className="mb-2 rounded-lg border px-3 py-1 text-xs"
+                  style={{ borderColor: themeVars.borderSoft, background: isMine ? "rgba(255,255,255,0.2)" : themeVars.cardSoft }}
+                >
+                  <div className="font-semibold">{refSender}</div>
+                  <div className="line-clamp-2 opacity-80">{refText || t("messages.attachment") || "Đính kèm"}</div>
+                </div>
+              );
+            })();
+            const bubble = (
+              <div
+                key={`bubble-${i}`}
                 className={cn(
-                  "max-w-[60%] break-words rounded-[16px] px-3 py-2 text-[15px] leading-[1.35] font-medium",
-                  isMine ? "self-end rounded-br-sm bg-primary text-primary-foreground" : "self-start rounded-bl-sm bg-muted text-card-foreground"
+                  "group relative max-w-[260px] break-words rounded-2xl px-3 py-1.5 text-[14px] leading-[1.35] font-medium shadow-sm sm:max-w-[320px]",
+                  isMine ? "rounded-br-md" : "rounded-bl-md border"
                 )}
                 onClick={() => {
                   setReplyTarget({
@@ -468,61 +624,151 @@ function ConversationView({ chat }) {
                     preview: text?.slice(0, 60),
                   });
                 }}
+                style={
+                  isMine
+                    ? {
+                        background: `linear-gradient(135deg, ${themeVars.primary} 0%, ${themeVars.primarySoft} 100%)`,
+                        color: themeVars.primaryForeground,
+                        boxShadow: "0 8px 20px rgba(0,0,0,0.15)",
+                      }
+                    : {
+                        background: themeVars.card,
+                        color: themeVars.foreground,
+                        borderColor: themeVars.borderSoft,
+                      }
+                }
               >
-                <div className="flex items-center gap-2">
+                {replyPreview}
+                <div className="flex items-start gap-2">
                   {contentNode}
-                  <div className="relative group">
-                    <button className="opacity-0 group-hover:opacity-100 transition-opacity text-sm" title="React">😊</button>
-                    <div className="absolute -top-10 left-0 hidden rounded-md border border-border/30 bg-card px-2 py-1 text-base shadow group-hover:block">
-                      {["👍","❤️","😂","😮","😢","😡"].map((e) => (
+                </div>
+                <div className="pointer-events-none absolute -top-9 left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full bg-card/95 px-2 py-1 text-lg shadow-md group-hover:flex">
+                  {reactionChoices.map((emoji) => (
                         <button
-                          key={e}
-                          className="px-1"
+                      key={emoji}
+                      className="pointer-events-auto text-base"
                           onClick={(ev) => {
                             ev.stopPropagation();
-                            const mid = m.id || m._id;
-                            setMessages((prev) => prev.map(mm => mm === m ? { ...mm, reactions: { ...(mm.reactions||{}), [e]: (mm.reactions?.[e]||0)+1 } } : mm));
-                            if (messageApi.reactMessage) {
-                              messageApi.reactMessage(mid, e).catch(()=>{});
-                            }
-                            if (socket && chat?.id) {
-                              try {
-                                socket.emit("message:reaction", { convId: chat.id, messageId: mid, emoji: e });
-                              } catch {}
-                            }
+                        handleReactionClick(emoji);
                           }}
                         >
-                          {e}
+                      {emoji}
                         </button>
                       ))}
-                    </div>
-                  </div>
                 </div>
                 {url && linkPreviewMap[url] && (
-                  <a href={url} target="_blank" rel="noreferrer" className="mt-2 block rounded-md border border-border/30 bg-background p-2 no-underline">
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 block rounded-md border p-2 no-underline"
+                    style={{
+                      borderColor: themeVars.borderSoft,
+                      background: themeVars.background,
+                      color: themeVars.foreground,
+                    }}
+                  >
                     <div className="text-sm font-semibold">{linkPreviewMap[url]?.title || url}</div>
-                    {linkPreviewMap[url]?.description && <div className="text-xs text-muted-foreground">{linkPreviewMap[url]?.description}</div>}
+                    {linkPreviewMap[url]?.description && <div className="text-xs" style={{ color: themeVars.mutedForeground }}>{linkPreviewMap[url]?.description}</div>}
                   </a>
                 )}
                 {!!m.reactions && (
-                  <div className="mt-1 flex gap-1 text-xs opacity-90">
+                  <div className="mt-1 flex gap-1 text-xs">
+                    <div
+                      className="flex items-center gap-1 rounded-full bg-black/10 px-2 py-0.5"
+                      style={{ color: isMine ? "rgba(255,255,255,0.9)" : themeVars.foreground }}
+                    >
                     {Object.entries(m.reactions).map(([k,v]) => (
-                      <span key={k} className="rounded bg-black/10 px-1">{k} {v}</span>
+                        <span key={k} className="flex items-center gap-0.5 text-sm">
+                          {k} {v}
+                        </span>
                     ))}
                   </div>
+                  </div>
                 )}
+                <div
+                  className={cn(
+                    "mt-1 flex text-xs opacity-0 transition group-hover:opacity-100",
+                    isMine ? "justify-end" : "justify-start"
+                  )}
+                  style={{ color: isMine ? "rgba(255,255,255,0.85)" : themeVars.mutedForeground }}
+                >
+                  <span>{new Date(getTimestamp(m)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                 {isMine && (
-                  <span className="ml-2 select-none text-xs opacity-80">
-                    {status === "read" ? "✓✓" : status === "delivered" ? "✓✓" : status === "sent" ? "✓" : status === "pending" ? "…" : ""}
+                    <span className="ml-2 flex items-center gap-1 select-none">
+                      <CheckCheck size={14} />
+                      {status === "read" ? t("messages.seen") || "Đã xem" : status === "delivered" ? t("messages.delivered") || "Đã gửi" : status === "sent" ? "✓" : status === "pending" ? "…" : ""}
                   </span>
                 )}
               </div>
+              </div>
+            );
+            const nextSender = displayMessages[i + 1] ? getSenderKey(displayMessages[i + 1]) : null;
+            const showAvatar = !isMine && sender !== nextSender;
+            return (
+              <React.Fragment key={i}>
+                {shouldShowTimestamp(i, displayMessages) && (
+                  <div className="mb-3 flex w-full justify-center">
+                    <span
+                      className="rounded-full px-4 py-1 text-xs font-medium"
+                      style={{ background: themeVars.card, color: themeVars.mutedForeground }}
+                    >
+                      {formatTimestampLabel(getTimestamp(m))}
+                    </span>
+                  </div>
+                )}
+                <div
+                  className={cn(
+                    "group/message flex items-end gap-2",
+                    isMine ? "justify-end" : "justify-start"
+                  )}
+                >
+                  {!isMine && showAvatar && (
+                    <img
+                      src={m.authorAvatar || other?.avatar}
+                      alt={m.authorName || other?.name}
+                      className="h-8 w-8 rounded-full object-cover"
+                    />
+                  )}
+                  {isMine && (
+                    <div
+                      className="hidden items-center gap-1 rounded-full border px-2 py-1 text-xs opacity-0 transition group-hover/message:opacity-100 lg:flex"
+                      style={{ borderColor: themeVars.borderSoft, color: themeVars.mutedForeground, background: themeVars.card }}
+                    >
+                      {actionIcons.map(({ label, Icon }) => (
+                        <button key={label} title={label}>
+                          <Icon size={16} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {bubble}
+                  {!isMine && (
+                    <div
+                      className="hidden items-center gap-1 rounded-full border px-2 py-1 text-xs opacity-0 transition group-hover/message:opacity-100 lg:flex"
+                      style={{ borderColor: themeVars.borderSoft, color: themeVars.mutedForeground, background: themeVars.card }}
+                    >
+                      {actionIcons.map(({ label, Icon }) => (
+                        <button key={label} title={label}>
+                          <Icon size={16} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </React.Fragment>
             );
           }}
         />
       </div>
       {/* Input */}
-      <div className="border-t border-border/30 bg-card">
+      <div
+        className="px-3"
+        style={{
+          borderTop: `1px solid ${themeVars.borderSoft}`,
+          background: themeVars.card,
+        }}
+      >
         <Composer
           convId={chat?.id}
           placeholder={t('input.messagePlaceholder')}
@@ -556,23 +802,47 @@ export default function MessagesPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-2.5">
-      <div className="grid grid-cols-[360px_1fr] gap-4">
-        <div className="h-[calc(100vh-144px)] overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
-          <MessagesPanel onClose={() => {}} onUnreadCountChange={() => {}} />
+    <div
+      className="min-h-[calc(100vh-80px)] px-3 py-4 sm:px-6"
+      style={{ background: themeVars.background }}
+    >
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
+        <div
+          className={cn(
+            "h-[calc(100vh-144px)] overflow-hidden rounded-[32px] shadow-[0_30px_120px_rgba(15,23,42,0.15)] backdrop-blur",
+            selectedChat ? "hidden lg:block" : "block"
+          )}
+          style={{
+            border: `1px solid ${themeVars.borderSoft}`,
+            background: themeVars.cardSoft,
+          }}
+        >
+          <MessagesPanel
+            onClose={() => {}}
+            onUnreadCountChange={() => {}}
+            selectedId={selectedChat?.id}
+          />
         </div>
+        <div
+          className={cn(
+            "w-full",
+            selectedChat ? "block" : "hidden",
+            "lg:block"
+          )}
+        >
         {selectedChat ? (
-          <ConversationView chat={selectedChat} />
+            <ConversationView chat={selectedChat} onBack={() => setSelectedChat(null)} />
         ) : (
           <div
             className={cn(
-              "h-[calc(100vh-176px)] rounded-lg border-[0.5px] border-dashed border-border/30",
-              "bg-card flex items-center justify-center text-sm text-muted-foreground"
+                "hidden h-[calc(100vh-176px)] rounded-lg border-[0.5px] border-dashed border-border/30 lg:flex",
+                "bg-card items-center justify-center text-sm text-muted-foreground"
             )}
           >
             {t('messages.selectConversation')}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

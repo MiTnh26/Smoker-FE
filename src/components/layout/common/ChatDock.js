@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+/* global globalThis */
+import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -7,25 +8,25 @@ import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { userApi } from "../../../api/userApi";
 import useChatSocket from '../../../api/useChatSocket';
+import { Phone, Video, Info, MoreVertical, Reply, Smile, CheckCheck, X } from "lucide-react";
+import Composer from "../../../modules/messages/components/Composer";
 
 function ChatWindow(props) {
   const { chat, onClose } = props;
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const bodyRef = useRef(null);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [currentEntityType, setCurrentEntityType] = useState(null); // EntityType (Account, BarPage, Business)
-  const [currentEntityId, setCurrentEntityId] = useState(null); // EntityId (id of the entity, not EntityAccountId)
-  const [otherUserInfo, setOtherUserInfo] = useState(null); // { name, avatar, entityId }
-
-  // Track activeEntity to re-fetch when it changes
+  const [currentEntityType, setCurrentEntityType] = useState(null);
+  const [currentEntityId, setCurrentEntityId] = useState(null);
+  const [otherUserInfo, setOtherUserInfo] = useState(null);
   const [activeEntityId, setActiveEntityId] = React.useState(null);
 
   // Listen for session changes (when switching entities)
   useEffect(() => {
+    // eslint-disable-next-line complexity
     const checkSessionChange = async () => {
       try {
         const { getActiveEntity, getEntities } = await import("../../../utils/sessionManager");
@@ -52,13 +53,13 @@ function ChatWindow(props) {
     checkSessionChange();
 
     // Listen for profileUpdated event (fired when switching entities)
-    window.addEventListener('profileUpdated', checkSessionChange);
+    globalThis.addEventListener('profileUpdated', checkSessionChange);
     
     // Also poll for changes (fallback)
     const interval = setInterval(checkSessionChange, 1000);
 
     return () => {
-      window.removeEventListener('profileUpdated', checkSessionChange);
+      globalThis.removeEventListener('profileUpdated', checkSessionChange);
       clearInterval(interval);
     };
   }, []);
@@ -67,6 +68,7 @@ function ChatWindow(props) {
   useEffect(() => {
     if (!activeEntityId) return; // Wait for activeEntityId to be set
     
+    // eslint-disable-next-line complexity
     const resolveCurrentUserId = async () => {
       try {
         const { getSession, getActiveEntity, getEntities, updateSession } = await import("../../../utils/sessionManager");
@@ -170,6 +172,7 @@ function ChatWindow(props) {
 
   // Fetch other user info from conversation
   useEffect(() => {
+    // eslint-disable-next-line complexity
     const fetchOtherUserInfo = async () => {
       if (!chat.id || !currentUserId) return;
       
@@ -187,9 +190,9 @@ function ChatWindow(props) {
       // If entityId is already provided in chat object, use it directly
       if (chat.entityId) {
         // First, check if this entityId belongs to the current user's entities (own bar/business)
-        try {
-          const { getEntities } = await import("../../../utils/sessionManager");
-          const entities = getEntities();
+      try {
+        const { getEntities } = await import("../../../utils/sessionManager");
+        const entities = getEntities();
           
           // Normalize entityId for comparison (case-insensitive, trimmed)
           const targetEntityId = String(chat.entityId).toLowerCase().trim();
@@ -212,8 +215,8 @@ function ChatWindow(props) {
           } else {
             console.log("[ChatDock] Entity not found in session entities. Target:", targetEntityId, "Available:", entities.map(e => String(e.EntityAccountId || e.entityAccountId || "").toLowerCase().trim()));
           }
-        } catch (sessionErr) {
-          console.warn("[ChatDock] Error checking session entities:", sessionErr);
+        } catch (error_) {
+          console.warn("[ChatDock] Error checking session entities:", error_);
         }
         
         // If not found in session, try API call
@@ -297,9 +300,9 @@ function ChatWindow(props) {
               } else {
                 console.log("[ChatDock] Entity not found in session entities. Target:", targetEntityId, "Available:", entities.map(e => String(e.EntityAccountId || e.entityAccountId || "").toLowerCase().trim()));
               }
-            } catch (sessionErr) {
-              console.warn("[ChatDock] Error checking session entities:", sessionErr);
-            }
+        } catch (error_) {
+          console.warn("[ChatDock] Error checking session entities:", error_);
+        }
             
             // If not found in session, try API call
             try {
@@ -362,20 +365,21 @@ function ChatWindow(props) {
     const handleFocus = () => setIsWindowFocused(true);
     const handleBlur = () => setIsWindowFocused(false);
     
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('blur', handleBlur);
+    globalThis.addEventListener('focus', handleFocus);
+    globalThis.addEventListener('blur', handleBlur);
     
     return () => {
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('blur', handleBlur);
+      globalThis.removeEventListener('focus', handleFocus);
+      globalThis.removeEventListener('blur', handleBlur);
     };
   }, []);
 
   // Play notification sound
   const playNotificationSound = () => {
     try {
-      // Create audio context for notification sound
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const AudioCtx = globalThis.AudioContext || globalThis.webkitAudioContext;
+      if (!AudioCtx) return;
+      const audioContext = new AudioCtx();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       
@@ -397,25 +401,26 @@ function ChatWindow(props) {
 
   // Show browser notification
   const showBrowserNotification = (message, senderName) => {
-    if (!('Notification' in window)) {
-      return;
-    }
-    
-    if (Notification.permission === 'granted') {
-      new Notification(`Tin nhắn mới từ ${senderName}`, {
+    const NotificationAPI = globalThis.Notification;
+    if (!NotificationAPI) return;
+
+    if (NotificationAPI.permission === 'granted') {
+      const notification = new NotificationAPI(`Tin nhắn mới từ ${senderName}`, {
         body: message,
         icon: otherUserInfo?.avatar || '/favicon.ico',
         tag: `chat-${chat.id}`,
         requireInteraction: false
       });
-    } else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(permission => {
+      setTimeout(() => notification.close?.(), 5000);
+    } else if (NotificationAPI.permission !== 'denied') {
+      NotificationAPI.requestPermission().then(permission => {
         if (permission === 'granted') {
-          new Notification(`Tin nhắn mới từ ${senderName}`, {
+          const notification = new NotificationAPI(`Tin nhắn mới từ ${senderName}`, {
             body: message,
             icon: otherUserInfo?.avatar || '/favicon.ico',
             tag: `chat-${chat.id}`
           });
+          setTimeout(() => notification.close?.(), 5000);
         }
       });
     }
@@ -519,47 +524,34 @@ function ChatWindow(props) {
     scrollToBottom();
   }, [messages]);
 
-  // Handle typing indicator (for other user typing)
-  // Note: Backend doesn't support typing events yet, so this is placeholder
-  const handleInputChange = (e) => {
-    setMessage(e.target.value);
-  };
-
-  const handleSend = () => {
-    if (message.trim() && currentUserId) {
-      // Send currentUserId (EntityAccountId), entityType, and entityId to backend
-      // This ensures backend uses the correct role when sending message
-      messageApi.sendMessage(chat.id, message, "text", currentUserId, currentEntityType, currentEntityId).then(res => {
+  const handleComposerSend = (content) => {
+    const text = content?.trim() || "";
+    if (!text || !currentUserId) return;
+    messageApi
+      .sendMessage(chat.id, text, "text", currentUserId, currentEntityType, currentEntityId)
+      .then((res) => {
         const responseSenderId = res?.data?.data?.senderId || res?.data?.senderId;
-        
-        // Use senderId from response if available, otherwise use currentUserId
         const senderIdToUse = responseSenderId || currentUserId;
-        
-        // Optimistically add message to UI
-        setMessages(prev => [...prev, {
-          "Nội Dung Tin Nhắn": message,
-          "Người Gửi": senderIdToUse, // Use senderId from response or currentUserId
-          "Gửi Lúc": new Date(),
-        }]);
-        setMessage("");
+        setMessages((prev) => [
+          ...prev,
+          {
+            "Nội Dung Tin Nhắn": text,
+            "Người Gửi": senderIdToUse,
+            "Gửi Lúc": new Date(),
+          },
+        ]);
         setTimeout(scrollToBottom, 100);
-      }).catch(err => {
+      })
+      .catch((err) => {
         console.error("❌ Error sending message:", err);
-        // Reload messages on error
-        messageApi.getMessages(chat.id).then(res => {
+        messageApi.getMessages(chat.id).then((res) => {
           const messages = res?.data?.data || res?.data || [];
           setMessages(Array.isArray(messages) ? messages : []);
         });
       });
-    }
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const handleComposerTyping = () => {};
 
   const getInitial = (name) => {
     if (!name) return '?';
@@ -569,6 +561,42 @@ function ChatWindow(props) {
     }
     return name.charAt(0).toUpperCase();
   };
+
+  const formatTimestampLabel = (value) => {
+    try {
+      const date = new Date(value);
+      return date.toLocaleString(undefined, {
+        weekday: "short",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    } catch {
+      return "";
+    }
+  };
+
+  const shouldShowTimestamp = (index, list) => {
+    if (index === 0) return true;
+    const current = new Date(list[index]?.["Gửi Lúc"] || list[index]?.createdAt || 0).getTime();
+    const prev = new Date(list[index - 1]?.["Gửi Lúc"] || list[index - 1]?.createdAt || 0).getTime();
+    return current - prev > 30 * 60 * 1000 || new Date(current).getDate() !== new Date(prev).getDate();
+  };
+
+  const getSenderKey = (msg) => {
+    const raw = msg["Người Gửi"] || msg.senderId || msg.senderEntityAccountId || "";
+    return String(raw).toLowerCase().trim();
+  };
+
+  const displayMessages = useMemo(() => messages, [messages]);
+
+  const messageMap = useMemo(() => {
+    const map = new Map();
+    for (const msg of messages) {
+      const key = String(msg.id || msg._id || msg.messageId || "");
+      if (key) map.set(key, msg);
+    }
+    return map;
+  }, [messages]);
 
   const handleHeaderClick = () => {
     if (otherUserInfo?.entityId) {
@@ -587,201 +615,260 @@ function ChatWindow(props) {
       "flex flex-col overflow-hidden",
       "animate-[chatSlideUp_0.2s_ease-out]"
     )}>
-      <div className={cn(
-        "flex items-center gap-3 px-4 py-3",
-        "bg-muted border-b border-border/30",
-        "flex-shrink-0"
-      )}>
-        <div 
-          className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
-            "bg-gradient-to-br from-primary to-secondary",
-            "text-primary-foreground font-bold text-base",
-            "overflow-hidden",
-            otherUserInfo?.entityId && "cursor-pointer"
-          )}
-          onClick={handleHeaderClick}
-        >
-          {displayAvatar ? (
-            <img 
-              src={displayAvatar} 
-              alt={displayName}
-              className="w-full h-full rounded-full object-cover"
-            />
-          ) : (
-            getInitial(displayName)
-          )}
-        </div>
-        <div 
-          className={cn(
-            "flex-1 font-semibold text-foreground text-[15px]",
-            otherUserInfo?.entityId && "cursor-pointer"
-          )}
-          onClick={handleHeaderClick}
-        >
-          {displayName}
-        </div>
-        <button 
-          className={cn(
-            "w-9 h-9 flex items-center justify-center",
-            "bg-transparent border-none cursor-pointer",
-            "text-muted-foreground rounded-full",
-            "transition-all duration-200 text-lg",
-            "hover:bg-border/50"
-          )}
-          onClick={() => onClose(chat.id)} 
-          aria-label="Đóng"
-        >
-          ✕
-        </button>
-      </div>
-      <div 
+      <div
         className={cn(
-          "flex-1 overflow-y-auto overflow-x-hidden",
-          "p-4 bg-background",
-          "flex flex-col gap-1"
+          "border-b border-border/30 bg-gradient-to-r from-card to-card/80 px-4 py-3",
+          "flex-shrink-0"
         )}
+      >
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className={cn(
+              "h-10 w-10 rounded-full flex items-center justify-center overflow-hidden border-none bg-transparent p-0",
+              "bg-gradient-to-br from-primary to-secondary text-primary-foreground font-semibold"
+            )}
+            onClick={handleHeaderClick}
+          >
+            {displayAvatar ? (
+              <img src={displayAvatar} alt={displayName} className="h-full w-full object-cover" />
+            ) : (
+              getInitial(displayName)
+            )}
+          </button>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <button
+              type="button"
+              className="text-left text-[15px] font-semibold text-foreground border-none bg-transparent p-0"
+              onClick={handleHeaderClick}
+            >
+              {displayName}
+            </button>
+            <span className="text-xs text-muted-foreground">&nbsp;</span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            {[
+              { id: "phone", Icon: Phone },
+              { id: "video", Icon: Video },
+              { id: "info", Icon: Info },
+              { id: "more", Icon: MoreVertical }
+            ].map(({ id, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                className="flex h-9 w-9 items-center justify-center rounded-full border"
+                style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))" }}
+              >
+                <Icon size={16} />
+              </button>
+            ))}
+            <button
+              className="flex h-9 w-9 items-center justify-center rounded-full border text-muted-foreground hover:bg-border/50"
+              style={{ borderColor: "rgb(var(--border))" }}
+              onClick={() => onClose(chat.id)}
+              aria-label="Đóng"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 h-[1px] w-full bg-border/40" />
+      </div>
+      <div
+        className="flex-1 overflow-y-auto overflow-x-hidden bg-background p-4"
         ref={bodyRef}
       >
+        {/* eslint-disable-next-line complexity */}
         {loading || !currentUserId ? (
-          <div className={cn(
-            "text-center text-muted-foreground py-4"
-          )}>
-            {loading ? 'Đang tải...' : 'Đang xác định người dùng...'}
+          <div className="py-4 text-center text-muted-foreground">
+            {loading ? t("messages.loading") : t("messages.selectConversation")}
           </div>
         ) : (
-          messages.map((msg, idx) => {
-            // Normalize sender ID for comparison
-            // Backend stores "Người Gửi" as EntityAccountId (from messageController.js line 125)
-            const rawSenderId = msg["Người Gửi"] || msg.senderId || msg.senderEntityAccountId || "";
-            const senderId = String(rawSenderId).toLowerCase().trim();
-            const currentUserIdNormalized = currentUserId ? String(currentUserId).toLowerCase().trim() : "";
-            
-            // Check if message is from current user
-            // IMPORTANT: Only compare with currentUserId (EntityAccountId of current active role)
-            // This ensures messages are displayed correctly based on the current role context
-            // If user switches roles, messages from other roles should appear as "other" messages
-            let isMyMessage = false;
-            
-            if (currentUserIdNormalized && senderId) {
-              // Only check if senderId matches currentUserId (current active role's EntityAccountId)
-              // This ensures proper message alignment: messages from current role = right side, others = left side
-              isMyMessage = senderId === currentUserIdNormalized;
-              
-              // Debug logging for first 3 messages
-              if (idx < 3) {
-                console.log(`🔍 Message ${idx + 1} comparison:`, {
-                  rawSenderId,
-                  senderId,
-                  currentUserId,
-                  currentUserIdNormalized,
-                  isMyMessage,
-                  messageContent: (msg["Nội Dung Tin Nhắn"] || msg.content || msg.message)?.substring(0, 20)
-                });
-              }
-            }
-            
-            // Parse message content for story image
+          displayMessages.map((msg, idx) => {
+            const sender = getSenderKey(msg);
+            const isMine = currentUserId ? sender === String(currentUserId).toLowerCase().trim() : false;
             const rawContent = msg["Nội Dung Tin Nhắn"] || msg.content || msg.message || "";
-            const storyImageRegex = /\[STORY_IMAGE:(.+?)\]/g;
-            const storyImageMatches = [...rawContent.matchAll(storyImageRegex)];
-            
-            // Extract story image URL and text content
-            let textContent = rawContent;
-            let storyImageUrl = null;
-            
-            if (storyImageMatches.length > 0) {
-              // Get the last story image URL (in case there are multiple)
-              storyImageUrl = storyImageMatches[storyImageMatches.length - 1][1];
-              // Remove [STORY_IMAGE:url] from text content
-              textContent = rawContent.replace(/\[STORY_IMAGE:[^\]]+\]/g, '').trim();
-            }
-            
-            return (
+            const storyImgMatch = rawContent.match(/\[STORY_IMAGE:([^\]]+)\]/i);
+            const storyImageUrl = storyImgMatch ? storyImgMatch[1] : null;
+            const textContent = storyImageUrl ? rawContent.replaceAll(/\[STORY_IMAGE:[^\]]+\]/gi, "").trim() : rawContent;
+
+            const replyPreview = (() => {
+              const refId = msg.replyToId;
+              if (!refId) return null;
+              const ref = messageMap.get(String(refId));
+              if (!ref) return null;
+              const refText = (ref["Nội Dung Tin Nhắn"] || ref.content || ref.message || "").toString();
+              const refSender = getSenderKey(ref) === sender ? t("messages.you") || "Bạn" : ref.authorName || displayName;
+              return (
+                <div
+                  className="mb-2 rounded-lg border px-3 py-1 text-xs"
+                  style={{ borderColor: "rgb(var(--border))", background: isMine ? "rgba(255,255,255,0.15)" : "rgb(var(--card)/0.8)" }}
+                >
+                  <div className="font-semibold">{refSender}</div>
+                  <div className="line-clamp-2 opacity-80">{refText || t("messages.attachment")}</div>
+                </div>
+              );
+            })();
+
+            const actionIcons = [
+              { label: t("action.moreOptions") || "More", Icon: MoreVertical },
+              { label: t("comment.reply") || "Reply", Icon: Reply },
+              { label: t("action.react") || "React", Icon: Smile }
+            ];
+
+            const reactionChoices = ["👍","❤️","😂","😮","😢","😡"];
+            const handleReactionClick = async (emoji) => {
+              const mid = msg.id || msg._id;
+              setMessages((prev) =>
+                prev.map((mm) => {
+                  const key = mm.id || mm._id;
+                  if (mid && String(key) !== String(mid)) return mm;
+                  const current = mm.reactions?.[emoji] || 0;
+                  return {
+                    ...mm,
+                    reactions: { ...(mm.reactions || {}), [emoji]: current + 1 },
+                  };
+                })
+              );
+              try {
+                if (messageApi.reactMessage) {
+                  await messageApi.reactMessage(mid, emoji);
+                }
+                if (socket && chat.id) {
+                  socket.emit("message:reaction", { convId: chat.id, messageId: mid, emoji });
+                }
+              } catch {}
+            };
+
+            const messageKey = msg.id || msg._id || msg.messageId || `${msg["Gửi Lúc"] || ""}-${idx}`;
+
+            const bubbleTextColor = isMine ? "#ffffff" : "rgb(var(--foreground))";
+            const bubbleStyle = isMine
+              ? { color: bubbleTextColor }
+              : { background: "rgb(var(--card))", color: bubbleTextColor, borderColor: "rgb(var(--border))" };
+
+            const bubble = (
               <div
-                key={idx}
+                key={`modal-bubble-${messageKey}`}
                 className={cn(
-                  "max-w-[75%] px-3 py-2 rounded-[18px] text-[15px] leading-[1.35]",
-                  "break-words relative",
-                  isMyMessage 
-                    ? "self-end bg-primary text-primary-foreground rounded-br-sm" 
-                    : "self-start bg-muted text-foreground rounded-bl-sm"
+                  "group relative max-w-[240px] break-words rounded-2xl px-3 py-1.5 text-sm leading-[1.35] shadow-sm sm:max-w-[280px]",
+                  isMine ? "rounded-br-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" : "rounded-bl-md border",
                 )}
+                style={bubbleStyle}
               >
-                {/* Story image if present */}
-                {storyImageUrl && (
-                  <div className={cn(
-                    "-mx-2 -mt-1 mb-2 max-w-[calc(100%+16px)]"
-                  )}>
-                    <div className={cn(
-                      "text-xs font-medium mb-1.5 px-1",
-                      isMyMessage 
-                        ? "text-primary-foreground/90" 
-                        : "text-foreground/70"
-                    )}>
-                      {t('messages.replyYourStory') || 'Trả lời story của bạn'}
-                    </div>
-                    <div className={cn(
-                      "rounded-lg overflow-hidden max-w-[100px]",
-                      "bg-black/10"
-                    )}>
-                      <img 
-                        src={storyImageUrl} 
-                        alt="Story" 
-                        className={cn(
-                          "w-full h-auto block object-cover",
-                          "max-h-[150px] min-h-[75px]"
-                        )}
-                      />
+                {replyPreview}
+                <div className="flex items-start gap-2">
+                  {storyImageUrl && (
+                    <img src={storyImageUrl} alt="" className="max-h-[150px] rounded-lg object-cover" />
+                  )}
+                  <span style={{ color: bubbleTextColor }}>{textContent}</span>
+                </div>
+                <div className="pointer-events-none absolute -top-8 left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full bg-card/95 px-2 py-1 text-lg shadow-md group-hover:flex">
+                  {reactionChoices.map((emoji) => (
+                    <button
+                      key={emoji}
+                      className="pointer-events-auto text-base"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        handleReactionClick(emoji);
+                      }}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                {!!msg.reactions && (
+                  <div className="mt-1 flex gap-1 text-xs">
+                    <div className="flex items-center gap-1 rounded-full bg-black/10 px-2 py-0.5">
+                      {Object.entries(msg.reactions).map(([k, v]) => (
+                        <span key={k} className="flex items-center gap-0.5">
+                          {k} {v}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}
-                {/* Text content */}
-                {textContent && (
-                  <div className={cn("break-words mt-0")}>
-                    {textContent}
-                  </div>
-                )}
+                <div
+                  className={cn(
+                    "mt-1 flex text-[11px] opacity-0 transition group-hover:opacity-100",
+                    isMine ? "justify-end" : "justify-start"
+                  )}
+                  style={{ color: isMine ? "rgba(255,255,255,0.9)" : "rgb(var(--muted-foreground))" }}
+                >
+                  <span>{new Date(msg["Gửi Lúc"] || msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  {isMine && (
+                    <span className="ml-2 flex items-center gap-1 select-none">
+                      <CheckCheck size={12} />
+                      {t("messages.seen")}
+                    </span>
+                  )}
+                </div>
               </div>
+            );
+
+            const nextSender = displayMessages[idx + 1] ? getSenderKey(displayMessages[idx + 1]) : null;
+            const showAvatar = !isMine && sender !== nextSender;
+
+            return (
+              <React.Fragment key={messageKey}>
+                {shouldShowTimestamp(idx, displayMessages) && (
+                  <div className="mb-3 flex w-full justify-center">
+                    <span className="rounded-full px-3 py-0.5 text-[11px] text-muted-foreground" style={{ background: "rgb(var(--card))" }}>
+                      {formatTimestampLabel(msg["Gửi Lúc"] || msg.createdAt || Date.now())}
+                    </span>
+                  </div>
+                )}
+                <div
+                  className={cn(
+                    "group/message flex items-end gap-2 py-1",
+                    isMine ? "justify-end" : "justify-start"
+                  )}
+                >
+                  {!isMine && showAvatar && (
+                    <img
+                      src={otherUserInfo?.avatar || displayAvatar || "/avatar.png"}
+                      alt={displayName}
+                      className="h-7 w-7 rounded-full object-cover"
+                    />
+                  )}
+                  {isMine && (
+                    <div
+                      className="hidden items-center gap-1 rounded-full border px-2 py-1 text-xs opacity-0 transition group-hover/message:opacity-100 lg:flex"
+                      style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))", color: "rgb(var(--muted-foreground))" }}
+                    >
+                      {actionIcons.map(({ label, Icon }) => (
+                        <button key={label} title={label} type="button">
+                          <Icon size={14} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {bubble}
+                  {!isMine && (
+                    <div
+                      className="hidden items-center gap-1 rounded-full border px-2 py-1 text-xs opacity-0 transition group-hover/message:opacity-100 lg:flex"
+                      style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))", color: "rgb(var(--muted-foreground))" }}
+                    >
+                      {actionIcons.map(({ label, Icon }) => (
+                        <button key={label} title={label} type="button">
+                          <Icon size={14} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </React.Fragment>
             );
           })
         )}
-        {/* Typing indicator - placeholder for when backend supports typing events */}
-        {/* {isTyping && (
-          <div className="chatwin__typing">
-            <span className="chatwin__typing-dot"></span>
-            <span className="chatwin__typing-dot"></span>
-            <span className="chatwin__typing-dot"></span>
-          </div>
-        )} */}
       </div>
-      <div className={cn(
-        "flex gap-2 px-4 py-3",
-        "border-t border-border/30 bg-card",
-        "flex-shrink-0"
-      )}>
-        <input
-          placeholder={t('input.messagePlaceholder')}
-          value={message}
-          onChange={handleInputChange}
-          onKeyPress={handleKeyPress}
-          className={cn(
-            "flex-1 border-none bg-muted rounded-[20px]",
-            "px-4 py-2 text-[15px] text-foreground outline-none",
-            "placeholder:text-muted-foreground"
-          )}
+      <div className="border-t border-border/30 bg-card">
+        <Composer
+          convId={chat.id}
+          placeholder={t("input.messagePlaceholder")}
+          onSend={handleComposerSend}
+          onTyping={handleComposerTyping}
         />
-        <button 
-          onClick={handleSend}
-          className={cn(
-            "border-none bg-primary text-primary-foreground",
-            "px-4 py-2 rounded-[20px] cursor-pointer",
-            "font-semibold text-sm transition-all duration-200",
-            "hover:bg-primary/90 active:scale-95"
-          )}
-        >
-          {t('action.send')}
-        </button>
       </div>
     </div>
   );
@@ -798,11 +885,9 @@ export default function ChatDock() {
 
   // expose global open function
   useEffect(() => {
-    // eslint-disable-next-line no-undef
-    window.__openChat = openChatById;
+    globalThis.__openChat = openChatById;
     return () => {
-      // eslint-disable-next-line no-undef
-      delete window.__openChat;
+      delete globalThis.__openChat;
     };
   }, [openChatById]);
 
@@ -822,7 +907,8 @@ ChatWindow.propTypes = {
   chat: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     name: PropTypes.string.isRequired,
-    entityId: PropTypes.string, // Optional: EntityAccountId for profile navigation
+    entityId: PropTypes.string,
+    avatar: PropTypes.string,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
 };

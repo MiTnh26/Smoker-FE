@@ -2,7 +2,11 @@
 import axiosClient from "./axiosClient";
 
 // Lấy danh sách post
-// params can include includeMedias, includeMusic flags
+// params can include:
+//   - includeMedias, includeMusic: boolean flags
+//   - cursor: base64 encoded cursor string for cursor-based pagination
+//   - page, limit: for backward compatibility (offset-based pagination)
+// Returns: { success, data, nextCursor, hasMore, pagination }
 export const getPosts = (params) => axiosClient.get("/posts", { params });
 
 // Lấy post theo id (supports includeMedias/includeMusic)

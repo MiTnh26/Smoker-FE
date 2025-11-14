@@ -207,6 +207,41 @@
   overflow: hidden;
 }
 
+.audio-purchase-wrapper {
+  margin-top: 0.75rem;
+}
+
+.audio-purchase-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(var(--primary), 0.2);
+}
+
+.audio-purchase-button:hover {
+  background: rgba(var(--primary), 0.9);
+  box-shadow: 0 4px 8px rgba(var(--primary), 0.3);
+}
+
+.audio-purchase-button:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 4px rgba(var(--primary), 0.2);
+}
+
+.audio-purchase-button svg {
+  flex-shrink: 0;
+}
+
 .waveform-wrapper {
   position: relative;
   width: 100%;

@@ -252,10 +252,22 @@
     "daysAgoSuffix": "ngày trước"
   },
   "messages": {
+    "chats": "Tin nhắn",
+    "keepInTouch": "Giữ liên lạc với bạn bè",
+    "tabAll": "Tất cả",
+    "tabUnread": "Chưa đọc",
+    "tabGroups": "Nhóm",
+    "tabCommunities": "Cộng đồng",
     "searchPlaceholder": "Tìm kiếm cuộc trò chuyện...",
     "empty": "Không có tin nhắn",
+    "loading": "Đang tải...",
     "replyYourStory": "Trả lời story",
-    "selectConversation": "Chọn một cuộc trò chuyện"
+    "selectConversation": "Chọn một cuộc trò chuyện",
+    "securedInfo": "Tin nhắn được mã hóa trên Smoker",
+    "you": "Bạn",
+    "attachment": "Đính kèm",
+    "seen": "Đã xem",
+    "delivered": "Đã gửi"
   },
   "unifiedMenu": {
     "entityLabel": "Trang / Doanh nghiệp của bạn",

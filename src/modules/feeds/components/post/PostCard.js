@@ -121,6 +121,7 @@ export default function PostCard({
   const audioUrl = music.audioUrl || post.audioSrc;
   const genre = music.hashTag || post.genre;
   const description = music.details || post.description;
+  const purchaseLink = music.purchaseLink || post.purchaseLink || null;
 
   // Get audio from post data (already extracted in transformPost)
   const audioMedia = audioUrl ? { url: audioUrl } : null;
@@ -314,11 +315,51 @@ export default function PostCard({
       {/* Content */}
         {post.content && (
       <div className="mt-3">
-            <ReadMoreText 
-              text={post.content} 
-              maxLines={3}
-              className="whitespace-pre-wrap leading-[1.7] text-[0.95rem] text-foreground m-0 break-words"
-            />
+            {(() => {
+              // Parse content to detect YouTube links
+              const segments = splitTextWithYouTube(post.content);
+              
+              // If no YouTube links found, render as plain text
+              if (segments.length === 1 && segments[0].type === 'text') {
+                return (
+                  <ReadMoreText 
+                    text={post.content} 
+                    maxLines={3}
+                    className="whitespace-pre-wrap leading-[1.7] text-[0.95rem] text-foreground m-0 break-words"
+                  />
+                );
+              }
+              
+              // Render segments: text segments as text, YouTube segments as previews
+              return (
+                <div className="space-y-3">
+                  {segments.map((segment, idx) => {
+                    if (segment.type === 'youtube') {
+                      return (
+                        <div key={`youtube-${idx}`} className="my-3">
+                          <YouTubeLinkPreview 
+                            url={segment.url} 
+                            videoId={segment.videoId} 
+                          />
+                        </div>
+                      );
+                    }
+                    // Text segment
+                    if (segment.text && segment.text.trim()) {
+                      return (
+                        <ReadMoreText 
+                          key={`text-${idx}`}
+                          text={segment.text} 
+                          maxLines={3}
+                          className="whitespace-pre-wrap leading-[1.7] text-[0.95rem] text-foreground m-0 break-words"
+                        />
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              );
+            })()}
         </div>
         )}
 
@@ -335,6 +376,7 @@ export default function PostCard({
             releaseDate={post.releaseDate}
             description={description}
             thumbnail={thumbnail}
+            purchaseLink={purchaseLink}
             sharedAudioRef={sharedAudioRef}
             sharedCurrentTime={sharedCurrentTime}
             sharedDuration={sharedDuration}

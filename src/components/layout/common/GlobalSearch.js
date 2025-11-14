@@ -138,11 +138,12 @@ export default function GlobalSearch() {
         />
         {q && (
           <div className={cn(
-            "absolute top-[calc(100%+6px)] left-0 right-0 z-[60]",
-            "bg-card border-[0.5px] border-border/20 rounded-lg",
-            "max-h-[420px] overflow-auto p-2",
-            "shadow-[0_8px_24px_rgba(0,0,0,0.32)]",
-            "sm:max-h-[60vh] sm:rounded-t-none sm:border-t-0"
+            "absolute top-[calc(100%+6px)] left-0 right-0 z-[60] w-full",
+            "bg-card/95 backdrop-blur-md border-[0.5px] border-border/20 rounded-2xl",
+            "max-h-[420px] overflow-auto p-2 hide-scrollbar",
+            "shadow-[0_18px_50px_rgba(0,0,0,0.45)]",
+            "sm:max-h-[60vh] sm:rounded-t-none sm:border-t-0",
+            "sm:w-[380px] sm:left-auto sm:right-0 sm:translate-x-[200px] sm:transform"
           )}>
           <div className={cn("flex gap-2 px-2 py-1", "sm:gap-1 sm:px-1 sm:py-0.5 sm:overflow-x-auto")}>
             {TABS.map(t => (
@@ -170,13 +171,14 @@ export default function GlobalSearch() {
           ) : list.length === 0 ? (
             <div className={cn("p-3 text-muted-foreground text-sm")}>Không có kết quả</div>
           ) : (
-            <ul className={cn("list-none m-0 p-0")}>
+            <ul className={cn("list-none m-0 p-0 space-y-1")}>
               {list.map(item => (
                 <li 
                   key={`${item.type}-${item.id}`} 
                   className={cn(
-                    "flex items-center justify-between px-2.5 py-2",
-                    "border-b border-border/30 last:border-b-0"
+                    "flex items-center justify-between gap-4 px-2.5 py-2 rounded-xl",
+                    "border border-transparent hover:border-border/40 hover:bg-muted/40",
+                    "transition-colors duration-150"
                   )}
                 >
                   <div 
@@ -198,11 +200,12 @@ export default function GlobalSearch() {
                     </div>
                   </div>
 
-                  <div onClick={(e) => e.stopPropagation()}>
+                  <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     <FollowButton
                       followingId={item.id}
                       followingType={mapType(item.type)}
                       onChange={() => setRefreshTick(v => v + 1)}
+                      compact
                     />
                   </div>
                 </li>

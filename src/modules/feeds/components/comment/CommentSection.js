@@ -849,8 +849,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
                 {/* Reply Input */}
                 {replyingTo?.commentId === comment.id && replyingTo.type === "comment" && (
                   <div className={cn(
-                    "flex gap-2 mt-2 p-2 bg-muted/10 rounded-lg",
-                    "sm:gap-1.5 sm:mt-1.5 sm:p-1.5"
+                    "flex flex-wrap items-stretch gap-2 mt-2 p-2 bg-muted/10 rounded-lg",
+                    "sm:flex-nowrap sm:gap-1.5 sm:mt-1.5 sm:p-1.5"
                   )}>
                     <input
                       type="text"
@@ -863,20 +863,20 @@ export default function CommentSection({ postId, onClose, inline = false, always
                         }))
                       }
                       className={cn(
-                        "flex-1 px-2 py-2 border-[0.5px] border-border/20 rounded-lg",
+                        "flex-1 min-w-0 w-full px-2 py-2 border-[0.5px] border-border/20 rounded-lg",
                         "bg-background text-foreground text-sm outline-none",
                         "transition-all duration-200",
                         "focus:border-primary/40 focus:ring-1 focus:ring-primary/10",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
-                        "sm:px-1.5 sm:py-1.5 sm:text-xs md:px-2 md:py-2 md:text-sm"
+                        "sm:w-auto sm:px-1.5 sm:py-1.5 sm:text-xs md:px-2 md:py-2 md:text-sm"
                       )}
                       disabled={submitting}
                     />
-                    <div className="flex gap-2 sm:gap-1.5">
+                    <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto sm:gap-1.5">
                       <button
                         onClick={() => handleAddReply(comment.id)}
                         className={cn(
-                          "px-4 py-2 bg-primary text-primary-foreground border-none rounded-lg",
+                          "flex-1 sm:flex-none px-4 py-2 bg-primary text-primary-foreground border-none rounded-lg",
                           "font-semibold text-sm cursor-pointer transition-all duration-200",
                           "hover:opacity-90",
                           "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -896,7 +896,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
                           });
                         }}
                         className={cn(
-                          "px-4 py-2 bg-muted/30 text-foreground border-none rounded",
+                          "flex-1 sm:flex-none px-4 py-2 bg-muted/30 text-foreground border-none rounded",
                           "font-semibold text-sm cursor-pointer transition-all duration-200",
                           "hover:bg-muted/50",
                           "sm:px-3 sm:py-1.5 sm:text-xs md:px-4 md:py-2 md:text-sm"
@@ -991,8 +991,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
                         {/* Reply to Reply Input */}
                         {replyingTo?.replyId === reply.id && replyingTo.type === "reply" && (
                           <div className={cn(
-                            "flex gap-2 mt-2 p-2 bg-muted/10 rounded-lg",
-                            "sm:gap-1.5 sm:mt-1.5 sm:p-1.5"
+                            "flex flex-wrap items-stretch gap-2 mt-2 p-2 bg-muted/10 rounded-lg",
+                            "sm:flex-nowrap sm:gap-1.5 sm:mt-1.5 sm:p-1.5"
                           )}>
                             <input
                               type="text"
@@ -1005,20 +1005,20 @@ export default function CommentSection({ postId, onClose, inline = false, always
                                 }))
                               }
                               className={cn(
-                                "flex-1 px-2 py-2 border-[0.5px] border-border/20 rounded-lg",
+                                "flex-1 min-w-0 w-full px-2 py-2 border-[0.5px] border-border/20 rounded-lg",
                                 "bg-background text-foreground text-sm outline-none",
                                 "transition-all duration-200",
                                 "focus:border-primary/40 focus:ring-1 focus:ring-primary/10",
                                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                                "sm:px-1.5 sm:py-1.5 sm:text-xs md:px-2 md:py-2 md:text-sm"
+                                "sm:w-auto sm:px-1.5 sm:py-1.5 sm:text-xs md:px-2 md:py-2 md:text-sm"
                               )}
                               disabled={submitting}
                             />
-                            <div className="flex gap-2 sm:gap-1.5">
+                            <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto sm:gap-1.5">
                               <button
                                 onClick={() => handleAddReply(comment.id, reply.id)}
                                 className={cn(
-                                  "px-4 py-2 bg-primary text-primary-foreground border-none rounded-lg",
+                                  "flex-1 sm:flex-none px-4 py-2 bg-primary text-primary-foreground border-none rounded-lg",
                                   "font-semibold text-sm cursor-pointer transition-all duration-200",
                                   "hover:opacity-90",
                                   "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -1038,7 +1038,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
                                   });
                                 }}
                                 className={cn(
-                                  "px-4 py-2 bg-muted/30 text-foreground border-none rounded",
+                                  "flex-1 sm:flex-none px-4 py-2 bg-muted/30 text-foreground border-none rounded",
                                   "font-semibold text-sm cursor-pointer transition-all duration-200",
                                   "hover:bg-muted/50",
                                   "sm:px-3 sm:py-1.5 sm:text-xs md:px-4 md:py-2 md:text-sm"
@@ -1060,9 +1060,9 @@ export default function CommentSection({ postId, onClose, inline = false, always
       </div>
       {/* Add Comment Form - Outside flex-1 container to always be visible */}
       <form onSubmit={handleAddComment} className={cn(
-        "flex gap-2 p-4 border-t border-border/30 bg-card/80 backdrop-blur-sm",
+        "flex flex-wrap items-stretch gap-2 p-4 border-t border-border/30 bg-card/80 backdrop-blur-sm",
         "flex-shrink-0 relative z-10",
-        "sm:gap-1.5 sm:p-3 md:p-4"
+        "sm:flex-nowrap sm:gap-1.5 sm:p-3 md:p-4"
       )}>
           <input
             type="text"
@@ -1070,19 +1070,19 @@ export default function CommentSection({ postId, onClose, inline = false, always
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
           className={cn(
-            "flex-1 px-4 py-3 border-[0.5px] border-border/20 rounded-lg",
+            "flex-1 min-w-0 w-full px-4 py-3 border-[0.5px] border-border/20 rounded-lg",
             "bg-background text-foreground text-sm outline-none",
             "transition-all duration-200",
             "focus:border-primary focus:ring-2 focus:ring-primary/10",
             "disabled:opacity-50 disabled:cursor-not-allowed",
-            "sm:px-3 sm:py-2 sm:text-xs md:px-4 md:py-3 md:text-sm"
+            "sm:w-auto sm:px-3 sm:py-2 sm:text-xs md:px-4 md:py-3 md:text-sm"
           )}
             disabled={submitting}
           />
           <button
             type="submit"
           className={cn(
-            "px-6 py-3 bg-primary text-primary-foreground",
+            "w-full sm:w-auto px-6 py-3 bg-primary text-primary-foreground",
             "border-none rounded-lg font-medium text-sm cursor-pointer",
             "transition-all duration-300 shadow-[0_4px_16px_rgba(var(--primary),0.4)]",
             "hover:shadow-[0_6px_24px_rgba(var(--primary),0.5)]",
