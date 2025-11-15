@@ -1,0 +1,153 @@
+/* =========================================================
+   STEP 4 CONTAINER — chọn bàn / setup form
+   Theme-aware version (light / dark)
+   ========================================================= */
+
+.step4-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: rgb(var(--foreground));
+  background: rgb(var(--card));
+  padding: 24px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--border));
+  max-width: 900px;
+  margin: 0 auto;
+  transition: background 0.3s, color 0.3s, border-color 0.3s;
+}
+
+/* --- Selector số bàn --- */
+.table-count-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.table-count-selector label {
+  color: rgb(var(--muted-foreground));
+  font-weight: 500;
+}
+
+.table-count-selector input {
+  width: 100px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid rgb(var(--border));
+  background-color: rgb(var(--muted));
+  color: rgb(var(--foreground));
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.table-count-selector input:focus {
+  outline: none;
+  border-color: rgb(var(--primary));
+  background-color: rgb(var(--card));
+}
+
+/* --- Grid bàn --- */
+.tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+/* --- Box từng bàn --- */
+.table-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: calc(var(--radius) - 4px);
+  padding: 12px;
+  text-align: center;
+  background: rgb(var(--muted));
+  border: 1px solid rgb(var(--border));
+  transition: transform 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.table-box:hover {
+  transform: scale(1.05);
+  border-color: rgb(var(--primary));
+  background: rgb(var(--muted) / 0.8);
+}
+
+/* --- Nội dung bàn --- */
+.table-number {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: rgb(var(--primary));
+}
+
+.table-select {
+  width: 100%;
+  padding: 6px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  border: 1px solid rgb(var(--border));
+  background-color: rgb(var(--card));
+  color: rgb(var(--foreground));
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.table-select:focus {
+  border-color: rgb(var(--primary));
+  outline: none;
+}
+
+.table-name {
+  font-weight: 600;
+  margin-top: 4px;
+  color: rgb(var(--card-foreground));
+}
+
+/* --- Navigation Buttons --- */
+.form-navigation {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 24px;
+}
+
+.back-btn,
+.next-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+/* --- Back --- */
+.back-btn {
+  background-color: rgb(var(--muted));
+  color: rgb(var(--foreground));
+  border: 1px solid rgb(var(--border));
+}
+
+.back-btn:hover {
+  background-color: rgb(var(--muted) / 0.8);
+}
+
+/* --- Next --- */
+.next-btn {
+  background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary, var(--primary))) 100%);
+  color: rgb(var(--primary-foreground));
+  box-shadow: 0 4px 12px rgba(var(--primary) / 0.3);
+}
+
+.next-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(var(--primary) / 0.4);
+}
+
+/* --- Disabled --- */
+.next-btn:disabled {
+  background: rgb(var(--muted));
+  color: rgb(var(--muted-foreground));
+  cursor: not-allowed;
+  box-shadow: none;
+}

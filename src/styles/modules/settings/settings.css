@@ -1,0 +1,97 @@
+/* Settings & Privacy Page — uses CSS variables from styles/variables.css */
+
+.settings-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+  color: rgb(var(--foreground));
+}
+
+.settings-header h1 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  margin: 0 0 4px 0;
+}
+
+.settings-header .text-muted {
+  color: rgb(var(--muted-foreground));
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+@media (min-width: 768px) {
+  .settings-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.settings-card {
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.settings-card h2 {
+  font-size: 1.125rem;
+  margin: 0 0 12px 0;
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid rgba(var(--border), 0.6);
+}
+
+.settings-item:first-of-type { border-top: none; }
+
+.settings-item-title { font-weight: 600; }
+.settings-item-desc { color: rgb(var(--muted-foreground)); font-size: 0.875rem; }
+
+.btn-primary {
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  border: 1px solid rgba(var(--primary), 0.5);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.btn-outline {
+  background: transparent;
+  color: rgb(var(--foreground));
+  border: 1px solid rgb(var(--border));
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.select {
+  background: rgb(var(--input));
+  color: rgb(var(--foreground));
+  border: 1px solid rgb(var(--input-border));
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+/* Simple switch */
+.switch { position: relative; display: inline-block; width: 46px; height: 26px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer; inset: 0;
+  background: rgba(var(--border-darker));
+  transition: .2s; border-radius: 9999px;
+}
+.slider:before {
+  position: absolute; content: ""; height: 20px; width: 20px; left: 3px; top: 3px;
+  background: rgb(var(--white)); transition: .2s; border-radius: 9999px;
+}
+.switch input:checked + .slider { background: rgb(var(--primary)); }
+.switch input:checked + .slider:before { transform: translateX(20px); }
+
+

@@ -1,0 +1,101 @@
+/* 🎨 Tailwind + CSS Variables Version */
+
+/* Login page container */
+.login-page {
+  @apply min-h-screen bg-[rgb(var(--background))];
+}
+
+/* Center login form */
+.login-form-container {
+  @apply flex items-center justify-center min-h-screen p-4;
+}
+
+/* Wrapper */
+.login-wrapper {
+  @apply w-full max-w-[64rem] flex items-center justify-between gap-12;
+}
+
+/* Logo */
+.login-logo {
+  @apply flex-1 flex items-center justify-center text-[3.75rem] font-bold;
+  color: rgb(var(--primary));
+}
+
+/* Form box */
+.login-form-box {
+  @apply flex-1 max-w-[28rem] p-8 rounded-md shadow-lg border;
+  background-color: rgb(var(--card));
+  border-color: rgb(var(--border));
+}
+
+/* Form inputs */
+.login-form input {
+  @apply w-full rounded-md px-3 py-2 border;
+  background-color: rgb(var(--background));
+  border-color: rgb(var(--border));
+  color: rgb(var(--foreground));
+}
+
+.login-form input::placeholder {
+  color: rgb(var(--muted-foreground));
+}
+
+/* Login button */
+.login-form button.login-btn {
+  @apply w-full rounded-md py-2 text-white;
+  background-color: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  transition: background-color 0.2s;
+}
+
+.login-form button.login-btn:hover {
+  filter: brightness(0.95);
+}
+
+/* Create account button */
+.login-form button.create-account-btn {
+  @apply w-full rounded-md py-2;
+  color: rgb(var(--primary-foreground));
+  background-color: rgb(var(--success));
+  transition: background-color 0.2s;
+}
+
+.login-form button.create-account-btn:hover {
+  background-color: rgb(var(--success) / 0.9);
+}
+
+/* Forgot password link */
+.login-form .forgot-link {
+  @apply block text-center text-sm text-[rgb(var(--primary))] no-underline;
+  transition: text-decoration 0.2s;
+}
+
+.login-form .forgot-link:hover {
+  text-decoration: underline;
+}
+
+/* Divider */
+.login-form .divider {
+  @apply relative my-4;
+}
+
+.login-form .divider-line {
+  @apply absolute inset-0 flex items-center w-full border-t;
+  border-color: rgb(var(--border));
+}
+
+/* Footer */
+.login-footer {
+  @apply mt-6 text-center text-xs;
+  color: rgb(var(--muted-foreground));
+}
+
+.login-footer a {
+  @apply no-underline;
+  color: rgb(var(--primary));
+  transition: text-decoration 0.2s;
+}
+
+.login-footer a:hover {
+  text-decoration: underline;
+}

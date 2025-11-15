@@ -1,0 +1,65 @@
+.media-viewer-stats {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(var(--border), 0.5);
+}
+
+.media-viewer-stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgb(var(--foreground));
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.media-viewer-stat-item:hover {
+  background: rgba(var(--muted), 0.3);
+}
+
+.media-viewer-stat-item:not(button) {
+  cursor: default;
+}
+
+.media-viewer-stat-item:not(button):hover {
+  background: none;
+}
+
+.stat-like-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease;
+}
+
+.stat-like-btn:hover {
+  background: rgba(var(--muted), 0.3);
+}
+
+.stat-like-btn.liked {
+  color: rgb(var(--danger));
+}
+
+.stat-like-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.stat-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.stat-count {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+

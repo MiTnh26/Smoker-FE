@@ -1,0 +1,70 @@
+/* CreatePostBox.css */
+/* ==============================================
+   Giao diện khung “Bạn muốn đăng gì hôm nay?”
+   ============================================== */
+
+.create-post-box {
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--border));
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.create-post-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.create-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.create-input {
+  flex: 1;
+  background: rgb(var(--muted));
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1rem;
+  font-size: 0.95rem;
+  outline: none;
+  color: rgb(var(--foreground));
+  transition: background 0.2s ease;
+}
+
+.create-input:hover {
+  background: rgb(var(--muted) / 0.9);
+}
+
+.create-post-actions {
+  display: flex;
+  justify-content: space-around;
+  border-top: 1px solid rgb(var(--border));
+  padding-top: 0.5rem;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: rgb(var(--muted-foreground));
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.action-btn:hover {
+  color: rgb(var(--primary));
+}
+
+.action-btn i {
+  font-size: 1rem;
+}

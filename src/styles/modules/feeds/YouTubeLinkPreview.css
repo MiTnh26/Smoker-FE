@@ -1,0 +1,66 @@
+/* YouTubeLinkPreview component styles — uses CSS variables from styles/variables.css */
+
+.yt-preview-card {
+  display: block; /* ensure full-width like a block element */
+  width: 100%;    /* avoid shrink-to-fit inline button behavior */
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid rgba(var(--border), 0.08);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: rgb(var(--card));
+  margin-top: 8px;
+  padding: 0;
+}
+
+.yt-thumb {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 */
+  background: rgb(var(--black));
+}
+
+.yt-thumb-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.yt-play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yt-play-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  background: rgba(var(--black) / 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yt-body {
+  padding: 12px;
+  background: rgb(var(--border));
+}
+
+.yt-title {
+  font-weight: 600;
+  line-height: 1.3;
+  color: rgb(var(--foreground));
+}
+
+.yt-host {
+  color: rgb(var(--muted-foreground));
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+

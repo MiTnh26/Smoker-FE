@@ -1,0 +1,36 @@
+.media-viewer-comments {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 0;
+}
+
+.media-viewer-comments-title {
+  padding: 1rem 1.5rem;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(var(--foreground));
+  border-bottom: 1px solid rgba(var(--border), 0.5);
+  flex-shrink: 0;
+}
+
+.media-viewer-no-comments {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  color: rgb(var(--muted-foreground));
+  margin: 0;
+}
+
+.media-viewer-comments-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.5rem 0;
+  min-width: 0;
+  max-width: 100%;
+}
+

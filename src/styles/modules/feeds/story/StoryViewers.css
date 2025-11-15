@@ -1,0 +1,197 @@
+/* Story Viewers Component - Hiển thị người đã xem story */
+
+.story-viewers-container {
+  position: absolute;
+  bottom: 10px;
+  right: 13px;
+  z-index: 15;
+}
+
+.story-viewers-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.story-viewers-button:hover {
+  background: rgba(0, 0, 0, 0.8);
+  transform: scale(1.05);
+}
+
+.story-viewers-icon {
+  font-size: 1rem;
+}
+
+.story-viewers-count {
+  font-size: 0.875rem;
+}
+
+/* Viewers List Modal */
+.story-viewers-list {
+  position: absolute;
+  bottom: 50px;
+  right: 0;
+  width: 375px;
+  max-height: 400px;
+  background: rgba(0, 0, 0, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.story-viewers-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.story-viewers-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+}
+
+.story-viewers-close {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s ease;
+}
+
+.story-viewers-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.story-viewers-content {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.story-viewers-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.story-viewers-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.story-viewers-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.story-viewers-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.story-viewers-loading,
+.story-viewers-empty {
+  padding: 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+}
+
+/* Viewer Item */
+.story-viewer-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+.story-viewer-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.story-viewer-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.story-viewer-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.story-viewer-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+}
+
+.story-viewer-time {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .story-viewers-container {
+    bottom: 10px;
+    right: 13px;
+  }
+
+  .story-viewers-button {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .story-viewers-list {
+    width: 280px;
+    max-height: 350px;
+  }
+
+  .story-viewer-avatar {
+    width: 36px;
+    height: 36px;
+  }
+}
+

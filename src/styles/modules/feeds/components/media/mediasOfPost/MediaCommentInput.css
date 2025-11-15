@@ -1,0 +1,89 @@
+.media-viewer-add-comment {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(var(--border), 0.5);
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.comment-input-user {
+  display: none; /* Ẩn phần avatar và tên riêng, sẽ inline với input */
+}
+
+.comment-input-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.comment-input-name {
+  display: none; /* Ẩn tên riêng */
+}
+
+.comment-input-wrapper {
+  flex: 1;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.comment-input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 1px solid rgba(var(--border), 0.5);
+  border-radius: 0.5rem;
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s ease;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.comment-input:focus {
+  border-color: rgb(var(--primary));
+  box-shadow: 0 0 0 3px rgba(var(--primary), 0.1);
+}
+
+.comment-input[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.comment-submit-btn {
+  padding: 0.75rem 1.5rem;
+  background: rgb(var(--primary));
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.comment-submit-btn:hover {
+  background: rgb(var(--primary));
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.comment-submit-btn:active {
+  transform: translateY(0);
+}
+
+.comment-submit-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+

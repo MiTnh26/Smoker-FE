@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* Signup page container */
+  .signup-page {
+    @apply min-h-screen bg-[rgb(var(--background))];
+  }
+
+  .signup-form-container {
+    @apply flex justify-center items-center min-h-[calc(100vh-73px)] p-8;
+  }
+
+  .signup-wrapper {
+    @apply w-full max-w-[450px] bg-[rgb(var(--card))] border border-[rgb(var(--border))] 
+      rounded-xl p-8 mx-auto shadow-md;
+  }
+
+  .signup-logo {
+    @apply text-center text-2xl font-bold mb-8 text-[rgb(var(--primary))];
+  }
+
+  .signup-form input,
+  .signup-form button,
+  .gender-selection,
+  .terms {
+    @apply w-full;
+  }
+
+  .gender-selection {
+    @apply flex gap-6 mb-4;
+  }
+
+  .terms {
+    @apply flex items-center gap-2 text-xs mb-4;
+  }
+
+  .signup-btn {
+    @apply w-full bg-[rgb(var(--primary))] text-[rgb(var(--primary-foreground))] 
+      rounded-md py-3 font-medium cursor-pointer;
+  }
+
+  .signup-btn:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+}

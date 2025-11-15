@@ -1,0 +1,155 @@
+/* =========================================================
+   BUSINESS REGISTER FORM — theme aware (light/dark)
+   ========================================================= */
+
+.business-register-container {
+  max-width: 880px;
+  margin: 36px auto;
+  background: rgb(var(--card) / 0.9);
+  border: 1px solid rgb(var(--border) / 0.3);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  padding: 22px 20px;
+  color: rgb(var(--foreground));
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.business-register-container:hover {
+  border-color: rgb(var(--primary) / 0.5);
+}
+
+/* --- Tiêu đề form --- */
+.business-register-container h2 {
+  text-align: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  background: linear-gradient(90deg, rgb(var(--primary)), rgb(var(--primary) / 0.7));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* --- Form chính --- */
+.business-register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* --- Lưới 2 cột --- */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Label --- */
+.form-group label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 3px;
+  color: rgb(var(--muted-foreground));
+}
+
+/* --- Input & Textarea --- */
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  border: 1px solid rgb(var(--border));
+  background: rgb(var(--muted) / 0.3);
+  color: rgb(var(--foreground));
+  padding: 6px 8px;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.85rem;
+  outline: none;
+  transition: border 0.2s ease, background 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: rgb(var(--primary));
+  background: rgb(var(--card));
+}
+
+textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* --- Nút đăng ký --- */
+.business-register-btn {
+  width: 100%;
+  background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--primary) / 0.8));
+  color: rgb(var(--primary-foreground));
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  cursor: pointer;
+  box-shadow: 0 5px 16px rgba(var(--primary) / 0.25);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+}
+
+.business-register-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(var(--primary) / 0.35);
+  opacity: 0.95;
+}
+
+.business-register-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* --- Điều hướng --- */
+.form-navigation {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  gap: 10px;
+}
+
+.back-btn,
+.next-btn {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* --- Nút quay lại --- */
+.back-btn {
+  background-color: rgb(var(--muted));
+  color: rgb(var(--foreground));
+  border: 1px solid rgb(var(--border));
+}
+
+.back-btn:hover {
+  background-color: rgb(var(--muted) / 0.8);
+}
+
+/* --- Nút tiếp tục --- */
+.next-btn {
+  background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--primary) / 0.8));
+  color: rgb(var(--primary-foreground));
+  box-shadow: 0 4px 14px rgba(var(--primary) / 0.3);
+}
+
+.next-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(var(--primary) / 0.4);
+}

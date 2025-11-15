@@ -1,0 +1,29 @@
+/* Customer Layout */
+.customer-layout {
+  @apply flex flex-col min-h-screen;
+}
+
+.customer-body {
+  @apply flex flex-1 bg-[rgb(var(--background))] gap-6 px-6;
+}
+
+.customer-body > aside {
+  @apply w-[300px] flex-shrink-0;
+}
+.customer-body > aside:first-child {
+  @apply hidden lg:block w-[300px] flex-shrink-0; /* Left sidebar */
+}
+
+.customer-body > aside:last-child {
+  @apply hidden xl:block w-[300px] flex-shrink-0; /* Right sidebar */
+}
+.customer-body > main {
+  @apply p-5 flex-none w-full max-w-[680px] mx-auto;
+}
+
+.customer-body > main {
+  @apply p-5 flex-none;
+  max-width: 680px; /* Cột nội dung trung tâm giống FB */
+  width: 100%;
+  margin: 0 auto; /* center the main column */
+}
