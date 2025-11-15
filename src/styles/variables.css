@@ -6,103 +6,118 @@
 
 :root {
   /* ===== 🧱 BASE COLORS ===== */
-  --background: 255 255 255; /* Màu nền tổng thể của trang (body, app background) */
-  --foreground: 17 24 39; /* Màu chữ chính (text mặc định) */
+  --background: 244 244 244; /* Màu nền tổng thể - trắng xám nhẹ để dịu mắt hơn */
+  --foreground: 15 23 42; /* Màu chữ chính - đậm hơn một chút cho dễ đọc */
 
   /* ===== 🪟 SURFACE COLORS ===== */
   --card: 255 255 255; /* Màu nền của các thẻ (card, modal, sidebar, box, panel) */
-  --card-foreground: 17 24 39; /* Màu chữ trong card */
-  --muted: 243 244 246; /* Màu nền nhẹ (placeholder, khối phụ, background nhạt) */
-  --muted-foreground: 107 114 128; /* Màu chữ phụ, mô tả, secondary text */
-  --border: 229 231 235; /* Màu đường viền, border của card, input, button */
-  --radius: 0.5rem; /* Bo góc mặc định cho component (8px) */
+  --card-foreground: 15 23 42; /* Màu chữ trong card */
+  --muted: 248 250 252; /* Màu nền nhẹ - pastel mềm mại hơn */
+  --muted-foreground: 100 116 139; /* Màu chữ phụ - dễ đọc hơn */
+  --border: 226 232 240; /* Màu đường viền - mềm mại hơn */
+  --border-darker: 51 65 85; /* Màu đường viền tối hơn */
+  --radius: 0.625rem; /* Bo góc mặc định - 10px (tinh tế hơn 8px) */
 
   /* ===== 🌈 BRAND / ACTION COLORS ===== */
-  --primary: 99 102 241; /* Màu thương hiệu chính (nút chính, link nổi bật, highlight) */
+  --primary: 99 102 241; /* Màu thương hiệu chính - giữ nguyên indigo */
   --primary-foreground: 255 255 255; /* Màu chữ/icon nằm trên nền primary */
-  --secondary: 168 85 247; /* Màu phụ, dùng cho hover hoặc accent nhẹ */
+  --secondary: 167 139 250; /* Màu phụ - tím pastel mềm mại hơn */
   --secondary-foreground: 255 255 255; /* Màu chữ/icon trên nền secondary */
 
   /* ===== ✅ FEEDBACK COLORS ===== */
-  --success: 34 197 94; /* Màu báo trạng thái thành công (success, done) */
-  --warning: 234 179 8; /* Màu cảnh báo (warning, attention) */
-  --danger: 239 68 68; /* Màu lỗi, cảnh báo mạnh (error, critical) */
+  --success: 16 185 129; /* Màu báo trạng thái thành công - emerald tinh tế hơn */
+  --warning: 245 158 11; /* Màu cảnh báo - amber ấm áp hơn */
+  --danger: 239 68 68; /* Màu lỗi, cảnh báo mạnh - giữ nguyên */
 
   /* ===== 💬 UI SUPPORT COLORS ===== */
-  --input: 243 244 246; /* Màu nền input, textfield */
-  --input-border: 229 231 235; /* Màu viền input */
-  --overlay: 0 0 0 / 0.4; /* Màu lớp phủ cho modal, backdrop, overlay */
+  --input: 248 250 252; /* Màu nền input - pastel nhẹ */
+  --input-border: 226 232 240; /* Màu viền input - mềm mại */
+  --overlay: 0 0 0 / 0.45; /* Màu lớp phủ - tinh tế hơn một chút */
+
+  /* ===== 🎯 EXTRA SEMANTIC TOKENS (for legacy replacements) ===== */
+  --white: 255 255 255; /* Dùng thay cho #fff */
+  --black: 0 0 0;       /* Dùng thay cho #000 */
+  --accent: 249 115 22;  /* Cam - tinh tế hơn một chút */
+  --highlight: 236 72 153; /* Hồng - mềm mại hơn */
+  --primary-hover: 79 70 229; /* Hover đậm hơn một chút */
 }
 
 /* ===== 🌙 DARK MODE ===== */
 [data-theme='dark'] {
   /* ===== 🧱 BASE ===== */
-  --background: 17 24 39; /* Màu nền chính (xám đậm / gần đen) */
-  --foreground: 255 255 255; /* Màu chữ chính (trắng sáng) */
+  --background: 15 23 42; /* Màu nền chính - slate-900 ấm hơn */
+  --foreground: 248 250 252; /* Màu chữ chính - slate-50 mềm mại hơn trắng thuần */
 
   /* ===== 🪟 SURFACE ===== */
-  --card: 31 41 55; /* Màu nền card (tối hơn background 1 bậc) */
-  --card-foreground: 255 255 255; /* Màu chữ trong card */
-  --muted: 55 65 81; /* Màu nền nhẹ, khối phụ */
-  --muted-foreground: 209 213 219; /* Màu chữ phụ (xám sáng) */
-  --border: 75 85 99; /* Màu viền tối (cho input, card, nav, …) */
-
+  --card: 30 41 59; /* Màu nền card - slate-800 tinh tế hơn */
+  --card-foreground: 248 250 252; /* Màu chữ trong card */
+  --muted: 51 65 85; /* Màu nền nhẹ, khối phụ - slate-700 */
+  --muted-foreground: 148 163 184; /* Màu chữ phụ - slate-400 dễ đọc hơn */
+  --border: 71 85 105; /* Màu viền tối - slate-600 tinh tế */
+  --border-darker: 51 65 85; /* Màu viền tối hơn */
   /* ===== 🌈 BRAND / ACTION ===== */
-  --primary: 147 51 234; /* Màu tím thương hiệu nổi bật trong dark mode */
+  --primary: 147 51 234; /* Màu tím thương hiệu - giữ nguyên */
   --primary-foreground: 255 255 255;
-  --secondary: 168 85 247; /* Màu phụ nhẹ hơn để dùng cho hover hoặc accent */
+  --secondary: 167 139 250; /* Màu phụ - tím pastel mềm mại hơn */
   --secondary-foreground: 255 255 255;
 
   /* ===== ✅ FEEDBACK ===== */
-  --success: 34 197 94;
-  --warning: 250 204 21;
-  --danger: 248 113 113;
+  --success: 52 211 153; /* Emerald sáng hơn một chút */
+  --warning: 251 191 36; /* Amber sáng hơn */
+  --danger: 248 113 113; /* Đỏ nhẹ hơn một chút */
 
   /* ===== 💬 UI ===== */
-  --input: 55 65 81; /* Màu nền input tối */
-  --input-border: 75 85 99; /* Viền input tối hơn một chút */
-  --overlay: 0 0 0 / 0.6; /* Lớp phủ modal đậm hơn */
+  --input: 51 65 85; /* Màu nền input tối - slate-700 */
+  --input-border: 71 85 105; /* Viền input - slate-600 */
+  --overlay: 0 0 0 / 0.65; /* Lớp phủ modal - tinh tế hơn */
+
+  /* Keep extra tokens consistent across themes */
+  --white: 255 255 255;
+  --black: 0 0 0;
+  --accent: 249 115 22; /* Cam tinh tế hơn */
+  --highlight: 236 72 153; /* Hồng mềm mại hơn */
+  --primary-hover: 126 34 206; /* Hover đậm hơn một chút */
 }
 [data-theme='dj'] {
-  --primary: 255 0 128;
-  --background: 10 10 20;
-  --foreground: 255 255 255;
+  --primary: 244 114 182; /* Hồng sáng tinh tế hơn */
+  --background: 15 23 42; /* Nền tối slate-900 */
+  --foreground: 248 250 252; /* Chữ slate-50 */
 }
 
 [data-theme='bar'] {
-  --primary: 255 180 0;
-  --background: 255 255 245;
-  --foreground: 20 20 20;
+  --primary: 245 158 11; /* Vàng cam ấm áp hơn */
+  --background: 255 251 235; /* Nền kem vàng nhẹ */
+  --foreground: 120 53 15; /* Chữ nâu đậm */
 }
 
 /* ===== 🖤 BLACK & WHITE (Grayscale) ===== */
 [data-theme='bw'] {
   /* ===== 🧱 BASE ===== */
-  --background: 245 245 245; /* Nền xám rất nhạt */
-  --foreground: 20 20 20;    /* Chữ xám đậm */
+  --background: 250 250 250; /* Nền xám rất nhạt - tinh tế hơn */
+  --foreground: 23 23 23;    /* Chữ xám đậm - gần đen */
 
   /* ===== 🪟 SURFACE ===== */
   --card: 255 255 255;
-  --card-foreground: 20 20 20;
-  --muted: 230 230 230;
-  --muted-foreground: 120 120 120;
-  --border: 210 210 210;
+  --card-foreground: 23 23 23;
+  --muted: 245 245 245; /* Muted nhẹ hơn */
+  --muted-foreground: 115 115 115; /* Muted foreground dễ đọc hơn */
+  --border: 229 229 229; /* Border mềm mại hơn */
 
   /* ===== 🌈 ACTION (Monochrome) ===== */
-  --primary: 80 80 80;            /* Xám đậm cho nút chính */
+  --primary: 64 64 64;            /* Xám đậm cho nút chính - tinh tế hơn */
   --primary-foreground: 255 255 255;
-  --secondary: 150 150 150;       /* Xám trung tính cho phụ */
+  --secondary: 163 163 163;       /* Xám trung tính cho phụ */
   --secondary-foreground: 255 255 255;
 
   /* ===== ✅ FEEDBACK (Monochrome) ===== */
-  --success: 60 60 60;   /* Xám đậm hơn một chút */
-  --warning: 130 130 130;/* Xám trung tính */
-  --danger: 30 30 30;    /* Xám rất đậm */
+  --success: 82 82 82;   /* Xám đậm hơn một chút */
+  --warning: 140 140 140;/* Xám trung tính */
+  --danger: 38 38 38;    /* Xám rất đậm */
 
   /* ===== 💬 UI ===== */
-  --input: 240 240 240;
-  --input-border: 210 210 210;
-  --overlay: 0 0 0 / 0.4;
+  --input: 250 250 250;
+  --input-border: 229 229 229;
+  --overlay: 0 0 0 / 0.45;
 }
 /* =========================================================
    🍎 LIQUIDGLASS — Frosted Glass / Glassmorphism
@@ -112,11 +127,40 @@
    ========================================================= */
 [data-theme='liquidglass'] {
   --radius: 16px;
+
+  /* 🌿 Emerald Depth palette */
+  --background: 15 32 39;            /* #0F2027 */
+  --foreground: 224 245 232;         /* mint text for contrast */
+
+  --card: 40 98 58;                  /* #28623A */
+  --card-foreground: 224 245 232;
+  --muted: 25 60 44;
+  --muted-foreground: 188 219 201;
+  --border: 21 50 38;
+  --border-darker: 12 32 24;
+
+  --primary: 40 98 58;
+  --primary-foreground: 224 245 232;
+  --secondary: 20 48 36;
+  --secondary-foreground: 224 245 232;
+
+  --success: 86 179 122;
+  --warning: 240 200 120;
+  --danger: 210 90 90;
+
+  --input: 22 54 40;
+  --input-border: 28 72 50;
+  --overlay: 0 0 0 / 0.55;
 }
 
 /* Body nền tổng thể */
 [data-theme='liquidglass'] body {
-  background-color: rgb(var(--background));
+  background:
+    linear-gradient(160deg, rgba(15, 32, 39, 0.95) 0%, rgba(40, 98, 58, 0.85) 45%, rgba(18, 46, 32, 0.9) 100%),
+    radial-gradient(circle at 20% 20%, rgba(40, 98, 58, 0.55), transparent 55%),
+    radial-gradient(circle at 80% 25%, rgba(26, 62, 44, 0.75), transparent 60%),
+    radial-gradient(circle at 30% 80%, rgba(12, 32, 24, 0.6), transparent 65%),
+    rgb(var(--background));
   color: rgb(var(--foreground));
   font-family: system-ui, sans-serif;
   font-size: 1rem; /* 16px — giống Dark/Light */
@@ -153,12 +197,16 @@
 [data-theme='liquidglass'] .panel,
 [data-theme='liquidglass'] .modal {
   position: relative;
-  background: rgba(var(--card), 0.25);       /* nền bán trong suốt */
-  backdrop-filter: blur(16px);               /* kính mờ */
-  -webkit-backdrop-filter: blur(16px);
+  background: linear-gradient(
+      140deg,
+      rgba(40, 98, 58, 0.9),
+      rgba(16, 39, 32, 0.95)
+    );
+  backdrop-filter: blur(18px);               /* kính mờ */
+  -webkit-backdrop-filter: blur(18px);
   border-radius: var(--radius);
-  border: 1px solid rgba(var(--border), 0.2); /* viền mờ glassy */
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1); /* nổi khối */
+  border: 1px solid rgba(var(--border), 0.45); /* viền emerald */
+  box-shadow: 0 18px 48px rgba(7, 17, 13, 0.45);
   overflow: hidden;
   color: rgb(var(--card-foreground));
   padding: 2rem;
@@ -171,11 +219,9 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(var(--primary), 0.15) 0%,
-    rgba(var(--secondary), 0.1) 100%
-  );
+  background:
+    radial-gradient(circle at 25% 25%, rgba(224, 245, 232, 0.12), transparent 55%),
+    radial-gradient(circle at 75% 75%, rgba(64, 128, 90, 0.18), transparent 60%);
   pointer-events: none;
   z-index: 0;
 }
@@ -190,10 +236,14 @@
 [data-theme='liquidglass'] input,
 [data-theme='liquidglass'] textarea,
 [data-theme='liquidglass'] select {
-  background: rgba(var(--input), 0.35);
+  background: linear-gradient(
+    135deg,
+    rgba(var(--input), 0.75),
+    rgba(var(--secondary), 0.55)
+  );
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(var(--input-border), 0.2);
+  border: 1px solid rgba(var(--input-border), 0.4);
   border-radius: 12px;
   color: rgb(var(--foreground));
  
@@ -205,12 +255,17 @@
 [data-theme='liquidglass'] input:focus,
 [data-theme='liquidglass'] textarea:focus,
 [data-theme='liquidglass'] select:focus {
-  border-color: rgba(var(--primary), 0.6);
+  border-color: rgba(var(--primary), 0.75);
+  box-shadow: 0 0 0 3px rgba(86, 179, 122, 0.35);
 }
 
 /* Button primary kiểu kính */
 [data-theme='liquidglass'] .btn-primary {
-  background: rgba(var(--primary), 0.8);
+  background: linear-gradient(
+    125deg,
+    rgba(var(--primary), 0.95) 0%,
+    rgba(18, 46, 32, 0.9) 100%
+  );
   color: rgb(var(--primary-foreground));
   border-radius: 12px;
   padding: 0.7rem 1.5rem;
@@ -227,7 +282,10 @@
 
 /* Overlay / modal backdrop kiểu kính mờ */
 [data-theme='liquidglass'] .overlay {
-  background-color: rgba(var(--overlay));
+  background:
+    radial-gradient(circle at 30% 20%, rgba(40, 98, 58, 0.25), transparent 60%),
+    radial-gradient(circle at 70% 75%, rgba(12, 32, 24, 0.4), transparent 65%),
+    rgba(var(--overlay));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   position: fixed;

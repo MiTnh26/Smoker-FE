@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import FacebookLogin from 'react-facebook-login';
 import { authApi } from '../../../api/userApi';
 import { useAuth } from '../../../hooks/useAuth';
 
 const FacebookLoginButton = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [error, setError] = useState('');
   const { login } = useAuth();
 
@@ -52,14 +54,14 @@ const FacebookLoginButton = () => {
           try {
             // Nếu tài khoản chưa tồn tại, thực hiện đăng ký
             const registerResult = await authApi.facebookRegister(response.email);
-            setError(registerResult.message || 'Vui lòng kiểm tra email để lấy mật khẩu');
+            setError(registerResult.message || t('auth.facebookCheckEmail'));
           } catch (registerError) {
-            setError(registerError.response?.message || 'Đăng ký thất bại');
+            setError(registerError.response?.message || t('auth.registerFailed'));
           }
         } else {
           console.error('Login Error:', error);
           console.error('Error Response:', error.response);
-          setError(error.response?.message || 'Đăng nhập thất bại');
+          setError(error.response?.message || t('auth.loginFailed'));
         }
       }
     }
@@ -72,9 +74,9 @@ const FacebookLoginButton = () => {
         autoLoad={false}
         fields="name,email,picture"
         callback={handleFacebookResponse}
-        cssClass="w-full flex items-center justify-center gap-2 px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+        cssClass="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#1877F2] text-white border-none transition-all duration-200 hover:bg-[#1664CF] active:scale-95"
         icon="fa-facebook"
-        textButton="Đăng nhập bằng Facebook"
+        textButton={t('auth.loginWithFacebook')}
         // disableMobileRedirect={true}
         // isMobile={false}
         // redirectUri={window.location.href}
@@ -86,7 +88,7 @@ const FacebookLoginButton = () => {
       />
       
       {error && (
-        <div className="text-red-500 text-sm mt-2">{error}</div>
+        <div className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>
       )}
     </div>
   );

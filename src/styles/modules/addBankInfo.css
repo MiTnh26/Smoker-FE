@@ -1,0 +1,220 @@
+.add-bank-info-container {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem;
+  background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+}
+
+.add-bank-info-card {
+  background: rgb(var(--card));
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 600px;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.add-bank-info-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: rgb(var(--foreground));
+  margin-bottom: 2rem;
+  text-align: center;
+  color: rgb(var(--primary));
+}
+
+.add-bank-info-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  font-weight: 500;
+  color: rgb(var(--foreground));
+  font-size: 0.95rem;
+}
+
+.form-label .required {
+  color: rgb(var(--danger));
+  margin-left: 2px;
+}
+
+.form-input,
+.form-select {
+  padding: 0.75rem 1rem;
+  border: 2px solid rgb(var(--border));
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: rgb(var(--input));
+  color: rgb(var(--foreground));
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: rgb(var(--primary));
+  box-shadow: 0 0 0 3px rgba(var(--primary) / 0.1);
+}
+
+.form-hint {
+  color: rgb(var(--muted-foreground));
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+/* Entity Type Selector */
+.entity-type-selector {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.entity-type-btn {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  border: 2px solid rgb(var(--border));
+  border-radius: 8px;
+  background: rgb(var(--card));
+  color: rgb(var(--muted-foreground));
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.entity-type-btn:hover {
+  border-color: rgb(var(--primary));
+  color: rgb(var(--primary));
+  background: rgba(var(--primary) / 0.05);
+}
+
+.entity-type-btn.active {
+  border-color: rgb(var(--primary));
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+}
+
+.entity-type-btn.active:hover {
+  background: rgba(var(--primary) / 0.9);
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  justify-content: flex-end;
+}
+
+.btn-primary,
+.btn-secondary {
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.btn-primary {
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: rgba(var(--primary) / 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--primary) / 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: rgb(var(--muted));
+  color: rgb(var(--muted-foreground));
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgb(var(--border));
+}
+
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Message */
+.message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.message.success {
+  background: rgba(var(--success) / 0.1);
+  color: rgb(var(--success));
+  border: 1px solid rgba(var(--success) / 0.3);
+}
+
+.message.error {
+  background: rgba(var(--danger) / 0.1);
+  color: rgb(var(--danger));
+  border: 1px solid rgba(var(--danger) / 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .add-bank-info-container {
+    padding: 1rem;
+  }
+
+  .add-bank-info-card {
+    padding: 1.5rem;
+  }
+
+  .add-bank-info-title {
+    font-size: 1.5rem;
+  }
+
+  .entity-type-selector {
+    flex-direction: column;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+}
+

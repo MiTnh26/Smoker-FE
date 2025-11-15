@@ -1,24 +1,27 @@
-/* 🎨 Tailwind + CSS Variables Version */
+/* 🎨 Bar Layout - Tailwind + CSS Variables */
 
 /* Layout container */
 .bar-layout {
   @apply flex flex-col min-h-screen;
 }
 
-/* Body container: sidebar + main content */
+/* Body container: sidebar trái + main content + sidebar phải */
 .bar-body {
-  @apply flex flex-1; /* nền theo theme */
-  background-color: rgb(var(--background));
+  @apply flex flex-1 bg-[rgb(var(--background))] gap-6;
+  justify-content: center; /* căn giữa main content khi sidebar ẩn */
 }
 
-/* Sidebar */
-.bar-body > aside {
-  @apply flex-shrink-0 ml-10 w-[350px];
+/* Sidebar trái */
+.bar-body > aside:first-child {
+  @apply hidden lg:block flex-shrink-0 ml-10 w-[350px];
+}
+
+/* Sidebar phải */
+.bar-body > aside:last-child {
+  @apply hidden xl:block flex-shrink-0 mr-10 w-[300px];
 }
 
 /* Main content */
 .bar-body > main {
-  @apply flex-1 p-5;
-  margin-left: 20px;   /* Tailwind không có margin-left 20px trực tiếp, dùng ml-[20px] */
-  margin-right: 410px; /* tương tự: mr-[410px] */
+  @apply flex-none p-5 w-full max-w-[680px] mx-auto;
 }

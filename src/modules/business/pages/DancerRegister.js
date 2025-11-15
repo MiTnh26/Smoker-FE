@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import businessApi from "../../../api/businessApi";
+import { userApi } from "../../../api/userApi";
+import AddressSelector from "../../../components/common/AddressSelector";
+import { fetchAllEntities } from "../../../utils/sessionHelper";
 import "../../../styles/modules/businessRegister.css";
 
 export default function DancerRegister() {
@@ -24,9 +27,54 @@ export default function DancerRegister() {
     role: "Dancer",
   });
 
+  // Location states for AddressSelector
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
+  const [selectedWardId, setSelectedWardId] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
+
   // Step 2: files + preview
   const [files, setFiles] = useState({ avatar: null, background: null });
   const [previews, setPreviews] = useState({ avatar: "", background: "" });
+
+  useEffect(() => {
+    // Check if user already has a Dancer entity from session
+    try {
+      const session = JSON.parse(localStorage.getItem("session"));
+      if (session && session.entities) {
+        const hasDancer = session.entities.some(
+          (e) => e.role?.toLowerCase() === "dancer" || (e.type === "Business" && e.role?.toLowerCase() === "dancer")
+        );
+        if (hasDancer) {
+          setMessage("Tài khoản này đã đăng ký Dancer, không thể đăng ký thêm");
+        }
+      }
+    } catch (error) {
+      console.error("[DancerRegister] Error checking existing Dancer:", error);
+    }
+  }, []);
+
+  // Load user profile to sync phone (not address)
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const res = await userApi.me();
+        if (res?.status === "success" && res.data) {
+          const user = res.data;
+          
+          // Update form with user's phone only (address fields remain empty)
+          setInfo(prev => ({
+            ...prev,
+            phone: user.phone || prev.phone,
+          }));
+        }
+      } catch (error) {
+        console.error("[DancerRegister] Error loading user profile:", error);
+      }
+    };
+    
+    loadUserProfile();
+  }, []);
 
   const handleInfoChange = (e) => {
     const { name, value } = e.target;
@@ -55,13 +103,23 @@ export default function DancerRegister() {
       const user = JSON.parse(localStorage.getItem("user"));
       if (!user?.id) throw new Error("Không tìm thấy tài khoản. Vui lòng đăng nhập lại.");
 
-      // B1: Gọi API registerDJ để tạo business
+      // Build address data
+      const addressData = {
+        provinceId: selectedProvinceId || null,
+        districtId: selectedDistrictId || null,
+        wardId: selectedWardId || null,
+        detail: addressDetail || null,
+        fullAddress: info.address || null
+      };
+
+      // B1: Gọi API registerDancer để tạo business
       const payload = {
         accountId: user.id,
         userName: info.userName.trim(),
         role: "Dancer",
         phone: info.phone || null,
         address: info.address || null,
+        addressData: addressData,
         bio: info.bio || null,
         gender: info.gender || null,
         pricePerHours: Number(info.pricePerHours) || 0,
@@ -84,6 +142,24 @@ export default function DancerRegister() {
       const uploadRes = await businessApi.upload(fd);
       if (uploadRes?.status !== "success") {
         throw new Error(uploadRes?.message || "Tải ảnh thất bại");
+      }
+
+      // Refresh session with updated entities
+      try {
+        const currentSession = JSON.parse(localStorage.getItem("session"));
+        if (currentSession && currentSession.account) {
+          const entities = await fetchAllEntities(user.id, currentSession.account);
+          currentSession.entities = entities;
+          localStorage.setItem("session", JSON.stringify(currentSession));
+          
+          // Trigger profile update event
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("profileUpdated"));
+          }
+        }
+      } catch (refreshError) {
+        console.error("[DancerRegister] Error refreshing session:", refreshError);
+        // Continue anyway, registration was successful
       }
 
       setMessage("🎉 Đăng ký Dancer thành công!");
@@ -119,7 +195,26 @@ export default function DancerRegister() {
 
           <div className="form-group">
             <label>Địa chỉ</label>
-            <input type="text" name="address" value={info.address} onChange={handleInfoChange} />
+            <AddressSelector
+              selectedProvinceId={selectedProvinceId}
+              selectedDistrictId={selectedDistrictId}
+              selectedWardId={selectedWardId}
+              addressDetail={addressDetail}
+              onProvinceChange={(id) => {
+                setSelectedProvinceId(id);
+                setSelectedDistrictId('');
+                setSelectedWardId('');
+              }}
+              onDistrictChange={(id) => {
+                setSelectedDistrictId(id);
+                setSelectedWardId('');
+              }}
+              onWardChange={setSelectedWardId}
+              onAddressDetailChange={setAddressDetail}
+              onAddressChange={(fullAddr) => {
+                setInfo(prev => ({ ...prev, address: fullAddr }));
+              }}
+            />
           </div>
 
           <div className="form-group">

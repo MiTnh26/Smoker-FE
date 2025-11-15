@@ -1,0 +1,98 @@
+/* Profile Setup scoped styles using theme variables from variables.css */
+
+.profile-setup {
+	background: rgb(var(--background));
+	color: rgb(var(--foreground));
+}
+
+.profile-setup .ps-card {
+	background: rgb(var(--card));
+	border: 1px solid rgb(var(--border));
+}
+
+.profile-setup .ps-input {
+	background: rgb(var(--input));
+	border: 1px solid rgb(var(--border));
+	color: rgb(var(--foreground));
+}
+
+.profile-setup .ps-input:focus {
+	outline: none;
+	border-color: rgb(var(--ring));
+	box-shadow: 0 0 0 3px rgba(var(--ring), 0.25);
+}
+
+.profile-setup .ps-input-error {
+	border-color: rgb(var(--destructive));
+	background: rgba(var(--destructive), 0.08);
+}
+
+.profile-setup .ps-btn-primary {
+	background: rgb(var(--primary));
+	color: rgb(var(--primary-foreground));
+	transition: background .2s ease, box-shadow .2s ease;
+}
+
+.profile-setup .ps-btn-primary:hover {
+	background: rgb(var(--primary));
+	filter: brightness(0.95);
+}
+
+.profile-setup .ps-btn-primary.ps-btn-disabled,
+.profile-setup .ps-btn-primary:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+/* Subtle info block (tips) */
+.profile-setup .ps-subtle {
+	background: rgba(var(--primary), 0.06);
+	border: 1px solid rgba(var(--primary), 0.15);
+	color: rgb(var(--foreground));
+}
+
+/* Preview card: ensure readable foreground colors */
+.profile-setup .ps-preview {
+	background: rgb(var(--card));
+	border: 1px solid rgb(var(--border));
+}
+.profile-setup .ps-preview,
+.profile-setup .ps-preview h1,
+.profile-setup .ps-preview h2,
+.profile-setup .ps-preview h3,
+.profile-setup .ps-preview h4,
+.profile-setup .ps-preview p,
+.profile-setup .ps-preview li,
+.profile-setup .ps-preview span {
+	color: rgb(var(--foreground)) !important;
+}
+
+/* Map common utility text colors to theme variables inside preview */
+.profile-setup .ps-preview .text-gray-900,
+.profile-setup .ps-preview .text-gray-800,
+.profile-setup .ps-preview .text-gray-700 {
+	color: rgb(var(--foreground)) !important;
+}
+.profile-setup .ps-preview .text-gray-600,
+.profile-setup .ps-preview .text-gray-500,
+.profile-setup .ps-preview .text-gray-400 {
+	color: rgb(var(--muted-foreground)) !important;
+}
+
+/* Typography defaults inside profile setup */
+
+/* Utility classes used in component */
+.profile-setup .ps-title { color: rgb(var(--foreground)); }
+.profile-setup .ps-muted { color: rgb(var(--muted-foreground)); }
+.profile-setup .ps-label { color: rgb(var(--muted-foreground)); }
+.profile-setup .ps-hint { color: rgb(var(--muted-foreground)); }
+.profile-setup .ps-body { color: rgb(var(--foreground)); }
+
+/* Preview inner body and cover */
+.profile-setup .ps-preview-body { background: rgb(var(--card)); }
+.profile-setup .ps-cover {
+    background: linear-gradient(135deg, rgba(var(--primary), .08) 0%, rgba(var(--primary), .18) 100%);
+    border: 1px solid rgba(var(--primary), .2);
+}
+
+

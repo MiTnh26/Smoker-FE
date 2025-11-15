@@ -1,0 +1,176 @@
+/* AudioTrimmer Component Styles */
+@import '../../../../variables.css';
+
+.audio-trimmer-container {
+  background: rgb(var(--card));
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 16px;
+  border: 1px solid rgb(var(--border));
+}
+
+.audio-trimmer-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.audio-trimmer-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.audio-trimmer-btn-play {
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+}
+
+.audio-trimmer-btn-play:hover {
+  background: rgb(var(--primary-hover, var(--primary)));
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+.audio-trimmer-btn-secondary {
+  background: rgb(var(--muted));
+  color: rgb(var(--foreground));
+}
+
+.audio-trimmer-btn-secondary:hover:not(:disabled) {
+  background: rgb(var(--muted));
+  filter: brightness(0.9);
+  transform: scale(1.05);
+}
+
+.audio-trimmer-btn-secondary:disabled {
+  color: rgb(var(--muted-foreground));
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.audio-trimmer-btn-confirm {
+  background: rgb(var(--white));
+  color: rgb(var(--black));
+  font-weight: bold;
+}
+
+.audio-trimmer-btn-confirm:hover {
+  background: rgb(var(--muted));
+  transform: scale(1.05);
+}
+
+.audio-trimmer-waveform-container {
+  flex: 1;
+  height: 80px;
+  background: rgb(var(--input));
+  border-radius: var(--radius);
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid rgb(var(--border));
+}
+
+.audio-trimmer-waveform-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.audio-trimmer-drag-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: rgb(var(--primary));
+  cursor: ew-resize;
+  z-index: 10;
+  transition: width 0.2s ease, background 0.2s ease;
+}
+
+.audio-trimmer-drag-handle:hover {
+  width: 6px;
+  background: rgb(var(--primary-hover, var(--primary)));
+  filter: brightness(1.2);
+}
+
+.audio-trimmer-drag-handle-start {
+  left: 0;
+}
+
+.audio-trimmer-drag-handle-end {
+  right: 0;
+}
+
+.audio-trimmer-selected-area {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(var(--primary), 0.15);
+  z-index: 5;
+  pointer-events: none;
+  border-left: 2px solid rgb(var(--primary));
+  border-right: 2px solid rgb(var(--primary));
+}
+
+.audio-trimmer-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: rgb(var(--muted-foreground));
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+.audio-trimmer-info-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audio-trimmer-info-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audio-trimmer-time {
+  font-weight: 500;
+  color: rgb(var(--muted-foreground));
+}
+
+.audio-trimmer-time-selected {
+  color: rgb(var(--primary));
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .audio-trimmer-controls {
+    flex-wrap: wrap;
+  }
+  
+  .audio-trimmer-waveform-container {
+    width: 100%;
+    order: -1;
+    margin-bottom: 8px;
+  }
+  
+  .audio-trimmer-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+

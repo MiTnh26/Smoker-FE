@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../../api/userApi';
-import { Button } from "../../../components/common/Button";
 import { Input } from "../../../components/common/Input";
+import PublicHeader from "../../../components/layout/PublicHeader";
+import { cn } from "../../../utils/cn";
 
 const ChangePassword = () => {
   const navigate = useNavigate();
@@ -53,53 +54,59 @@ const ChangePassword = () => {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6">
-      <h2 className="text-2xl font-bold mb-6 text-center">Đổi mật khẩu</h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          type="password"
-          name="currentPassword"
-          value={formData.currentPassword}
-          onChange={handleChange}
-          placeholder="Mật khẩu hiện tại"
-          required
-        />
+    <div className="bg-background text-foreground">
+      <PublicHeader />
+      <div className="container mx-auto min-h-[calc(100vh-73px)] px-4 pt-[73px] pb-12 flex items-center justify-center">
+        <div className="w-full max-w-md rounded-lg border-[0.5px] border-border/20 bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
+          <h2 className="mb-2 text-2xl font-semibold text-center">Đổi mật khẩu</h2>
+          <p className="mb-4 text-center text-sm text-muted-foreground">Cập nhật mật khẩu để đảm bảo an toàn tài khoản.</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Input
+              type="password"
+              name="currentPassword"
+              value={formData.currentPassword}
+              onChange={handleChange}
+              placeholder="Mật khẩu hiện tại"
+              required
+            />
 
-        <Input
-          type="password"
-          name="newPassword"
-          value={formData.newPassword}
-          onChange={handleChange}
-          placeholder="Mật khẩu mới"
-          required
-        />
+            <Input
+              type="password"
+              name="newPassword"
+              value={formData.newPassword}
+              onChange={handleChange}
+              placeholder="Mật khẩu mới"
+              required
+            />
 
-        <Input
-          type="password"
-          name="confirmPassword"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          placeholder="Xác nhận mật khẩu mới"
-          required
-        />
+            <Input
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              placeholder="Xác nhận mật khẩu mới"
+              required
+            />
 
-        {error && (
-          <div className="text-red-500 text-sm">{error}</div>
-        )}
+            {error ? <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div> : null}
+            {success ? <div className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">{success}</div> : null}
 
-        {success && (
-          <div className="text-green-500 text-sm">{success}</div>
-        )}
-
-        <Button
-          type="submit"
-          disabled={loading}
-          className="w-full"
-        >
-          {loading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
-        </Button>
-      </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className={cn(
+                "w-full bg-primary text-primary-foreground border-none",
+                "rounded-lg py-2.5 font-semibold",
+                "transition-all duration-200",
+                "hover:bg-primary/90 active:scale-95",
+                loading && "opacity-60 cursor-not-allowed"
+              )}
+            >
+              {loading ? 'Đang xử lý...' : 'Đổi mật khẩu'}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };

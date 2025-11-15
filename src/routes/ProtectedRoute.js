@@ -12,7 +12,19 @@ export default function ProtectedRoute({ roles, children }) {
   if (!user) return <Navigate to="/login" replace />;
 
   // 🔹 Chuẩn hoá role & id
-  const activeRole = (activeEntity?.role || user?.role || "").toLowerCase();
+  const rawRole = (activeEntity?.role || user?.role || "").toLowerCase();
+  // Map các biến thể role về key thống nhất
+  const roleMap = {
+    account: "customer",
+    customer: "customer",
+    bar: "bar",
+    barpage: "bar",
+    business: "business",
+    businessaccount: "business",
+    dj: "dj",
+    dancer: "dancer",
+  };
+  const activeRole = roleMap[rawRole] || rawRole;
   const activeId = activeEntity?.id || user?.id;
 
   // Debug log (rất quan trọng để kiểm tra)

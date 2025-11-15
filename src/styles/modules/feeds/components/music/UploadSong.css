@@ -1,0 +1,159 @@
+/* UploadSong Component Styles */
+@import '../../../../variables.css';
+
+.upload-song-container {
+  padding: 32px;
+  background: transparent;
+  max-width: 100%;
+  max-height: 90%;
+  margin: 0 auto;
+}
+
+/* Nếu container nằm trong settings-card, bỏ border và background */
+.settings-card .upload-song-container {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.upload-song-title {
+  margin-bottom: 24px;
+  color: rgb(var(--foreground));
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.upload-song-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.upload-song-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upload-song-label {
+  display: block;
+  font-weight: 500;
+  color: rgb(var(--foreground));
+  font-size: 0.9375rem;
+}
+
+.upload-song-label-required {
+  color: rgb(var(--danger));
+  margin-left: 2px;
+}
+
+.upload-song-input,
+.upload-song-textarea,
+.upload-song-file-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgb(var(--input-border));
+  border-radius: var(--radius);
+  background: rgb(var(--input));
+  color: rgb(var(--foreground));
+  font-size: 0.9375rem;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.upload-song-input:focus,
+.upload-song-textarea:focus,
+.upload-song-file-input:focus {
+  outline: none;
+  border-color: rgb(var(--primary));
+  box-shadow: 0 0 0 3px rgba(var(--primary), 0.1);
+}
+
+.upload-song-textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.upload-song-file-input {
+  cursor: pointer;
+}
+
+.upload-song-file-info {
+  margin-top: 8px;
+  color: rgb(var(--muted-foreground));
+  font-size: 0.8125rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.upload-song-file-info-trimmed {
+  color: rgb(var(--primary));
+  font-weight: 500;
+}
+
+.upload-song-error {
+  padding: 12px;
+  margin-bottom: 16px;
+  background: rgba(var(--danger), 0.1);
+  color: rgb(var(--danger));
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  border: 1px solid rgba(var(--danger), 0.2);
+}
+
+.upload-song-success {
+  padding: 12px;
+  margin-bottom: 16px;
+  background: rgba(var(--success), 0.1);
+  color: rgb(var(--success));
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  border: 1px solid rgba(var(--success), 0.2);
+}
+
+.upload-song-submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  border: none;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.upload-song-submit-btn:hover:not(:disabled) {
+  background: rgb(var(--primary-hover, var(--primary)));
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--primary), 0.3);
+}
+
+.upload-song-submit-btn:disabled {
+  background: rgb(var(--muted));
+  color: rgb(var(--muted-foreground));
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}
+
+.upload-song-trimmer-wrapper {
+  margin-bottom: 16px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .upload-song-container {
+    padding: 16px;
+  }
+  
+  .upload-song-title {
+    font-size: 1.25rem;
+  }
+}
+

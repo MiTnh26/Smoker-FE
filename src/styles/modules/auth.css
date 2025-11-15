@@ -54,13 +54,14 @@
 
 /* Create account button */
 .login-form button.create-account-btn {
-  @apply w-full rounded-md py-2 text-white;
-  background-color: #16a34a;
+  @apply w-full rounded-md py-2;
+  color: rgb(var(--primary-foreground));
+  background-color: rgb(var(--success));
   transition: background-color 0.2s;
 }
 
 .login-form button.create-account-btn:hover {
-  background-color: #15803d;
+  background-color: rgb(var(--success) / 0.9);
 }
 
 /* Forgot password link */

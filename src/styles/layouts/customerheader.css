@@ -66,15 +66,37 @@
 
   .newsfeed-nav .nav-icon {
     @apply rounded-xl p-2 flex items-center justify-center transition cursor-pointer;
+    position: relative;
     background: none;
     color: rgb(var(--muted-foreground));
   }
 
   .newsfeed-nav .nav-icon.active,
   .newsfeed-nav .nav-icon:hover {
-    @apply text-white;
+    color: rgb(var(--primary-foreground));
     background-color: rgb(var(--primary));
     transform: translateY(-1px);
+  }
+
+  .nav-icon-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ef4444;
+    color: white;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    border: 2px solid rgb(var(--card));
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
 
   /* ===== User Menu Panel ===== */
@@ -97,8 +119,25 @@
   }
 
   .user-menu-avatar {
-    @apply flex items-center justify-center rounded-full p-3 text-white;
+    @apply rounded-full;
+    position: relative;
     background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+    color: rgb(var(--primary-foreground));
+    padding: 0;
+    margin: 0;
+  }
+  
+  .user-menu-avatar img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+    margin: 0;
+    padding: 0;
   }
 
   .user-menu-info h3 {
@@ -141,7 +180,7 @@
   }
   .user-menu-logout:hover {
     @apply transform translate-x-1;
-    background-color: rgba(var(--danger-rgb), 0.1);
+    background-color: rgba(var(--danger) / 0.1);
   }
 
   @keyframes slideDown {
@@ -170,8 +209,9 @@
   }
 
   .sidebar-user-avatar {
-    @apply flex items-center justify-center rounded-full p-2 text-white;
+    @apply flex items-center justify-center rounded-full p-2;
     background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+    color: rgb(var(--primary-foreground));
   }
 
   .sidebar-user-info h3 {
@@ -208,13 +248,14 @@
   }
   .post-card:hover {
     border-color: rgb(var(--primary));
-    box-shadow: 0 8px 24px rgba(var(--primary-rgb), 0.2);
+    box-shadow: 0 8px 24px rgba(var(--primary) / 0.2);
   }
 
   .post-header, .post-user { @apply flex items-center gap-3 justify-between; }
   .post-avatar {
-    @apply flex items-center justify-center rounded-full p-1.5 text-white;
+    @apply flex items-center justify-center rounded-full p-1.5;
     background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+    color: rgb(var(--primary-foreground));
   }
 
   .post-username { @apply m-0 text-base font-semibold; color: rgb(var(--foreground)); }
@@ -231,12 +272,13 @@
     border-color: rgb(var(--border));
   }
   .audio-play-btn {
-    @apply flex items-center justify-center p-3 rounded-full text-white cursor-pointer transition;
+    @apply flex items-center justify-center p-3 rounded-full cursor-pointer transition;
     background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+    color: rgb(var(--primary-foreground));
   }
   .audio-play-btn:hover {
     transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.4);
+    box-shadow: 0 6px 16px rgba(var(--primary) / 0.4);
   }
 
   .audio-title { @apply m-0 text-sm font-semibold; color: rgb(var(--foreground)); }

@@ -59,7 +59,7 @@
   bottom: -2px;
   width: 10px;
   height: 10px;
-  background: #22c55e; /* green */
+  background: rgb(var(--success)); /* green via variables */
   border: 2px solid rgb(var(--card));
   border-radius: 50%;
 }

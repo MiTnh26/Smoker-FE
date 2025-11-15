@@ -2,6 +2,11 @@
 import axiosClient from "./axiosClient";
 
 const barPageApi = {
+  // Landing page featured bars
+  getFeatured(params = {}) {
+    return axiosClient.get("/bar", { params });
+  },
+
   // Step 1: Tạo mới Bar Page (không upload file)
   create(payload) {
     return axiosClient.post("/bar/register", payload);

@@ -1,0 +1,197 @@
+/* SongList Component Styles */
+@import '../../../../variables.css';
+
+.song-list-container {
+  padding: 24px;
+  background: rgb(var(--card));
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--border));
+  margin-top: 24px;
+}
+
+.song-list-header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgb(var(--border));
+}
+
+.song-list-title {
+  margin: 0;
+  color: rgb(var(--foreground));
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.song-list-loading,
+.song-list-error {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgb(var(--muted-foreground));
+}
+
+.song-list-error {
+  color: rgb(var(--danger));
+}
+
+.song-list-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: rgb(var(--muted-foreground));
+}
+
+.song-list-empty p {
+  margin: 8px 0;
+}
+
+.song-list-empty-hint {
+  font-size: 0.875rem;
+  opacity: 0.7;
+}
+
+.song-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.song-list-item {
+  background: rgb(var(--muted));
+  border: 1px solid rgb(var(--border));
+  border-radius: var(--radius);
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.song-list-item:hover {
+  border-color: rgb(var(--primary));
+  box-shadow: 0 2px 8px rgba(var(--primary), 0.1);
+  transform: translateY(-2px);
+}
+
+.song-list-item-info {
+  margin-bottom: 12px;
+}
+
+.song-list-item-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(var(--foreground));
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-list-item-artist {
+  font-size: 0.875rem;
+  color: rgb(var(--muted-foreground));
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-list-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: rgb(var(--muted-foreground));
+  margin-bottom: 8px;
+}
+
+.song-list-item-album {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-list-item-duration {
+  color: rgb(var(--primary));
+  font-weight: 500;
+}
+
+.song-list-item-trimmed-hint {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+.song-list-item-description {
+  font-size: 0.8125rem;
+  color: rgb(var(--muted-foreground));
+  margin-bottom: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.song-list-item-date {
+  font-size: 0.75rem;
+  color: rgb(var(--muted-foreground));
+  opacity: 0.7;
+}
+
+.song-list-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgb(var(--border));
+}
+
+.song-list-item-audio {
+  flex: 1;
+  height: 32px;
+  outline: none;
+}
+
+.song-list-item-audio::-webkit-media-controls-panel {
+  background-color: rgb(var(--input));
+}
+
+.song-list-item-delete-btn {
+  min-width: 60px;
+  width: auto;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--border));
+  background: rgb(var(--muted));
+  color: rgb(var(--foreground));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.song-list-item-delete-btn:hover:not(:disabled) {
+  background: rgb(var(--danger));
+  color: rgb(var(--white));
+  border-color: rgb(var(--danger));
+  transform: scale(1.05);
+}
+
+.song-list-item-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .song-list-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .song-list-container {
+    padding: 16px;
+  }
+}
+

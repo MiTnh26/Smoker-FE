@@ -10,6 +10,7 @@ import {
   Star,
   MessageCircle,
   Store,
+  CreditCard
 } from "lucide-react";
 
 /**
@@ -30,7 +31,8 @@ export const sidebarConfig = {
     { label: "Sự kiện", icon: Calendar, path: "/customer/events" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/customer/messages" },
     { label: "Hồ sơ", icon: User, path: "/customer/profile" },
-     { label: "Đăng ký tài khoản kinh doanh", icon: Store, path: "/register/select-account-type" },
+    { label: "Bank info", icon: CreditCard, path: "/customer/bank-info" },
+    { label: "Đăng ký tài khoản kinh doanh", icon: Store, path: "/register/select-account-type" },
   ],
 
   // bar: [
@@ -42,6 +44,7 @@ export const sidebarConfig = {
   //   { label: "Cài đặt quán", icon: Settings, path: "/bar/settings/:barPageId" },
   // ],
   bar: [
+    { label: "Newsfeed", icon: Home, path: "/bar/newsfeed" },
     { label: "Dashboard", icon: BarChart3, path: "/bar/dashboard" },
     { label: "Sự kiện", icon: Calendar, path: "/bar/events" },
     { label: "Nhân sự (DJ, Dancer)", icon: Users, path: "/bar/staff" },
@@ -56,14 +59,15 @@ export const sidebarConfig = {
       icon: Settings,
       path: "/bar/settings/:barPageId",
       subMenu: [
-        { label: "Quản lý bàn", path: "/bar/settings/:barPageId" },
         { label: "Quản lý loại bàn", path: "/bar/settings/:barPageId/table-types" },
+        { label: "Quản lý bàn", path: "/bar/settings/:barPageId" },
         { label: "Quản lý voucher", path: "/bar/settings/:barPageId/vouchers" },
         { label: "Quản lý combo", path: "/bar/settings/:barPageId/combos" },
       ],
     },
   ],
   dj: [
+    { label: "Newsfeed", icon: Home, path: "/dj/newsfeed" },
     { label: "Dashboard", icon: BarChart3, path: "/dj/dashboard" },
     { label: "Lịch diễn", icon: Calendar, path: "/dj/schedule" },
     { label: "Khách hàng / Bar hợp tác", icon: Users, path: "/dj/partners" },
@@ -72,6 +76,7 @@ export const sidebarConfig = {
   ],
 
   dancer: [
+    { label: "Newsfeed", icon: Home, path: "/dancer/newsfeed" },
     { label: "Dashboard", icon: BarChart3, path: "/dancer/dashboard" },
     { label: "Lịch diễn", icon: Calendar, path: "/dancer/schedule" },
     { label: "Đối tác / Bar", icon: Users, path: "/dancer/partners" },

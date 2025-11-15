@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import barPageApi from "../../../api/barPageApi";
+import { userApi } from "../../../api/userApi";
+import { fetchAllEntities } from "../../../utils/sessionHelper";
 import BarRegisterStep1 from "../components/BarRegisterStep1";
 import BarRegisterStep2 from "../components/BarRegisterStep2";
-import BarRegisterStep3 from "../components/BarRegisterStep3";
 import "../../../styles/modules/businessRegister.css";
 
 export default function BarRegister() {
@@ -21,17 +22,56 @@ export default function BarRegister() {
     
   });
 
+  // Location states for AddressSelector
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
+  const [selectedWardId, setSelectedWardId] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
+
   const [files, setFiles] = useState({ avatar: null, background: null });
   const [previews, setPreviews] = useState({ avatar: "", background: "" });
-  const [tableTypes, setTableTypes] = useState([]);
+
+  // Load user profile to sync phone and email (not address)
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      try {
+        const res = await userApi.me();
+        if (res?.status === "success" && res.data) {
+          const user = res.data;
+          
+          // Update form with user's phone and email only (address fields remain empty)
+          setInfo(prev => ({
+            ...prev,
+            phoneNumber: user.phone || prev.phoneNumber,
+            email: user.email || prev.email || storedUser?.email || "",
+          }));
+        }
+      } catch (error) {
+        console.error("[BarRegister] Error loading user profile:", error);
+      }
+    };
+    
+    loadUserProfile();
+  }, [storedUser?.email]);
 
   useEffect(() => {
-    if (storedUser?.businessId) {
-      setMessage("Tài khoản này đã tạo quán Bar, không thể tạo thêm");
+    // Check if user already has a Bar entity from session
+    try {
+      const session = JSON.parse(localStorage.getItem("session"));
+      if (session && session.entities) {
+        const hasBar = session.entities.some(
+          (e) => e.type === "BarPage" || (e.type === "Business" && e.role?.toLowerCase() === "bar")
+        );
+        if (hasBar) {
+          setMessage("Tài khoản này đã tạo quán Bar, không thể tạo thêm");
+        }
+      }
+    } catch (error) {
+      console.error("[BarRegister] Error checking existing Bar:", error);
     }
-  }, [storedUser]);
+  }, []);
 
-  const nextStep = () => setStep((prev) => Math.min(prev + 1, 3));
+  const nextStep = () => setStep((prev) => Math.min(prev + 1, 2));
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
   const handleInfoChange = (e) => {
@@ -59,51 +99,82 @@ export default function BarRegister() {
     nextStep();
   };
 
+  // Build full address from location selection
+  const buildAddress = () => {
+    const parts = [];
+    if (addressDetail) parts.push(addressDetail);
+    
+    // We'll get names from AddressSelector, for now just use IDs
+    // The address will be built on backend or we need to fetch names
+    return info.address || addressDetail || "";
+  };
+
   // -------------------
-  // Step 2: Ảnh quán
+  // Step 2: Ảnh quán và tạo BarPage
   // -------------------
-  const submitStep2 = (e) => {
+  const submitStep2 = async (e) => {
     e.preventDefault();
     if (!files.avatar && !files.background) {
       setMessage("Vui lòng chọn ít nhất một ảnh");
       return;
     }
-    setMessage("");
-    nextStep();
-  };
-
-  // -------------------
-  // Step 3: Loại bàn và tạo BarPage
-  // -------------------
-  const submitStep3 = async (e) => {
-    e.preventDefault();
-    if (tableTypes.length === 0 || tableTypes.some(t => !t.name.trim())) {
-      setMessage("Vui lòng nhập ít nhất một loại bàn hợp lệ");
-      return;
-    }
 
     setIsLoading(true);
+    setMessage("");
     try {
+      // Build address data
+      const addressData = {
+        provinceId: selectedProvinceId || null,
+        districtId: selectedDistrictId || null,
+        wardId: selectedWardId || null,
+        detail: addressDetail || null,
+        fullAddress: info.address || buildAddress() || null
+      };
+
       // 1️⃣ Tạo BarPage
-      const res = await barPageApi.create({ accountId: storedUser.id, ...info });
+      const res = await barPageApi.create({ 
+        accountId: storedUser.id, 
+        ...info,
+        addressData: addressData
+      });
       const newBarPageId = res.data.BarPageId;
 
-      // 2️⃣ Upload ảnh
+      // 2️⃣ Upload ảnh và cập nhật addressData
       const fd = new FormData();
       fd.append("barPageId", newBarPageId);
       if (files.avatar) fd.append("avatar", files.avatar);
       if (files.background) fd.append("background", files.background);
+      // Send addressData as JSON string
+      if (selectedProvinceId || selectedDistrictId || selectedWardId) {
+        fd.append("addressData", JSON.stringify(addressData));
+        fd.append("address", addressData.fullAddress || info.address || "");
+      }
       await barPageApi.upload(fd);
 
-      // 3️⃣ Tạo loại bàn
-      await barPageApi.createTableTypes({ barPageId: newBarPageId, tableTypes });
+      // 3️⃣ Refresh session with updated entities
+      try {
+        const currentSession = JSON.parse(localStorage.getItem("session"));
+        if (currentSession && currentSession.account) {
+          const entities = await fetchAllEntities(storedUser.id, currentSession.account);
+          currentSession.entities = entities;
+          localStorage.setItem("session", JSON.stringify(currentSession));
+          
+          // Trigger profile update event
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("profileUpdated"));
+          }
+        }
+      } catch (refreshError) {
+        console.error("[BarRegister] Error refreshing session:", refreshError);
+        // Continue anyway, registration was successful
+      }
 
-      // 4️⃣ Cập nhật session và redirect
+      // 4️⃣ Cập nhật user localStorage
       const updatedUser = { ...storedUser, role: "bar", businessId: newBarPageId };
       localStorage.setItem("user", JSON.stringify(updatedUser));
 
       setMessage("Tạo BarPage thành công!");
-      window.location.href = `/bar/profile/${newBarPageId}`;
+      window.location.href = `/bar/${newBarPageId}`;
     } catch (err) {
       setMessage(err.response?.data?.message || "Lỗi khi tạo BarPage");
     } finally {
@@ -122,6 +193,24 @@ export default function BarRegister() {
           submitStep1={submitStep1}
           isLoading={isLoading}
           message={message}
+          selectedProvinceId={selectedProvinceId}
+          selectedDistrictId={selectedDistrictId}
+          selectedWardId={selectedWardId}
+          addressDetail={addressDetail}
+          onProvinceChange={(id) => {
+            setSelectedProvinceId(id);
+            setSelectedDistrictId('');
+            setSelectedWardId('');
+          }}
+          onDistrictChange={(id) => {
+            setSelectedDistrictId(id);
+            setSelectedWardId('');
+          }}
+          onWardChange={setSelectedWardId}
+          onAddressDetailChange={setAddressDetail}
+          onAddressChange={(fullAddr) => {
+            setInfo(prev => ({ ...prev, address: fullAddr }));
+          }}
         />
       )}
 
@@ -131,17 +220,6 @@ export default function BarRegister() {
           previews={previews}
           handleFileChange={handleFileChange}
           submitStep2={submitStep2}
-          isLoading={isLoading}
-          prevStep={prevStep}
-          message={message}
-        />
-      )}
-
-      {step === 3 && (
-        <BarRegisterStep3
-          tableTypes={tableTypes}
-          setTableTypes={setTableTypes}
-          submitStep3={submitStep3}
           isLoading={isLoading}
           prevStep={prevStep}
           message={message}

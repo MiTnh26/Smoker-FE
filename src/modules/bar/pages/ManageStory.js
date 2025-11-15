@@ -41,6 +41,26 @@ const ManageStory = () => {
     setLoading(true);
     setError("");
     try {
+      // Lấy entityAccountId từ activeEntity trong session
+      let session, entityAccountId, authorEntityId, authorEntityType;
+      try {
+        const raw = localStorage.getItem("session");
+        session = raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        session = null;
+      }
+      const activeEntity = session?.activeEntity || session?.account;
+      entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      authorEntityId = activeEntity?.id || session?.account?.id || null;
+      const rawRole = (activeEntity?.role || session?.account?.role || "").toLowerCase();
+      if (rawRole === "bar" || rawRole === "barpage") {
+        authorEntityType = "BarPage";
+      } else if (rawRole === "dj" || rawRole === "dancer" || rawRole === "business") {
+        authorEntityType = "BusinessAccount";
+      } else {
+        authorEntityType = "Account";
+      }
+      
       let data;
       if (imageFile) {
         data = new FormData();
@@ -49,14 +69,28 @@ const ManageStory = () => {
         data.append("expiredAt", formData.expiredAt);
         data.append("images", imageFile);
         data.append("type", "story");
+        if (entityAccountId) data.append("entityAccountId", entityAccountId);
+        if (authorEntityId) data.append("authorEntityId", authorEntityId);
+        if (authorEntityType) data.append("authorEntityType", authorEntityType);
       } else {
-        data = { ...formData, images: formData.images || "" };
+        data = { 
+          ...formData, 
+          images: formData.images || "",
+          entityAccountId: entityAccountId || undefined,
+          authorEntityId: authorEntityId || undefined,
+          authorEntityType: authorEntityType || undefined
+        };
       }
       await createStory(data);
       setShowForm(false);
       setFormData({ title: "", content: "", images: "", expiredAt: "", type: "story" });
       setImageFile(null);
-      fetchStories();
+      
+      // Đợi một chút để backend kịp lưu story mới vào DB
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Refresh stories từ API để lấy story mới với đầy đủ thông tin
+      await fetchStories();
     } catch (err) {
       setError("Tạo story thất bại");
     }
@@ -94,6 +128,26 @@ const ManageStory = () => {
     setLoading(true);
     setError("");
     try {
+      // Lấy entityAccountId từ activeEntity trong session
+      let session, entityAccountId, authorEntityId, authorEntityType;
+      try {
+        const raw = localStorage.getItem("session");
+        session = raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        session = null;
+      }
+      const activeEntity = session?.activeEntity || session?.account;
+      entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      authorEntityId = activeEntity?.id || session?.account?.id || null;
+      const rawRole = (activeEntity?.role || session?.account?.role || "").toLowerCase();
+      if (rawRole === "bar" || rawRole === "barpage") {
+        authorEntityType = "BarPage";
+      } else if (rawRole === "dj" || rawRole === "dancer" || rawRole === "business") {
+        authorEntityType = "BusinessAccount";
+      } else {
+        authorEntityType = "Account";
+      }
+      
       let data;
       if (imageFile) {
         data = new FormData();
@@ -102,8 +156,18 @@ const ManageStory = () => {
         data.append("expiredAt", formData.expiredAt);
         data.append("images", imageFile);
         data.append("type", "story");
+        if (entityAccountId) data.append("entityAccountId", entityAccountId);
+        if (authorEntityId) data.append("authorEntityId", authorEntityId);
+        if (authorEntityType) data.append("authorEntityType", authorEntityType);
       } else {
-        data = { ...formData, images: formData.images || "", type: "story" };
+        data = { 
+          ...formData, 
+          images: formData.images || "", 
+          type: "story",
+          entityAccountId: entityAccountId || undefined,
+          authorEntityId: authorEntityId || undefined,
+          authorEntityType: authorEntityType || undefined
+        };
       }
       await updateStory(editingId, data);
       setEditingId(null);

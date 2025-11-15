@@ -1,4 +1,5 @@
 import React from "react";
+import { cn } from "../../utils/cn";
 
 // Textarea component có thể dùng trong form, modal, popup,...
 export const Textarea = React.forwardRef(
@@ -6,18 +7,33 @@ export const Textarea = React.forwardRef(
     return (
       <div className="flex flex-col w-full">
         {label && (
-          <label className="mb-1 text-sm font-medium text-gray-300">
+          <label className={cn(
+            "mb-1 text-sm font-medium text-foreground"
+          )}>
             {label}
           </label>
         )}
 
         <textarea
           ref={ref}
-          className={`w-full min-h-[100px] px-3 py-2 rounded-xl border border-gray-600 bg-[#111] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition ${className}`}
+          className={cn(
+            "w-full min-h-[100px] px-4 py-2.5 rounded-lg",
+            "border-[0.5px] border-border/20",
+            "bg-background text-foreground",
+            "outline-none transition-all duration-200",
+            "placeholder:text-muted-foreground/60",
+            "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
+            "resize-y",
+            className
+          )}
           {...props}
         />
 
-        {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+        {error && (
+          <p className={cn("mt-1 text-xs text-danger")}>
+            {error}
+          </p>
+        )}
       </div>
     );
   }

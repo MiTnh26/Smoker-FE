@@ -1,0 +1,55 @@
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--muted), 0.5) 0%,
+    rgba(var(--muted), 0.8) 50%,
+    rgba(var(--muted), 0.5) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: var(--radius);
+}
+
+.skeleton-rectangular {
+  border-radius: var(--radius);
+}
+
+.skeleton-circular {
+  border-radius: 50%;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  background-color: rgb(var(--card));
+  border: 1px solid rgba(var(--border), 0.3);
+  border-radius: calc(var(--radius) * 2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.skeleton-color {
+  align-self: center;
+}
+
+.skeleton-input {
+  border-radius: calc(var(--radius) * 1.5);
+}
+
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+

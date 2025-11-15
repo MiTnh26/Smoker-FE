@@ -1,13 +1,14 @@
 import React, { useState } from "react";
-import { Button } from "../../../components/common/Button";
+import { useTranslation } from "react-i18next";
 import { Input } from "../../../components/common/Input";
 import { Link, useNavigate } from "react-router-dom";
-import "../../../styles/modules/register.css";
 import { Checkbox } from "../../../components/common/Checkbox";
 import { authApi } from "../../../api/userApi";
+import PublicHeader from "../../../components/layout/PublicHeader";
 
 export function Register() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -25,16 +26,16 @@ export function Register() {
     try {
       const res = await authApi.register(email, password, confirmPassword);
       if (res && res.message) {
-        setSuccess("Đăng ký thành công. Đang chuyển hướng...");
+        setSuccess(t('auth.registerSuccess'));
         setTimeout(() => navigate("/"), 1000);
       } else {
-        setError(res?.message || "Đăng ký thất bại");
+        setError(res?.message || t('auth.registerFailed'));
       }
     } catch (err) {
       const msg =
         err?.response?.status === 409
-          ? "Email đã tồn tại"
-          : err?.response?.data?.message || "Đăng ký thất bại";
+          ? t('auth.emailExists')
+          : err?.response?.data?.message || t('auth.registerFailed');
       setError(msg);
     }
   };
@@ -44,7 +45,7 @@ export function Register() {
     setError("");
     setSuccess("");
     if (!email) {
-      setError("Vui lòng nhập Gmail để đăng ký bằng Google");
+      setError(t('auth.pleaseEnterEmail'));
       return;
     }
     try {
@@ -54,13 +55,13 @@ export function Register() {
       } else if (response.status === "EXISTING_USER") {
         setError(response.message);
       } else {
-        setError("Đăng ký thất bại");
+        setError(t('auth.registerFailed'));
       }
     } catch (err) {
       const msg =
         err?.response?.status === 409
-          ? "Email đã tồn tại"
-          : err?.response?.data?.message || "Đăng ký thất bại";
+          ? t('auth.emailExists')
+          : err?.response?.data?.message || t('auth.registerFailed');
       console.error("Google register failed:", err);
       setError(msg);
     }
@@ -71,7 +72,7 @@ export function Register() {
     setError("");
     setSuccess("");
     if (!email) {
-      setError("Vui lòng nhập email để đăng ký bằng Facebook");
+      setError(t('auth.pleaseEnterEmail'));
       return;
     }
     try {
@@ -81,33 +82,34 @@ export function Register() {
       } else if (response.status === "EXISTING_USER") {
         setError(response.message);
       } else {
-        setError("Đăng ký thất bại");
+        setError(t('auth.registerFailed'));
       }
     } catch (err) {
       const msg =
         err?.response?.status === 409
-          ? "Email đã tồn tại"
-          : err?.response?.data?.message || "Đăng ký thất bại";
+          ? t('auth.emailExists')
+          : err?.response?.data?.message || t('auth.registerFailed');
       console.error("Facebook register failed:", err);
       setError(msg);
     }
   };
 
   return (
-    <div className="signup-page">
-      <div className="signup-form-container">
-        <div className="signup-wrapper">
+    <div className="bg-background text-foreground">
+      <PublicHeader />
+      <div className="container mx-auto min-h-[calc(100vh-73px)] px-4 pt-[73px] pb-12 flex items-center justify-center">
+        <div className="signup-wrapper w-full max-w-2xl">
           {/* Logo */}
           <div className="signup-logo">
             <Link to="/">Smoker</Link>
           </div>
 
           {/* Signup Form */}
-          <div className="signup-form-box">
-            <form className="signup-form space-y-5" onSubmit={handleSubmit}>
+          <div className="signup-form-box bg-card rounded-lg border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-6">
+            <form className="space-y-5" onSubmit={handleSubmit}>
               <Input
                 type="email"
-                placeholder="Gmail (example@gmail.com)"
+                placeholder={t('auth.email') + ' (example@gmail.com)'}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -116,7 +118,7 @@ export function Register() {
               <div style={{ position: "relative" }}>
                 <Input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Password"
+                  placeholder={t('auth.password')}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{ paddingRight: "38px" }}
@@ -131,7 +133,7 @@ export function Register() {
                     cursor: "pointer",
                     color: "#666",
                   }}
-                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                 >
                   {showPassword ? (
                     // 👁️ Eye Open
@@ -173,7 +175,7 @@ export function Register() {
               <div style={{ position: "relative" }}>
                 <Input
                   type={showConfirm ? "text" : "password"}
-                  placeholder="Confirm Password"
+                  placeholder={t('auth.confirmPassword')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   style={{ paddingRight: "38px" }}
@@ -188,7 +190,7 @@ export function Register() {
                     cursor: "pointer",
                     color: "#666",
                   }}
-                  aria-label={showConfirm ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                  aria-label={showConfirm ? t('auth.hidePassword') : t('auth.showPassword')}
                 >
                   {showConfirm ? (
                     // Eye open
@@ -237,7 +239,7 @@ export function Register() {
                   onChange={(e) => setAgreed(e.target.checked)}
                 />
                 <label>
-                  I have read and agree with the terms and conditions
+                  {t('auth.termsAgree')}
                 </label>
               </div>
 
@@ -246,46 +248,43 @@ export function Register() {
               </div>
 
               <div style={{ fontSize: 12, color: "#555" }}>
-                Cách 2 – Đăng ký bằng Google: Xác thực Gmail của bạn, hệ thống sẽ
-                tạo mật khẩu ngẫu nhiên và <b>gửi về hộp thư Gmail</b>. Vui lòng
-                mở Gmail để lấy mật khẩu này và dùng để{" "}
-                <b>đăng nhập thủ công</b> lần đầu.
+                {t('auth.googleRegisterHow')}
               </div>
 
-              <Button
+              <button
                 type="button"
-                className="signup-btn"
                 onClick={handleGoogleRegister}
+                className="w-full bg-muted/40 text-foreground border-none rounded-lg py-2.5 text-sm font-semibold transition-all duration-200 hover:bg-muted/60 active:scale-95"
               >
-                Đăng ký bằng Google
-              </Button>
+                {t('auth.registerWithGoogle')}
+              </button>
 
               <div style={{ fontSize: 12, color: "#555", marginTop: "10px" }}>
-                Cách 3 – Đăng ký bằng Facebook: Xác thực email của bạn, hệ thống sẽ
-                tạo mật khẩu ngẫu nhiên và <b>gửi về hộp thư email</b>. Vui lòng
-                mở email để lấy mật khẩu này và dùng để{" "}
-                <b>đăng nhập thủ công</b> lần đầu.
+                {t('auth.facebookRegisterHow')}
               </div>
 
-              <Button
+              <button
                 type="button"
-                className="signup-btn"
                 onClick={handleFacebookRegister}
-                style={{ backgroundColor: "#1877f2" }}
+                className="w-full rounded-lg py-2.5 text-sm font-semibold text-white bg-[#1877F2] border-none transition-all duration-200 hover:bg-[#1664CF] active:scale-95"
               >
-                Đăng ký bằng Facebook
-              </Button>
+                {t('auth.registerWithFacebook')}
+              </button>
 
               <div className="text-center text-sm text-muted-foreground">
-                Already have an account?{" "}
+                {t('auth.alreadyHave')} {" "}
                 <Link to="/login" className="text-primary">
-                  Login
+                  {t('auth.loginLink')}
                 </Link>
               </div>
 
-              <Button type="submit" className="signup-btn" disabled={!agreed}>
-                Sign up
-              </Button>
+              <button
+                type="submit"
+                disabled={!agreed}
+                className={`w-full bg-primary text-primary-foreground border-none rounded-lg py-2.5 font-semibold transition-all duration-200 hover:bg-primary/90 active:scale-95 ${!agreed ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {t('auth.signUp')}
+              </button>
             </form>
           </div>
         </div>

@@ -1,0 +1,467 @@
+/* Table Classification Manager - Professional Design */
+
+.table-classification-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
+}
+
+/* Header Section */
+.table-classification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background-color: rgb(var(--card));
+  border: 1px solid rgba(var(--border), 0.3);
+  border-radius: calc(var(--radius) * 2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.table-classification-header-content {
+  flex: 1;
+}
+
+.table-classification-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: rgb(var(--foreground));
+  margin: 0 0 0.5rem 0;
+  line-height: 1.2;
+}
+
+.table-classification-description {
+  font-size: 0.875rem;
+  color: rgb(var(--muted-foreground));
+  margin: 0;
+  line-height: 1.5;
+}
+
+.table-classification-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Action Buttons */
+.btn-add-classification,
+.btn-save-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.4rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: calc(var(--radius) * 1.5);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-add-classification {
+  background-color: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  border-color: rgba(var(--primary), 0.3);
+}
+
+.btn-add-classification:hover {
+  background-color: rgba(var(--primary), 0.9);
+  box-shadow: 0 4px 12px rgba(var(--primary), 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-add-classification:active {
+  transform: scale(0.98);
+}
+
+.btn-save-all {
+  background-color: rgb(var(--card));
+  color: rgb(var(--foreground));
+  border-color: rgba(var(--border), 0.5);
+}
+
+.btn-save-all:hover {
+  background-color: rgba(var(--muted), 0.3);
+  border-color: rgba(var(--primary), 0.5);
+}
+
+.btn-save-all:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-save-all.loading {
+  position: relative;
+  color: transparent;
+}
+
+.btn-save-all.loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(var(--foreground), 0.3);
+  border-top-color: rgb(var(--foreground));
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Grid Layout */
+.classifications-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 0;
+}
+
+/* Classification Card */
+.classification-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  background-color: rgb(var(--card));
+  border: 1px solid rgba(var(--border), 0.3);
+  border-radius: calc(var(--radius) * 2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  animation: card-fade-in 0.3s ease-out;
+}
+
+.classification-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-color: rgba(var(--primary), 0.3);
+}
+
+.classification-card.exiting {
+  animation: card-fade-out 0.3s ease-in forwards;
+}
+
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes card-fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+/* Color Preview */
+.classification-color-preview {
+  width: 60px;
+  height: 60px;
+  border-radius: calc(var(--radius) * 1.5);
+  border: 2px solid rgba(var(--border), 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.classification-color-preview:hover {
+  border-color: rgb(var(--primary));
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(var(--primary), 0.3);
+}
+
+.classification-color-input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+/* Name Input */
+.classification-name-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  background-color: rgba(var(--input), 0.2);
+  border: 1px solid rgba(var(--border), 0.2);
+  border-radius: calc(var(--radius) * 1.5);
+  color: rgb(var(--foreground));
+  transition: all 0.2s ease;
+}
+
+.classification-name-input::placeholder {
+  color: rgb(var(--muted-foreground));
+}
+
+.classification-name-input:focus {
+  outline: none;
+  border-color: rgb(var(--primary));
+  box-shadow: 0 0 0 3px rgba(var(--primary), 0.1);
+  background-color: rgb(var(--input));
+}
+
+/* Color Row */
+.classification-color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.classification-color-label {
+  font-size: 0.875rem;
+  color: rgb(var(--muted-foreground));
+  flex-shrink: 0;
+}
+
+.classification-color-input-wrapper {
+  position: relative;
+  width: 3rem;
+  height: 2rem;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid rgba(var(--border), 0.3);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.classification-color-input-wrapper:hover {
+  border-color: rgb(var(--primary));
+  transform: scale(1.05);
+}
+
+.classification-color-input-wrapper input[type="color"] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+}
+
+/* Card Actions */
+.classification-card-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.classification-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: rgb(var(--muted-foreground));
+}
+
+.classification-status.dirty {
+  color: rgb(var(--warning));
+}
+
+.classification-status.saved {
+  color: rgb(var(--success));
+}
+
+.classification-delete-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  background: transparent;
+  border: 1px solid rgba(var(--border), 0.5);
+  border-radius: var(--radius);
+  color: rgb(var(--muted-foreground));
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.classification-delete-btn:hover {
+  border-color: rgba(var(--danger), 0.4);
+  color: rgb(var(--danger));
+  background-color: rgba(var(--danger), 0.1);
+}
+
+.classification-delete-btn:active {
+  transform: scale(0.95);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .classifications-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .table-classification-container {
+    padding: 1rem;
+  }
+
+  .table-classification-header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.25rem;
+  }
+
+  .table-classification-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .classifications-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-classification-container {
+    padding: 0.75rem;
+  }
+
+  .table-classification-header {
+    padding: 1rem;
+  }
+
+  .table-classification-title {
+    font-size: 1.5rem;
+  }
+
+  .table-classification-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-add-classification,
+  .btn-save-all {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .classifications-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .classification-card {
+    padding: 1rem;
+  }
+}
+
+/* Loading State */
+.classification-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  color: rgb(var(--muted-foreground));
+}
+
+/* Add Classification Card - Same style as bar-table-add-card */
+.bar-table-add-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  background-color: rgb(var(--card));
+  border: 1px solid rgba(var(--border), 0.3);
+  border-left: 4px solid rgba(var(--border), 0.2);
+  border-radius: calc(var(--radius) * 2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  min-height: 20px;
+  opacity: 0.5;
+}
+
+.bar-table-add-card:hover {
+  opacity: 0.8;
+  border-color: rgba(var(--primary), 0.3);
+  border-left-color: rgba(var(--primary), 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.bar-table-add-card-btn {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: rgba(var(--primary), 0.1);
+  color: rgba(var(--foreground), 0.6);
+  border: 1px solid rgba(var(--border), 0.2);
+  border-radius: calc(var(--radius) * 1.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bar-table-add-card-btn:hover {
+  background-color: rgba(var(--primary), 0.2);
+  color: rgb(var(--foreground));
+  border-color: rgba(var(--primary), 0.4);
+}
+
+/* Back to Top Footer */
+.bar-tables-layout-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: 4rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(var(--border), 0.2);
+  width: 100%;
+}
+
+.bar-tables-layout-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  background-color: rgba(var(--primary), 0.08);
+  color: rgba(var(--primary), 0.7);
+  border: 1px solid rgba(var(--primary), 0.15);
+  border-radius: calc(var(--radius) * 1.5);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.bar-tables-layout-back-btn:hover {
+  background-color: rgba(var(--primary), 0.12);
+  color: rgba(var(--primary), 0.85);
+  border-color: rgba(var(--primary), 0.25);
+  box-shadow: 0 2px 8px rgba(var(--primary), 0.15);
+  transform: translateY(-1px);
+  opacity: 1;
+}
+
+.bar-tables-layout-back-btn:active {
+  transform: scale(0.99);
+  opacity: 0.9;
+}
+

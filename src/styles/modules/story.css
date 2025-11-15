@@ -14,7 +14,7 @@
   width: 70px;
   height: 70px;
   border-radius: 50%;
-  border: 2px solid #ff007a;
+  border: 2px solid rgb(var(--highlight));
   object-fit: cover;
 }
 .story-viewer {
