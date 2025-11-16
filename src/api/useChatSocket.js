@@ -184,7 +184,9 @@ export default function useChatSocket(onNewMessage) {
         });
       });
     }
-
+    console.log("🟢 REACT_APP_SOCKET_URL =", process.env.REACT_APP_SOCKET_URL);
+    console.log("🟢 SOCKET_URL const =", SOCKET_URL);
+    
     // Cleanup: remove handler when component unmounts
     return () => {
       const handlerToRemove = Array.from(messageHandlers).find(h => h._id === handlerIdRef.current);
