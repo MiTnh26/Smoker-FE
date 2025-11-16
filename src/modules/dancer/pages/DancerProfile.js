@@ -5,11 +5,200 @@ import { useParams } from "react-router-dom";
 import businessApi from "../../../api/businessApi";
 import { locationApi } from "../../../api/locationApi";
 import AddressSelector from "../../../components/common/AddressSelector";
-import PostFeed from "../../feeds/components/post/PostFeed";
+import PostCard from "../../feeds/components/post/PostCard";
+import { getPostsByAuthor } from "../../../api/postApi";
+import { cn } from "../../../utils/cn";
 import { useFollowers, useFollowing } from "../../../hooks/useFollow";
-import messageApi from "../../../api/messageApi";
+import { Edit, DollarSign } from "lucide-react";
 import "../../../styles/modules/publicProfile.css";
 import PerformerReviews from "../../business/components/PerformerReviews";
+import BarVideo from "../../bar/components/BarVideo";
+
+// Helper functions for post transformation (same as PublicProfile)
+const normalizeMediaArray = (medias) => {
+  const images = [];
+  const videos = [];
+  const audios = [];
+
+  const isAudioUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const u = url.toLowerCase();
+    return (
+      u.includes('.mp3') ||
+      u.includes('.m4a') ||
+      u.includes('.wav') ||
+      u.includes('.ogg') ||
+      u.includes('.aac')
+    );
+  };
+
+  if (Array.isArray(medias)) {
+    for (const mediaItem of medias) {
+      if (!mediaItem) continue;
+      const url = mediaItem.url || mediaItem.src || mediaItem.path;
+      const type = (mediaItem.type || "").toLowerCase();
+      if (!url) continue;
+      if (type === "audio" || isAudioUrl(url)) {
+        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else {
+        images.push({ url, id: mediaItem._id || mediaItem.id || url });
+      }
+    }
+  } else if (medias && typeof medias === "object") {
+    for (const key of Object.keys(medias)) {
+      const mediaItem = medias[key];
+      if (!mediaItem) continue;
+      const url = mediaItem.url || mediaItem.src || mediaItem.path;
+      const type = (mediaItem.type || "").toLowerCase();
+      if (!url) continue;
+      if (type === "audio" || isAudioUrl(url)) {
+        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else {
+        images.push({ url, id: mediaItem._id || mediaItem.id || url });
+      }
+    }
+  }
+  return { images, videos, audios };
+};
+
+const countCollection = (value) => {
+  if (!value) return 0;
+  if (Array.isArray(value)) return value.length;
+  if (value instanceof Map) return value.size;
+  if (typeof value === "object") return Object.keys(value).length;
+  if (typeof value === "number") return value;
+  return 0;
+};
+
+const formatPostTime = (value, t) => {
+  try {
+    const d = value ? new Date(value) : new Date();
+    if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    if (diffMs < 0) return d.toLocaleString('vi-VN');
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return t('time.justNow') || 'vừa xong';
+    if (minutes < 60) return t('time.minutesAgo', { minutes }) || `${minutes} phút trước`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t('time.hoursAgo', { hours }) || `${hours} giờ trước`;
+    return d.toLocaleDateString('vi-VN');
+  } catch {
+    return new Date().toLocaleString('vi-VN');
+  }
+};
+
+// eslint-disable-next-line complexity
+const mapPostForCard = (post, t) => {
+  const id = post._id || post.id || post.postId;
+  const author = post.author || post.account || {};
+  const mediaFromPost = normalizeMediaArray(post.medias);
+  const mediaFromMediaIds = normalizeMediaArray(post.mediaIds);
+  const images = [...mediaFromPost.images, ...mediaFromMediaIds.images];
+  const videos = [...mediaFromPost.videos, ...mediaFromMediaIds.videos];
+  const audios = [...mediaFromPost.audios, ...mediaFromMediaIds.audios];
+
+  const resolveUserName = () =>
+    post.authorName ||
+    post.authorEntityName ||
+    author.userName ||
+    author.name ||
+    post.user ||
+    t("common.user");
+
+  const resolveAvatar = () =>
+    post.authorAvatar ||
+    post.authorEntityAvatar ||
+    author.avatar ||
+    post.avatar ||
+    "https://via.placeholder.com/40";
+
+  // Extract audio from post
+  const isAudioUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const u = url.toLowerCase();
+    return (
+      u.includes('.mp3') ||
+      u.includes('.m4a') ||
+      u.includes('.wav') ||
+      u.includes('.ogg') ||
+      u.includes('.aac')
+    );
+  };
+
+  // Get audio from various sources
+  const music = post.musicId || post.music || {};
+  const audioFromMusic = (() => {
+    if (!music) return null;
+    const candidates = [
+      music.audioUrl,
+      music.streamUrl,
+      music.fileUrl,
+      music.url,
+      music.sourceUrl,
+      music.downloadUrl,
+    ];
+    for (const c of candidates) if (c && isAudioUrl(c)) return c;
+    return null;
+  })();
+
+  // Check medias for audio
+  const audioFromMedias = (() => {
+    if (Array.isArray(post.medias)) {
+      for (const mediaItem of post.medias) {
+        if (!mediaItem) continue;
+        const url = mediaItem.url || mediaItem.src || mediaItem.path;
+        if (url && isAudioUrl(url)) return url;
+      }
+    } else if (post.medias && typeof post.medias === "object") {
+      for (const key of Object.keys(post.medias)) {
+        const mediaItem = post.medias[key];
+        if (!mediaItem) continue;
+        const url = mediaItem.url || mediaItem.src || mediaItem.path;
+        if (url && isAudioUrl(url)) return url;
+      }
+    }
+    return null;
+  })();
+
+  const audioSrc = audioFromMusic || audios[0]?.url || audioFromMedias || post.audioSrc || post.audioUrl || null;
+
+  return {
+    id,
+    user: resolveUserName(),
+    avatar: resolveAvatar(),
+    time: formatPostTime(post.createdAt, t),
+    content: post.content || post.caption || post["Tiêu Đề"] || "",
+    medias: { images, videos, audios: audioSrc ? [{ url: audioSrc }] : audios },
+    image: images[0]?.url || null,
+    videoSrc: videos[0]?.url || null,
+    audioSrc: audioSrc,
+    audioTitle: music.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
+    artistName: music.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null,
+    thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
+    purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
+    likes: countCollection(post.likes),
+    likedByCurrentUser: false,
+    comments: countCollection(post.comments),
+    shares: post.shares || 0,
+    hashtags: post.hashtags || [],
+    verified: !!post.verified,
+    location: post.location || null,
+    title: post.title || null,
+    canManage: false,
+    ownerEntityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
+    entityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
+    authorEntityAccountId: post.authorEntityAccountId || post.entityAccountId || null,
+    authorEntityId: post.authorEntityId || post.authorId || post.accountId || null,
+    authorEntityType: post.authorEntityType || post.entityType || post.type || null,
+    ownerAccountId: post.accountId || post.ownerAccountId || author.id || null,
+    targetType: post.type || "post",
+  };
+};
 
 export default function DancerProfile() {
     const { t } = useTranslation();
@@ -35,6 +224,8 @@ export default function DancerProfile() {
     const [currentUserEntityId, setCurrentUserEntityId] = useState(null);
     const [businessEntityId, setBusinessEntityId] = useState(null);
     const [businessAccountId, setBusinessAccountId] = useState(null);
+    const [businessPosts, setBusinessPosts] = useState([]);
+    const [postsLoading, setPostsLoading] = useState(true);
     
     // Location states
     const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -60,6 +251,22 @@ export default function DancerProfile() {
             setCurrentUserEntityId(resolvedId || null);
         } catch {}
     }, []);
+
+    // Check if this is own profile: compare businessId (from URL) with activeEntity.id (businessId of current role)
+    // Similar to how BarProfile checks activeBarPageId
+    const [activeBusinessId, setActiveBusinessId] = useState(null);
+    useEffect(() => {
+        try {
+            const sessionRaw = localStorage.getItem("session");
+            if (!sessionRaw) return;
+            const session = JSON.parse(sessionRaw);
+            const active = session?.activeEntity || {};
+            // If active entity is Business with role "Dancer", use its id (which is businessId)
+            if (active.type === "Business" && active.role && active.role.toLowerCase() === "dancer") {
+                setActiveBusinessId(active.id);
+            }
+        } catch {}
+    }, []);
     
     const { followers, fetchFollowers } = useFollowers(businessEntityId);
     const { following, fetchFollowing } = useFollowing(businessEntityId);
@@ -70,6 +277,45 @@ export default function DancerProfile() {
             fetchFollowing();
         }
     }, [businessEntityId, fetchFollowers, fetchFollowing]);
+
+    // Load posts for this business
+    useEffect(() => {
+        let alive = true;
+        const loadBusinessPosts = async () => {
+            if (!businessEntityId && !businessId) {
+                setPostsLoading(false);
+                return;
+            }
+            
+            try {
+                setPostsLoading(true);
+                const entityId = businessEntityId || businessId;
+                const resp = await getPostsByAuthor(entityId, {});
+                if (!alive) return;
+
+                let rawPosts = [];
+                if (Array.isArray(resp?.data)) {
+                    rawPosts = resp.data;
+                } else if (Array.isArray(resp?.data?.data)) {
+                    rawPosts = resp.data.data;
+                }
+
+                const transformed = rawPosts.map((post) => mapPostForCard(post, t));
+                setBusinessPosts(transformed);
+            } catch (error) {
+                console.error("Error loading business posts:", error);
+                setBusinessPosts([]);
+            } finally {
+                if (alive) setPostsLoading(false);
+            }
+        };
+        
+        if (businessEntityId || businessId) {
+            loadBusinessPosts();
+        }
+        
+        return () => { alive = false; };
+    }, [businessEntityId, businessId, t]);
 
     useEffect(() => {
         const fetchDancer = async () => {
@@ -85,8 +331,10 @@ export default function DancerProfile() {
                     console.log("🔍 Address:", data.Address);
                     
                     // Set business entity ID for followers/following
-                    if (data.EntityAccountId || data.entityAccountId || data.id) {
-                        setBusinessEntityId(data.EntityAccountId || data.entityAccountId || data.id);
+                    // Prioritize EntityAccountId for consistency with follow system
+                    const entityAccountId = data.EntityAccountId || data.entityAccountId;
+                    if (entityAccountId || data.id) {
+                        setBusinessEntityId(entityAccountId || data.id);
                     }
 
                     // Map gender from Vietnamese to English if needed
@@ -209,21 +457,81 @@ export default function DancerProfile() {
     if (loading) return <div className="pp-container">{t('profile.loadingProfile')}</div>;
     if (error) return <div className="pp-container">{error}</div>;
     
-    const isOwnProfile = currentUserEntityId && businessEntityId && String(currentUserEntityId).toLowerCase() === String(businessEntityId).toLowerCase();
+    // Check if this is own profile: compare businessId (from URL) with activeBusinessId (businessId of current role)
+    // Similar to how BarProfile checks activeBarPageId
+    const isOwnProfile = activeBusinessId && businessId && String(activeBusinessId).toLowerCase() === String(businessId).toLowerCase();
 
     const renderTabContent = () => {
         switch (activeTab) {
             case "info":
                 return (
-                    <div className="profile-body">
-                        <div className="profile-info-card">
-                            <h3>{t('profile.about')}</h3>
-                            <p><strong>{t('profile.gender')}:</strong> {displayGender(profile.gender)}</p>
-                            <p><strong>{t('profile.address')}:</strong> {profile.address || ''}</p>
-                            <p><strong>{t('profile.phone')}:</strong> {profile.phone || ''}</p>
-                            <p><strong>{t('profile.bio')}:</strong> {profile.bio || ''}</p>
-                            <p><strong>{t('profile.pricePerHour')}:</strong> {profile.pricePerHours || 0} đ</p>
-                            <p><strong>{t('profile.pricePerSession')}:</strong> {profile.pricePerSession || 0} đ</p>
+                    <div className={cn("flex flex-col gap-6")}>
+                        {/* Price Highlight Section */}
+                        {(profile.pricePerHours || profile.pricePerSession) && (
+                            <div className={cn(
+                                "bg-gradient-to-br from-primary/20 to-primary/5",
+                                "rounded-lg p-6 border-[0.5px] border-primary/30",
+                                "shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+                            )}>
+                                <h3 className={cn("text-xl font-bold text-foreground mb-4 flex items-center gap-2")}>
+                                    <DollarSign className="w-5 h-5" />
+                                    {t('profile.priceTable')}
+                                </h3>
+                                <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4")}>
+                                    {profile.pricePerHours && (
+                                        <div className={cn(
+                                            "bg-card rounded-lg p-4 border border-border/20"
+                                        )}>
+                                            <p className={cn("text-sm text-muted-foreground mb-1")}>
+                                                {t('profile.pricePerHour')}
+                                            </p>
+                                            <p className={cn("text-2xl font-bold text-primary")}>
+                                                {parseInt(profile.pricePerHours || 0).toLocaleString('vi-VN')} đ
+                                            </p>
+                                        </div>
+                                    )}
+                                    {profile.pricePerSession && (
+                                        <div className={cn(
+                                            "bg-card rounded-lg p-4 border border-border/20"
+                                        )}>
+                                            <p className={cn("text-sm text-muted-foreground mb-1")}>
+                                                {t('profile.pricePerSession')}
+                                            </p>
+                                            <p className={cn("text-2xl font-bold text-primary")}>
+                                                {parseInt(profile.pricePerSession || 0).toLocaleString('vi-VN')} đ
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Info Card */}
+                        <div className={cn(
+                            "bg-card rounded-lg p-6 border-[0.5px] border-border/20",
+                            "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                        )}>
+                            <h3 className={cn("text-lg font-semibold text-foreground mb-4")}>
+                                {t('profile.about')}
+                            </h3>
+                            <div className={cn("space-y-3 text-sm")}>
+                                {profile.bio && (
+                                    <p className={cn("text-foreground whitespace-pre-wrap leading-relaxed")}>
+                                        {profile.bio}
+                                    </p>
+                                )}
+                                <div className={cn("space-y-2 text-muted-foreground")}>
+                                    {profile.gender && (
+                                        <p><strong className={cn("text-foreground")}>{t('profile.gender')}:</strong> {displayGender(profile.gender)}</p>
+                                    )}
+                                    {profile.address && (
+                                        <p><strong className={cn("text-foreground")}>{t('profile.address')}:</strong> {profile.address}</p>
+                                    )}
+                                    {profile.phone && (
+                                        <p><strong className={cn("text-foreground")}>{t('profile.phone')}:</strong> {profile.phone}</p>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 );
@@ -231,7 +539,49 @@ export default function DancerProfile() {
             case "posts":
                 return (
                     <div className="flex flex-col gap-6">
-                        <PostFeed />
+                        {postsLoading ? (
+                            <div className={cn("text-center py-12 text-muted-foreground")}>
+                                {t('common.loading')}
+                            </div>
+                        ) : businessPosts && businessPosts.length > 0 ? (
+                            <div className={cn("space-y-4")}>
+                                {businessPosts.map(post => (
+                                    <PostCard
+                                        key={post.id}
+                                        post={post}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className={cn(
+                                "text-center py-12 text-muted-foreground",
+                                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+                            )}>
+                                {t("publicProfile.noPosts")}
+                            </div>
+                        )}
+                    </div>
+                );
+
+            case "videos":
+                return (
+                    <div className={cn("flex flex-col gap-6")}>
+                        <BarVideo barPageId={businessEntityId} />
+                    </div>
+                );
+
+            case "reviews":
+                return (
+                    <div className={cn("flex flex-col gap-6")}>
+                        {businessAccountId && (
+                            <PerformerReviews
+                                businessAccountId={businessAccountId}
+                                performerName={profile.userName}
+                                performerRole={profile.role || "Dancer"}
+                                isOwnProfile={isOwnProfile}
+                                allowSubmission={true}
+                            />
+                        )}
                     </div>
                 );
 
@@ -241,135 +591,207 @@ export default function DancerProfile() {
     };
 
     return (
-        <div className="pp-container">
-            <section
-                className="pp-cover"
-                style={{
-                    backgroundImage: `url(${profile.background || "https://i.imgur.com/6IUbEMn.jpg"})`,
-                }}
-            >
-                <div className="pp-header">
-                    <img
-                        src={profile.avatar || "https://via.placeholder.com/120"}
-                        alt={profile.userName}
-                        className="pp-avatar"
-                    />
-                    <div>
-                        <h2 className="pp-title">{profile.userName || "Dancer"}</h2>
-                        <div className="pp-type">{profile.role || "Dancer"}</div>
-                    </div>
-                </div>
-                <div className="pp-follow">
-                    {!isOwnProfile && (
-                        <>
-                            <button
-                                className="pp-chat-button"
-                                onClick={async () => {
-                                    try {
-                                        if (!currentUserEntityId || !businessEntityId) return;
-                                        const res = await messageApi.createOrGetConversation(currentUserEntityId, businessEntityId);
-                                        const conversation = res?.data?.data || res?.data;
-                                        const conversationId = conversation?._id || conversation?.conversationId || conversation?.id;
-                                        if (conversationId && window.__openChat) {
-                                            window.__openChat({
-                                                id: conversationId,
-                                                name: profile.userName || "Dancer",
-                                                avatar: profile.avatar || null, // Pass avatar
-                                                entityId: businessEntityId // Pass entityId for profile navigation
-                                            });
-                                        }
-                                    } catch (error) {
-                                        console.error("Error opening chat:", error);
-                                    }
-                                }}
-                            >
-                                <i className="bx bx-message-rounded"></i>
-                                Chat
-                            </button>
-                        </>
-                    )}
-                    {isOwnProfile && (
-                        <button onClick={() => setShowEditModal(true)} className="pp-chat-button">
-                            <i className="bx bx-edit"></i>
-                            {t('profile.editProfile')}
+        <div className={cn("min-h-screen bg-background")}>
+            {/* Cover Photo Section - Instagram Style */}
+            <section className={cn("relative w-full h-[200px] md:h-[250px] overflow-hidden rounded-b-lg")}>
+                <div
+                    className={cn("absolute inset-0 bg-cover bg-center")}
+                    style={{
+                        backgroundImage: `url(${profile.background || "https://i.imgur.com/6IUbEMn.jpg"})`,
+                    }}
+                />
+                {/* Gradient Overlay */}
+                <div className={cn("absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60")} />
+
+                {/* Action Buttons */}
+                {isOwnProfile && (
+                    <div className={cn("absolute top-4 right-4 z-10")}>
+                        <button
+                            onClick={() => setShowEditModal(true)}
+                            className={cn(
+                                "px-4 py-2 rounded-lg font-semibold text-sm",
+                                "bg-card/80 backdrop-blur-sm text-foreground border-none",
+                                "hover:bg-card/90 transition-all duration-200",
+                                "active:scale-95",
+                                "flex items-center gap-2"
+                            )}
+                        >
+                            <Edit className="w-4 h-4" />
+                            <span>{t('profile.editProfile')}</span>
                         </button>
-                    )}
-                </div>
-            </section>
-
-            <section className="pp-stats">
-                <div>
-                    <div className="pp-stat-label">{t('publicProfile.followers')}</div>
-                    <div className="pp-stat-value">{followers.length}</div>
-                </div>
-                <div>
-                    <div className="pp-stat-label">{t('publicProfile.following')}</div>
-                    <div className="pp-stat-value">{following.length}</div>
-                </div>
-            </section>
-
-            <section className="pp-section">
-                {profile.bio && (
-                    <div>
-                        <h3>{t("publicProfile.about")}</h3>
-                        <p style={{ whiteSpace: "pre-wrap" }}>{profile.bio}</p>
                     </div>
                 )}
-                <div style={{ marginTop: profile.bio ? 12 : 0 }}>
-                    <h4>{t("publicProfile.contact")}</h4>
-                    {profile.phone && <div>{t("common.phone") || "Phone"}: {profile.phone}</div>}
-                    {profile.address && <div>{t("common.address") || "Address"}: {profile.address}</div>}
-                    {profile.gender && <div>{t("profile.gender")}: {displayGender(profile.gender)}</div>}
-                    {profile.pricePerHours && <div>{t("profile.pricePerHour")}: {profile.pricePerHours} đ</div>}
-                    {profile.pricePerSession && <div>{t("profile.pricePerSession")}: {profile.pricePerSession} đ</div>}
+
+                {/* Profile Info Overlay */}
+                <div className={cn("absolute bottom-0 left-0 right-0 p-4 md:p-6")}>
+                    <div className={cn("flex items-end gap-3 md:gap-4")}>
+                        {/* Avatar */}
+                        <div className={cn("relative")}>
+                            <img
+                                src={profile.avatar || "https://via.placeholder.com/150"}
+                                alt="avatar"
+                                className={cn(
+                                    "w-20 h-20 md:w-24 md:h-24 rounded-full object-cover",
+                                    "border-4 border-card shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
+                                    "bg-card"
+                                )}
+                            />
+                        </div>
+                        <div className={cn("flex-1 pb-1")}>
+                            <h1 className={cn(
+                                "text-xl md:text-2xl font-bold text-primary-foreground mb-0.5",
+                                "drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+                            )}>
+                                {profile.userName || "Dancer"}
+                            </h1>
+                            <div className={cn(
+                                "text-xs md:text-sm text-primary-foreground/90",
+                                "drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
+                            )}>
+                                {profile.role || "Dancer"}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            {businessAccountId && (
-                <section className="pp-section">
-                    <PerformerReviews
-                        businessAccountId={businessAccountId}
-                        performerName={profile.userName}
-                        performerRole={profile.role || "Dancer"}
-                        isOwnProfile={isOwnProfile}
-                        allowSubmission={false}
-                    />
+            {/* Main Content Container */}
+            <div className={cn("max-w-6xl mx-auto px-4 md:px-6 py-6")}>
+                {/* Stats Bar */}
+                <section className={cn(
+                    "flex items-center justify-center gap-8 md:gap-12 lg:gap-16",
+                    "py-6 px-4",
+                    "border-b border-border/30"
+                )}>
+                    <button className={cn(
+                        "flex flex-col items-center gap-1.5 cursor-pointer",
+                        "group transition-all duration-200",
+                        "hover:opacity-90 active:scale-95"
+                    )}>
+                        <span className={cn(
+                            "text-2xl md:text-3xl font-bold text-foreground",
+                            "tracking-tight leading-none",
+                            "group-hover:text-primary transition-colors duration-200"
+                        )}>
+                            {followers.length}
+                        </span>
+                        <span className={cn(
+                            "text-[11px] md:text-xs text-muted-foreground",
+                            "font-medium uppercase tracking-wider",
+                            "group-hover:text-foreground/80 transition-colors duration-200"
+                        )}>
+                            {t("publicProfile.followers")}
+                        </span>
+                    </button>
+                    
+                    <div className={cn(
+                        "h-10 w-px bg-border/20",
+                        "hidden md:block"
+                    )} />
+                    
+                    <button className={cn(
+                        "flex flex-col items-center gap-1.5 cursor-pointer",
+                        "group transition-all duration-200",
+                        "hover:opacity-90 active:scale-95"
+                    )}>
+                        <span className={cn(
+                            "text-2xl md:text-3xl font-bold text-foreground",
+                            "tracking-tight leading-none",
+                            "group-hover:text-primary transition-colors duration-200"
+                        )}>
+                            {following.length}
+                        </span>
+                        <span className={cn(
+                            "text-[11px] md:text-xs text-muted-foreground",
+                            "font-medium uppercase tracking-wider",
+                            "group-hover:text-foreground/80 transition-colors duration-200"
+                        )}>
+                            {t("publicProfile.following")}
+                        </span>
+                    </button>
                 </section>
-            )}
 
-            {isOwnProfile && (
-                <section style={{ padding: '0 24px 24px 24px' }}>
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                        <button
-                            onClick={() => setActiveTab("info")}
-                            style={{
-                                padding: '8px 16px',
-                                background: activeTab === "info" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
-                                border: '1px solid rgba(255, 255, 255, 0.2)',
-                                borderRadius: '8px',
-                                color: '#ffffff',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            {t('profile.infoTab')}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("posts")}
-                            style={{
-                                padding: '8px 16px',
-                                background: activeTab === "posts" ? '#364150' : 'rgba(255, 255, 255, 0.1)',
-                                border: '1px solid rgba(255, 255, 255, 0.2)',
-                                borderRadius: '8px',
-                                color: '#ffffff',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            {t('profile.postsTab')}
-                        </button>
-                    </div>
-                    {renderTabContent()}
-                </section>
-            )}
+            {/* Tabs Section */}
+            <section className={cn("py-6 max-w-6xl mx-auto px-4 md:px-6")}>
+                {/* Tabs Navigation */}
+                <div className={cn("flex items-center gap-1 mb-6 border-b border-border/30 overflow-x-auto")}>
+                    <button
+                        onClick={() => setActiveTab("info")}
+                        className={cn(
+                            "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                            "transition-all duration-200 relative whitespace-nowrap",
+                            activeTab === "info"
+                                ? "text-foreground"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {t('profile.infoTab')}
+                        {activeTab === "info" && (
+                            <span className={cn(
+                                "absolute bottom-0 left-0 right-0 h-0.5",
+                                "bg-primary"
+                            )} />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("posts")}
+                        className={cn(
+                            "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                            "transition-all duration-200 relative whitespace-nowrap",
+                            activeTab === "posts"
+                                ? "text-foreground"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {t('profile.postsTab')}
+                        {activeTab === "posts" && (
+                            <span className={cn(
+                                "absolute bottom-0 left-0 right-0 h-0.5",
+                                "bg-primary"
+                            )} />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("videos")}
+                        className={cn(
+                            "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                            "transition-all duration-200 relative whitespace-nowrap",
+                            activeTab === "videos"
+                                ? "text-foreground"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {t('profile.videosTab')}
+                        {activeTab === "videos" && (
+                            <span className={cn(
+                                "absolute bottom-0 left-0 right-0 h-0.5",
+                                "bg-primary"
+                            )} />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("reviews")}
+                        className={cn(
+                            "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                            "transition-all duration-200 relative whitespace-nowrap",
+                            activeTab === "reviews"
+                                ? "text-foreground"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        {t('profile.reviewsTab')}
+                        {activeTab === "reviews" && (
+                            <span className={cn(
+                                "absolute bottom-0 left-0 right-0 h-0.5",
+                                "bg-primary"
+                            )} />
+                        )}
+                    </button>
+                </div>
+                {/* Tab Content */}
+                {renderTabContent()}
+            </section>
+            </div>
             
             {/* Edit Modal - Copy từ DJProfile */}
             {showEditModal && (

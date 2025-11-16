@@ -8,7 +8,7 @@ import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { userApi } from "../../../api/userApi";
 import useChatSocket from '../../../api/useChatSocket';
-import { Phone, Video, Info, MoreVertical, Reply, Smile, CheckCheck, X } from "lucide-react";
+import { Reply, Smile, CheckCheck, X } from "lucide-react";
 import Composer from "../../../modules/messages/components/Composer";
 
 function ChatWindow(props) {
@@ -647,21 +647,6 @@ function ChatWindow(props) {
             <span className="text-xs text-muted-foreground">&nbsp;</span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
-            {[
-              { id: "phone", Icon: Phone },
-              { id: "video", Icon: Video },
-              { id: "info", Icon: Info },
-              { id: "more", Icon: MoreVertical }
-            ].map(({ id, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-full border"
-                style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))" }}
-              >
-                <Icon size={16} />
-              </button>
-            ))}
             <button
               className="flex h-9 w-9 items-center justify-center rounded-full border text-muted-foreground hover:bg-border/50"
               style={{ borderColor: "rgb(var(--border))" }}
@@ -711,7 +696,6 @@ function ChatWindow(props) {
             })();
 
             const actionIcons = [
-              { label: t("action.moreOptions") || "More", Icon: MoreVertical },
               { label: t("comment.reply") || "Reply", Icon: Reply },
               { label: t("action.react") || "React", Icon: Smile }
             ];
@@ -830,6 +814,9 @@ function ChatWindow(props) {
                       alt={displayName}
                       className="h-7 w-7 rounded-full object-cover"
                     />
+                  )}
+                  {!isMine && !showAvatar && (
+                    <div className="h-7 w-7 flex-shrink-0" />
                   )}
                   {isMine && (
                     <div

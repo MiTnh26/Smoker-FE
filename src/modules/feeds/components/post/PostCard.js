@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { useNavigate } from "react-router-dom"
 import YouTubeLinkPreview from "../../../../components/common/YouTubeLinkPreview"
 import { splitTextWithYouTube } from "../../../../utils/youtube"
 import { likePost, unlikePost, trackPostView, trackPostShare } from "../../../../api/postApi"
@@ -28,6 +29,7 @@ export default function PostCard({
   onShared
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const isPlaying = playingPost === post.id
   const [liked, setLiked] = useState(Boolean(post.likedByCurrentUser))
   const [likeCount, setLikeCount] = useState(Number(post.likes || 0))
@@ -164,6 +166,25 @@ export default function PostCard({
     }
   }
 
+  // Navigate to profile based on entityType
+  const handleProfileClick = () => {
+    // Get entityAccountId and entityType from post
+    const entityAccountId = post.entityAccountId || post.authorEntityAccountId || post.ownerEntityAccountId || null;
+    const entityId = post.authorEntityId || post.entityId || post.accountId || null;
+    const entityType = post.authorEntityType || post.entityType || post.type || null;
+    
+    if (!entityAccountId && !entityId) return;
+    
+    if (entityType === 'BarPage') {
+      navigate(`/bar/${entityId || entityAccountId}`);
+    } else if (entityType === 'BusinessAccount' || entityType === 'Business') {
+      navigate(`/profile/${entityAccountId || entityId}`);
+    } else {
+      // Account or default
+      navigate(`/profile/${entityAccountId || entityId}`);
+    }
+  }
+
   return (
     <article className={cn(
       "post-card",
@@ -184,6 +205,7 @@ export default function PostCard({
             <img
               src={post.avatar || "https://via.placeholder.com/40"}
               alt={post.user}
+              onClick={handleProfileClick}
               className={cn(
                 "w-14 h-14 rounded-2xl object-cover",
                 "border-2 border-primary/20 ring-2 ring-primary/5",
@@ -191,7 +213,8 @@ export default function PostCard({
                 "hover:border-primary/50 hover:ring-primary/20",
                 "hover:shadow-[0_8px_24px_rgba(var(--primary),0.25)]",
                 "hover:scale-110 hover:rotate-3",
-                "shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+                "shadow-[0_4px_12px_rgba(0,0,0,0.12)]",
+                "cursor-pointer"
               )}
             />
             {post.verified && (
@@ -207,11 +230,15 @@ export default function PostCard({
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className={cn(
-              "font-semibold text-[0.95rem] mb-1",
-              "text-foreground whitespace-nowrap",
-              "overflow-hidden text-ellipsis"
-            )}>
+            <h4 
+              onClick={handleProfileClick}
+              className={cn(
+                "font-semibold text-[0.95rem] mb-1",
+                "text-foreground whitespace-nowrap",
+                "overflow-hidden text-ellipsis",
+                "cursor-pointer hover:text-primary transition-colors"
+              )}
+            >
               {post.user || "Người dùng"}
             </h4>
             <div className="flex items-center gap-2 flex-wrap">

@@ -7,15 +7,34 @@ import publicProfileApi from "../../../api/publicProfileApi";
 import { useFollowers, useFollowing } from "../../../hooks/useFollow";
 import { getPostsByAuthor } from "../../../api/postApi";
 import messageApi from "../../../api/messageApi";
+import barPageApi from "../../../api/barPageApi";
 import { cn } from "../../../utils/cn";
 import PostCard from "../../feeds/components/post/PostCard";
 import RequestBookingModal from "../../../components/booking/RequestBookingModal";
 import ReportEntityModal from "../../feeds/components/modals/ReportEntityModal";
 import PerformerReviews from "../../business/components/PerformerReviews";
+import BarEvent from "../../bar/components/BarEvent";
+import BarMenu from "../../bar/components/BarMenuCombo";
+import BarVideo from "../../bar/components/BarVideo";
+import BarReview from "../../bar/components/BarReview";
+import BarTables from "../../bar/components/BarTables";
 
 const normalizeMediaArray = (medias) => {
   const images = [];
   const videos = [];
+  const audios = [];
+
+  const isAudioUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const u = url.toLowerCase();
+    return (
+      u.includes('.mp3') ||
+      u.includes('.m4a') ||
+      u.includes('.wav') ||
+      u.includes('.ogg') ||
+      u.includes('.aac')
+    );
+  };
 
   if (Array.isArray(medias)) {
     for (const mediaItem of medias) {
@@ -23,7 +42,9 @@ const normalizeMediaArray = (medias) => {
       const url = mediaItem.url || mediaItem.src || mediaItem.path;
       const type = (mediaItem.type || "").toLowerCase();
       if (!url) continue;
-      if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+      if (type === "audio" || isAudioUrl(url)) {
+        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
         videos.push({ url, id: mediaItem._id || mediaItem.id || url });
       } else {
         images.push({ url, id: mediaItem._id || mediaItem.id || url });
@@ -36,14 +57,16 @@ const normalizeMediaArray = (medias) => {
       const url = mediaItem.url || mediaItem.src || mediaItem.path;
       const type = (mediaItem.type || "").toLowerCase();
       if (!url) continue;
-      if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+      if (type === "audio" || isAudioUrl(url)) {
+        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
         videos.push({ url, id: mediaItem._id || mediaItem.id || url });
       } else {
         images.push({ url, id: mediaItem._id || mediaItem.id || url });
       }
     }
   }
-  return { images, videos };
+  return { images, videos, audios };
 };
 
 const countCollection = (value) => {
@@ -55,12 +78,21 @@ const countCollection = (value) => {
   return 0;
 };
 
-const formatPostTime = (value) => {
-  if (!value) return "";
+const formatPostTime = (value, t) => {
   try {
-    return new Date(value).toLocaleString("vi-VN");
+    const d = value ? new Date(value) : new Date();
+    if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    if (diffMs < 0) return d.toLocaleString('vi-VN');
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return t('time.justNow') || 'vừa xong';
+    if (minutes < 60) return t('time.minutesAgo', { minutes }) || `${minutes} phút trước`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t('time.hoursAgo', { hours }) || `${hours} giờ trước`;
+    return d.toLocaleDateString('vi-VN');
   } catch {
-    return "";
+    return new Date().toLocaleString('vi-VN');
   }
 };
 
@@ -74,41 +106,102 @@ const mapPostForCard = (post, t) => {
   const mediaFromMediaIds = normalizeMediaArray(post.mediaIds);
   const images = [...mediaFromPost.images, ...mediaFromMediaIds.images];
   const videos = [...mediaFromPost.videos, ...mediaFromMediaIds.videos];
+  const audios = [...mediaFromPost.audios, ...mediaFromMediaIds.audios];
 
   const resolveUserName = () =>
     post.authorName ||
     post.authorEntityName ||
     author.userName ||
     author.name ||
+    post.user ||
     t("common.user");
 
   const resolveAvatar = () =>
     post.authorAvatar ||
     post.authorEntityAvatar ||
     author.avatar ||
+    post.avatar ||
     "https://via.placeholder.com/40";
+
+  // Extract audio from post
+  const isAudioUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const u = url.toLowerCase();
+    return (
+      u.includes('.mp3') ||
+      u.includes('.m4a') ||
+      u.includes('.wav') ||
+      u.includes('.ogg') ||
+      u.includes('.aac')
+    );
+  };
+
+  // Get audio from various sources
+  const music = post.musicId || post.music || {};
+  const audioFromMusic = (() => {
+    if (!music) return null;
+    const candidates = [
+      music.audioUrl,
+      music.streamUrl,
+      music.fileUrl,
+      music.url,
+      music.sourceUrl,
+      music.downloadUrl,
+    ];
+    for (const c of candidates) if (c && isAudioUrl(c)) return c;
+    return null;
+  })();
+
+  // Check medias for audio
+  const audioFromMedias = (() => {
+    if (Array.isArray(post.medias)) {
+      for (const mediaItem of post.medias) {
+        if (!mediaItem) continue;
+        const url = mediaItem.url || mediaItem.src || mediaItem.path;
+        if (url && isAudioUrl(url)) return url;
+      }
+    } else if (post.medias && typeof post.medias === "object") {
+      for (const key of Object.keys(post.medias)) {
+        const mediaItem = post.medias[key];
+        if (!mediaItem) continue;
+        const url = mediaItem.url || mediaItem.src || mediaItem.path;
+        if (url && isAudioUrl(url)) return url;
+      }
+    }
+    return null;
+  })();
+
+  const audioSrc = audioFromMusic || audios[0]?.url || audioFromMedias || post.audioSrc || post.audioUrl || null;
 
   return {
     id,
     user: resolveUserName(),
     avatar: resolveAvatar(),
-    time: formatPostTime(post.createdAt),
-    content: post.content || post.caption || "",
-    medias: { images, videos },
+    time: formatPostTime(post.createdAt, t),
+    content: post.content || post.caption || post["Tiêu Đề"] || "",
+    medias: { images, videos, audios: audioSrc ? [{ url: audioSrc }] : audios },
     image: images[0]?.url || null,
     videoSrc: videos[0]?.url || null,
-    audioSrc: null,
+    audioSrc: audioSrc,
+    audioTitle: music.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
+    artistName: music.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null,
+    thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
+    purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
     likes: countCollection(post.likes),
     likedByCurrentUser: false,
     comments: countCollection(post.comments),
     shares: post.shares || 0,
     hashtags: post.hashtags || [],
     verified: !!post.verified,
-   location: post.location || null,
+    location: post.location || null,
     title: post.title || null,
     canManage: false,
-    ownerEntityAccountId: post.entityAccountId || null,
-    ownerAccountId: post.accountId || null,
+    ownerEntityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
+    entityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
+    authorEntityAccountId: post.authorEntityAccountId || post.entityAccountId || null,
+    authorEntityId: post.authorEntityId || post.authorId || post.accountId || null,
+    authorEntityType: post.authorEntityType || post.entityType || post.type || null,
+    ownerAccountId: post.accountId || post.ownerAccountId || author.id || null,
     targetType: post.type || "post",
   };
 };
@@ -129,6 +222,8 @@ export default function PublicProfile() {
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const menuRef = useRef(null);
+  const [activeTab, setActiveTab] = useState("info");
+  const [tableTypes, setTableTypes] = useState([]);
 
   useEffect(() => {
     let alive = true;
@@ -194,6 +289,41 @@ export default function PublicProfile() {
     if (entityId) loadPosts();
     return () => { alive = false; };
   }, [entityId, t]);
+
+  // Determine if this is a bar profile (before early returns)
+  const targetTypeForBar = profile ? (() => {
+    const type = (profile?.type || profile?.role || "").toString().toUpperCase();
+    if (type === "BAR" || type.includes("BARPAGE")) return "BarPage";
+    if (type.includes("BUSINESS") || type.includes("DJ") || type.includes("DANCER")) {
+      return "BusinessAccount";
+    }
+    return "Account";
+  })() : "Account";
+  const isBarProfileForEffect = targetTypeForBar === "BarPage";
+  const barPageIdForEffect = isBarProfileForEffect ? (entityId || profile?.id || profile?.barPageId) : null;
+
+  // Load table types for bar profile (before early returns)
+  useEffect(() => {
+    const fetchTableTypes = async () => {
+      if (!isBarProfileForEffect || !barPageIdForEffect) {
+        setTableTypes([]);
+        return;
+      }
+      try {
+        const isGuid = typeof barPageIdForEffect === "string" && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(barPageIdForEffect);
+        if (!isGuid) {
+          setTableTypes([]);
+          return;
+        }
+        const res = await barPageApi.getTableTypes(barPageIdForEffect);
+        setTableTypes(res.data || []);
+      } catch (err) {
+        console.error("❌ Lỗi tải loại bàn:", err);
+        setTableTypes([]);
+      }
+    };
+    fetchTableTypes();
+  }, [isBarProfileForEffect, barPageIdForEffect]);
 
   useEffect(() => {
     if (!actionMenuOpen) return;
@@ -265,12 +395,73 @@ export default function PublicProfile() {
   };
 
   const targetType = resolveTargetType();
+  const isBarProfile = targetType === "BarPage";
   const isPerformerProfile =
     targetType === "BusinessAccount" &&
     ["DJ", "DANCER"].includes((profile?.role || "").toString().toUpperCase());
   const performerTargetId = isPerformerProfile
     ? profile?.targetId || profile?.targetID || null
     : null;
+  
+  // Get barPageId for bar profile
+  const barPageId = isBarProfile ? (entityId || profile?.id || profile?.barPageId) : null;
+
+  // Render tab content for bar profile
+  const renderBarTabContent = () => {
+    switch (activeTab) {
+      case "info":
+        return (
+          <div className={cn("flex flex-col gap-6")}>
+            <BarEvent barPageId={barPageId} />
+            <div className={cn("bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]")}>
+              <BarMenu barPageId={barPageId} />
+            </div>
+          </div>
+        );
+      case "posts":
+        return (
+          <div className="flex flex-col gap-6">
+            {posts && posts.length > 0 ? (
+              <div className={cn("space-y-4")}>
+                {posts.map(post => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noPosts")}
+              </div>
+            )}
+          </div>
+        );
+      case "videos":
+        return (
+          <div className="profile-section">
+            <BarVideo barPageId={barPageId} />
+          </div>
+        );
+      case "reviews":
+        return (
+          <div className="profile-section">
+            <BarReview barPageId={barPageId} />
+          </div>
+        );
+      case "tables":
+        return (
+          <div className="profile-section">
+            <BarTables barPageId={barPageId} />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className={cn("min-h-screen bg-background")}>
@@ -556,29 +747,138 @@ export default function PublicProfile() {
           </section>
         )}
 
-        {/* Posts Section */}
-        <section className={cn("py-6")}>
-          <h3 className={cn("text-lg font-semibold text-foreground mb-4")}>
-            {t("publicProfile.posts")}
-          </h3>
-          {posts && posts.length > 0 ? (
-            <div className={cn("space-y-4")}>
-              {posts.map(post => (
-                <PostCard
-                  key={post._id || post.id}
-                  post={post}
-                />
-              ))}
+        {/* Tabs Section for Bar Profile */}
+        {isBarProfile ? (
+          <section className={cn("py-6")}>
+            {/* Tabs Navigation */}
+            <div className={cn("flex items-center gap-1 mb-6 border-b border-border/30 overflow-x-auto")}>
+              <button
+                onClick={() => setActiveTab("info")}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "info"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t('profile.infoTab')}
+                {activeTab === "info" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("posts")}
+                disabled={tableTypes.length === 0}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "posts"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {t('profile.postsTab')}
+                {activeTab === "posts" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("videos")}
+                disabled={tableTypes.length === 0}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "videos"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {t('profile.videosTab')}
+                {activeTab === "videos" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("reviews")}
+                disabled={tableTypes.length === 0}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "reviews"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {t('profile.reviewsTab')}
+                {activeTab === "reviews" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("tables")}
+                disabled={tableTypes.length === 0}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "tables"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {t('profile.tablesTab')}
+                {activeTab === "tables" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
             </div>
-          ) : (
-            <div className={cn(
-              "text-center py-12 text-muted-foreground",
-              "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
-            )}>
-              {t("publicProfile.noPosts")}
-            </div>
-          )}
-        </section>
+            {/* Tab Content */}
+            {renderBarTabContent()}
+          </section>
+        ) : (
+          /* Posts Section for non-bar profiles */
+          <section className={cn("py-6")}>
+            <h3 className={cn("text-lg font-semibold text-foreground mb-4")}>
+              {t("publicProfile.posts")}
+            </h3>
+            {posts && posts.length > 0 ? (
+              <div className={cn("space-y-4")}>
+                {posts.map(post => (
+                  <PostCard
+                    key={post._id || post.id}
+                    post={post}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noPosts")}
+              </div>
+            )}
+          </section>
+        )}
       </div>
 
       {bookingOpen && (

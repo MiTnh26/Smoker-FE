@@ -306,6 +306,7 @@
     "loginRequired": "Vui lòng đăng nhập với vai trò khách hàng để đánh giá.",
     "ratingRequired": "Vui lòng chọn số sao.",
     "ownerNotice": "Bạn không thể tự đánh giá trang cá nhân của mình. Hãy mời khách hàng phản hồi sau mỗi lịch đặt.",
+    "businessRoleNotice": "Chỉ khách hàng mới có thể đánh giá. Bạn đang đăng nhập với vai trò kinh doanh (Bar/DJ/Dancer).",
     "anonymous": "Ẩn danh"
   },
   "bar": {
@@ -520,6 +521,12 @@
     "editPersonalProfile": "Chỉnh sửa hồ sơ cá nhân",
     "infoTab": "Thông tin",
     "postsTab": "Bài viết",
+    "videosTab": "Video",
+    "reviewsTab": "Đánh giá",
+    "tablesTab": "Bàn",
+    "musicTab": "Nhạc",
+    "priceTable": "Bảng giá",
+    "musicTabDescription": "Sẽ hiển thị các bài nhạc của DJ",
     "loadingProfile": "Đang tải hồ sơ...",
     "about": "Giới thiệu",
     "gender": "Giới tính",

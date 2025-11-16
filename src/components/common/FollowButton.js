@@ -47,19 +47,34 @@ export default function FollowButton({ followingId, followingType, onChange, com
   // Kiểm tra trạng thái follow khi mount hoặc khi id thay đổi
   useEffect(() => {
     if (followerId && followingId) {
-      checkFollowing(followerId, followingId).then(res => {
-        setInternalFollowing(res?.isFollowing || false);
-      });
+      console.log("🔍 FollowButton - Checking follow status:", { followerId, followingId });
+      checkFollowing(followerId, followingId)
+        .then(res => {
+          console.log("✅ FollowButton - Check result:", res?.isFollowing);
+          setInternalFollowing(res?.isFollowing || false);
+        })
+        .catch(err => {
+          console.error("❌ FollowButton - Check error:", err);
+          setInternalFollowing(false);
+        });
+    } else {
+      console.warn("⚠️ FollowButton - Missing IDs:", { followerId, followingId });
+      setInternalFollowing(false);
     }
   }, [followerId, followingId, checkFollowing]);
 
   // Xử lý follow
   const handleFollow = async () => {
     try {
+      console.log("📤 FollowButton - Follow request:", { followerId, followingId, followingType });
       await follow({ followerId, followingId, followingType });
+      console.log("✅ FollowButton - Follow success");
       setInternalFollowing(true);
       onChange && onChange(true);
-    } catch {}
+    } catch (err) {
+      console.error("❌ FollowButton - Follow error:", err);
+      // Don't update state on error
+    }
   };
 
   // Xử lý unfollow
@@ -87,7 +102,7 @@ export default function FollowButton({ followingId, followingType, onChange, com
 
   const baseCompact = "inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-150 active:scale-95 disabled:opacity-60";
   const followCompactClass = `${baseCompact} ${compact ? "px-3 py-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90" : "btn btn-primary"}`;
-  const followingCompactClass = `${baseCompact} ${compact ? "px-3 py-1.5 text-xs border border-border/40 text-foreground hover:text-danger hover:border-danger/60" : "btn btn-outline btn-error"}`;
+  const followingCompactClass = `${baseCompact} ${compact ? "px-3 py-1.5 text-xs bg-primary/80 text-primary-foreground border border-primary/40 hover:bg-primary/70 hover:border-primary/60" : "btn btn-primary"}`;
 
   return internalFollowing ? (
     <button

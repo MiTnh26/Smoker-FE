@@ -4,14 +4,14 @@ import { useParams } from "react-router-dom";
 import barPageApi from "../../../api/barPageApi";
 import { locationApi } from "../../../api/locationApi";
 import AddressSelector from "../../../components/common/AddressSelector";
-import PostFeed from "../../feeds/components/post/PostFeed";
+import PostCard from "../../feeds/components/post/PostCard";
+import { getPostsByAuthor } from "../../../api/postApi";
 import BarEvent from "../components/BarEvent";
 import BarMenu from "../components/BarMenuCombo";
 import BarFollowInfo from "../components/BarFollowInfo";
 import BarVideo from "../components/BarVideo";
 import BarReview from "../components/BarReview";
 import BarTables from "../components/BarTables";
-import TableClassificationManager from "./TableClassificationManager";
 import FollowButton from "../../../components/common/FollowButton";
 import { useFollowers, useFollowing } from "../../../hooks/useFollow";
 import messageApi from "../../../api/messageApi";
@@ -19,6 +19,192 @@ import publicProfileApi from "../../../api/publicProfileApi";
 import { userApi } from "../../../api/userApi";
 import { cn } from "../../../utils/cn";
 import ReportEntityModal from "../../feeds/components/modals/ReportEntityModal";
+
+// Helper functions for post transformation (same as PublicProfile)
+const normalizeMediaArray = (medias) => {
+  const images = [];
+  const videos = [];
+  const audios = [];
+
+  const isAudioUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const u = url.toLowerCase();
+    return (
+      u.includes('.mp3') ||
+      u.includes('.m4a') ||
+      u.includes('.wav') ||
+      u.includes('.ogg') ||
+      u.includes('.aac')
+    );
+  };
+
+  if (Array.isArray(medias)) {
+    for (const mediaItem of medias) {
+      if (!mediaItem) continue;
+      const url = mediaItem.url || mediaItem.src || mediaItem.path;
+      const type = (mediaItem.type || "").toLowerCase();
+      if (!url) continue;
+      if (type === "audio" || isAudioUrl(url)) {
+        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else {
+        images.push({ url, id: mediaItem._id || mediaItem.id || url });
+      }
+    }
+  } else if (medias && typeof medias === "object") {
+    for (const key of Object.keys(medias)) {
+      const mediaItem = medias[key];
+      if (!mediaItem) continue;
+      const url = mediaItem.url || mediaItem.src || mediaItem.path;
+      const type = (mediaItem.type || "").toLowerCase();
+      if (!url) continue;
+      if (type === "audio" || isAudioUrl(url)) {
+        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else {
+        images.push({ url, id: mediaItem._id || mediaItem.id || url });
+      }
+    }
+  }
+  return { images, videos, audios };
+};
+
+const countCollection = (value) => {
+  if (!value) return 0;
+  if (Array.isArray(value)) return value.length;
+  if (value instanceof Map) return value.size;
+  if (typeof value === "object") return Object.keys(value).length;
+  if (typeof value === "number") return value;
+  return 0;
+};
+
+const formatPostTime = (value, t) => {
+  try {
+    const d = value ? new Date(value) : new Date();
+    if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    if (diffMs < 0) return d.toLocaleString('vi-VN');
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return t('time.justNow') || 'vừa xong';
+    if (minutes < 60) return t('time.minutesAgo', { minutes }) || `${minutes} phút trước`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t('time.hoursAgo', { hours }) || `${hours} giờ trước`;
+    return d.toLocaleDateString('vi-VN');
+  } catch {
+    return new Date().toLocaleString('vi-VN');
+  }
+};
+
+// eslint-disable-next-line complexity
+const mapPostForCard = (post, t) => {
+  const id = post._id || post.id || post.postId;
+  const author = post.author || post.account || {};
+  const mediaFromPost = normalizeMediaArray(post.medias);
+  const mediaFromMediaIds = normalizeMediaArray(post.mediaIds);
+  const images = [...mediaFromPost.images, ...mediaFromMediaIds.images];
+  const videos = [...mediaFromPost.videos, ...mediaFromMediaIds.videos];
+  const audios = [...mediaFromPost.audios, ...mediaFromMediaIds.audios];
+
+  const resolveUserName = () =>
+    post.authorName ||
+    post.authorEntityName ||
+    author.userName ||
+    author.name ||
+    post.user ||
+    t("common.user");
+
+  const resolveAvatar = () =>
+    post.authorAvatar ||
+    post.authorEntityAvatar ||
+    author.avatar ||
+    post.avatar ||
+    "https://via.placeholder.com/40";
+
+  // Extract audio from post
+  const isAudioUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const u = url.toLowerCase();
+    return (
+      u.includes('.mp3') ||
+      u.includes('.m4a') ||
+      u.includes('.wav') ||
+      u.includes('.ogg') ||
+      u.includes('.aac')
+    );
+  };
+
+  // Get audio from various sources
+  const music = post.musicId || post.music || {};
+  const audioFromMusic = (() => {
+    if (!music) return null;
+    const candidates = [
+      music.audioUrl,
+      music.streamUrl,
+      music.fileUrl,
+      music.url,
+      music.sourceUrl,
+      music.downloadUrl,
+    ];
+    for (const c of candidates) if (c && isAudioUrl(c)) return c;
+    return null;
+  })();
+
+  // Check medias for audio
+  const audioFromMedias = (() => {
+    if (Array.isArray(post.medias)) {
+      for (const mediaItem of post.medias) {
+        if (!mediaItem) continue;
+        const url = mediaItem.url || mediaItem.src || mediaItem.path;
+        if (url && isAudioUrl(url)) return url;
+      }
+    } else if (post.medias && typeof post.medias === "object") {
+      for (const key of Object.keys(post.medias)) {
+        const mediaItem = post.medias[key];
+        if (!mediaItem) continue;
+        const url = mediaItem.url || mediaItem.src || mediaItem.path;
+        if (url && isAudioUrl(url)) return url;
+      }
+    }
+    return null;
+  })();
+
+  const audioSrc = audioFromMusic || audios[0]?.url || audioFromMedias || post.audioSrc || post.audioUrl || null;
+
+  return {
+    id,
+    user: resolveUserName(),
+    avatar: resolveAvatar(),
+    time: formatPostTime(post.createdAt, t),
+    content: post.content || post.caption || post["Tiêu Đề"] || "",
+    medias: { images, videos, audios: audioSrc ? [{ url: audioSrc }] : audios },
+    image: images[0]?.url || null,
+    videoSrc: videos[0]?.url || null,
+    audioSrc: audioSrc,
+    audioTitle: music.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
+    artistName: music.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null,
+    thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
+    purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
+    likes: countCollection(post.likes),
+    likedByCurrentUser: false,
+    comments: countCollection(post.comments),
+    shares: post.shares || 0,
+    hashtags: post.hashtags || [],
+    verified: !!post.verified,
+    location: post.location || null,
+    title: post.title || null,
+    canManage: false,
+    ownerEntityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
+    entityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
+    authorEntityAccountId: post.authorEntityAccountId || post.entityAccountId || null,
+    authorEntityId: post.authorEntityId || post.authorId || post.accountId || null,
+    authorEntityType: post.authorEntityType || post.entityType || post.type || null,
+    ownerAccountId: post.accountId || post.ownerAccountId || author.id || null,
+    targetType: post.type || "post",
+  };
+};
 
 export default function BarProfile() {
   const { t } = useTranslation();
@@ -45,6 +231,8 @@ export default function BarProfile() {
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const menuRef = useRef(null);
+  const [barPosts, setBarPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
 
   // Location states
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -120,15 +308,17 @@ export default function BarProfile() {
     resolveCurrentUserEntityId();
   }, []);
   
-  const { followers, fetchFollowers } = useFollowers(profile?.AccountId);
-  const { following, fetchFollowing } = useFollowing(profile?.AccountId);
+  // Use EntityAccountId or barPageId (will be normalized by backend)
+  const followEntityId = profile?.EntityAccountId || profile?.entityAccountId || barPageId;
+  const { followers, fetchFollowers } = useFollowers(followEntityId);
+  const { following, fetchFollowing } = useFollowing(followEntityId);
   
   useEffect(() => {
-    if (profile?.AccountId) {
+    if (followEntityId) {
       fetchFollowers();
       fetchFollowing();
     }
-  }, [profile?.AccountId, fetchFollowers, fetchFollowing]);
+  }, [followEntityId, fetchFollowers, fetchFollowing]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -200,6 +390,46 @@ export default function BarProfile() {
     fetchTableTypes();
   }, [barPageId]);
 
+  // Load posts for this bar
+  useEffect(() => {
+    let alive = true;
+    const loadBarPosts = async () => {
+      if (!profile?.EntityAccountId && !barPageId) {
+        setPostsLoading(false);
+        return;
+      }
+      
+      try {
+        setPostsLoading(true);
+        // Use EntityAccountId if available, otherwise use barPageId
+        const entityId = profile?.EntityAccountId || barPageId;
+        const resp = await getPostsByAuthor(entityId, {});
+        if (!alive) return;
+
+        let rawPosts = [];
+        if (Array.isArray(resp?.data)) {
+          rawPosts = resp.data;
+        } else if (Array.isArray(resp?.data?.data)) {
+          rawPosts = resp.data.data;
+        }
+
+        const transformed = rawPosts.map((post) => mapPostForCard(post, t));
+        setBarPosts(transformed);
+      } catch (error) {
+        console.error("Error loading bar posts:", error);
+        setBarPosts([]);
+      } finally {
+        if (alive) setPostsLoading(false);
+      }
+    };
+    
+    if (profile?.EntityAccountId || barPageId) {
+      loadBarPosts();
+    }
+    
+    return () => { alive = false; };
+  }, [profile?.EntityAccountId, barPageId, t]);
+
   // Check if this is own profile: compare barPageId (from URL) with activeEntity.id (BarPageId of current role)
   // or compare EntityAccountId of current role with profile.EntityAccountId
   const [activeBarPageId, setActiveBarPageId] = useState(null);
@@ -259,7 +489,27 @@ export default function BarProfile() {
       case "posts":
         return (
           <div className="flex flex-col gap-6">
-            <PostFeed />
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : barPosts && barPosts.length > 0 ? (
+              <div className={cn("space-y-4")}>
+                {barPosts.map(post => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noPosts")}
+              </div>
+            )}
           </div>
         );
       case "videos":
@@ -278,16 +528,6 @@ export default function BarProfile() {
         return (
           <div className="profile-section">
             <BarTables barPageId={barPageId} />
-          </div>
-        );
-      case "table-types":
-        return (
-          <div className="profile-section">
-            <TableClassificationManager onTableTypesChange={() => {
-              barPageApi.getTableTypes(barPageId)
-                .then(res => setTableTypes(res.data || []))
-                .catch(err => console.error("❌ Lỗi refresh loại bàn:", err));
-            }} />
           </div>
         );
       default:
@@ -409,7 +649,7 @@ export default function BarProfile() {
                 Chat
               </button>
               <FollowButton
-                followingId={profile?.AccountId}
+                followingId={profile?.EntityAccountId || profile?.entityAccountId || barPageId}
                 followingType="BAR"
               />
               <div className="relative" ref={menuRef}>
@@ -646,14 +886,12 @@ export default function BarProfile() {
               </button>
               <button
                 onClick={() => setActiveTab("posts")}
-                disabled={tableTypes.length === 0}
                 className={cn(
                   "px-4 py-3 text-sm font-semibold border-none bg-transparent",
                   "transition-all duration-200 relative whitespace-nowrap",
                   activeTab === "posts"
                     ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {t('profile.postsTab')}
@@ -666,14 +904,12 @@ export default function BarProfile() {
               </button>
               <button
                 onClick={() => setActiveTab("videos")}
-                disabled={tableTypes.length === 0}
                 className={cn(
                   "px-4 py-3 text-sm font-semibold border-none bg-transparent",
                   "transition-all duration-200 relative whitespace-nowrap",
                   activeTab === "videos"
                     ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {t('tabs.video')}
@@ -686,36 +922,16 @@ export default function BarProfile() {
               </button>
               <button
                 onClick={() => setActiveTab("reviews")}
-                disabled={tableTypes.length === 0}
                 className={cn(
                   "px-4 py-3 text-sm font-semibold border-none bg-transparent",
                   "transition-all duration-200 relative whitespace-nowrap",
                   activeTab === "reviews"
                     ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                  tableTypes.length === 0 && "opacity-50 cursor-not-allowed"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {t('tabs.reviews')}
                 {activeTab === "reviews" && (
-                  <span className={cn(
-                    "absolute bottom-0 left-0 right-0 h-0.5",
-                    "bg-primary"
-                  )} />
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab("table-types")}
-                className={cn(
-                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
-                  "transition-all duration-200 relative whitespace-nowrap",
-                  activeTab === "table-types"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {t('tabs.tableTypes')}
-                {activeTab === "table-types" && (
                   <span className={cn(
                     "absolute bottom-0 left-0 right-0 h-0.5",
                     "bg-primary"

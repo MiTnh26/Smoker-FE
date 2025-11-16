@@ -183,7 +183,7 @@ export default function GlobalSearch() {
                 >
                   <div 
                     className={cn("flex items-center gap-2.5 cursor-pointer flex-1")}
-                    onClick={() => onOpenItem(navigate, item)}
+                    onClick={() => onOpenItem(navigate, item, setIsMobileExpanded, setQ)}
                   >
                     <img
                       src={item.avatar || "https://via.placeholder.com/36"}
@@ -238,13 +238,131 @@ function useDebounce(value, delay) {
   return v;
 }
 
-function onOpenItem(navigate, item) {
-  const t = String(item.type || "").toUpperCase();
-  if (t === "BAR") {
-    navigate(`/bar/${item.id}`);
-    return;
+function onOpenItem(navigate, item, setIsMobileExpanded, setQ) {
+  // Check if this is the current user's own profile/entity
+  // Logic synchronized with PublicProfile, BarProfile, DJProfile, DancerProfile
+  try {
+    const sessionRaw = localStorage.getItem("session");
+    if (sessionRaw) {
+      const session = JSON.parse(sessionRaw);
+      const active = session?.activeEntity || {};
+      const entities = session?.entities || [];
+      const account = session?.account || {};
+      
+      const itemType = String(item.type || "").toUpperCase();
+      const itemId = String(item.id || "");
+      
+      // Get current user's EntityAccountId (same logic as PublicProfile)
+      const currentUserEntityId = 
+        active.EntityAccountId ||
+        active.entityAccountId ||
+        active.id ||
+        account.EntityAccountId ||
+        account.entityAccountId ||
+        entities.find(e => e.type === "Account")?.EntityAccountId ||
+        entities.find(e => e.type === "Account")?.entityAccountId ||
+        entities[0]?.EntityAccountId ||
+        entities[0]?.entityAccountId ||
+        null;
+      
+      // Check if item matches current user's Account (same logic as PublicProfile)
+      if (itemType === "USER" || itemType === "ACCOUNT") {
+        if (currentUserEntityId && String(currentUserEntityId).toLowerCase() === itemId.toLowerCase()) {
+          navigate("/customer/profile");
+          setIsMobileExpanded(false);
+          setQ("");
+          return;
+        }
+      }
+      
+      // Check if item matches current user's Bar (same logic as BarProfile)
+      if (itemType === "BAR" || itemType === "BARPAGE") {
+        const activeBarPageId = active.type === "BarPage" ? active.id : null;
+        const barEntity = entities.find(e => 
+          (e.type === "BarPage" || e.type === "BAR")
+        );
+        
+        // Compare with BarPageId
+        if (activeBarPageId && String(activeBarPageId).toLowerCase() === itemId.toLowerCase()) {
+          navigate(`/bar/${activeBarPageId}`);
+          setIsMobileExpanded(false);
+          setQ("");
+          return;
+        }
+        if (barEntity && String(barEntity.id).toLowerCase() === itemId.toLowerCase()) {
+          navigate(`/bar/${barEntity.id}`);
+          setIsMobileExpanded(false);
+          setQ("");
+          return;
+        }
+        // Also check EntityAccountId (item.id might be EntityAccountId)
+        if (barEntity && String(barEntity.EntityAccountId || barEntity.entityAccountId || "").toLowerCase() === itemId.toLowerCase()) {
+          navigate(`/bar/${barEntity.id}`);
+          setIsMobileExpanded(false);
+          setQ("");
+          return;
+        }
+      }
+      
+      // Check if item matches current user's DJ (same logic as DJProfile)
+      if (itemType === "DJ") {
+        const activeEntityAccountId = active.type === "Business" && active.role && active.role.toLowerCase() === "dj" 
+          ? (active.EntityAccountId || active.entityAccountId) 
+          : null;
+        const djEntity = entities.find(e => 
+          (e.type === "Business" || e.type === "BusinessAccount") && 
+          e.role && e.role.toLowerCase() === "dj"
+        );
+        
+        // Compare with EntityAccountId (businessEntityId)
+        if (activeEntityAccountId && String(activeEntityAccountId).toLowerCase() === itemId.toLowerCase()) {
+          navigate(`/dj/${active.id}`);
+          setIsMobileExpanded(false);
+          setQ("");
+          return;
+        }
+        if (djEntity && String(djEntity.EntityAccountId || djEntity.entityAccountId || "").toLowerCase() === itemId.toLowerCase()) {
+          navigate(`/dj/${djEntity.id}`);
+          setIsMobileExpanded(false);
+          setQ("");
+          return;
+        }
+      }
+      
+      // Check if item matches current user's Dancer (same logic as DancerProfile)
+      if (itemType === "DANCER") {
+        const activeEntityAccountId = active.type === "Business" && active.role && active.role.toLowerCase() === "dancer" 
+          ? (active.EntityAccountId || active.entityAccountId) 
+          : null;
+        const dancerEntity = entities.find(e => 
+          (e.type === "Business" || e.type === "BusinessAccount") && 
+          e.role && e.role.toLowerCase() === "dancer"
+        );
+        
+        // Compare with EntityAccountId (businessEntityId)
+        if (activeEntityAccountId && String(activeEntityAccountId).toLowerCase() === itemId.toLowerCase()) {
+          navigate(`/dancer/${active.id}`);
+          setIsMobileExpanded(false);
+          setQ("");
+          return;
+        }
+        if (dancerEntity && String(dancerEntity.EntityAccountId || dancerEntity.entityAccountId || "").toLowerCase() === itemId.toLowerCase()) {
+          navigate(`/dancer/${dancerEntity.id}`);
+          setIsMobileExpanded(false);
+          setQ("");
+          return;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[GlobalSearch] Error checking own profile:", error);
   }
+  
+  // All items (BAR, DJ, DANCER, USER) should navigate to /profile/:id
   navigate(`/profile/${item.id}`);
+  // Close dropdown and clear search
+  setIsMobileExpanded(false);
+  setQ("");
 }
 
 

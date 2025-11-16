@@ -78,7 +78,9 @@ export default function SearchResults() {
                   <div className="gs-type">{item.type}</div>
                 </div>
               </div>
-              <FollowButton followingId={item.id} followingType={mapType(item.type)} />
+              {item.id && (
+                <FollowButton followingId={item.id} followingType={mapType(item.type)} />
+              )}
             </li>
           ))}
         </ul>
@@ -94,8 +96,7 @@ function mapType(t) {
 }
 
 function onOpenItem(navigate, item) {
-  const t = String(item.type || "").toUpperCase();
-  if (t === "BAR") { navigate(`/bar/${item.id}`); return; }
+  // All items (BAR, DJ, DANCER, USER) should navigate to /profile/:id
   navigate(`/profile/${item.id}`);
 }
 

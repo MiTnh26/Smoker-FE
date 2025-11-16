@@ -472,17 +472,6 @@ function ConversationView({ chat, onBack }) {
           </div>
         </div>
       </div>
-      {/* subtle divider */}
-      <div
-        className="px-4 py-2 text-xs"
-        style={{
-          borderBottom: `1px solid ${themeVars.borderSoft}`,
-          background: themeVars.card,
-          color: themeVars.mutedForeground,
-        }}
-      >
-        {t('messages.securedInfo') || "Chats are encrypted on Smoker"}
-      </div>
       {/* Body */}
       <div
         ref={bodyRef}
@@ -729,6 +718,9 @@ function ConversationView({ chat, onBack }) {
                       alt={m.authorName || other?.name}
                       className="h-8 w-8 rounded-full object-cover"
                     />
+                  )}
+                  {!isMine && !showAvatar && (
+                    <div className="h-8 w-8 flex-shrink-0" />
                   )}
                   {isMine && (
                     <div

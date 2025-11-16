@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
-import { Search, Bell, Video, MoreHorizontal } from "lucide-react";
+import { Search } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
@@ -341,60 +341,6 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
       className={cn("flex h-full flex-col min-h-0")}
       style={{ background: themeVars.cardSoft, color: themeVars.foreground }}
     >
-      {/* Top header */}
-      <div
-        className="flex items-center justify-between px-4 py-3"
-        style={{
-          borderBottom: `1px solid ${themeVars.borderSoft}`,
-          background: `linear-gradient(180deg, ${themeVars.card} 0%, ${themeVars.backgroundSoft} 100%)`,
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="flex h-9 w-9 items-center justify-center rounded-full overflow-hidden flex-shrink-0"
-            style={{
-              background: currentUserAvatar ? 'transparent' : `linear-gradient(140deg, ${themeVars.primary} 0%, ${themeVars.primarySoft} 100%)`,
-              color: themeVars.primaryForeground,
-            }}
-          >
-            {currentUserAvatar ? (
-              <img 
-                src={currentUserAvatar} 
-                alt={currentUserName || "User"} 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-base font-bold">
-                {getInitial(currentUserName)}
-              </span>
-            )}
-          </div>
-          <div>
-            <p className="m-0 text-base font-semibold" style={{ color: themeVars.foreground }}>
-              {t('messages.chats') || "Chats"}
-            </p>
-            <p className="m-0 text-xs" style={{ color: themeVars.mutedForeground }}>
-              {t('messages.keepInTouch') || "Stay connected with your friends"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {[{ id: "bell", Icon: Bell }, { id: "video", Icon: Video }, { id: "ellipsis", Icon: MoreHorizontal }].map(({ id, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full transition"
-              style={{
-                border: `1px solid ${themeVars.borderStrong}`,
-                background: themeVars.card,
-                color: themeVars.mutedForeground,
-              }}
-            >
-              <Icon size={16} />
-            </button>
-          ))}
-        </div>
-      </div>
       {/* Search bar */}
       <div className="px-4 pt-3">
         <div

@@ -306,6 +306,7 @@
     "loginRequired": "Please sign in as a customer to leave feedback.",
     "ratingRequired": "Please choose a star rating.",
     "ownerNotice": "You cannot review your own profile. Ask your customers to leave feedback after a booking.",
+    "businessRoleNotice": "Only customers can leave reviews. You are currently logged in with a business role (Bar/DJ/Dancer).",
     "anonymous": "Anonymous"
   },
   "bar": {
@@ -521,6 +522,12 @@
     "editPersonalProfile": "Edit personal profile",
     "infoTab": "Info",
     "postsTab": "Posts",
+    "videosTab": "Videos",
+    "reviewsTab": "Reviews",
+    "tablesTab": "Tables",
+    "musicTab": "Music",
+    "priceTable": "Price List",
+    "musicTabDescription": "Will display DJ's music tracks",
     "loadingProfile": "Loading profile...",
     "about": "About",
     "gender": "Gender",

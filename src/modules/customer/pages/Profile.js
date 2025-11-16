@@ -9,6 +9,193 @@ import { cn } from "../../../utils/cn";
 import CreatePostBox from "../../feeds/components/shared/CreatePostBox";
 import PostComposerModal from "../../feeds/components/modals/PostComposerModal";
 import PostCard from "../../feeds/components/post/PostCard";
+import { getPostsByAuthor } from "../../../api/postApi";
+
+// Helper functions for post transformation
+const normalizeMediaArray = (medias) => {
+  const images = [];
+  const videos = [];
+  const audios = [];
+
+  const isAudioUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const u = url.toLowerCase();
+    return (
+      u.includes('.mp3') ||
+      u.includes('.m4a') ||
+      u.includes('.wav') ||
+      u.includes('.ogg') ||
+      u.includes('.aac')
+    );
+  };
+
+  if (Array.isArray(medias)) {
+    for (const mediaItem of medias) {
+      if (!mediaItem) continue;
+      const url = mediaItem.url || mediaItem.src || mediaItem.path;
+      const type = (mediaItem.type || "").toLowerCase();
+      if (!url) continue;
+      if (type === "audio" || isAudioUrl(url)) {
+        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else {
+        images.push({ url, id: mediaItem._id || mediaItem.id || url });
+      }
+    }
+  } else if (medias && typeof medias === "object") {
+    for (const key of Object.keys(medias)) {
+      const mediaItem = medias[key];
+      if (!mediaItem) continue;
+      const url = mediaItem.url || mediaItem.src || mediaItem.path;
+      const type = (mediaItem.type || "").toLowerCase();
+      if (!url) continue;
+      if (type === "audio" || isAudioUrl(url)) {
+        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+      } else {
+        images.push({ url, id: mediaItem._id || mediaItem.id || url });
+      }
+    }
+  }
+  return { images, videos, audios };
+};
+
+const countCollection = (value) => {
+  if (!value) return 0;
+  if (Array.isArray(value)) return value.length;
+  if (value instanceof Map) return value.size;
+  if (typeof value === "object") return Object.keys(value).length;
+  if (typeof value === "number") return value;
+  return 0;
+};
+
+const formatPostTime = (value, t) => {
+  try {
+    const d = value ? new Date(value) : new Date();
+    if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    if (diffMs < 0) return d.toLocaleString('vi-VN');
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return t('time.justNow') || 'vừa xong';
+    if (minutes < 60) return t('time.minutesAgo', { minutes }) || `${minutes} phút trước`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return t('time.hoursAgo', { hours }) || `${hours} giờ trước`;
+    return d.toLocaleDateString('vi-VN');
+  } catch {
+    return new Date().toLocaleString('vi-VN');
+  }
+};
+
+// eslint-disable-next-line complexity
+const mapPostForCard = (post, t) => {
+  const id = post._id || post.id || post.postId;
+  const author = post.author || post.account || {};
+  const mediaFromPost = normalizeMediaArray(post.medias);
+  const mediaFromMediaIds = normalizeMediaArray(post.mediaIds);
+  const images = [...mediaFromPost.images, ...mediaFromMediaIds.images];
+  const videos = [...mediaFromPost.videos, ...mediaFromMediaIds.videos];
+  const audios = [...mediaFromPost.audios, ...mediaFromMediaIds.audios];
+
+  const resolveUserName = () =>
+    post.authorName ||
+    post.authorEntityName ||
+    author.userName ||
+    author.name ||
+    post.user ||
+    t("common.user");
+
+  const resolveAvatar = () =>
+    post.authorAvatar ||
+    post.authorEntityAvatar ||
+    author.avatar ||
+    post.avatar ||
+    "https://via.placeholder.com/40";
+
+  // Extract audio from post
+  const isAudioUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    const u = url.toLowerCase();
+    return (
+      u.includes('.mp3') ||
+      u.includes('.m4a') ||
+      u.includes('.wav') ||
+      u.includes('.ogg') ||
+      u.includes('.aac')
+    );
+  };
+
+  // Get audio from various sources
+  const music = post.musicId || post.music || {};
+  const audioFromMusic = (() => {
+    if (!music) return null;
+    const candidates = [
+      music.audioUrl,
+      music.streamUrl,
+      music.fileUrl,
+      music.url,
+      music.sourceUrl,
+      music.downloadUrl,
+    ];
+    for (const c of candidates) if (c && isAudioUrl(c)) return c;
+    return null;
+  })();
+
+  // Check medias for audio
+  const audioFromMedias = (() => {
+    if (Array.isArray(post.medias)) {
+      for (const mediaItem of post.medias) {
+        if (!mediaItem) continue;
+        const url = mediaItem.url || mediaItem.src || mediaItem.path;
+        if (url && isAudioUrl(url)) return url;
+      }
+    } else if (post.medias && typeof post.medias === "object") {
+      for (const key of Object.keys(post.medias)) {
+        const mediaItem = post.medias[key];
+        if (!mediaItem) continue;
+        const url = mediaItem.url || mediaItem.src || mediaItem.path;
+        if (url && isAudioUrl(url)) return url;
+      }
+    }
+    return null;
+  })();
+
+  const audioSrc = audioFromMusic || audios[0]?.url || audioFromMedias || post.audioSrc || post.audioUrl || null;
+
+  return {
+    id,
+    user: resolveUserName(),
+    avatar: resolveAvatar(),
+    time: formatPostTime(post.createdAt, t),
+    content: post.content || post.caption || post["Tiêu Đề"] || "",
+    medias: { images, videos, audios: audioSrc ? [{ url: audioSrc }] : audios },
+    image: images[0]?.url || null,
+    videoSrc: videos[0]?.url || null,
+    audioSrc: audioSrc,
+    audioTitle: music.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
+    artistName: music.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null,
+    thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
+    purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
+    likes: countCollection(post.likes),
+    likedByCurrentUser: false,
+    comments: countCollection(post.comments),
+    shares: post.shares || 0,
+    hashtags: post.hashtags || [],
+    verified: !!post.verified,
+    location: post.location || null,
+    title: post.title || null,
+    canManage: false,
+    ownerEntityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
+    entityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
+    authorEntityAccountId: post.authorEntityAccountId || post.entityAccountId || null,
+    authorEntityId: post.authorEntityId || post.authorId || post.accountId || null,
+    authorEntityType: post.authorEntityType || post.entityType || post.type || null,
+    ownerAccountId: post.accountId || post.ownerAccountId || author.id || null,
+    targetType: post.type || "post",
+  };
+};
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -133,73 +320,56 @@ export default function Profile() {
         session = null;
       }
       
-      const currentUserId = session?.activeEntity?.id || session?.account?.id;
+      const currentUserId = session?.activeEntity?.EntityAccountId || 
+                           session?.activeEntity?.entityAccountId || 
+                           session?.activeEntity?.id || 
+                           session?.account?.id;
       
-      // Load posts from posts collection (include medias for videos tab)
-      const postsResponse = await axiosClient.get(`/posts/author/${currentUserId}`, {
-        params: { includeMedias: true }
+      if (!currentUserId) {
+        setPostsLoading(false);
+        setVideosLoading(false);
+        return;
+      }
+      
+      // Load posts using getPostsByAuthor API (same as PublicProfile)
+      const resp = await getPostsByAuthor(currentUserId, {});
+      let rawPosts = [];
+      if (Array.isArray(resp?.data)) {
+        rawPosts = resp.data;
+      } else if (Array.isArray(resp?.data?.data)) {
+        rawPosts = resp.data.data;
+      }
+      
+      // Transform posts using mapPostForCard
+      const transformed = rawPosts.map((post) => mapPostForCard(post, t));
+      
+      // Sort by creation date
+      transformed.sort((a, b) => {
+        const dateA = new Date(a.time || 0);
+        const dateB = new Date(b.time || 0);
+        return dateB - dateA;
       });
-      const posts = postsResponse.success ? postsResponse.data : [];
       
-      // Load music posts from musics collection  
-      const musicResponse = await axiosClient.get(`/music/author/${currentUserId}`);
-      const musics = musicResponse.success ? musicResponse.data : [];
-      
-      // Transform and combine posts
-      const transformedPosts = posts.map(post => ({
-        id: post._id,
-        type: 'post',
-        title: post.title || post["Tiêu Đề"],
-        content: post.content || post.caption,
-        image: post.url && post.url !== "default-post.jpg" ? post.url : (post.medias && post.medias[0]?.url && !/\.(mp4|webm|mov)$/i.test(post.medias[0]?.url) ? post.medias[0].url : null),
-        createdAt: post.createdAt,
-        likes: post.likes ? Object.keys(post.likes).length : 0,
-        comments: post.comments ? Object.keys(post.comments).length : 0,
-        authorName: post.authorEntityName || "Người dùng",
-        authorAvatar: post.authorEntityAvatar || null
-      }));
-      
-      const transformedMusics = musics.map(music => ({
-        id: music._id,
-        type: 'music',
-        title: music["Tên Bài Nhạc"],
-        content: music["Chi Tiết"],
-        image: music["Ảnh Nền Bài Nhạc"],
-        audioUrl: music["Link Mua Nhạc"],
-        artist: music["Tên Nghệ Sĩ"],
-        createdAt: music.createdAt,
-        likes: music["Thích"] ? Object.keys(music["Thích"]).length : 0,
-        comments: music["Bình Luận"] ? Object.keys(music["Bình Luận"]).length : 0,
-        authorName: music.authorEntityName || "Người dùng",
-        authorAvatar: music.authorEntityAvatar || null
-      }));
-      
-      // Combine and sort by creation date
-      const allPosts = [...transformedPosts, ...transformedMusics]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
-      setUserPosts(allPosts);
+      setUserPosts(transformed);
 
-      // Extract videos from post medias
-      const isVideoMedia = (m) => {
-        const mime = (m?.mime || '').toLowerCase();
-        const url = m?.url || '';
-        return mime.startsWith('video/') || /\.(mp4|webm|mov|mkv|m4v)$/i.test(url);
-      };
-
-      const videos = (posts || []).flatMap(p => {
-        const medias = Array.isArray(p.medias) ? p.medias : [];
-        return medias.filter(isVideoMedia).map(m => ({
-          id: m._id || `${p._id}-${m.url}`,
-          postId: p._id,
-          url: m.url,
-          mime: m.mime || '',
-          createdAt: p.createdAt,
-          title: p.title || p.caption || 'Video',
-          authorName: p.authorEntityName || 'Người dùng',
-          authorAvatar: p.authorEntityAvatar || null
-        }));
-      }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // Extract videos from transformed posts
+      const videos = transformed
+        .filter(p => p.videoSrc || (p.medias?.videos && p.medias.videos.length > 0))
+        .map(p => ({
+          id: p.id,
+          postId: p.id,
+          url: p.videoSrc || p.medias?.videos?.[0]?.url,
+          createdAt: p.time,
+          title: p.title || p.content || 'Video',
+          user: p.user,
+          avatar: p.avatar,
+          ...p
+        }))
+        .sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB - dateA;
+        });
 
       setUserVideos(videos);
     } catch (error) {
