@@ -12,192 +12,13 @@ import { useFollowers, useFollowing } from "../../../hooks/useFollow";
 import { Edit, DollarSign, Music2 } from "lucide-react";
 import "../../../styles/modules/publicProfile.css";
 import PerformerReviews from "../../business/components/PerformerReviews";
-
-// Helper functions for post transformation (same as PublicProfile)
-const normalizeMediaArray = (medias) => {
-  const images = [];
-  const videos = [];
-  const audios = [];
-
-  const isAudioUrl = (url) => {
-    if (!url || typeof url !== 'string') return false;
-    const u = url.toLowerCase();
-    return (
-      u.includes('.mp3') ||
-      u.includes('.m4a') ||
-      u.includes('.wav') ||
-      u.includes('.ogg') ||
-      u.includes('.aac')
-    );
-  };
-
-  if (Array.isArray(medias)) {
-    for (const mediaItem of medias) {
-      if (!mediaItem) continue;
-      const url = mediaItem.url || mediaItem.src || mediaItem.path;
-      const type = (mediaItem.type || "").toLowerCase();
-      if (!url) continue;
-      if (type === "audio" || isAudioUrl(url)) {
-        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
-      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
-        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
-      } else {
-        images.push({ url, id: mediaItem._id || mediaItem.id || url });
-      }
-    }
-  } else if (medias && typeof medias === "object") {
-    for (const key of Object.keys(medias)) {
-      const mediaItem = medias[key];
-      if (!mediaItem) continue;
-      const url = mediaItem.url || mediaItem.src || mediaItem.path;
-      const type = (mediaItem.type || "").toLowerCase();
-      if (!url) continue;
-      if (type === "audio" || isAudioUrl(url)) {
-        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
-      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
-        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
-      } else {
-        images.push({ url, id: mediaItem._id || mediaItem.id || url });
-      }
-    }
-  }
-  return { images, videos, audios };
-};
-
-const countCollection = (value) => {
-  if (!value) return 0;
-  if (Array.isArray(value)) return value.length;
-  if (value instanceof Map) return value.size;
-  if (typeof value === "object") return Object.keys(value).length;
-  if (typeof value === "number") return value;
-  return 0;
-};
-
-const formatPostTime = (value, t) => {
-  try {
-    const d = value ? new Date(value) : new Date();
-    if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    if (diffMs < 0) return d.toLocaleString('vi-VN');
-    const minutes = Math.floor(diffMs / 60000);
-    if (minutes < 1) return t('time.justNow') || 'vừa xong';
-    if (minutes < 60) return t('time.minutesAgo', { minutes }) || `${minutes} phút trước`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return t('time.hoursAgo', { hours }) || `${hours} giờ trước`;
-    return d.toLocaleDateString('vi-VN');
-  } catch {
-    return new Date().toLocaleString('vi-VN');
-  }
-};
-
-// eslint-disable-next-line complexity
-const mapPostForCard = (post, t) => {
-  const id = post._id || post.id || post.postId;
-  const author = post.author || post.account || {};
-  const mediaFromPost = normalizeMediaArray(post.medias);
-  const mediaFromMediaIds = normalizeMediaArray(post.mediaIds);
-  const images = [...mediaFromPost.images, ...mediaFromMediaIds.images];
-  const videos = [...mediaFromPost.videos, ...mediaFromMediaIds.videos];
-  const audios = [...mediaFromPost.audios, ...mediaFromMediaIds.audios];
-
-  const resolveUserName = () =>
-    post.authorName ||
-    post.authorEntityName ||
-    author.userName ||
-    author.name ||
-    post.user ||
-    t("common.user");
-
-  const resolveAvatar = () =>
-    post.authorAvatar ||
-    post.authorEntityAvatar ||
-    author.avatar ||
-    post.avatar ||
-    "https://via.placeholder.com/40";
-
-  // Extract audio from post
-  const isAudioUrl = (url) => {
-    if (!url || typeof url !== 'string') return false;
-    const u = url.toLowerCase();
-    return (
-      u.includes('.mp3') ||
-      u.includes('.m4a') ||
-      u.includes('.wav') ||
-      u.includes('.ogg') ||
-      u.includes('.aac')
-    );
-  };
-
-  // Get audio from various sources
-  const music = post.musicId || post.music || {};
-  const audioFromMusic = (() => {
-    if (!music) return null;
-    const candidates = [
-      music.audioUrl,
-      music.streamUrl,
-      music.fileUrl,
-      music.url,
-      music.sourceUrl,
-      music.downloadUrl,
-    ];
-    for (const c of candidates) if (c && isAudioUrl(c)) return c;
-    return null;
-  })();
-
-  // Check medias for audio
-  const audioFromMedias = (() => {
-    if (Array.isArray(post.medias)) {
-      for (const mediaItem of post.medias) {
-        if (!mediaItem) continue;
-        const url = mediaItem.url || mediaItem.src || mediaItem.path;
-        if (url && isAudioUrl(url)) return url;
-      }
-    } else if (post.medias && typeof post.medias === "object") {
-      for (const key of Object.keys(post.medias)) {
-        const mediaItem = post.medias[key];
-        if (!mediaItem) continue;
-        const url = mediaItem.url || mediaItem.src || mediaItem.path;
-        if (url && isAudioUrl(url)) return url;
-      }
-    }
-    return null;
-  })();
-
-  const audioSrc = audioFromMusic || audios[0]?.url || audioFromMedias || post.audioSrc || post.audioUrl || null;
-
-  return {
-    id,
-    user: resolveUserName(),
-    avatar: resolveAvatar(),
-    time: formatPostTime(post.createdAt, t),
-    content: post.content || post.caption || post["Tiêu Đề"] || "",
-    medias: { images, videos, audios: audioSrc ? [{ url: audioSrc }] : audios },
-    image: images[0]?.url || null,
-    videoSrc: videos[0]?.url || null,
-    audioSrc: audioSrc,
-    audioTitle: music.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
-    artistName: music.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null,
-    thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
-    purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
-    likes: countCollection(post.likes),
-    likedByCurrentUser: false,
-    comments: countCollection(post.comments),
-    shares: post.shares || 0,
-    hashtags: post.hashtags || [],
-    verified: !!post.verified,
-    location: post.location || null,
-    title: post.title || null,
-    canManage: false,
-    ownerEntityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
-    entityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
-    authorEntityAccountId: post.authorEntityAccountId || post.entityAccountId || null,
-    authorEntityId: post.authorEntityId || post.authorId || post.accountId || null,
-    authorEntityType: post.authorEntityType || post.entityType || post.type || null,
-    ownerAccountId: post.accountId || post.ownerAccountId || author.id || null,
-    targetType: post.type || "post",
-  };
-};
+import { mapPostForCard } from "../../../utils/postTransformers";
+import { useProfilePosts } from "../../../hooks/useProfilePosts";
+import { useCurrentUserEntity } from "../../../hooks/useCurrentUserEntity";
+import { ProfileHeader } from "../../../components/profile/ProfileHeader";
+import { ProfileStats } from "../../../components/profile/ProfileStats";
+import { ImageUploadField } from "../../../components/profile/ImageUploadField";
+import BannedAccountOverlay from "../../../components/common/BannedAccountOverlay";
 
 export default function DJProfile() {
     const { t } = useTranslation();
@@ -213,6 +34,7 @@ export default function DJProfile() {
         gender: "",
         pricePerHours: "",
         pricePerSession: "",
+        status: "",
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -220,11 +42,8 @@ export default function DJProfile() {
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingField, setEditingField] = useState(null);
     const [saving, setSaving] = useState(false);
-    const [currentUserEntityId, setCurrentUserEntityId] = useState(null);
     const [businessEntityId, setBusinessEntityId] = useState(null);
     const [businessAccountId, setBusinessAccountId] = useState(null);
-    const [businessPosts, setBusinessPosts] = useState([]);
-    const [postsLoading, setPostsLoading] = useState(true);
     
     // Location states
     const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -232,24 +51,12 @@ export default function DJProfile() {
     const [selectedWardId, setSelectedWardId] = useState('');
     const [addressDetail, setAddressDetail] = useState('');
     
-    // Get current user entity ID for followers/following and chat
-    useEffect(() => {
-        try {
-            const sessionRaw = localStorage.getItem("session");
-            if (!sessionRaw) return;
-            const session = JSON.parse(sessionRaw);
-            const active = session?.activeEntity || {};
-            const entities = session?.entities || [];
-            const resolvedId =
-                active.EntityAccountId ||
-                active.entityAccountId ||
-                active.id ||
-                entities[0]?.EntityAccountId ||
-                entities[0]?.entityAccountId ||
-                null;
-            setCurrentUserEntityId(resolvedId || null);
-        } catch {}
-    }, []);
+    // Upload states
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [uploadingBackground, setUploadingBackground] = useState(false);
+    
+    // Get current user entity ID using shared hook
+    const currentUserEntityId = useCurrentUserEntity();
 
     // Check if this is own profile: compare businessId (from URL) with activeEntity.id (businessId of current role)
     // Similar to how BarProfile checks activeBarPageId
@@ -267,54 +74,23 @@ export default function DJProfile() {
         } catch {}
     }, []);
     
-    const { followers, fetchFollowers } = useFollowers(businessEntityId);
-    const { following, fetchFollowing } = useFollowing(businessEntityId);
+    // Use EntityAccountId for followers/following (similar to BarProfile)
+    // Calculate from businessEntityId or businessId (fallback for API compatibility)
+    const followEntityId = businessEntityId || businessId;
+    const { followers, fetchFollowers } = useFollowers(followEntityId);
+    const { following, fetchFollowing } = useFollowing(followEntityId);
+    
+    // Use shared hook for posts - prioritize EntityAccountId
+    const entityIdForPosts = businessEntityId || businessId;
+    const { posts: businessPosts, loading: postsLoading } = useProfilePosts(entityIdForPosts);
     
     useEffect(() => {
-        if (businessEntityId) {
+        // Fetch if we have an ID (EntityAccountId preferred, but fallback to businessId)
+        if (followEntityId) {
             fetchFollowers();
             fetchFollowing();
         }
-    }, [businessEntityId, fetchFollowers, fetchFollowing]);
-
-    // Load posts for this business
-    useEffect(() => {
-        let alive = true;
-        const loadBusinessPosts = async () => {
-            if (!businessEntityId && !businessId) {
-                setPostsLoading(false);
-                return;
-            }
-            
-            try {
-                setPostsLoading(true);
-                const entityId = businessEntityId || businessId;
-                const resp = await getPostsByAuthor(entityId, {});
-                if (!alive) return;
-
-                let rawPosts = [];
-                if (Array.isArray(resp?.data)) {
-                    rawPosts = resp.data;
-                } else if (Array.isArray(resp?.data?.data)) {
-                    rawPosts = resp.data.data;
-                }
-
-                const transformed = rawPosts.map((post) => mapPostForCard(post, t));
-                setBusinessPosts(transformed);
-            } catch (error) {
-                console.error("Error loading business posts:", error);
-                setBusinessPosts([]);
-            } finally {
-                if (alive) setPostsLoading(false);
-            }
-        };
-        
-        if (businessEntityId || businessId) {
-            loadBusinessPosts();
-        }
-        
-        return () => { alive = false; };
-    }, [businessEntityId, businessId, t]);
+    }, [followEntityId, fetchFollowers, fetchFollowing]);
 
     useEffect(() => {
         const fetchDJ = async () => {
@@ -358,6 +134,7 @@ export default function DJProfile() {
                         gender: mapGender(data.Gender),
                         pricePerHours: data.PricePerHours,
                         pricePerSession: data.PricePerSession,
+                        status: (data.Status || "").toLowerCase(),
                     };
 
                     setProfile(mappedData);
@@ -455,6 +232,24 @@ export default function DJProfile() {
 
     if (loading) return <div className="pp-container">{t('profile.loadingProfile')}</div>;
     if (error) return <div className="pp-container">{error}</div>;
+
+    const isPending = profile.status === "pending";
+    if (isPending) {
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center px-4">
+                <div className="max-w-xl text-center bg-card border border-border/30 rounded-2xl p-8 shadow-sm">
+                    <h2 className="text-2xl font-semibold mb-3">{t('profile.pendingTitle', { defaultValue: "Hồ sơ đang chờ duyệt" })}</h2>
+                    <p className="text-muted-foreground mb-4">
+                        {t('profile.pendingDescription', {
+                            defaultValue: "Hồ sơ DJ của bạn đang được quản trị viên xem xét. Các chức năng sẽ mở lại sau khi hồ sơ được phê duyệt."
+                        })}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{t('profile.contactSupport', { defaultValue: "Liên hệ smokerteam@gmail.com nếu bạn cần được trợ giúp." })}</p>
+                </div>
+            </div>
+        );
+    }
+    const isBanned = profile.status === "banned";
     
     // Check if this is own profile: compare businessId (from URL) with activeBusinessId (businessId of current role)
     // Similar to how BarProfile checks activeBarPageId
@@ -624,125 +419,34 @@ export default function DJProfile() {
     };
 
     return (
-        <div className={cn("min-h-screen bg-background")}>
-            {/* Cover Photo Section - Instagram Style */}
-            <section className={cn("relative w-full h-[200px] md:h-[250px] overflow-hidden rounded-b-lg")}>
-                <div
-                    className={cn("absolute inset-0 bg-cover bg-center")}
-                    style={{
-                        backgroundImage: `url(${profile.background || "https://i.imgur.com/6IUbEMn.jpg"})`,
-                    }}
-                />
-                {/* Gradient Overlay */}
-                <div className={cn("absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60")} />
-
-                {/* Action Buttons */}
+        <>
+        <div className={cn("min-h-screen bg-background", isBanned && "opacity-30 pointer-events-none")}>
+            <ProfileHeader
+                background={profile.background}
+                avatar={profile.avatar}
+                name={profile.userName}
+                role={profile.role || "DJ"}
+            >
                 {isOwnProfile && (
-                    <div className={cn("absolute top-4 right-4 z-10")}>
-                        <button
-                            onClick={() => setShowEditModal(true)}
-                            className={cn(
-                                "px-4 py-2 rounded-lg font-semibold text-sm",
-                                "bg-card/80 backdrop-blur-sm text-foreground border-none",
-                                "hover:bg-card/90 transition-all duration-200",
-                                "active:scale-95",
-                                "flex items-center gap-2"
-                            )}
-                        >
-                            <Edit className="w-4 h-4" />
-                            <span>{t('profile.editProfile')}</span>
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => setShowEditModal(true)}
+                        className={cn(
+                            "px-4 py-2 rounded-lg font-semibold text-sm",
+                            "bg-card/80 backdrop-blur-sm text-foreground border-none",
+                            "hover:bg-card/90 transition-all duration-200",
+                            "active:scale-95",
+                            "flex items-center gap-2"
+                        )}
+                    >
+                        <Edit className="w-4 h-4" />
+                        <span>{t('profile.editProfile')}</span>
+                    </button>
                 )}
-
-                {/* Profile Info Overlay */}
-                <div className={cn("absolute bottom-0 left-0 right-0 p-4 md:p-6")}>
-                    <div className={cn("flex items-end gap-3 md:gap-4")}>
-                        {/* Avatar */}
-                        <div className={cn("relative")}>
-                            <img
-                                src={profile.avatar || "https://via.placeholder.com/150"}
-                                alt="avatar"
-                                className={cn(
-                                    "w-20 h-20 md:w-24 md:h-24 rounded-full object-cover",
-                                    "border-4 border-card shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
-                                    "bg-card"
-                                )}
-                            />
-                        </div>
-                        <div className={cn("flex-1 pb-1")}>
-                            <h1 className={cn(
-                                "text-xl md:text-2xl font-bold text-primary-foreground mb-0.5",
-                                "drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
-                            )}>
-                                {profile.userName || "DJ"}
-                            </h1>
-                            <div className={cn(
-                                "text-xs md:text-sm text-primary-foreground/90",
-                                "drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
-                            )}>
-                                {profile.role || "DJ"}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+            </ProfileHeader>
 
             {/* Main Content Container */}
             <div className={cn("max-w-6xl mx-auto px-4 md:px-6 py-6")}>
-                {/* Stats Bar */}
-                <section className={cn(
-                    "flex items-center justify-center gap-8 md:gap-12 lg:gap-16",
-                    "py-6 px-4",
-                    "border-b border-border/30"
-                )}>
-                    <button className={cn(
-                        "flex flex-col items-center gap-1.5 cursor-pointer",
-                        "group transition-all duration-200",
-                        "hover:opacity-90 active:scale-95"
-                    )}>
-                        <span className={cn(
-                            "text-2xl md:text-3xl font-bold text-foreground",
-                            "tracking-tight leading-none",
-                            "group-hover:text-primary transition-colors duration-200"
-                        )}>
-                            {followers.length}
-                        </span>
-                        <span className={cn(
-                            "text-[11px] md:text-xs text-muted-foreground",
-                            "font-medium uppercase tracking-wider",
-                            "group-hover:text-foreground/80 transition-colors duration-200"
-                        )}>
-                            {t("publicProfile.followers")}
-                        </span>
-                    </button>
-                    
-                    <div className={cn(
-                        "h-10 w-px bg-border/20",
-                        "hidden md:block"
-                    )} />
-                    
-                    <button className={cn(
-                        "flex flex-col items-center gap-1.5 cursor-pointer",
-                        "group transition-all duration-200",
-                        "hover:opacity-90 active:scale-95"
-                    )}>
-                        <span className={cn(
-                            "text-2xl md:text-3xl font-bold text-foreground",
-                            "tracking-tight leading-none",
-                            "group-hover:text-primary transition-colors duration-200"
-                        )}>
-                            {following.length}
-                        </span>
-                        <span className={cn(
-                            "text-[11px] md:text-xs text-muted-foreground",
-                            "font-medium uppercase tracking-wider",
-                            "group-hover:text-foreground/80 transition-colors duration-200"
-                        )}>
-                            {t("publicProfile.following")}
-                        </span>
-                    </button>
-                </section>
+                <ProfileStats followers={followers} following={following} />
 
             {/* Tabs Section */}
             <section className={cn("py-6 max-w-6xl mx-auto px-4 md:px-6")}>
@@ -850,12 +554,14 @@ export default function DJProfile() {
                             </div>
                             {editingField === "avatar" && (
                                 <div className="mt-3">
-                                    <input
-                                        type="text"
-                                        placeholder="Nhập link ảnh đại diện..."
+                                    <ImageUploadField
+                                        label="Ảnh đại diện"
                                         value={profile.avatar}
-                                        onChange={(e) => setProfile(prev => ({ ...prev, avatar: e.target.value }))}
-                                        className="w-full border rounded-lg px-3 py-2"
+                                        onChange={(url) => setProfile(prev => ({ ...prev, avatar: url }))}
+                                        uploadMode={true}
+                                        urlInput={true}
+                                        uploading={uploadingAvatar}
+                                        onUploadStateChange={(uploading) => setUploadingAvatar(uploading)}
                                     />
                                 </div>
                             )}
@@ -877,12 +583,14 @@ export default function DJProfile() {
                             </div>
                             {editingField === "background" && (
                                 <div className="mt-3">
-                                    <input
-                                        type="text"
-                                        placeholder="Nhập link ảnh bìa..."
+                                    <ImageUploadField
+                                        label="Ảnh bìa"
                                         value={profile.background}
-                                        onChange={(e) => setProfile(prev => ({ ...prev, background: e.target.value }))}
-                                        className="w-full border rounded-lg px-3 py-2"
+                                        onChange={(url) => setProfile(prev => ({ ...prev, background: url }))}
+                                        uploadMode={true}
+                                        urlInput={true}
+                                        uploading={uploadingBackground}
+                                        onUploadStateChange={(uploading) => setUploadingBackground(uploading)}
                                     />
                                 </div>
                             )}
@@ -1004,7 +712,7 @@ export default function DJProfile() {
                             <div className="flex justify-end gap-3 pt-4">
                                 <button
                                     onClick={() => setShowEditModal(false)}
-                                    disabled={saving}
+                                    disabled={saving || uploadingAvatar || uploadingBackground}
                                     className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50"
                                 >
                                     {t('profile.close')}
@@ -1015,7 +723,8 @@ export default function DJProfile() {
                                             setSaving(true);
                                             
                                             const formData = new FormData();
-                                            formData.append('entityId', businessId);
+                                            // Use EntityAccountId if available, fallback to businessId for API compatibility
+                                            formData.append('entityId', businessEntityId || businessId);
                                             formData.append('userName', profile.userName || '');
                                             formData.append('phone', profile.phone || '');
                                             formData.append('bio', profile.bio || '');
@@ -1174,7 +883,7 @@ export default function DJProfile() {
                                             setSaving(false);
                                         }
                                     }}
-                                    disabled={saving}
+                                    disabled={saving || uploadingAvatar || uploadingBackground}
                                     className="px-4 py-2 bg-[#a78bfa] text-white rounded-lg hover:bg-[#8b5cf6] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {saving ? t('profile.saving') : t('profile.saveChanges')}
@@ -1185,5 +894,13 @@ export default function DJProfile() {
                 </div>
             )}
         </div>
+        {isBanned && (
+            <BannedAccountOverlay 
+                userRole="DJ"
+                entityType="BusinessAccount"
+                entityName={profile?.userName || profile?.UserName}
+            />
+        )}
+        </>
     );
 }

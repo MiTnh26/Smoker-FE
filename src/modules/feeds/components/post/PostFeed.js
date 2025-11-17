@@ -964,6 +964,19 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
           imageUrl={selectedImage.imageUrl}
           postId={selectedImage.postId}
           mediaId={selectedImage.mediaId}
+          allImages={selectedImage.allImages || []}
+          currentIndex={selectedImage.currentIndex !== undefined ? selectedImage.currentIndex : -1}
+          onNavigateImage={(newIndex) => {
+            if (selectedImage.allImages && selectedImage.allImages[newIndex]) {
+              const newImage = selectedImage.allImages[newIndex];
+              setSelectedImage({
+                ...selectedImage,
+                imageUrl: newImage.url,
+                mediaId: newImage._id || newImage.id || newImage.mediaId || null,
+                currentIndex: newIndex
+              });
+            }
+          }}
         />
       )}
 

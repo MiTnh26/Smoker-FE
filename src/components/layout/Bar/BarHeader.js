@@ -10,12 +10,14 @@ import DropdownPanel from "../../common/DropdownPanel";
 import { cn } from "../../../utils/cn";
 import GlobalSearch from "../common/GlobalSearch";
 import notificationApi from "../../../api/notificationApi";
+import messageApi from "../../../api/messageApi";
 
 export default function BarHeader() {
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | 'notifications' | null
   const [barUser, setBarUser] = useState(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const { t } = useTranslation();
   const [session, setSession] = useState(() => {
     try {
@@ -87,21 +89,105 @@ export default function BarHeader() {
     }
   }, []);
 
-  useEffect(() => {
-    const fetchUnreadNotificationCount = async () => {
-      try {
-        const response = await notificationApi.getUnreadCount();
-        if (response.success && response.data) {
-          setUnreadNotificationCount(response.data.count || 0);
-        }
-      } catch (error) {
-        console.error("[BarHeader] Error fetching unread notification count:", error);
+  // Fetch unread notification count
+  const fetchUnreadNotificationCount = async () => {
+    try {
+      const response = await notificationApi.getUnreadCount();
+      if (response.success && response.data) {
+        setUnreadNotificationCount(response.data.count || 0);
       }
-    };
+    } catch (error) {
+      console.error("[BarHeader] Error fetching unread notification count:", error);
+    }
+  };
 
+  // Fetch unread message count
+  const fetchUnreadMessageCount = async () => {
+    try {
+      const session = JSON.parse(localStorage.getItem("session") || "{}");
+      const active = session?.activeEntity || {};
+      const entities = session?.entities || [];
+      
+      const currentUserEntityId =
+        active.EntityAccountId ||
+        active.entityAccountId ||
+        entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
+        entities[0]?.EntityAccountId ||
+        null;
+      
+      if (!currentUserEntityId) {
+        setUnreadMessageCount(0);
+        return;
+      }
+      
+      const res = await messageApi.getConversations(currentUserEntityId);
+      const conversationsData = res.data?.data || res.data || [];
+      
+      // Calculate total unread messages
+      let totalUnread = 0;
+      conversationsData.forEach((conv) => {
+        const messages = Object.values(conv["Cuộc Trò Chuyện"] || {});
+        if (messages.length > 0) {
+          const unread = messages.filter(msg => {
+            const senderId = String(msg["Người Gửi"] || "").toLowerCase().trim();
+            const currentUserIdNormalized = String(currentUserEntityId).toLowerCase().trim();
+            return senderId !== currentUserIdNormalized && !msg["Đã Đọc"];
+          }).length;
+          totalUnread += unread;
+        }
+      });
+      
+      setUnreadMessageCount(totalUnread);
+    } catch (error) {
+      console.error("[BarHeader] Error fetching unread message count:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchUnreadNotificationCount();
     const interval = setInterval(fetchUnreadNotificationCount, 60000);
-    return () => clearInterval(interval);
+    
+    // Listen for notification refresh events (e.g., when someone follows)
+    const handleNotificationRefresh = () => {
+      fetchUnreadNotificationCount();
+    };
+    
+    // eslint-disable-next-line no-undef
+    const win = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : null);
+    if (win) {
+      win.addEventListener("notificationRefresh", handleNotificationRefresh);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (win) {
+        win.removeEventListener("notificationRefresh", handleNotificationRefresh);
+      }
+    };
+  }, []);
+
+  // Fetch unread message count on mount and periodically
+  useEffect(() => {
+    fetchUnreadMessageCount();
+    const interval = setInterval(fetchUnreadMessageCount, 60000);
+    
+    // Listen for message refresh events (e.g., when new messages arrive)
+    const handleMessageRefresh = () => {
+      fetchUnreadMessageCount();
+    };
+    
+    // eslint-disable-next-line no-undef
+    const win = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : null);
+    if (win) {
+      win.addEventListener("messageRefresh", handleMessageRefresh);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (win) {
+        win.removeEventListener("messageRefresh", handleMessageRefresh);
+      }
+    };
   }, []);
   
   if (!session || !session.activeEntity) {
@@ -190,6 +276,20 @@ export default function BarHeader() {
               onClick={() => togglePanel("messages")}
             >
               <MessageCircle size={24} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
+              {unreadMessageCount > 0 && (
+                <span className={cn(
+                  "absolute -top-1 -right-1 min-w-[18px] h-[18px]",
+                  "px-1 flex items-center justify-center",
+                  "bg-danger text-primary-foreground rounded-full",
+                  "text-[11px] font-semibold leading-none",
+                  "border-2 border-card z-10",
+                  "shadow-[0_2px_4px_rgba(0,0,0,0.2)]",
+                  "sm:min-w-[16px] sm:h-[16px] sm:text-[10px] sm:-top-0.5 sm:-right-0.5",
+                  "md:min-w-[18px] md:h-[18px] md:text-[11px] md:-top-1 md:-right-1"
+                )}>
+                  {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+                </span>
+              )}
             </button>
             
             <button 
@@ -260,7 +360,11 @@ export default function BarHeader() {
           />
         )}
         {activePanel === "messages" && (
-          <MessagesPanel conversations={conversations} onClose={() => setActivePanel(null)} />
+          <MessagesPanel 
+            conversations={conversations} 
+            onClose={() => setActivePanel(null)}
+            onUnreadCountChange={(count) => setUnreadMessageCount(count)}
+          />
         )}
         {activePanel === "notifications" && (
           <NotificationPanel

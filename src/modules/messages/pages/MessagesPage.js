@@ -486,7 +486,12 @@ function ConversationView({ chat, onBack }) {
           renderItem={(m, i) => {
             const sender = getSenderKey(m);
             const isMine = me && sender === me;
-            const text = m["Nội Dung Tin Nhắn"] || m.content || m.message || "";
+            let text = m["Nội Dung Tin Nhắn"] || m.content || m.message || "";
+            // Keep the "reply story :" prefix for story replies, only remove old incorrect format
+            if (typeof text === "string") {
+              // Only remove the old incorrect format (translation key), keep the proper format
+              text = text.replace(/^story\.replyYourStory:\s*/i, "");
+            }
             const status = m._status || m.status; // pending | sent | delivered | read
             // link preview
             const urlMatch = typeof text === "string" ? text.match(/https?:\/\/[^\s]+/i) : null;
@@ -510,7 +515,24 @@ function ConversationView({ chat, onBack }) {
             // detect special content
             let contentNode = null;
             let imageUrl = null;
-            if (typeof text === "string") {
+            
+            // Check if this is a story reply (from metadata)
+            const isStoryReply = m.isStoryReply || m.metadata?.isStoryReply || false;
+            const storyUrl = m.storyUrl || m.metadata?.storyUrl || m.storyImage || m.metadata?.storyImage;
+            const storyId = m.storyId || m.metadata?.storyId;
+            
+            // If it's a story reply, use story URL as image
+            if (isStoryReply && storyUrl) {
+              // Handle both string URL and array of URLs
+              if (Array.isArray(storyUrl)) {
+                imageUrl = storyUrl[0]; // Use first image if array
+              } else if (typeof storyUrl === "string") {
+                imageUrl = storyUrl;
+              }
+            }
+            
+            // Fallback: check text content for image patterns
+            if (!imageUrl && typeof text === "string") {
               const storyImg = text.match(/\[STORY_IMAGE:?\s*(https?:\/\/[^\]\s]+)[^\]]*\]/i);
               if (storyImg?.[1]) imageUrl = storyImg[1];
               // fallback: JSON payload { url, type }
@@ -523,16 +545,33 @@ function ConversationView({ chat, onBack }) {
                 } catch {}
               }
             }
+            
+            // Render content with story image if available
             if (imageUrl) {
               contentNode = (
-                <a href={imageUrl} target="_blank" rel="noreferrer" className="block no-underline">
-                  <img
-                    src={imageUrl}
-                    alt="image"
-                    className="max-h-[360px] max-w-[280px] rounded-2xl object-cover"
-                    loading="lazy"
-                  />
-                </a>
+                <div className="flex flex-col gap-2">
+                  <a href={imageUrl} target="_blank" rel="noreferrer" className="block no-underline">
+                    <img
+                      src={imageUrl}
+                      alt={isStoryReply ? "Story" : "image"}
+                      className="max-h-[360px] max-w-[280px] rounded-2xl object-cover"
+                      loading="lazy"
+                    />
+                  </a>
+                  {text && text.trim() && (
+                    <span className="text-sm">
+                      {String(text || "").split(/(https?:\/\/[^\s]+)/gi).map((part, idx) =>
+                        /^https?:\/\//i.test(part) ? (
+                          <a key={idx} href={part} target="_blank" rel="noreferrer" className="text-primary underline">
+                            {part}
+                          </a>
+                        ) : (
+                          <React.Fragment key={idx}>{part}</React.Fragment>
+                        )
+                      )}
+                    </span>
+                  )}
+                </div>
               );
             } else {
               // linkify plain text urls

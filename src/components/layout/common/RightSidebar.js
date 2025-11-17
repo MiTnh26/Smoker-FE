@@ -1,6 +1,7 @@
 // src/components/layout/common/RightSidebar.js
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { getEntityMapFromSession } from "../../../utils/sessionHelper";
@@ -10,11 +11,15 @@ const MAX_CONTACTS = 6; // Chỉ hiển thị 6 liên hệ gần nhất
 
 export default function RightSidebar() {
   const { t } = useTranslation();
+  const location = useLocation();
   const [contacts, setContacts] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
 
   // Track activeEntity to re-fetch when it changes
   const [activeEntityId, setActiveEntityId] = React.useState(null);
+
+  // Determine if current route is admin (do not conditionally call hooks)
+  const isAdminRoute = Boolean(location?.pathname?.startsWith?.("/admin"));
 
   // Listen for session changes (when switching entities)
   React.useEffect(() => {
@@ -54,7 +59,7 @@ export default function RightSidebar() {
   }, []);
 
   React.useEffect(() => {
-    if (!activeEntityId) return; // Wait for activeEntityId to be set
+    if (isAdminRoute || !activeEntityId) return; // Skip on admin
     
     const fetchRecentContacts = async () => {
       try {

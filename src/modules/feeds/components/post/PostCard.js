@@ -160,7 +160,14 @@ export default function PostCard({
       // Tìm media object từ images array
       const foundMedia = medias.images.find(img => img.url === imageUrl);
       const mediaId = foundMedia?._id || foundMedia?.id || foundMedia?.mediaId || null;
-      onImageClick({ imageUrl, postId: post.id, mediaId });
+      const currentIndex = medias.images.findIndex(img => img.url === imageUrl);
+      onImageClick({ 
+        imageUrl, 
+        postId: post.id, 
+        mediaId,
+        allImages: medias.images,
+        currentIndex
+      });
     } else {
       console.warn('[PostCard] onImageClick callback not provided');
     }

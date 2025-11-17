@@ -6,9 +6,13 @@ const songApi = {
     console.log("Fetching songs...", axiosClient.get("/song/"));
     return axiosClient.get("/song/");
   },
-  // Stream nhạc (trả về url, FE dùng <audio src=...>)
+  // Stream nhạc theo filename (legacy)
   getSongStreamUrl: (filename) => {
-    return `http://localhost:9999/api/song/stream/${filename}`;
+    return `${process.env.REACT_APP_API_URL || "http://localhost:9999/api"}/song/stream/${filename}`;
+  },
+  // Stream nhạc theo GridFS file id (ưu tiên)
+  getSongStreamUrlById: (fileId) => {
+    return `${process.env.REACT_APP_API_URL || "http://localhost:9999/api"}/song/stream-id/${fileId}`;
   },
   // Upload nhạc (formData: {file, ...})
   uploadSong: (formData) => {

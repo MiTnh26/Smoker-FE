@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { markStoriesAsViewed, markStoryAsViewed, deleteStory, likeStory, unlikeStory } from "../../../../api/storyApi";
+import messageApi from "../../../../api/messageApi";
 import { useAllUserGroups } from "./hooks/useAllUserGroups";
 import { useStoryProgress } from "./hooks/useStoryProgress";
 import { useStoryControls } from "./hooks/useStoryControls";
@@ -12,6 +13,7 @@ import StoryInfo from "./StoryInfo";
 import StoryContent from "./StoryContent";
 import StoryViewers from "./StoryViewers";
 import ReportStoryModal from "./ReportStoryModal";
+import Toast from "../../../../components/common/Toast";
 
 export default function StoryViewer({ stories, activeStory, onClose, entityAccountId, onStoryDeleted }) {
   const { t } = useTranslation();
@@ -92,6 +94,15 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
 
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [storyToReport, setStoryToReport] = useState(null);
+  
+  // Reply state - auto open for non-own stories
+  const [replyText, setReplyText] = useState("");
+  const [sendingReply, setSendingReply] = useState(false);
+  const replyInputRef = useRef(null);
+  
+  // Toast state
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
   const openReportModal = useCallback(
     (targetStory) => {
@@ -269,6 +280,8 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
   useEffect(() => {
     setUserIndex(currentUserIndex);
     setStoryIndex(currentStoryIndex);
+    // Reset reply input when story changes
+    setReplyText("");
   }, [currentUserIndex, currentStoryIndex]);
 
   // Check if story belongs to current user
@@ -307,6 +320,49 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
     handleCopyLink,
     handleReport,
   } = useStoryControls(story, openReportModal);
+
+  // Auto focus reply input for non-own stories when story changes and auto pause
+  useEffect(() => {
+    if (!isOwnStory && replyInputRef.current) {
+      // Auto pause story when input is shown
+      if (!isPaused) {
+        setIsPaused(true);
+      }
+      // Pause audio if exists
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+      }
+      // Auto focus after a short delay
+      const timer = setTimeout(() => {
+        replyInputRef.current?.focus();
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [story, isOwnStory, isPaused, setIsPaused, audioRef]);
+
+  // Auto pause story and audio when reply input is focused (additional safety)
+  useEffect(() => {
+    if (!isOwnStory && replyInputRef.current) {
+      const handleFocus = () => {
+        // Ensure story is paused
+        if (!isPaused) {
+          setIsPaused(true);
+        }
+        // Pause audio if exists
+        if (audioRef.current && !audioRef.current.paused) {
+          audioRef.current.pause();
+        }
+      };
+      
+      const input = replyInputRef.current;
+      input.addEventListener('focus', handleFocus);
+      
+      return () => {
+        input.removeEventListener('focus', handleFocus);
+      };
+    }
+  }, [isOwnStory, isPaused, setIsPaused, audioRef, story]);
 
   // Handle delete story
   const handleDelete = useCallback(async () => {
@@ -514,7 +570,8 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
           "relative flex w-[400px] max-w-[92%] flex-col overflow-hidden",
           "bg-card text-card-foreground",
           "rounded-lg border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
-          "max-h-[98vh]"
+          "max-h-[98vh]",
+          "mx-12 md:mx-16" // Add margin to make room for navigation buttons
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -571,15 +628,16 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
           }} 
         />
 
-        {/* Like button - chỉ hiển thị nếu không phải story của chính chủ */}
+        {/* Like button and Reply input - chỉ hiển thị nếu không phải story của chính chủ */}
         {!isOwnStory && (
           <div
-            className="absolute bottom-3 left-3 z-20"
+            className="absolute bottom-3 left-3 right-3 z-20 flex items-center gap-2"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Like button */}
             <button 
               className={cn(
-                "flex h-11 w-11 items-center justify-center rounded-lg bg-black/60 text-white transition-colors duration-200 hover:bg-black/80",
+                "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-black/60 text-white transition-colors duration-200 hover:bg-black/80",
                 liked && "text-[#ff3040]"
               )}
               onClick={toggleLike}
@@ -594,9 +652,112 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
               </svg>
               {likeCount > 0 && (
-                <span className="ml-2 text-sm text-white">{likeCount}</span>
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#ff3040] px-1 text-xs font-semibold text-white">
+                  {likeCount}
+                </span>
               )}
             </button>
+
+            {/* Reply input form - auto open */}
+            <form
+              className="flex flex-1 items-center gap-2"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!replyText.trim() || sendingReply) return;
+                
+                setSendingReply(true);
+                try {
+                  // Get current user info
+                  const session = JSON.parse(localStorage.getItem("session") || "{}");
+                  const currentUser = session?.activeEntity || session?.account;
+                  const currentEntityAccountId = currentUser?.EntityAccountId || currentUser?.entityAccountId || currentUser?.id;
+                  
+                  // Get story author info
+                  const storyAuthorId = story?.authorEntityAccountId || story?.entityAccountId || story?.accountId;
+                  
+                  if (!currentEntityAccountId || !storyAuthorId) {
+                    alert(t("story.replyError") || "Không thể gửi reply. Vui lòng thử lại.");
+                    return;
+                  }
+                  
+                  // Create or get conversation
+                  const convResponse = await messageApi.createOrGetConversation(
+                    String(currentEntityAccountId),
+                    String(storyAuthorId)
+                  );
+                  
+                  const conversationId = convResponse?.data?.conversationId || convResponse?.data?._id || convResponse?.data?.id;
+                  
+                  if (!conversationId) {
+                    alert(t("story.replyError") || "Không thể tạo cuộc trò chuyện. Vui lòng thử lại.");
+                    return;
+                  }
+                  
+                  // Send message with story reply context
+                  // Format: "reply story : {nội dung}"
+                  const replyPrefix = t("story.replyYourStory") || "Trả lời story";
+                  const messageContent = `${replyPrefix}: ${replyText.trim()}`;
+                  
+                  await messageApi.sendMessage(
+                    conversationId,
+                    messageContent,
+                    "text",
+                    currentEntityAccountId,
+                    currentUser?.role || "Account",
+                    currentUser?.id || currentUser?._id,
+                    {
+                      storyId: story?._id || story?.id,
+                      storyUrl: story?.images || story?.video,
+                      isStoryReply: true
+                    }
+                  );
+                  
+                  // Success - Show toast notification
+                  const authorName = story?.authorName || story?.authorEntityName || story?.userName || "người dùng";
+                  const toastMsg = t("story.replySentTo", { name: authorName });
+                  setToastMessage(toastMsg || `Đã reply story ${authorName}`);
+                  setShowToast(true);
+                  
+                  setReplyText("");
+                  // Auto focus lại input
+                  setTimeout(() => {
+                    replyInputRef.current?.focus();
+                  }, 100);
+                } catch (error) {
+                  console.error("[StoryViewer] Error sending reply:", error);
+                  alert(error?.response?.data?.message || t("story.replyError") || "Không thể gửi reply. Vui lòng thử lại.");
+                } finally {
+                  setSendingReply(false);
+                }
+              }}
+            >
+              <input
+                ref={replyInputRef}
+                type="text"
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder={t("story.replyPlaceholder") || "Nhập reply..."}
+                className="flex-1 rounded-full border border-white/20 bg-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/50 focus:border-white/40 focus:bg-white/15 focus:outline-none"
+                disabled={sendingReply}
+              />
+              <button
+                type="submit"
+                disabled={!replyText.trim() || sendingReply}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingReply ? (
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                )}
+              </button>
+            </form>
           </div>
         )}
 
@@ -606,10 +767,10 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
           isOwnStory={isOwnStory}
         />
 
-        {/* Navigation controls */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between px-3">
+        {/* Navigation controls - outside story area */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between">
           <button
-            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-lg bg-black/35 text-white transition-colors duration-200 hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            className="pointer-events-auto absolute left-[-48px] flex h-11 w-11 items-center justify-center rounded-lg bg-black/35 text-white transition-colors duration-200 hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 md:left-[-64px]"
             onClick={prevStory}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -617,7 +778,7 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
             </svg>
           </button>
           <button
-            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-lg bg-black/35 text-white transition-colors duration-200 hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            className="pointer-events-auto absolute right-[-48px] flex h-11 w-11 items-center justify-center rounded-lg bg-black/35 text-white transition-colors duration-200 hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 md:right-[-64px]"
             onClick={nextStory}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -648,6 +809,15 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
           }}
         />
       )}
+
+      {/* Toast notification */}
+      <Toast
+        show={showToast}
+        message={toastMessage}
+        type="success"
+        duration={3000}
+        onClose={() => setShowToast(false)}
+      />
     </div>
   );
 }

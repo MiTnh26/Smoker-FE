@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import PropTypes from "prop-types";
+import { useSocket } from "../../../contexts/SocketContext";
+import { getSession, getActiveEntity, getEntities } from "../../../utils/sessionManager";
 import notificationApi from "../../../api/notificationApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import "../../../styles/components/notificationDropdown.css";
@@ -12,6 +14,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   const [loading, setLoading] = useState(false);
   const [senderAvatars, setSenderAvatars] = useState({}); // Cache avatars by senderEntityAccountId
   const navigate = useNavigate();
+  const { socket, isConnected } = useSocket();
 
   // Fetch avatar for a sender
   const fetchSenderAvatar = async (senderEntityAccountId) => {
@@ -129,13 +132,13 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
     // Close panel first
     onClose?.();
 
-    // Handle different link formats
+    // Handle different link formats (like Facebook)
     if (notification.link) {
       let targetPath = notification.link;
       
-      // If link is /posts/:postId or /stories/:storyId, open modal instead of navigating
-      if (targetPath.startsWith('/posts/') || targetPath.startsWith('/stories/')) {
-        // Extract post/story ID and commentId (if any) from link
+      // Handle post notifications - open post modal
+      if (targetPath.startsWith('/posts/')) {
+        // Extract post ID and commentId (if any) from link
         const urlParts = targetPath.split('?');
         const pathPart = urlParts[0];
         const queryPart = urlParts[1];
@@ -149,7 +152,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
           commentId = params.get('commentId');
         }
         
-        console.log('[NotificationPanel] Opening modal with postId:', id, 'commentId:', commentId);
+        console.log('[NotificationPanel] Opening post modal with postId:', id, 'commentId:', commentId);
         
         // Call parent's onOpenModal if provided
         if (onOpenModal) {
@@ -157,6 +160,16 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
         }
         
         return; // Don't navigate
+      }
+      
+      // Handle story notifications - navigate to story page (not post modal)
+      if (targetPath.startsWith('/stories/')) {
+        console.log('[NotificationPanel] Navigating to story page:', targetPath);
+        // Navigate to story page (like Facebook)
+        setTimeout(() => {
+          navigate(targetPath);
+        }, 100);
+        return; // Don't open post modal
       }
       
       // For other links, navigate normally
@@ -238,6 +251,71 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
     fetchNotifications();
   }, []);
 
+  // Join socket room and listen for real-time notifications
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    // Get current user's entityAccountId to join room
+    const session = getSession();
+    if (!session) return;
+
+    const active = getActiveEntity() || {};
+    const entities = getEntities();
+    
+    // Get EntityAccountId (priority: activeEntity > matching entity > first entity)
+    let entityAccountId = active.EntityAccountId || active.entityAccountId || null;
+    
+    if (!entityAccountId && active.id && active.type) {
+      const foundEntity = entities.find(
+        e => String(e.id) === String(active.id) && 
+             (e.type === active.type || 
+              (e.type === "BusinessAccount" && active.type === "Business"))
+      );
+      entityAccountId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
+    }
+    
+    // Fallback to AccountId if no EntityAccountId
+    const userId = entityAccountId || active.id || session.account?.id || null;
+    
+    if (userId) {
+      // Join room with userId (entityAccountId or AccountId)
+      socket.emit("join", String(userId));
+      console.log("[NotificationPanel] Joined socket room:", userId);
+    }
+
+    // Listen for new notifications
+    const handleNewNotification = (data) => {
+      console.log("[NotificationPanel] Received new notification:", data);
+      
+      if (data.notification) {
+        // Add new notification to the list
+        setNotifications((prev) => [data.notification, ...prev]);
+        
+        // Fetch avatar for sender
+        if (data.notification.senderEntityAccountId) {
+          fetchSenderAvatar(data.notification.senderEntityAccountId);
+        }
+      }
+      
+      // Update unread count
+      if (data.unreadCount !== undefined) {
+        setUnreadCount(data.unreadCount);
+        if (onUnreadCountChange) {
+          onUnreadCountChange(data.unreadCount);
+        }
+      } else {
+        // Fallback: fetch unread count
+        fetchUnreadCount();
+      }
+    };
+
+    socket.on("new_notification", handleNewNotification);
+
+    return () => {
+      socket.off("new_notification", handleNewNotification);
+    };
+  }, [socket, isConnected, onUnreadCountChange]);
+
   // Fetch unread count on mount and periodically
   useEffect(() => {
     fetchUnreadCount();
@@ -247,7 +325,24 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
       fetchUnreadCount();
     }, 60000);
 
-    return () => clearInterval(interval);
+    // Listen for notification refresh events (e.g., when someone follows)
+    const handleNotificationRefresh = () => {
+      fetchUnreadCount();
+      fetchNotifications(); // Also refresh the list
+    };
+    
+    // eslint-disable-next-line no-undef
+    const win = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : null);
+    if (win) {
+      win.addEventListener("notificationRefresh", handleNotificationRefresh);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (win) {
+        win.removeEventListener("notificationRefresh", handleNotificationRefresh);
+      }
+    };
   }, []);
 
   // Poll for new notifications every 30 seconds

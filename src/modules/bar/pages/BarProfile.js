@@ -19,192 +19,13 @@ import publicProfileApi from "../../../api/publicProfileApi";
 import { userApi } from "../../../api/userApi";
 import { cn } from "../../../utils/cn";
 import ReportEntityModal from "../../feeds/components/modals/ReportEntityModal";
-
-// Helper functions for post transformation (same as PublicProfile)
-const normalizeMediaArray = (medias) => {
-  const images = [];
-  const videos = [];
-  const audios = [];
-
-  const isAudioUrl = (url) => {
-    if (!url || typeof url !== 'string') return false;
-    const u = url.toLowerCase();
-    return (
-      u.includes('.mp3') ||
-      u.includes('.m4a') ||
-      u.includes('.wav') ||
-      u.includes('.ogg') ||
-      u.includes('.aac')
-    );
-  };
-
-  if (Array.isArray(medias)) {
-    for (const mediaItem of medias) {
-      if (!mediaItem) continue;
-      const url = mediaItem.url || mediaItem.src || mediaItem.path;
-      const type = (mediaItem.type || "").toLowerCase();
-      if (!url) continue;
-      if (type === "audio" || isAudioUrl(url)) {
-        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
-      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
-        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
-      } else {
-        images.push({ url, id: mediaItem._id || mediaItem.id || url });
-      }
-    }
-  } else if (medias && typeof medias === "object") {
-    for (const key of Object.keys(medias)) {
-      const mediaItem = medias[key];
-      if (!mediaItem) continue;
-      const url = mediaItem.url || mediaItem.src || mediaItem.path;
-      const type = (mediaItem.type || "").toLowerCase();
-      if (!url) continue;
-      if (type === "audio" || isAudioUrl(url)) {
-        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
-      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
-        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
-      } else {
-        images.push({ url, id: mediaItem._id || mediaItem.id || url });
-      }
-    }
-  }
-  return { images, videos, audios };
-};
-
-const countCollection = (value) => {
-  if (!value) return 0;
-  if (Array.isArray(value)) return value.length;
-  if (value instanceof Map) return value.size;
-  if (typeof value === "object") return Object.keys(value).length;
-  if (typeof value === "number") return value;
-  return 0;
-};
-
-const formatPostTime = (value, t) => {
-  try {
-    const d = value ? new Date(value) : new Date();
-    if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
-    const now = new Date();
-    const diffMs = now.getTime() - d.getTime();
-    if (diffMs < 0) return d.toLocaleString('vi-VN');
-    const minutes = Math.floor(diffMs / 60000);
-    if (minutes < 1) return t('time.justNow') || 'vừa xong';
-    if (minutes < 60) return t('time.minutesAgo', { minutes }) || `${minutes} phút trước`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return t('time.hoursAgo', { hours }) || `${hours} giờ trước`;
-    return d.toLocaleDateString('vi-VN');
-  } catch {
-    return new Date().toLocaleString('vi-VN');
-  }
-};
-
-// eslint-disable-next-line complexity
-const mapPostForCard = (post, t) => {
-  const id = post._id || post.id || post.postId;
-  const author = post.author || post.account || {};
-  const mediaFromPost = normalizeMediaArray(post.medias);
-  const mediaFromMediaIds = normalizeMediaArray(post.mediaIds);
-  const images = [...mediaFromPost.images, ...mediaFromMediaIds.images];
-  const videos = [...mediaFromPost.videos, ...mediaFromMediaIds.videos];
-  const audios = [...mediaFromPost.audios, ...mediaFromMediaIds.audios];
-
-  const resolveUserName = () =>
-    post.authorName ||
-    post.authorEntityName ||
-    author.userName ||
-    author.name ||
-    post.user ||
-    t("common.user");
-
-  const resolveAvatar = () =>
-    post.authorAvatar ||
-    post.authorEntityAvatar ||
-    author.avatar ||
-    post.avatar ||
-    "https://via.placeholder.com/40";
-
-  // Extract audio from post
-  const isAudioUrl = (url) => {
-    if (!url || typeof url !== 'string') return false;
-    const u = url.toLowerCase();
-    return (
-      u.includes('.mp3') ||
-      u.includes('.m4a') ||
-      u.includes('.wav') ||
-      u.includes('.ogg') ||
-      u.includes('.aac')
-    );
-  };
-
-  // Get audio from various sources
-  const music = post.musicId || post.music || {};
-  const audioFromMusic = (() => {
-    if (!music) return null;
-    const candidates = [
-      music.audioUrl,
-      music.streamUrl,
-      music.fileUrl,
-      music.url,
-      music.sourceUrl,
-      music.downloadUrl,
-    ];
-    for (const c of candidates) if (c && isAudioUrl(c)) return c;
-    return null;
-  })();
-
-  // Check medias for audio
-  const audioFromMedias = (() => {
-    if (Array.isArray(post.medias)) {
-      for (const mediaItem of post.medias) {
-        if (!mediaItem) continue;
-        const url = mediaItem.url || mediaItem.src || mediaItem.path;
-        if (url && isAudioUrl(url)) return url;
-      }
-    } else if (post.medias && typeof post.medias === "object") {
-      for (const key of Object.keys(post.medias)) {
-        const mediaItem = post.medias[key];
-        if (!mediaItem) continue;
-        const url = mediaItem.url || mediaItem.src || mediaItem.path;
-        if (url && isAudioUrl(url)) return url;
-      }
-    }
-    return null;
-  })();
-
-  const audioSrc = audioFromMusic || audios[0]?.url || audioFromMedias || post.audioSrc || post.audioUrl || null;
-
-  return {
-    id,
-    user: resolveUserName(),
-    avatar: resolveAvatar(),
-    time: formatPostTime(post.createdAt, t),
-    content: post.content || post.caption || post["Tiêu Đề"] || "",
-    medias: { images, videos, audios: audioSrc ? [{ url: audioSrc }] : audios },
-    image: images[0]?.url || null,
-    videoSrc: videos[0]?.url || null,
-    audioSrc: audioSrc,
-    audioTitle: music.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
-    artistName: music.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null,
-    thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
-    purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
-    likes: countCollection(post.likes),
-    likedByCurrentUser: false,
-    comments: countCollection(post.comments),
-    shares: post.shares || 0,
-    hashtags: post.hashtags || [],
-    verified: !!post.verified,
-    location: post.location || null,
-    title: post.title || null,
-    canManage: false,
-    ownerEntityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
-    entityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
-    authorEntityAccountId: post.authorEntityAccountId || post.entityAccountId || null,
-    authorEntityId: post.authorEntityId || post.authorId || post.accountId || null,
-    authorEntityType: post.authorEntityType || post.entityType || post.type || null,
-    ownerAccountId: post.accountId || post.ownerAccountId || author.id || null,
-    targetType: post.type || "post",
-  };
-};
+import { mapPostForCard } from "../../../utils/postTransformers";
+import { useProfilePosts } from "../../../hooks/useProfilePosts";
+import { useCurrentUserEntity } from "../../../hooks/useCurrentUserEntity";
+import { ProfileHeader } from "../../../components/profile/ProfileHeader";
+import { ProfileStats } from "../../../components/profile/ProfileStats";
+import { ImageUploadField } from "../../../components/profile/ImageUploadField";
+import BannedAccountOverlay from "../../../components/common/BannedAccountOverlay";
 
 export default function BarProfile() {
   const { t } = useTranslation();
@@ -227,91 +48,31 @@ export default function BarProfile() {
   const [editingField, setEditingField] = useState(null);
   const [saving, setSaving] = useState(false);
   const [tableTypes, setTableTypes] = useState([]); // 🟢 Track table types for disable logic
-  const [currentUserEntityId, setCurrentUserEntityId] = useState(null);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [profileStatus, setProfileStatus] = useState("");
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const menuRef = useRef(null);
-  const [barPosts, setBarPosts] = useState([]);
-  const [postsLoading, setPostsLoading] = useState(true);
-
   // Location states
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
   const [selectedWardId, setSelectedWardId] = useState('');
   const [addressDetail, setAddressDetail] = useState('');
   
-  // Get current user entity ID for followers/following and chat
-  // When at bar, must use EntityAccountId of the bar, not Account EntityAccountId
-  useEffect(() => {
-    const resolveCurrentUserEntityId = async () => {
-      try {
-        const sessionRaw = localStorage.getItem("session");
-        if (!sessionRaw) return;
-        const session = JSON.parse(sessionRaw);
-        const active = session?.activeEntity || {};
-        const entities = session?.entities || [];
-        
-        // Priority: EntityAccountId from activeEntity > EntityAccountId from matching entity in entities list > fetch from API
-        let resolvedId =
-          active.EntityAccountId ||
-          active.entityAccountId ||
-          null;
-        
-        // If not found in activeEntity, try to find in entities list
-        if (!resolvedId && active.id && active.type) {
-          const foundEntity = entities.find(
-            e => String(e.id) === String(active.id) && 
-                 (e.type === active.type || 
-                  (e.type === "BusinessAccount" && active.type === "Business"))
-          );
-          resolvedId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
-        }
-        
-        // If still not found and we have active.id, try to fetch EntityAccountId from API
-        if (!resolvedId && active.id && active.type && session?.account?.id) {
-          try {
-            // For BarPage, try to get EntityAccountId from entities API
-            if (active.type === "BarPage" || active.type === "Business") {
-              const entitiesRes = await userApi.getEntities(session.account.id);
-              const refreshedEntities = entitiesRes?.data?.data || entitiesRes?.data || [];
-              const foundEntity = refreshedEntities.find(
-                e => String(e.id) === String(active.id) && 
-                     (e.type === active.type || 
-                      (e.type === "BusinessAccount" && active.type === "Business"))
-              );
-              resolvedId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
-              
-              // Update session with refreshed entities if found
-              if (resolvedId && refreshedEntities.length > 0) {
-                session.entities = refreshedEntities;
-                localStorage.setItem("session", JSON.stringify(session));
-              }
-            }
-          } catch (err) {
-            console.warn("[BarProfile] Failed to fetch EntityAccountId:", err);
-          }
-        }
-        
-        // Final fallback: use active.id only if it looks like a UUID (EntityAccountId format)
-        // Don't use BarPageId as EntityAccountId
-        if (!resolvedId && active.id && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(active.id)) {
-          resolvedId = active.id;
-        }
-        
-        console.log("[BarProfile] Resolved currentUserEntityId:", resolvedId, "from activeEntity:", active);
-        setCurrentUserEntityId(resolvedId || null);
-      } catch (err) {
-        console.error("[BarProfile] Error resolving currentUserEntityId:", err);
-      }
-    };
-    
-    resolveCurrentUserEntityId();
-  }, []);
+  // Upload states - track separately for avatar and background
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBackground, setUploadingBackground] = useState(false);
+  
+  // Get current user entity ID using shared hook
+  const currentUserEntityId = useCurrentUserEntity();
   
   // Use EntityAccountId or barPageId (will be normalized by backend)
   const followEntityId = profile?.EntityAccountId || profile?.entityAccountId || barPageId;
   const { followers, fetchFollowers } = useFollowers(followEntityId);
   const { following, fetchFollowing } = useFollowing(followEntityId);
+  
+  // Use shared hook for posts
+  const entityIdForPosts = profile?.EntityAccountId || barPageId;
+  const { posts: barPosts, loading: postsLoading } = useProfilePosts(entityIdForPosts);
   
   useEffect(() => {
     if (followEntityId) {
@@ -334,6 +95,7 @@ export default function BarProfile() {
         console.log("✅ API Response getBarPageById:", res);
         if (res.status === "success" && res.data) {
           setProfile(res.data);
+          setProfileStatus((res.data.Status || res.data.status || "").toLowerCase());
 
           // Load structured address data if available
           if (res.data.addressData) {
@@ -390,45 +152,6 @@ export default function BarProfile() {
     fetchTableTypes();
   }, [barPageId]);
 
-  // Load posts for this bar
-  useEffect(() => {
-    let alive = true;
-    const loadBarPosts = async () => {
-      if (!profile?.EntityAccountId && !barPageId) {
-        setPostsLoading(false);
-        return;
-      }
-      
-      try {
-        setPostsLoading(true);
-        // Use EntityAccountId if available, otherwise use barPageId
-        const entityId = profile?.EntityAccountId || barPageId;
-        const resp = await getPostsByAuthor(entityId, {});
-        if (!alive) return;
-
-        let rawPosts = [];
-        if (Array.isArray(resp?.data)) {
-          rawPosts = resp.data;
-        } else if (Array.isArray(resp?.data?.data)) {
-          rawPosts = resp.data.data;
-        }
-
-        const transformed = rawPosts.map((post) => mapPostForCard(post, t));
-        setBarPosts(transformed);
-      } catch (error) {
-        console.error("Error loading bar posts:", error);
-        setBarPosts([]);
-      } finally {
-        if (alive) setPostsLoading(false);
-      }
-    };
-    
-    if (profile?.EntityAccountId || barPageId) {
-      loadBarPosts();
-    }
-    
-    return () => { alive = false; };
-  }, [profile?.EntityAccountId, barPageId, t]);
 
   // Check if this is own profile: compare barPageId (from URL) with activeEntity.id (BarPageId of current role)
   // or compare EntityAccountId of current role with profile.EntityAccountId
@@ -475,6 +198,24 @@ export default function BarProfile() {
       </div>
     );
   }
+
+  const isPending = profileStatus === "pending";
+  if (isPending) {
+    return (
+      <div className={cn("min-h-screen bg-background flex items-center justify-center px-4")}>
+        <div className={cn("max-w-xl text-center bg-card border border-border/30 rounded-2xl p-8 shadow-sm")}>
+          <h2 className="text-2xl font-semibold mb-3">{t('profile.pendingTitle', { defaultValue: "Hồ sơ đang chờ duyệt" })}</h2>
+          <p className="text-muted-foreground mb-4">
+            {t('profile.pendingDescriptionBar', {
+              defaultValue: "Trang Bar của bạn đang được quản trị viên xem xét. Tất cả tính năng sẽ hoạt động trở lại sau khi được phê duyệt."
+            })}
+          </p>
+          <p className="text-sm text-muted-foreground">{t('profile.contactSupport', { defaultValue: "Liên hệ đội ngũ hỗ trợ nếu bạn cần được trợ giúp nhanh hơn." })}</p>
+        </div>
+      </div>
+    );
+  }
+  const isBanned = profileStatus === "banned";
   const renderTabContent = () => {
     switch (activeTab) {
       case "info":
@@ -563,153 +304,82 @@ export default function BarProfile() {
   
   const isOwnProfile = activeBarPageId && String(activeBarPageId).toLowerCase() === String(barPageId).toLowerCase();
 
+  const handleUploadStateChange = (fieldKey, uploading) => {
+    if (fieldKey === "Avatar" || fieldKey === "avatar") {
+      setUploadingAvatar(uploading);
+    } else if (fieldKey === "Background" || fieldKey === "background") {
+      setUploadingBackground(uploading);
+    }
+  };
+
   return (
-    <div className={cn("min-h-screen bg-background")}>
-      {/* Cover Photo Section - Instagram Style */}
-      <section className={cn("relative w-full h-[200px] md:h-[250px] overflow-hidden rounded-b-lg")}>
-        <div
-          className={cn("absolute inset-0 bg-cover bg-center")}
-          style={{
-            backgroundImage: `url(${profile.Background || "https://i.imgur.com/6IUbEMn.jpg"})`,
-          }}
-        />
-        {/* Gradient Overlay */}
-        <div className={cn("absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60")} />
-        
-        {/* Action Buttons */}
-        <div className={cn("absolute top-4 right-4 z-10 flex items-center gap-2")}>
-          {!isOwnProfile && (
-            <>
-              <button
-                onClick={async () => {
-                  try {
-                    if (!currentUserEntityId) {
-                      console.error("[BarProfile] Cannot open chat: currentUserEntityId is null");
-                      return;
-                    }
-                    
-                    let barEntityId = profile.EntityAccountId || null;
-                    
-                    if (!barEntityId && barPageId) {
-                      try {
-                        const profileRes = await publicProfileApi.getByEntityId(barPageId);
-                        barEntityId = profileRes?.data?.data?.entityId || profileRes?.data?.entityId || null;
-                      } catch (err) {
-                        if (err?.response?.status === 404) {
-                          try {
-                            const sessionRaw = localStorage.getItem("session");
-                            if (sessionRaw) {
-                              const session = JSON.parse(sessionRaw);
-                              const entities = session?.entities || [];
-                              const foundEntity = entities.find(
-                                e => String(e.id) === String(barPageId) && e.type === "BarPage"
-                              );
-                              barEntityId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
-                            }
-                          } catch (sessionErr) {
-                            console.warn("[BarProfile] Error checking session entities:", sessionErr);
+    <>
+      <div className={cn("min-h-screen bg-background", isBanned && "opacity-30 pointer-events-none")}>
+      <ProfileHeader
+        background={profile.Background}
+        avatar={profile.Avatar}
+        name={profile.BarName}
+        role="BAR"
+      >
+        {!isOwnProfile && (
+          <>
+            <button
+              onClick={async () => {
+                try {
+                  if (!currentUserEntityId) {
+                    console.error("[BarProfile] Cannot open chat: currentUserEntityId is null");
+                    return;
+                  }
+                  
+                  let barEntityId = profile.EntityAccountId || null;
+                  
+                  if (!barEntityId && barPageId) {
+                    try {
+                      const profileRes = await publicProfileApi.getByEntityId(barPageId);
+                      barEntityId = profileRes?.data?.data?.entityId || profileRes?.data?.entityId || null;
+                    } catch (err) {
+                      if (err?.response?.status === 404) {
+                        try {
+                          const sessionRaw = localStorage.getItem("session");
+                          if (sessionRaw) {
+                            const session = JSON.parse(sessionRaw);
+                            const entities = session?.entities || [];
+                            const foundEntity = entities.find(
+                              e => String(e.id) === String(barPageId) && e.type === "BarPage"
+                            );
+                            barEntityId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
                           }
+                        } catch (sessionErr) {
+                          console.warn("[BarProfile] Error checking session entities:", sessionErr);
                         }
                       }
                     }
-                    
-                    if (!barEntityId && barPageId && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(barPageId)) {
-                      barEntityId = barPageId;
-                    }
-                    
-                    if (!barEntityId) {
-                      console.error("[BarProfile] Cannot open chat: barEntityId is null");
-                      return;
-                    }
-                    
-                    const res = await messageApi.createOrGetConversation(currentUserEntityId, barEntityId);
-                    const conversation = res?.data?.data || res?.data;
-                    const conversationId = conversation?._id || conversation?.conversationId || conversation?.id;
-                    if (conversationId && window.__openChat) {
-                      window.__openChat({
-                        id: conversationId,
-                        name: profile.BarName || "Bar",
-                        avatar: profile.Avatar || null,
-                        entityId: barEntityId
-                      });
-                    }
-                  } catch (error) {
-                    console.error("[BarProfile] Error opening chat:", error);
                   }
-                }}
-                className={cn(
-                  "px-4 py-2 rounded-lg font-semibold text-sm",
-                  "bg-card/80 backdrop-blur-sm text-foreground border-none",
-                  "hover:bg-card/90 transition-all duration-200",
-                  "active:scale-95",
-                  "flex items-center gap-2"
-                )}
-              >
-                <i className="bx bx-message-rounded text-base"></i>
-                Chat
-              </button>
-              <FollowButton
-                followingId={profile?.EntityAccountId || profile?.entityAccountId || barPageId}
-                followingType="BAR"
-              />
-              <div className="relative" ref={menuRef}>
-                <button
-                  type="button"
-                  onClick={() => setActionMenuOpen((prev) => !prev)}
-                  className={cn(
-                    "w-10 h-10 rounded-full border border-border/40 text-foreground/80",
-                    "bg-card/70 backdrop-blur-sm flex items-center justify-center",
-                    "hover:bg-card/90 transition-all duration-200 active:scale-95"
-                  )}
-                  aria-haspopup="true"
-                  aria-expanded={actionMenuOpen}
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                    <circle cx="12" cy="5" r="2" />
-                    <circle cx="12" cy="12" r="2" />
-                    <circle cx="12" cy="19" r="2" />
-                  </svg>
-                </button>
-                {actionMenuOpen && (
-                  <div
-                    className={cn(
-                      "absolute right-0 mt-2 w-48 rounded-lg border border-border/30",
-                      "bg-card/95 backdrop-blur-sm text-foreground shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
-                      "overflow-hidden z-20"
-                    )}
-                    role="menu"
-                  >
-                    <button
-                      type="button"
-                      className={cn(
-                        "w-full text-left px-4 py-2 text-sm",
-                        "hover:bg-danger/10 hover:text-danger transition-all duration-150"
-                      )}
-                      onClick={() => {
-                        setActionMenuOpen(false);
-                        setReportModalOpen(true);
-                      }}
-                    >
-                      {t("publicProfile.reportProfile")}
-                    </button>
-                    <button
-                      type="button"
-                      className={cn(
-                        "w-full text-left px-4 py-2 text-sm",
-                        "hover:bg-muted/40 transition-all duration-150"
-                      )}
-                      onClick={handleBlock}
-                    >
-                      {t("publicProfile.blockProfile")}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-          {isOwnProfile && (
-            <button
-              onClick={handleEditClick}
+                  
+                  if (!barEntityId && barPageId && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(barPageId)) {
+                    barEntityId = barPageId;
+                  }
+                  
+                  if (!barEntityId) {
+                    console.error("[BarProfile] Cannot open chat: barEntityId is null");
+                    return;
+                  }
+                  
+                  const res = await messageApi.createOrGetConversation(currentUserEntityId, barEntityId);
+                  const conversation = res?.data?.data || res?.data;
+                  const conversationId = conversation?._id || conversation?.conversationId || conversation?.id;
+                  if (conversationId && window.__openChat) {
+                    window.__openChat({
+                      id: conversationId,
+                      name: profile.BarName || "Bar",
+                      avatar: profile.Avatar || null,
+                      entityId: barEntityId
+                    });
+                  }
+                } catch (error) {
+                  console.error("[BarProfile] Error opening chat:", error);
+                }
+              }}
               className={cn(
                 "px-4 py-2 rounded-lg font-semibold text-sm",
                 "bg-card/80 backdrop-blur-sm text-foreground border-none",
@@ -718,100 +388,88 @@ export default function BarProfile() {
                 "flex items-center gap-2"
               )}
             >
-              <i className="bx bx-edit text-base"></i>
-              {t('profile.editProfile')}
+              <i className="bx bx-message-rounded text-base"></i>
+              Chat
             </button>
-          )}
-        </div>
-
-        {/* Profile Info Overlay */}
-        <div className={cn("absolute bottom-0 left-0 right-0 p-4 md:p-6")}>
-          <div className={cn("flex items-end gap-3 md:gap-4")}>
-            {/* Avatar */}
-            <div className={cn("relative")}>
-              <img
-                src={profile.Avatar || "https://via.placeholder.com/150"}
-                alt={profile.BarName}
+            <FollowButton
+              followingId={profile?.EntityAccountId || profile?.entityAccountId || barPageId}
+              followingType="BAR"
+            />
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setActionMenuOpen((prev) => !prev)}
                 className={cn(
-                  "w-20 h-20 md:w-24 md:h-24 rounded-full object-cover",
-                  "border-4 border-card shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
-                  "bg-card"
+                  "w-10 h-10 rounded-full border border-border/40 text-foreground/80",
+                  "bg-card/70 backdrop-blur-sm flex items-center justify-center",
+                  "hover:bg-card/90 transition-all duration-200 active:scale-95"
                 )}
-              />
+                aria-haspopup="true"
+                aria-expanded={actionMenuOpen}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="12" cy="5" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="12" cy="19" r="2" />
+                </svg>
+              </button>
+              {actionMenuOpen && (
+                <div
+                  className={cn(
+                    "absolute right-0 mt-2 w-48 rounded-lg border border-border/30",
+                    "bg-card/95 backdrop-blur-sm text-foreground shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
+                    "overflow-hidden z-20"
+                  )}
+                  role="menu"
+                >
+                  <button
+                    type="button"
+                    className={cn(
+                      "w-full text-left px-4 py-2 text-sm",
+                      "hover:bg-danger/10 hover:text-danger transition-all duration-150"
+                    )}
+                    onClick={() => {
+                      setActionMenuOpen(false);
+                      setReportModalOpen(true);
+                    }}
+                  >
+                    {t("publicProfile.reportProfile")}
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      "w-full text-left px-4 py-2 text-sm",
+                      "hover:bg-muted/40 transition-all duration-150"
+                    )}
+                    onClick={handleBlock}
+                  >
+                    {t("publicProfile.blockProfile")}
+                  </button>
+                </div>
+              )}
             </div>
-            <div className={cn("flex-1 pb-1")}>
-              <h1 className={cn(
-                "text-xl md:text-2xl font-bold text-primary-foreground mb-0.5",
-                "drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
-              )}>
-                {profile.BarName || t('profile.barName')}
-              </h1>
-              <div className={cn(
-                "text-xs md:text-sm text-primary-foreground/90",
-                "drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
-              )}>
-                BAR
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+          </>
+        )}
+        {isOwnProfile && (
+          <button
+            onClick={handleEditClick}
+            className={cn(
+              "px-4 py-2 rounded-lg font-semibold text-sm",
+              "bg-card/80 backdrop-blur-sm text-foreground border-none",
+              "hover:bg-card/90 transition-all duration-200",
+              "active:scale-95",
+              "flex items-center gap-2"
+            )}
+          >
+            <i className="bx bx-edit text-base"></i>
+            {t('profile.editProfile')}
+          </button>
+        )}
+      </ProfileHeader>
 
       {/* Main Content Container */}
       <div className={cn("max-w-6xl mx-auto px-4 md:px-6 py-6")}>
-        {/* Stats Bar - Refined & Balanced Design */}
-        <section className={cn(
-          "flex items-center justify-center gap-8 md:gap-12 lg:gap-16",
-          "py-6 px-4",
-          "border-b border-border/30"
-        )}>
-          <button className={cn(
-            "flex flex-col items-center gap-1.5 cursor-pointer",
-            "group transition-all duration-200",
-            "hover:opacity-90 active:scale-95"
-          )}>
-            <span className={cn(
-              "text-2xl md:text-3xl font-bold text-foreground",
-              "tracking-tight leading-none",
-              "group-hover:text-primary transition-colors duration-200"
-            )}>
-              {followers.length}
-            </span>
-            <span className={cn(
-              "text-[11px] md:text-xs text-muted-foreground",
-              "font-medium uppercase tracking-wider",
-              "group-hover:text-foreground/80 transition-colors duration-200"
-            )}>
-              {t('publicProfile.followers')}
-            </span>
-          </button>
-          
-          <div className={cn(
-            "h-10 w-px bg-border/20",
-            "hidden md:block"
-          )} />
-          
-          <button className={cn(
-            "flex flex-col items-center gap-1.5 cursor-pointer",
-            "group transition-all duration-200",
-            "hover:opacity-90 active:scale-95"
-          )}>
-            <span className={cn(
-              "text-2xl md:text-3xl font-bold text-foreground",
-              "tracking-tight leading-none",
-              "group-hover:text-primary transition-colors duration-200"
-            )}>
-              {following.length}
-            </span>
-            <span className={cn(
-              "text-[11px] md:text-xs text-muted-foreground",
-              "font-medium uppercase tracking-wider",
-              "group-hover:text-foreground/80 transition-colors duration-200"
-            )}>
-              {t('publicProfile.following')}
-            </span>
-          </button>
-        </section>
+        <ProfileStats followers={followers} following={following} />
 
         {/* Bio & Info Section */}
         {(profile.Bio || profile.Email || profile.PhoneNumber || profile.Address) && (
@@ -967,6 +625,7 @@ export default function BarProfile() {
           </section>
         )}
       </div>
+      </div>
 
       {showEditModal && (
         <div className={cn(
@@ -1041,21 +700,14 @@ export default function BarProfile() {
                 </div>
                 {editingField === "avatar" && (
                   <div className={cn("mt-4")}>
-                    <input
-                      type="text"
-                      placeholder="Nhập link ảnh đại diện..."
-                      value={profile.Avatar || ""}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, Avatar: e.target.value }))
-                      }
-                      className={cn(
-                        "w-full px-4 py-2.5 rounded-lg",
-                        "border-[0.5px] border-border/20",
-                        "bg-background text-foreground",
-                        "outline-none transition-all duration-200",
-                        "placeholder:text-muted-foreground/60",
-                        "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
-                      )}
+                    <ImageUploadField
+                      label="Ảnh đại diện"
+                      value={profile.Avatar}
+                      onChange={(url) => setProfile((prev) => ({ ...prev, Avatar: url }))}
+                      uploadMode={true}
+                      urlInput={true}
+                      uploading={uploadingAvatar}
+                      onUploadStateChange={(uploading) => setUploadingAvatar(uploading)}
                     />
                   </div>
                 )}
@@ -1096,21 +748,14 @@ export default function BarProfile() {
                 </div>
                 {editingField === "background" && (
                   <div className={cn("mt-4")}>
-                    <input
-                      type="text"
-                      placeholder="Nhập link ảnh bìa..."
-                      value={profile.Background || ""}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, Background: e.target.value }))
-                      }
-                      className={cn(
-                        "w-full px-4 py-2.5 rounded-lg",
-                        "border-[0.5px] border-border/20",
-                        "bg-background text-foreground",
-                        "outline-none transition-all duration-200",
-                        "placeholder:text-muted-foreground/60",
-                        "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
-                      )}
+                    <ImageUploadField
+                      label="Ảnh bìa"
+                      value={profile.Background}
+                      onChange={(url) => setProfile((prev) => ({ ...prev, Background: url }))}
+                      uploadMode={true}
+                      urlInput={true}
+                      uploading={uploadingBackground}
+                      onUploadStateChange={(uploading) => setUploadingBackground(uploading)}
                     />
                   </div>
                 )}
@@ -1347,7 +992,7 @@ export default function BarProfile() {
                     setSaving(false);
                   }
                 }}
-                disabled={saving}
+                disabled={saving || uploadingAvatar || uploadingBackground}
                 className={cn(
                   "px-4 py-2 rounded-lg font-semibold text-sm",
                   "bg-primary text-primary-foreground border-none",
@@ -1375,6 +1020,13 @@ export default function BarProfile() {
           }}
         />
       )}
-    </div>
+      {isBanned && (
+        <BannedAccountOverlay 
+          userRole="Bar"
+          entityType="BarPage"
+          entityName={profile?.BarName || profile?.barName}
+        />
+      )}
+    </>
   );
 }

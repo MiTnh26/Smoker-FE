@@ -10,7 +10,8 @@ import {
   Star,
   MessageCircle,
   Store,
-  CreditCard
+  CreditCard,
+  ClipboardCheck
 } from "lucide-react";
 
 /**
@@ -87,6 +88,8 @@ export const sidebarConfig = {
   admin: [
     { label: "Dashboard", icon: BarChart3, path: "/admin/dashboard" },
     { label: "Quản lý người dùng", icon: Users, path: "/admin/users" },
+    { label: "Quản lý duyệt", icon: ClipboardCheck, path: "/admin/approvals" },
+    { label: "Thư viện nhạc", icon: Music2, path: "/admin/music" },
     { label: "Quản lý quán / Bar", icon: Store, path: "/admin/bars" },
     { label: "Báo cáo & thống kê", icon: BarChart3, path: "/admin/reports" },
     { label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },
