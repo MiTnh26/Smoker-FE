@@ -5,14 +5,12 @@ import { Autoplay, Pagination } from "swiper/modules";
 import { cn } from "../../../utils/cn";
 import "swiper/css";
 import "swiper/css/pagination";
-import AddEventModal from "./AddEventModal";
 import barEventApi from "../../../api/barEventApi";
 
 export default function BarEvent({ barPageId }) {
   const { t } = useTranslation();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [openModal, setOpenModal] = useState(false);
 
   useEffect(() => {
     if (!barPageId) return;
@@ -21,19 +19,22 @@ export default function BarEvent({ barPageId }) {
 
   const fetchEvents = async () => {
     try {
+      setLoading(true);
       const res = await barEventApi.getEventsByBarId(barPageId);
-      if (res.status === "success") setEvents(res.data);
+      if (res.status === "success") {
+        setEvents(res.data || []);
+      } else if (res.data) {
+        // Handle case where data is directly in res.data
+        setEvents(Array.isArray(res.data) ? res.data : []);
+      }
     } catch (err) {
       console.error("❌ Lỗi khi tải sự kiện:", err);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEventAdded = async () => {
-    await fetchEvents();
-    setTimeout(() => setOpenModal(false), 200);
-  };
 
   // 🕓 Hàm định dạng thời gian hiển thị đẹp
   const formatDate = (dateStr) => {
@@ -80,17 +81,6 @@ export default function BarEvent({ barPageId }) {
         )}>
           {t("bar.events")}
         </h3>
-        <button
-          onClick={() => setOpenModal(true)}
-          className={cn(
-            "px-4 py-2 rounded-lg font-semibold text-sm",
-            "bg-primary text-primary-foreground border-none",
-            "hover:bg-primary/90 transition-all duration-200",
-            "active:scale-95"
-          )}
-        >
-          + {t("bar.addEvent")}
-        </button>
       </div>
 
       {events.length === 0 ? (
@@ -289,14 +279,6 @@ export default function BarEvent({ barPageId }) {
         </div>
       )}
 
-      {/* Modal thêm sự kiện */}
-      {openModal && (
-        <AddEventModal
-          barPageId={barPageId}
-          onClose={() => setOpenModal(false)}
-          onSuccess={handleEventAdded}
-        />
-      )}
     </div>
   );
 }

@@ -10,7 +10,7 @@ import { fetchAllEntities } from "../../../utils/sessionHelper";
 import { cn } from "../../../utils/cn";
 import { borderStyles } from "../../../utils/border-patterns";
 import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
-import PublicHeader from "../../../components/layout/PublicHeader";
+import AuthHeader from "../../../components/layout/AuthHeader";
 
 export function Login() {
   const navigate = useNavigate();
@@ -98,25 +98,27 @@ export function Login() {
   // };
 
   return (
-    <div className="bg-background text-foreground">
-      <PublicHeader />
+    <div className="bg-background text-foreground h-screen overflow-hidden relative">
+      <AuthHeader />
       <div
         className={cn(
-          "container mx-auto flex min-h-[calc(100vh-73px)] w-full items-center justify-center",
-          "px-4 pb-16 pt-[84px] sm:px-6 sm:pt-[96px] md:pb-20"
+          "container mx-auto flex w-full items-center justify-center",
+          "px-3 sm:px-4",
+          "h-[calc(100vh-73px)]",
+          "absolute top-[73px] left-0 right-0"
         )}
       >
         <div
           className={cn(
-            "grid w-full gap-8",
-            "max-w-lg md:max-w-3xl lg:max-w-5xl",
+            "grid w-full gap-4",
+            "max-w-md md:max-w-2xl lg:max-w-4xl",
             "grid-cols-1 lg:grid-cols-[1.05fr_1fr]"
           )}
         >
           <section
             className={cn(
               borderStyles.card,
-              "hidden flex-col justify-between bg-muted/40 p-8 text-foreground lg:flex",
+              "hidden flex-col justify-between bg-muted/40 p-6 text-foreground lg:flex",
               "backdrop-blur-sm"
             )}
           >
@@ -126,19 +128,19 @@ export function Login() {
               </span>
               Smoker
             </div>
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div>
-                <h2 className="text-3xl font-semibold leading-tight">
+                <h2 className="text-2xl font-semibold leading-tight">
                   {t("auth.welcomeTitle", "Welcome back to Smoker")}
                 </h2>
-                <p className="mt-3 text-muted-foreground">
+                <p className="mt-2 text-sm text-muted-foreground">
                   {t(
                     "auth.welcomeDesc",
                     "Connect with the nightlife community, book services, and discover new experiences every night."
                   )}
                 </p>
               </div>
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 {[
                   t("auth.benefitDiscover", "Khám phá địa điểm trending"),
                   t("auth.benefitBook", "Đặt DJ, dancer cho sự kiện"),
@@ -167,23 +169,23 @@ export function Login() {
           <section
             className={cn(
               borderStyles.card,
-              "bg-card p-6 shadow-[0_12px_32px_rgba(15,23,42,0.08)] sm:p-7 md:p-8",
-              "rounded-3xl md:rounded-[32px]"
+              "bg-card p-4 shadow-[0_12px_32px_rgba(15,23,42,0.08)] sm:p-5",
+              "rounded-2xl md:rounded-3xl"
             )}
           >
-            <div className="mb-6 flex flex-col gap-2 text-center sm:text-left">
-              <h1 className="text-2xl font-semibold sm:text-3xl">
+            <div className="mb-3 flex flex-col gap-0.5 text-center sm:text-left">
+              <h1 className="text-xl font-semibold sm:text-2xl">
                 {t("auth.loginTitle", "Đăng nhập vào Smoker")}
               </h1>
-              <p className="text-sm text-muted-foreground sm:text-base">
+              <p className="text-xs text-muted-foreground sm:text-sm">
                 {t("auth.loginSubtitle", "Tiếp tục hành trình nightlife của bạn.")}
               </p>
           </div>
 
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-muted-foreground sm:text-base">
+            <form className="space-y-2.5" onSubmit={handleSubmit}>
+              <div className="space-y-2.5">
+                <div className="space-y-0.5">
+                  <label className="text-xs font-medium text-muted-foreground sm:text-sm">
                     {t("auth.emailOrPhone")}
                   </label>
                   <div className="relative">
@@ -198,8 +200,8 @@ export function Login() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-muted-foreground sm:text-base">
+                <div className="space-y-0.5">
+                  <label className="text-xs font-medium text-muted-foreground sm:text-sm">
                     {t("auth.password")}
                   </label>
                   <div className="relative">
@@ -239,7 +241,7 @@ export function Login() {
                 type="submit"
                 className={cn(
                   "w-full bg-primary text-primary-foreground border-none",
-                  "rounded-lg py-3 text-base font-semibold sm:rounded-xl sm:py-3.5",
+                  "rounded-lg py-2.5 text-base font-semibold sm:rounded-xl sm:py-3",
                   "transition-all duration-200",
                   "hover:bg-primary/90 active:scale-95"
                 )}
@@ -247,7 +249,7 @@ export function Login() {
                 {t("auth.login")}
               </button>
 
-              <div className="flex flex-col gap-4 text-sm text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+              <div className="flex flex-col gap-2 text-xs text-center sm:flex-row sm:items-center sm:justify-between sm:text-left sm:text-sm">
                 <div className="text-muted-foreground">
                   {t("auth.notHaveAccount", "Chưa có tài khoản?")}{" "}
                   <Link
@@ -265,12 +267,12 @@ export function Login() {
                 </Link>
               </div>
 
-              <div className="flex flex-col items-center gap-4 sm:flex-row">
-                <span className="h-[1px] w-full flex-1 bg-border/30 sm:w-auto" />
+              <div className="flex items-center gap-3">
+                <span className="h-[1px] flex-1 bg-border/30" />
                 <span className="text-xs uppercase tracking-wide text-muted-foreground">
                   {t("auth.orContinue", "hoặc tiếp tục với")}
                 </span>
-                <span className="h-[1px] w-full flex-1 bg-border/30 sm:w-auto" />
+                <span className="h-[1px] flex-1 bg-border/30" />
               </div>
 
               <button
@@ -288,13 +290,13 @@ export function Login() {
 
                 <FacebookLoginButton />
 
-              <div className="rounded-xl bg-primary/5 px-3 py-3 text-xs text-muted-foreground sm:text-sm">
+              <div className="rounded-xl bg-primary/5 px-3 py-2 text-xs text-muted-foreground sm:text-sm">
                 <span className="font-medium text-foreground">{t("auth.tipsTitle", "Mẹo:")}</span>{" "}
                 {t("auth.tipsContent", "Bật xác thực hai lớp để bảo vệ tài khoản của bạn tốt hơn.")}
               </div>
             </form>
 
-            <div className="mt-6 text-center text-sm text-muted-foreground">
+            <div className="mt-3 text-center text-sm text-muted-foreground">
               {t("auth.createPageFor")}{" "}
               <Link to="/create-page" className="font-semibold text-primary hover:text-primary/90">
                 {t("auth.createPage")}

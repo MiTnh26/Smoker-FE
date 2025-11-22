@@ -3,6 +3,7 @@ import { Route } from "react-router-dom";
 import CustomerLayout from "../layouts/CustomerLayout";
 import {  Profile, AddBankInfo } from "../modules/customer";
 import PublicProfile from "../modules/customer/pages/PublicProfile";
+import DynamicLayout from "../layouts/DynamicLayout";
 import ProtectedRoute from "./ProtectedRoute";
 import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed"
 import { StoryEditor } from "../modules/feeds/components/story";
@@ -47,7 +48,7 @@ export default function CustomerRoutes() {
       <Route
         path="/profile/:entityId"
         element={
-          <CustomerLayout><PublicProfile /></CustomerLayout>
+          <DynamicLayout><PublicProfile /></DynamicLayout>
         }
       />
       <Route

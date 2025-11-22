@@ -2,6 +2,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Home, MessageCircle, User, Search, Bell } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useSocket } from "../../../contexts/SocketContext";
+import { getSession, getActiveEntity, getEntities } from "../../../utils/sessionManager";
 import UnifiedMenu from "../../common/UnifiedMenu";
 import MessagesPanel from "../common/MessagesPanel";
 import NotificationPanel from "../common/NotificationPanel";
@@ -21,6 +23,7 @@ export default function CustomerHeader() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const { t } = useTranslation();
+  const { socket, isConnected } = useSocket();
 
   // Fetch unread notification count
   const fetchUnreadNotificationCount = async () => {
@@ -76,6 +79,58 @@ export default function CustomerHeader() {
     }
   };
 
+  // Join socket room and listen for real-time notifications
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    // Get current user's entityAccountId to join room
+    const session = getSession();
+    if (!session) return;
+
+    const active = getActiveEntity() || {};
+    const entities = getEntities();
+    
+    // Get EntityAccountId (priority: activeEntity > matching entity > first entity)
+    let entityAccountId = active.EntityAccountId || active.entityAccountId || null;
+    
+    if (!entityAccountId && active.id && active.type) {
+      const foundEntity = entities.find(
+        e => String(e.id) === String(active.id) && 
+             (e.type === active.type || 
+              (e.type === "BusinessAccount" && active.type === "Business"))
+      );
+      entityAccountId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
+    }
+    
+    // Fallback to AccountId if no EntityAccountId
+    const userId = entityAccountId || active.id || session.account?.id || null;
+    
+    if (userId) {
+      // Join room with userId (entityAccountId or AccountId)
+      socket.emit("join", String(userId));
+      console.log("[CustomerHeader] Joined socket room:", userId);
+    }
+
+    // Listen for new notifications to update unread count
+    const handleNewNotification = (data) => {
+      console.log("[CustomerHeader] Received new notification:", data);
+      
+      // Update unread count from socket event
+      if (data.unreadCount !== undefined) {
+        setUnreadNotificationCount(data.unreadCount);
+      } else {
+        // Fallback: fetch unread count
+        fetchUnreadNotificationCount();
+      }
+    };
+
+    socket.on("new_notification", handleNewNotification);
+
+    return () => {
+      socket.off("new_notification", handleNewNotification);
+    };
+  }, [socket, isConnected]);
+
   // Fetch unread notification count on mount and periodically
   useEffect(() => {
     fetchUnreadNotificationCount();
@@ -84,7 +139,23 @@ export default function CustomerHeader() {
       fetchUnreadNotificationCount();
     }, 60000); // Update every 60 seconds
     
-    return () => clearInterval(interval);
+    // Listen for notification refresh events (e.g., when someone follows)
+    const handleNotificationRefresh = () => {
+      fetchUnreadNotificationCount();
+    };
+    
+    // eslint-disable-next-line no-undef
+    const win = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : null);
+    if (win) {
+      win.addEventListener("notificationRefresh", handleNotificationRefresh);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (win) {
+        win.removeEventListener("notificationRefresh", handleNotificationRefresh);
+      }
+    };
   }, []);
 
   // Fetch unread message count on mount and periodically
@@ -95,7 +166,23 @@ export default function CustomerHeader() {
       fetchUnreadMessageCount();
     }, 60000); // Update every 60 seconds
     
-    return () => clearInterval(interval);
+    // Listen for message refresh events (e.g., when new messages arrive)
+    const handleMessageRefresh = () => {
+      fetchUnreadMessageCount();
+    };
+    
+    // eslint-disable-next-line no-undef
+    const win = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : null);
+    if (win) {
+      win.addEventListener("messageRefresh", handleMessageRefresh);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (win) {
+        win.removeEventListener("messageRefresh", handleMessageRefresh);
+      }
+    };
   }, []);
 
   const togglePanel = (panel) => {

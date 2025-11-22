@@ -76,6 +76,21 @@ export default function SongItem({ song, onDelete, deletingId }) {
               </span>
             </span>
           )}
+          {/* Segment badge: start-end */}
+          {(typeof song.audioStartOffset === 'number' && typeof duration === 'number') && (
+            <span
+              className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md border"
+              style={{
+                borderColor: 'rgb(var(--border))',
+                background: 'rgb(var(--muted))',
+                color: 'rgb(var(--foreground))',
+                fontSize: '12px'
+              }}
+              title={`Đoạn cắt: ${formatTime(song.audioStartOffset)} – ${formatTime(song.audioStartOffset + duration)}`}
+            >
+              {formatTime(song.audioStartOffset)} – {formatTime(song.audioStartOffset + duration)}
+            </span>
+          )}
         </div>
         {song.description && (
           <div className="song-list-item-description">{song.description}</div>
@@ -89,8 +104,16 @@ export default function SongItem({ song, onDelete, deletingId }) {
           <audio
             ref={audioRef}
             controls
+            preload="metadata"
             className="song-list-item-audio"
-            src={songApi.getSongStreamUrl(song.song)}
+            src={(song.file ? songApi.getSongStreamUrlById(song.file) : songApi.getSongStreamUrl(song.song)) + `?_t=${Date.now()}` }
+            onError={(e) => {
+              // Fallback to filename stream if id stream fails
+              if (song.song && e.currentTarget.src.indexOf('/stream/') === -1) {
+                e.currentTarget.src = songApi.getSongStreamUrl(song.song);
+                e.currentTarget.load();
+              }
+            }}
           >
             Trình duyệt của bạn không hỗ trợ audio.
           </audio>

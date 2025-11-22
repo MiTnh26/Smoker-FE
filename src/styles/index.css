@@ -32,6 +32,18 @@
 
   body {
     @apply font-inter bg-background text-foreground antialiased;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  html {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  #root {
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   h1, h2, h3, h4, h5, h6 {

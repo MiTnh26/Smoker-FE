@@ -9,6 +9,13 @@ import { cn } from "../../../utils/cn";
 import CreatePostBox from "../../feeds/components/shared/CreatePostBox";
 import PostComposerModal from "../../feeds/components/modals/PostComposerModal";
 import PostCard from "../../feeds/components/post/PostCard";
+import { getPostsByAuthor } from "../../../api/postApi";
+import { mapPostForCard } from "../../../utils/postTransformers";
+import { useProfilePosts } from "../../../hooks/useProfilePosts";
+import { useCurrentUserEntity } from "../../../hooks/useCurrentUserEntity";
+import { ProfileHeader } from "../../../components/profile/ProfileHeader";
+import { ProfileStats } from "../../../components/profile/ProfileStats";
+import { ImageUploadField } from "../../../components/profile/ImageUploadField";
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -28,8 +35,6 @@ export default function Profile() {
   const handleEditClick = () => setShowEditModal(true);
   const handleCloseEdit = () => setShowEditModal(false);
   const [editingField, setEditingField] = useState(null);
-  const [userPosts, setUserPosts] = useState([]);
-  const [postsLoading, setPostsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBackground, setUploadingBackground] = useState(false);
@@ -37,7 +42,6 @@ export default function Profile() {
   const [userVideos, setUserVideos] = useState([]);
   const [videosLoading, setVideosLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
-  const [currentUserEntityId, setCurrentUserEntityId] = useState(null);
   
   // Location states
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -45,27 +49,14 @@ export default function Profile() {
   const [selectedWardId, setSelectedWardId] = useState('');
   const [addressDetail, setAddressDetail] = useState('');
   
-  // Get current user entity ID for followers/following
-  useEffect(() => {
-    try {
-      const sessionRaw = localStorage.getItem("session");
-      if (!sessionRaw) return;
-      const session = JSON.parse(sessionRaw);
-      const active = session?.activeEntity || {};
-      const entities = session?.entities || [];
-      const resolvedId =
-        active.EntityAccountId ||
-        active.entityAccountId ||
-        active.id ||
-        entities[0]?.EntityAccountId ||
-        entities[0]?.entityAccountId ||
-        null;
-      setCurrentUserEntityId(resolvedId || null);
-    } catch {}
-  }, []);
+  // Get current user entity ID using shared hook
+  const currentUserEntityId = useCurrentUserEntity();
   
   const { followers, fetchFollowers } = useFollowers(currentUserEntityId);
   const { following, fetchFollowing } = useFollowing(currentUserEntityId);
+  
+  // Use shared hook for posts
+  const { posts: userPosts, loading: postsLoading } = useProfilePosts(currentUserEntityId);
   
   useEffect(() => {
     if (currentUserEntityId) {
@@ -73,6 +64,14 @@ export default function Profile() {
       fetchFollowing();
     }
   }, [currentUserEntityId, fetchFollowers, fetchFollowing]);
+
+  // Load videos when userPosts are available
+  useEffect(() => {
+    if (userPosts && userPosts.length >= 0) {
+      loadUserContent();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userPosts]);
 
   useEffect(() => {
     (async () => {
@@ -108,8 +107,7 @@ export default function Profile() {
             }
           }
           
-          // Load user posts and videos after profile is loaded
-          await loadUserContent();
+          // Videos will be loaded when userPosts are available
         } else setError(res.message || "Không tải được hồ sơ");
       } catch (e) {
         setError(e?.response?.data?.message || "Không tải được hồ sơ");
@@ -121,91 +119,38 @@ export default function Profile() {
 
   const loadUserContent = async () => {
     try {
-      setPostsLoading(true);
       setVideosLoading(true);
       
-      // Get session to determine current user
-      let session;
-      try {
-        const raw = localStorage.getItem("session");
-        session = raw ? JSON.parse(raw) : null;
-      } catch (e) {
-        session = null;
+      // Extract videos from userPosts (already loaded by useProfilePosts)
+      if (!userPosts || userPosts.length === 0) {
+        setUserVideos([]);
+        setVideosLoading(false);
+        return;
       }
       
-      const currentUserId = session?.activeEntity?.id || session?.account?.id;
-      
-      // Load posts from posts collection (include medias for videos tab)
-      const postsResponse = await axiosClient.get(`/posts/author/${currentUserId}`, {
-        params: { includeMedias: true }
-      });
-      const posts = postsResponse.success ? postsResponse.data : [];
-      
-      // Load music posts from musics collection  
-      const musicResponse = await axiosClient.get(`/music/author/${currentUserId}`);
-      const musics = musicResponse.success ? musicResponse.data : [];
-      
-      // Transform and combine posts
-      const transformedPosts = posts.map(post => ({
-        id: post._id,
-        type: 'post',
-        title: post.title || post["Tiêu Đề"],
-        content: post.content || post.caption,
-        image: post.url && post.url !== "default-post.jpg" ? post.url : (post.medias && post.medias[0]?.url && !/\.(mp4|webm|mov)$/i.test(post.medias[0]?.url) ? post.medias[0].url : null),
-        createdAt: post.createdAt,
-        likes: post.likes ? Object.keys(post.likes).length : 0,
-        comments: post.comments ? Object.keys(post.comments).length : 0,
-        authorName: post.authorEntityName || "Người dùng",
-        authorAvatar: post.authorEntityAvatar || null
-      }));
-      
-      const transformedMusics = musics.map(music => ({
-        id: music._id,
-        type: 'music',
-        title: music["Tên Bài Nhạc"],
-        content: music["Chi Tiết"],
-        image: music["Ảnh Nền Bài Nhạc"],
-        audioUrl: music["Link Mua Nhạc"],
-        artist: music["Tên Nghệ Sĩ"],
-        createdAt: music.createdAt,
-        likes: music["Thích"] ? Object.keys(music["Thích"]).length : 0,
-        comments: music["Bình Luận"] ? Object.keys(music["Bình Luận"]).length : 0,
-        authorName: music.authorEntityName || "Người dùng",
-        authorAvatar: music.authorEntityAvatar || null
-      }));
-      
-      // Combine and sort by creation date
-      const allPosts = [...transformedPosts, ...transformedMusics]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
-      setUserPosts(allPosts);
-
-      // Extract videos from post medias
-      const isVideoMedia = (m) => {
-        const mime = (m?.mime || '').toLowerCase();
-        const url = m?.url || '';
-        return mime.startsWith('video/') || /\.(mp4|webm|mov|mkv|m4v)$/i.test(url);
-      };
-
-      const videos = (posts || []).flatMap(p => {
-        const medias = Array.isArray(p.medias) ? p.medias : [];
-        return medias.filter(isVideoMedia).map(m => ({
-          id: m._id || `${p._id}-${m.url}`,
-          postId: p._id,
-          url: m.url,
-          mime: m.mime || '',
-          createdAt: p.createdAt,
-          title: p.title || p.caption || 'Video',
-          authorName: p.authorEntityName || 'Người dùng',
-          authorAvatar: p.authorEntityAvatar || null
-        }));
-      }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // Extract videos from posts
+      const videos = userPosts
+        .filter(p => p.videoSrc || (p.medias?.videos && p.medias.videos.length > 0))
+        .map(p => ({
+          id: p.id,
+          postId: p.id,
+          url: p.videoSrc || p.medias?.videos?.[0]?.url,
+          createdAt: p.time,
+          title: p.title || p.content || 'Video',
+          user: p.user,
+          avatar: p.avatar,
+          ...p
+        }))
+        .sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB - dateA;
+        });
 
       setUserVideos(videos);
     } catch (error) {
-      console.error("Error loading user posts:", error);
+      console.error("Error loading user videos:", error);
     } finally {
-      setPostsLoading(false);
       setVideosLoading(false);
     }
   };
@@ -464,19 +409,12 @@ export default function Profile() {
 
   return (
     <div className={cn("min-h-screen bg-background")}>
-      {/* Cover Photo Section - Instagram Style */}
-      <section className={cn("relative w-full h-[200px] md:h-[250px] overflow-hidden rounded-b-lg")}>
-        <div
-          className={cn("absolute inset-0 bg-cover bg-center")}
-          style={{
-            backgroundImage: `url(${profile.background || "https://i.imgur.com/6IUbEMn.jpg"})`,
-          }}
-        />
-        {/* Gradient Overlay */}
-        <div className={cn("absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60")} />
-        
-        {/* Edit Button */}
-        <div className={cn("absolute top-4 right-4 z-10")}>
+      <ProfileHeader
+        background={profile.background}
+        avatar={profile.avatar}
+        name={profile.userName || t('profile.editPersonalProfile')}
+        role="USER"
+        actionButtons={
           <button
             onClick={handleEditClick}
             className={cn(
@@ -490,122 +428,12 @@ export default function Profile() {
             <i className="bx bx-edit text-base"></i>
             {t('profile.editProfile')}
           </button>
-        </div>
-
-        {/* Profile Info Overlay */}
-        <div className={cn("absolute bottom-0 left-0 right-0 p-4 md:p-6")}>
-          <div className={cn("flex items-end gap-3 md:gap-4")}>
-            {/* Avatar - Large & Prominent */}
-            <div className={cn("relative")}>
-              <img
-                src={profile.avatar || "https://via.placeholder.com/150"}
-                alt="avatar"
-                className={cn(
-                  "w-20 h-20 md:w-24 md:h-24 rounded-full object-cover",
-                  "border-4 border-card shadow-[0_4px_12px_rgba(0,0,0,0.3)]",
-                  "bg-card"
-                )}
-              />
-            </div>
-            <div className={cn("flex-1 pb-1")}>
-              <h1 className={cn(
-                "text-xl md:text-2xl font-bold text-primary-foreground mb-0.5",
-                "drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
-              )}>
-                {profile.userName || t('profile.editPersonalProfile')}
-              </h1>
-              <div className={cn(
-                "text-xs md:text-sm text-primary-foreground/90",
-                "drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
-              )}>
-                USER
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        }
+      />
 
       {/* Main Content Container */}
       <div className={cn("max-w-6xl mx-auto px-4 md:px-6 py-6")}>
-        {/* Stats Bar - Refined & Balanced Design */}
-        <section className={cn(
-          "flex items-center justify-center gap-8 md:gap-12 lg:gap-16",
-          "py-6 px-4",
-          "border-b border-border/30"
-        )}>
-          <button className={cn(
-            "flex flex-col items-center gap-1.5 cursor-pointer",
-            "group transition-all duration-200",
-            "hover:opacity-90 active:scale-95"
-          )}>
-            <span className={cn(
-              "text-2xl md:text-3xl font-bold text-foreground",
-              "tracking-tight leading-none",
-              "group-hover:text-primary transition-colors duration-200"
-            )}>
-              {userPosts.length}
-            </span>
-            <span className={cn(
-              "text-[11px] md:text-xs text-muted-foreground",
-              "font-medium uppercase tracking-wider",
-              "group-hover:text-foreground/80 transition-colors duration-200"
-            )}>
-              {t('publicProfile.posts')}
-            </span>
-          </button>
-          
-          <div className={cn(
-            "h-10 w-px bg-border/20",
-            "hidden md:block"
-          )} />
-          
-          <button className={cn(
-            "flex flex-col items-center gap-1.5 cursor-pointer",
-            "group transition-all duration-200",
-            "hover:opacity-90 active:scale-95"
-          )}>
-            <span className={cn(
-              "text-2xl md:text-3xl font-bold text-foreground",
-              "tracking-tight leading-none",
-              "group-hover:text-primary transition-colors duration-200"
-            )}>
-              {followers.length}
-            </span>
-            <span className={cn(
-              "text-[11px] md:text-xs text-muted-foreground",
-              "font-medium uppercase tracking-wider",
-              "group-hover:text-foreground/80 transition-colors duration-200"
-            )}>
-              {t('publicProfile.followers')}
-            </span>
-          </button>
-          
-          <div className={cn(
-            "h-10 w-px bg-border/20",
-            "hidden md:block"
-          )} />
-          
-          <button className={cn(
-            "flex flex-col items-center gap-1.5 cursor-pointer",
-            "group transition-all duration-200",
-            "hover:opacity-90 active:scale-95"
-          )}>
-            <span className={cn(
-              "text-2xl md:text-3xl font-bold text-foreground",
-              "tracking-tight leading-none",
-              "group-hover:text-primary transition-colors duration-200"
-            )}>
-              {following.length}
-            </span>
-            <span className={cn(
-              "text-[11px] md:text-xs text-muted-foreground",
-              "font-medium uppercase tracking-wider",
-              "group-hover:text-foreground/80 transition-colors duration-200"
-            )}>
-              {t('publicProfile.following')}
-            </span>
-          </button>
-        </section>
+        <ProfileStats followers={followers} following={following} />
 
         {/* Bio & Info Section */}
         {(profile.bio || profile.email || profile.phone || profile.address || profile.gender) && (
@@ -840,55 +668,16 @@ export default function Profile() {
                   </button>
                 </div>
                 {editingField === "avatar" && (
-                  <div className={cn("mt-4 space-y-4")}>
-                    <div>
-                      <label className={cn("block text-sm font-medium mb-2 text-foreground")}>
-                        Upload ảnh từ máy tính:
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        disabled={uploadingAvatar}
-                        className={cn(
-                          "w-full px-4 py-2.5 rounded-lg",
-                          "border-[0.5px] border-border/20",
-                          "bg-background text-foreground",
-                          "outline-none transition-all duration-200",
-                          "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
-                          "disabled:opacity-50 disabled:cursor-not-allowed"
-                        )}
+                  <div className={cn("mt-4")}>
+                    <ImageUploadField
+                      label="Ảnh đại diện"
+                      value={profile.avatar}
+                      onChange={(url) => setProfile((prev) => ({ ...prev, avatar: url }))}
+                      uploadMode={true}
+                      urlInput={true}
+                      uploading={uploadingAvatar}
+                      onUploadStateChange={(uploading) => setUploadingAvatar(uploading)}
                       />
-                      {uploadingAvatar && (
-                        <p className={cn("text-sm text-primary mt-2")}>
-                          Đang upload ảnh...
-                        </p>
-                      )}
-                    </div>
-                    <div className={cn("text-center text-muted-foreground text-sm")}>
-                      hoặc
-                    </div>
-                    <div>
-                      <label className={cn("block text-sm font-medium mb-2 text-foreground")}>
-                        Nhập link ảnh:
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nhập link ảnh đại diện..."
-                        value={profile.avatar || ""}
-                        onChange={(e) =>
-                          setProfile((prev) => ({ ...prev, avatar: e.target.value }))
-                        }
-                        className={cn(
-                          "w-full px-4 py-2.5 rounded-lg",
-                          "border-[0.5px] border-border/20",
-                          "bg-background text-foreground",
-                          "outline-none transition-all duration-200",
-                          "placeholder:text-muted-foreground/60",
-                          "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
-                        )}
-                      />
-                    </div>
                   </div>
                 )}
 
@@ -920,33 +709,16 @@ export default function Profile() {
                 </button>
               </div>
               {editingField === "background" && (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Upload ảnh từ máy tính:</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleBackgroundChange}
-                      disabled={uploadingBackground}
-                      className="w-full border rounded-lg px-3 py-2"
-                    />
-                    {uploadingBackground && (
-                      <p className="text-sm text-blue-600 mt-1">Đang upload ảnh...</p>
-                    )}
-                  </div>
-                  <div className="text-center text-gray-500">hoặc</div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Nhập link ảnh:</label>
-                    <input
-                      type="text"
-                      placeholder="Nhập link ảnh bìa..."
-                      value={profile.background || ""}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, background: e.target.value }))
-                      }
-                      className="w-full border rounded-lg px-3 py-2"
-                    />
-                  </div>
+                <div className={cn("mt-4")}>
+                  <ImageUploadField
+                    label="Ảnh bìa"
+                    value={profile.background}
+                    onChange={(url) => setProfile((prev) => ({ ...prev, background: url }))}
+                    uploadMode={true}
+                    urlInput={true}
+                    uploading={uploadingBackground}
+                    onUploadStateChange={(uploading) => setUploadingBackground(uploading)}
+                  />
                 </div>
               )}
 
@@ -1077,7 +849,7 @@ export default function Profile() {
             )}>
               <button
                 onClick={handleCloseEdit}
-                disabled={saving}
+                disabled={saving || uploadingAvatar || uploadingBackground}
                 className={cn(
                   "px-4 py-2 rounded-lg font-semibold text-sm",
                   "bg-transparent border-none text-muted-foreground",
@@ -1091,7 +863,7 @@ export default function Profile() {
               </button>
               <button
                 onClick={handleSaveProfile}
-                disabled={saving}
+                disabled={saving || uploadingAvatar || uploadingBackground}
                 className={cn(
                   "px-4 py-2 rounded-lg font-semibold text-sm",
                   "bg-primary text-primary-foreground border-none",
@@ -1100,7 +872,7 @@ export default function Profile() {
                   "disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
               >
-                {saving ? "Đang lưu..." : "Lưu thay đổi"}
+                {saving || uploadingAvatar || uploadingBackground ? "Đang lưu..." : "Lưu thay đổi"}
               </button>
             </div>
           </div>

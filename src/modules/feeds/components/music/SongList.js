@@ -7,7 +7,7 @@ import "../../../../styles/modules/feeds/components/music/SongList.css";
 /**
  * Component để hiển thị danh sách songs trong library
  */
-export default function SongList({ refreshKey, onSongDeleted }) {
+export default function SongList({ refreshKey, onSongDeleted, title, scope = 'mine' }) {
   const { t } = useTranslation();
   const [songs, setSongs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,8 +46,8 @@ export default function SongList({ refreshKey, onSongDeleted }) {
         allSongs = response.data;
       }
       
-      // Filter songs của user hiện tại
-      const userSongs = allSongs.filter(song => {
+      // Filter theo scope
+      const userSongs = scope === 'all' ? allSongs : allSongs.filter(song => {
         if (!currentEntityAccountId) return false;
         const songEntityAccountId = song.entityAccountId;
         if (!songEntityAccountId) return false;
@@ -122,7 +122,7 @@ export default function SongList({ refreshKey, onSongDeleted }) {
     <div className="song-list-container">
       <div className="song-list-header">
         <h3 className="song-list-title">
-          {t('song.myLibrary') || 'Thư viện nhạc của tôi'} ({songs.length})
+          {(title || t('song.library') || 'Thư viện nhạc')} ({songs.length})
         </h3>
       </div>
 

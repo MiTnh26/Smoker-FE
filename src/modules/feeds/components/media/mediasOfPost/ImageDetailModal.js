@@ -20,7 +20,6 @@ import {
   trackMediaShare
 } from "../../../../../api/postApi";
 import ReadMoreText from "../../comment/ReadMoreText";
-import "../../../../../styles/modules/feeds/components/media/mediasOfPost/ImageDetailModal.css";
 import {
   isValidObjectId,
   getCurrentUser,
@@ -41,7 +40,10 @@ export default function ImageDetailModal({
   onClose, 
   imageUrl, 
   postId, 
-  mediaId 
+  mediaId,
+  allImages = [],
+  currentIndex = -1,
+  onNavigateImage
 }) {
   // Media state
   const [media, setMedia] = useState(null);
@@ -70,15 +72,30 @@ export default function ImageDetailModal({
   const navigate = useNavigate();
   const handleNavigateToProfile = createNavigateToProfile(navigate);
 
-  // Load media details when modal opens
+  // Track previous imageUrl/mediaId to detect changes
+  const prevImageRef = useRef({ imageUrl: null, mediaId: null });
+  
+  // Load media details when modal opens or image changes
   useEffect(() => {
     if (!open) {
       hasLoadedRef.current = false;
+      prevImageRef.current = { imageUrl: null, mediaId: null };
       resetState();
       return;
     }
-    if (hasLoadedRef.current) return;
-    if (mediaId || imageUrl) {
+    
+    // Check if image changed (navigation between images)
+    const imageChanged = 
+      prevImageRef.current.imageUrl !== imageUrl || 
+      prevImageRef.current.mediaId !== mediaId;
+    
+    if (imageChanged) {
+      hasLoadedRef.current = false; // Allow reload for new image
+      prevImageRef.current = { imageUrl, mediaId };
+    }
+    
+    // Load if not loaded yet or image changed
+    if (!hasLoadedRef.current && (mediaId || imageUrl)) {
       hasLoadedRef.current = true;
       loadMediaDetails();
     }
@@ -98,8 +115,10 @@ export default function ImageDetailModal({
   };
 
   // Load media details
-  const loadMediaDetails = async () => {
-    setLoading(true);
+  const loadMediaDetails = async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
     setImageError(false);
     try {
@@ -147,7 +166,9 @@ export default function ImageDetailModal({
       // Still show the image even if details fail
       setMedia({ url: imageUrl, caption: "", likes: {}, comments: {} });
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -172,7 +193,26 @@ export default function ImageDetailModal({
     const { currentUser, activeEntity, typeRole } = sessionData;
     
     const wasLiked = mediaLiked;
+    // Optimistic update
     setMediaLiked(!wasLiked);
+    
+    // Optimistic update likes count in media object
+    if (media) {
+      const currentLikes = media.likes || {};
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        const userId = String(currentUser.id || currentUser._id || "").toLowerCase().trim();
+        if (wasLiked) {
+          // Unlike: remove from likes
+          const newLikes = { ...currentLikes };
+          delete newLikes[userId];
+          setMedia({ ...media, likes: newLikes });
+        } else {
+          // Like: add to likes
+          setMedia({ ...media, likes: { ...currentLikes, [userId]: true } });
+        }
+      }
+    }
     
     try {
       if (wasLiked) {
@@ -183,12 +223,28 @@ export default function ImageDetailModal({
           typeRole: typeRole
         });
       }
-      // Reload media to sync with server
-      await loadMediaDetails();
+      // Reload media to sync with server (without showing loading)
+      await loadMediaDetails(false);
     } catch (err) {
       console.error("[IMAGE_MODAL] Error toggling media like:", err);
       // Rollback
       setMediaLiked(wasLiked);
+      if (media) {
+        const currentLikes = media.likes || {};
+        const currentUser = getCurrentUser();
+        if (currentUser) {
+          const userId = String(currentUser.id || currentUser._id || "").toLowerCase().trim();
+          if (wasLiked) {
+            // Restore like
+            setMedia({ ...media, likes: { ...currentLikes, [userId]: true } });
+          } else {
+            // Remove like
+            const newLikes = { ...currentLikes };
+            delete newLikes[userId];
+            setMedia({ ...media, likes: newLikes });
+          }
+        }
+      }
     }
   };
 
@@ -219,9 +275,9 @@ export default function ImageDetailModal({
         authorAvatar: activeEntity?.avatar || activeEntity?.profilePicture || activeEntity?.EntityAvatar || null
       });
       
-      // Reload media to get updated comments
+      // Reload media to get updated comments (without showing loading)
       try {
-        await loadMediaDetails();
+        await loadMediaDetails(false);
       } catch (error_) {
         console.warn("[IMAGE_MODAL] Failed to reload media after comment, but comment was added:", error_);
       }
@@ -256,8 +312,8 @@ export default function ImageDetailModal({
       } else {
         await likeMediaComment(mediaIdForApi, commentId, { typeRole, entityAccountId });
       }
-      // Reload media to sync
-      await loadMediaDetails();
+      // Reload media to sync (without showing loading)
+      await loadMediaDetails(false);
     } catch (err) {
       console.error("[IMAGE_MODAL] Error toggling comment like:", err);
     } finally {
@@ -287,8 +343,8 @@ export default function ImageDetailModal({
       } else {
         await likeMediaReply(mediaIdForApi, commentId, replyId, { typeRole, entityAccountId });
       }
-      // Reload media to sync
-      await loadMediaDetails();
+      // Reload media to sync (without showing loading)
+      await loadMediaDetails(false);
     } catch (err) {
       console.error("[IMAGE_MODAL] Error toggling reply like:", err);
     } finally {
@@ -342,8 +398,8 @@ export default function ImageDetailModal({
         // Reply to comment
         await addMediaCommentReply(mediaIdForApi, commentId, replyData);
       }
-      // Reload media to get updated comments
-      await loadMediaDetails();
+      // Reload media to get updated comments (without showing loading)
+      await loadMediaDetails(false);
     } catch (err) {
       console.error("[IMAGE_MODAL] Error adding reply:", err);
       setReplyText(text); // Restore text on error
@@ -395,8 +451,8 @@ export default function ImageDetailModal({
       setEditingComment(null);
     setCommentText("");
       setReplyText("");
-      // Reload media
-      await loadMediaDetails();
+      // Reload media (without showing loading)
+      await loadMediaDetails(false);
     } catch (err) {
       console.error("[IMAGE_MODAL] Error updating comment/reply:", err);
     } finally {
@@ -446,8 +502,8 @@ export default function ImageDetailModal({
       if (mediaIdForApi) {
         try {
           await trackMediaShare(mediaIdForApi);
-          // Reload media để cập nhật số lượt share
-          await loadMediaDetails();
+          // Reload media để cập nhật số lượt share (without showing loading)
+          await loadMediaDetails(false);
         } catch (err) {
           console.warn('[IMAGE_MODAL] Failed to track share:', err);
         }
@@ -466,6 +522,22 @@ export default function ImageDetailModal({
     onClose?.();
   };
   
+  // Navigation helpers
+  const hasNext = allImages.length > 0 && currentIndex >= 0 && currentIndex < allImages.length - 1;
+  const hasPrevious = allImages.length > 0 && currentIndex > 0;
+  
+  const handleNext = () => {
+    if (hasNext && onNavigateImage) {
+      onNavigateImage(currentIndex + 1);
+    }
+  };
+  
+  const handlePrevious = () => {
+    if (hasPrevious && onNavigateImage) {
+      onNavigateImage(currentIndex - 1);
+    }
+  };
+  
   // Handle ESC key
   useEffect(() => {
     const handleEsc = (e) => {
@@ -479,6 +551,22 @@ export default function ImageDetailModal({
     }
     return () => {};
   }, [open]);
+  
+  // Handle keyboard navigation (Arrow keys)
+  useEffect(() => {
+    if (!open) return;
+    
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowRight' && hasNext && onNavigateImage) {
+        onNavigateImage(currentIndex + 1);
+      } else if (e.key === 'ArrowLeft' && hasPrevious && onNavigateImage) {
+        onNavigateImage(currentIndex - 1);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, hasNext, hasPrevious, currentIndex, onNavigateImage]);
 
   if (!open) return null;
   const mediaLikesCount = getLikesCount(media?.likes);
@@ -486,27 +574,40 @@ export default function ImageDetailModal({
 
   return (
     <div
-      className="media-viewer-modal"
+      className="fixed inset-0 z-[1000] bg-black/90 flex items-center justify-center p-0 md:p-4 lg:p-8 overflow-auto"
       role="dialog"
       aria-modal="true"
       onClick={handleClose}
       tabIndex={-1}
     >
       <div
-        className="media-viewer-content"
+        className="bg-card rounded-none md:rounded-2xl max-w-full md:max-w-[90vw] max-h-full md:max-h-[90vh] w-full h-full md:h-auto flex flex-col relative overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
-          className="media-viewer-close-btn"
+          className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white border-none w-10 h-10 rounded-full text-2xl cursor-pointer z-10 flex items-center justify-center transition-all duration-200 hover:scale-110"
           onClick={handleClose}
           aria-label="Close"
         >
           ×
         </button>
 
-        <div className="media-viewer-container">
+        <div className="flex flex-col md:flex-row h-full max-h-full md:max-h-[90vh] overflow-hidden">
           {/* Left: Image Section (60%) */}
-          <div className="media-viewer-image-section">
+          <div className="flex-1 flex items-center justify-center bg-black min-w-0 max-w-full md:max-w-[60%] max-h-[50vh] md:max-h-none relative z-[1]">
+            {/* Previous Button */}
+            {hasPrevious && (
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white border-none w-10 h-10 md:w-12 md:h-12 rounded-full cursor-pointer z-20 flex items-center justify-center transition-all duration-200 hover:scale-110"
+                onClick={handlePrevious}
+                aria-label="Previous image"
+              >
+                <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+            
             <MediaImageViewer
               imageUrl={imageUrl}
               media={media}
@@ -515,19 +616,39 @@ export default function ImageDetailModal({
               imageError={imageError}
               onImageError={() => setImageError(true)}
             />
+            
+            {/* Next Button */}
+            {hasNext && (
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white border-none w-10 h-10 md:w-12 md:h-12 rounded-full cursor-pointer z-20 flex items-center justify-center transition-all duration-200 hover:scale-110"
+                onClick={handleNext}
+                aria-label="Next image"
+              >
+                <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )}
+            
+            {/* Image Counter */}
+            {allImages.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm z-20">
+                {currentIndex + 1} / {allImages.length}
+              </div>
+            )}
           </div>
 
           {/* Right: Info Section (40%) */}
-          <div className="media-viewer-info-section">
+          <div className="w-full md:w-[420px] max-w-full md:max-w-[40%] flex flex-col overflow-y-auto overflow-x-hidden bg-card min-w-0 max-h-[50vh] md:max-h-none relative">
             {loading ? (
-              <div className="media-viewer-loading">Đang tải thông tin...</div>
+              <div className="p-8 text-center text-muted-foreground">Đang tải thông tin...</div>
             ) : error && !media ? (
-              <div className="media-viewer-error">{error}</div>
+              <div className="p-8 text-center text-destructive">{error}</div>
             ) : (
               <>
                 {/* Caption Header - Chỉ hiển thị nếu media có caption riêng (không phải từ post.content) */}
                 {media?.caption && media.caption.trim() && (
-                  <div className="media-viewer-caption">
+                  <div className="p-6 border-b border-border/50">
                     <ReadMoreText 
                       text={media.caption.trim()} 
                       maxLines={3}
@@ -584,17 +705,17 @@ export default function ImageDetailModal({
       {/* Image Lightbox */}
       {viewingImage && (
         <div 
-          className="image-lightbox"
+          className="fixed inset-0 z-[2000] bg-black/95 flex items-center justify-center p-4 md:p-8"
           onClick={() => setViewingImage(null)}
         >
           <img 
             src={viewingImage} 
             alt="Full size" 
-            className="lightbox-image"
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
           />
           <button
-            className="lightbox-close-btn"
+            className="absolute top-4 right-4 bg-white/20 hover:bg-white/30 text-white border-none w-10 h-10 rounded-full text-2xl cursor-pointer z-10 flex items-center justify-center transition-all duration-200 hover:scale-110"
             onClick={() => setViewingImage(null)}
           >
             ×
@@ -611,4 +732,7 @@ ImageDetailModal.propTypes = {
   imageUrl: PropTypes.string.isRequired,
   postId: PropTypes.string,
   mediaId: PropTypes.string,
+  allImages: PropTypes.array,
+  currentIndex: PropTypes.number,
+  onNavigateImage: PropTypes.func,
 };

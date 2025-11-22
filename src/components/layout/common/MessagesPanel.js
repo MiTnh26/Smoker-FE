@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
-import { Search, Bell, Video, MoreHorizontal } from "lucide-react";
+import { Search } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
@@ -252,15 +252,65 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
 
             const profile = await resolveProfile(otherParticipantId);
             if (profile) {
-              userName = profile.name || userName;
-              userAvatar = profile.avatar || null;
+              // Check status from conversation data or profile
+              const status = conv.participant1Status || conv.participant2Status || profile.status;
+              
+              if (status === 'banned') {
+                userName = "người dùng Smoker";
+                userAvatar = null; // Ẩn avatar
+              } else {
+                userName = profile.name || userName;
+                userAvatar = profile.avatar || null;
+              }
               entityId = profile.entityId || otherParticipantId;
             }
             
             // Lấy tin nhắn cuối cùng
-            const messages = Object.values(conv["Cuộc Trò Chuyện"] || {});
-            const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
-            const lastTime = lastMsg ? new Date(lastMsg["Gửi Lúc"]) : null;
+            // Backend now sends "Cuộc Trò Chuyện" as sorted array (newest first)
+            const conversationData = conv["Cuộc Trò Chuyện"] || [];
+            
+            let messages = [];
+            
+            // Handle array (from backend) or fallback to object/map
+            if (Array.isArray(conversationData)) {
+              messages = conversationData;
+            } else if (conversationData instanceof Map) {
+              messages = Array.from(conversationData.values());
+            } else if (typeof conversationData === 'object' && conversationData !== null) {
+              // Handle object - Map from MongoDB serializes to object with message IDs as keys
+              messages = Object.values(conversationData);
+              
+              // Filter out any non-message objects
+              messages = messages.filter(msg => 
+                msg && 
+                typeof msg === 'object' && 
+                (msg["Gửi Lúc"] || msg["Gửi lúc"] || msg["SentAt"] || msg["createdAt"])
+              );
+              
+              // Sort by time if not already sorted
+              messages.sort((a, b) => {
+                const getTime = (msg) => {
+                  if (!msg) return 0;
+                  const timeField = msg["Gửi Lúc"] || 
+                                  msg["Gửi lúc"] ||
+                                  msg["SentAt"] ||
+                                  msg["sentAt"] ||
+                                  msg["createdAt"] ||
+                                  msg["timestamp"] ||
+                                  null;
+                  if (!timeField) return 0;
+                  const parsed = new Date(timeField);
+                  return isNaN(parsed.getTime()) ? 0 : parsed.getTime();
+                };
+                
+                const timeA = getTime(a);
+                const timeB = getTime(b);
+                return timeB - timeA; // Descending order (newest first)
+              });
+            }
+            
+            // Get last message (first in sorted array)
+            const lastMsg = messages.length > 0 ? messages[0] : null;
             
             // Count unread messages
             let unreadCount = 0;
@@ -272,13 +322,57 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
               }).length;
             }
             
+            // Get last message content - try all possible field names
+            let lastMessageText = "";
+            if (lastMsg) {
+              // Try all possible field name variations
+              lastMessageText = lastMsg["Nội Dung Tin Nhắn"] || 
+                               lastMsg["Nội dung tin nhắn"] ||
+                               lastMsg["noi dung tin nhan"] ||
+                               lastMsg["Content"] || 
+                               lastMsg["content"] || 
+                               lastMsg["nội dung"] ||
+                               lastMsg["message"] ||
+                               lastMsg["Message"] ||
+                               lastMsg["text"] ||
+                               lastMsg["Text"] ||
+                               "";
+              
+              // Debug: Log all keys to see what's available
+              if (!lastMessageText) {
+                console.warn('[MessagesPanel] No message content found. Available keys:', Object.keys(lastMsg));
+                console.warn('[MessagesPanel] Full lastMsg object:', JSON.stringify(lastMsg, null, 2));
+              }
+            }
+            
+            // Format time - try all possible field names
+            let timeText = "";
+            if (lastMsg) {
+              const timeValue = lastMsg["Gửi Lúc"] || 
+                               lastMsg["Gửi lúc"] ||
+                               lastMsg["gui luc"] ||
+                               lastMsg["SentAt"] ||
+                               lastMsg["sentAt"] ||
+                               lastMsg["createdAt"] ||
+                               lastMsg["timestamp"] ||
+                               lastMsg["time"] ||
+                               null;
+              
+              if (timeValue) {
+                const parsedTime = new Date(timeValue);
+                if (!isNaN(parsedTime.getTime())) {
+                  timeText = formatRelativeTime(parsedTime);
+                }
+              }
+            }
+            
             return {
               id: conv._id,
               name: userName,
               avatar: userAvatar,
               entityId: entityId, // Store entityId for opening chat
-              lastMessage: lastMsg ? lastMsg["Nội Dung Tin Nhắn"] : "",
-              time: lastTime ? formatRelativeTime(lastTime) : "",
+              lastMessage: lastMessageText,
+              time: timeText,
               unread: unreadCount
             };
           })
@@ -341,60 +435,6 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
       className={cn("flex h-full flex-col min-h-0")}
       style={{ background: themeVars.cardSoft, color: themeVars.foreground }}
     >
-      {/* Top header */}
-      <div
-        className="flex items-center justify-between px-4 py-3"
-        style={{
-          borderBottom: `1px solid ${themeVars.borderSoft}`,
-          background: `linear-gradient(180deg, ${themeVars.card} 0%, ${themeVars.backgroundSoft} 100%)`,
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="flex h-9 w-9 items-center justify-center rounded-full overflow-hidden flex-shrink-0"
-            style={{
-              background: currentUserAvatar ? 'transparent' : `linear-gradient(140deg, ${themeVars.primary} 0%, ${themeVars.primarySoft} 100%)`,
-              color: themeVars.primaryForeground,
-            }}
-          >
-            {currentUserAvatar ? (
-              <img 
-                src={currentUserAvatar} 
-                alt={currentUserName || "User"} 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-base font-bold">
-                {getInitial(currentUserName)}
-              </span>
-            )}
-          </div>
-          <div>
-            <p className="m-0 text-base font-semibold" style={{ color: themeVars.foreground }}>
-              {t('messages.chats') || "Chats"}
-            </p>
-            <p className="m-0 text-xs" style={{ color: themeVars.mutedForeground }}>
-              {t('messages.keepInTouch') || "Stay connected with your friends"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {[{ id: "bell", Icon: Bell }, { id: "video", Icon: Video }, { id: "ellipsis", Icon: MoreHorizontal }].map(({ id, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full transition"
-              style={{
-                border: `1px solid ${themeVars.borderStrong}`,
-                background: themeVars.card,
-                color: themeVars.mutedForeground,
-              }}
-            >
-              <Icon size={16} />
-            </button>
-          ))}
-        </div>
-      </div>
       {/* Search bar */}
       <div className="px-4 pt-3">
         <div

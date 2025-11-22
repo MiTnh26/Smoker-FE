@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import barPageApi from "../../../api/barPageApi";
 import { userApi } from "../../../api/userApi";
 import { fetchAllEntities } from "../../../utils/sessionHelper";
@@ -8,9 +9,11 @@ import "../../../styles/modules/businessRegister.css";
 
 export default function BarRegister() {
   const storedUser = JSON.parse(localStorage.getItem("user"));
+  const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [message, setMessage] = useState("");
 
   const [info, setInfo] = useState({
@@ -19,7 +22,6 @@ export default function BarRegister() {
     phoneNumber: "",
     email: storedUser?.email || "",
     role: "Bar",
-    
   });
 
   // Location states for AddressSelector
@@ -86,9 +88,6 @@ export default function BarRegister() {
     setPreviews((prev) => ({ ...prev, [name]: file ? URL.createObjectURL(file) : "" }));
   };
 
-  // -------------------
-  // Step 1: Thông tin quán
-  // -------------------
   const submitStep1 = (e) => {
     e.preventDefault();
     if (!info.barName.trim()) {
@@ -99,19 +98,12 @@ export default function BarRegister() {
     nextStep();
   };
 
-  // Build full address from location selection
   const buildAddress = () => {
     const parts = [];
     if (addressDetail) parts.push(addressDetail);
-    
-    // We'll get names from AddressSelector, for now just use IDs
-    // The address will be built on backend or we need to fetch names
     return info.address || addressDetail || "";
   };
 
-  // -------------------
-  // Step 2: Ảnh quán và tạo BarPage
-  // -------------------
   const submitStep2 = async (e) => {
     e.preventDefault();
     if (!files.avatar && !files.background) {
@@ -122,7 +114,6 @@ export default function BarRegister() {
     setIsLoading(true);
     setMessage("");
     try {
-      // Build address data
       const addressData = {
         provinceId: selectedProvinceId || null,
         districtId: selectedDistrictId || null,
@@ -131,7 +122,6 @@ export default function BarRegister() {
         fullAddress: info.address || buildAddress() || null
       };
 
-      // 1️⃣ Tạo BarPage
       const res = await barPageApi.create({ 
         accountId: storedUser.id, 
         ...info,
@@ -139,48 +129,50 @@ export default function BarRegister() {
       });
       const newBarPageId = res.data.BarPageId;
 
-      // 2️⃣ Upload ảnh và cập nhật addressData
       const fd = new FormData();
       fd.append("barPageId", newBarPageId);
       if (files.avatar) fd.append("avatar", files.avatar);
       if (files.background) fd.append("background", files.background);
-      // Send addressData as JSON string
       if (selectedProvinceId || selectedDistrictId || selectedWardId) {
         fd.append("addressData", JSON.stringify(addressData));
         fd.append("address", addressData.fullAddress || info.address || "");
       }
       await barPageApi.upload(fd);
 
-      // 3️⃣ Refresh session with updated entities
       try {
         const currentSession = JSON.parse(localStorage.getItem("session"));
         if (currentSession && currentSession.account) {
           const entities = await fetchAllEntities(storedUser.id, currentSession.account);
           currentSession.entities = entities;
           localStorage.setItem("session", JSON.stringify(currentSession));
-          
-          // Trigger profile update event
           if (typeof window !== "undefined") {
             window.dispatchEvent(new Event("profileUpdated"));
           }
         }
       } catch (refreshError) {
         console.error("[BarRegister] Error refreshing session:", refreshError);
-        // Continue anyway, registration was successful
       }
 
-      // 4️⃣ Cập nhật user localStorage
-      const updatedUser = { ...storedUser, role: "bar", businessId: newBarPageId };
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-
-      setMessage("Tạo BarPage thành công!");
-      window.location.href = `/bar/${newBarPageId}`;
+      setIsSuccess(true);
+      setMessage("Đăng ký thành công! Hồ sơ của bạn đang chờ quản trị viên duyệt.");
     } catch (err) {
       setMessage(err.response?.data?.message || "Lỗi khi tạo BarPage");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isSuccess) {
+    return (
+      <div className="business-register-container text-center">
+        <h2>Đăng ký thành công</h2>
+        <p className="business-register-message">{message}</p>
+        <button onClick={() => navigate('/')} className="btn-primary mt-4">
+          Về trang chủ
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="business-register-container">
@@ -226,7 +218,7 @@ export default function BarRegister() {
         />
       )}
 
-      {message && <p className="business-register-message">{message}</p>}
+      {message && !isSuccess && <p className="business-register-message">{message}</p>}
     </div>
   );
 }

@@ -1,31 +1,44 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import comboApi from "../../../api/comboApi";
-import { useParams } from "react-router-dom";
 
-export default function BarMenuCombo() {
+export default function BarMenuCombo({ barPageId }) {
   const { t } = useTranslation();
-  const { barPageId } = useParams();
   const [combos, setCombos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (!barPageId) {
+      setLoading(false);
+      return;
+    }
+    
     const fetchCombos = async () => {
       try {
         setLoading(true);
+        setMessage("");
         const res = await comboApi.getCombosByBar(barPageId);
-        setCombos(res.data || []);
+        if (res.status === "success") {
+          setCombos(res.data || []);
+        } else if (Array.isArray(res.data)) {
+          setCombos(res.data);
+        } else if (Array.isArray(res)) {
+          setCombos(res);
+        } else {
+          setCombos([]);
+        }
       } catch (err) {
-        console.error(err);
-        setMessage(t("bar.errorLoadingCombos"));
+        console.error("Error loading combos:", err);
+        setMessage(t("bar.errorLoadingCombos") || "Error loading combos");
+        setCombos([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchCombos();
-  }, [barPageId]);
+  }, [barPageId, t]);
 
   if (loading) return <div className="text-center py-4">{t("bar.loadingMenu")}</div>;
 
