@@ -10,14 +10,24 @@ import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
 import "../../../styles/modules/customer.css";
 
-// Table Icon Component
+// Table Icon Component - Sử dụng CSS variables
 const TableIcon = ({ status, color, className = "" }) => {
   const getStatusColor = () => {
+    // Nếu có màu từ table.Color (màu của loại bàn), ưu tiên dùng nó khi available
+    if (status === "available" && color) {
+      return color;
+    }
+    
+    // Sử dụng CSS variables từ variables.css
     switch (status) {
-      case "available": return "#10B981"; // green
-      case "booked": return "#EF4444"; // red
-      case "maintenance": return "#6B7280"; // gray
-      default: return color || "#6B7280";
+      case "available": 
+        return "rgb(var(--success))"; // Màu xanh từ --success
+      case "booked": 
+        return "rgb(var(--danger))"; // Màu đỏ từ --danger
+      case "maintenance": 
+        return "rgb(var(--muted-foreground))"; // Màu xám từ --muted-foreground
+      default: 
+        return color || "rgb(var(--muted-foreground))";
     }
   };
 
@@ -69,12 +79,24 @@ const TableIcon = ({ status, color, className = "" }) => {
   );
 };
 
-// Status Badge
+// Status Badge - Sử dụng CSS variables
 const StatusBadge = ({ status }) => {
   const configs = {
-    available: { label: "Có sẵn", color: "#10B981", bg: "#D1FAE5" },
-    booked: { label: "Đã đặt", color: "#EF4444", bg: "#FEE2E2" },
-    maintenance: { label: "Bảo trì", color: "#6B7280", bg: "#F3F4F6" }
+    available: { 
+      label: "Bàn trống", 
+      color: "rgb(var(--success))", 
+      bg: "rgba(var(--success), 0.1)" // 10% opacity của success color
+    },
+    booked: { 
+      label: "Đã đặt", 
+      color: "rgb(var(--danger))", 
+      bg: "rgba(var(--danger), 0.1)" // 10% opacity của danger color
+    },
+    maintenance: { 
+      label: "Bảo trì", 
+      color: "rgb(var(--muted-foreground))", 
+      bg: "rgba(var(--muted-foreground), 0.1)" // 10% opacity của muted-foreground
+    }
   };
   const config = configs[status] || configs.available;
 
@@ -88,7 +110,7 @@ const StatusBadge = ({ status }) => {
       fontWeight: '600',
       backgroundColor: config.bg,
       color: config.color,
-      border: `1px solid ${config.color}40`
+      border: `1px solid ${config.color}40` // 40 = 25% opacity trong hex
     }}>
       {config.label}
     </span>
@@ -96,7 +118,7 @@ const StatusBadge = ({ status }) => {
 };
 
 // Booking Modal Component
-const BookingModal = ({ open, onClose, table, selectedDate, selectedTime, onConfirm }) => {
+const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) => {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
@@ -159,8 +181,51 @@ const BookingModal = ({ open, onClose, table, selectedDate, selectedTime, onConf
           marginBottom: '24px',
           color: '#1f2937'
         }}>
-          Đặt bàn: {table?.TableName}
+          Đặt bàn {tables.length > 1 ? `(${tables.length} bàn)` : ''}
         </h2>
+
+        {/* Danh sách bàn đã chọn */}
+        {tables.length > 0 && (
+          <div style={{
+            background: '#f3f4f6',
+            padding: '16px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            maxHeight: '200px',
+            overflowY: 'auto'
+          }}>
+            <div style={{ fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
+              Bàn đã chọn:
+            </div>
+            {tables.map((table, index) => (
+              <div key={table.BarTableId} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '8px 0',
+                borderBottom: index < tables.length - 1 ? '1px solid #e5e7eb' : 'none'
+              }}>
+                <span style={{ color: '#6b7280' }}>{table.TableName}</span>
+                <span style={{ fontWeight: '600', color: 'rgb(var(--success))' }}>
+                  {table.DepositPrice ? table.DepositPrice.toLocaleString('vi-VN') + ' đ' : 'Miễn phí'}
+                </span>
+              </div>
+            ))}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: '12px',
+              paddingTop: '12px',
+              borderTop: '2px solid #d1d5db'
+            }}>
+              <span style={{ fontWeight: '700', color: '#1f2937' }}>Tổng tiền cọc:</span>
+              <span style={{ fontWeight: '700', fontSize: '1.1rem', color: 'rgb(var(--success))' }}>
+                {tables.reduce((sum, table) => sum + (table.DepositPrice || 0), 0).toLocaleString('vi-VN')} đ
+              </span>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '20px' }}>
@@ -238,7 +303,7 @@ const BookingModal = ({ open, onClose, table, selectedDate, selectedTime, onConf
             />
           </div>
 
-          {table?.DepositPrice > 0 && (
+          {tables.length > 0 && tables.reduce((sum, t) => sum + (t.DepositPrice || 0), 0) > 0 && (
             <div style={{ marginBottom: '20px' }}>
               <label style={{
                 display: 'flex',
@@ -262,7 +327,7 @@ const BookingModal = ({ open, onClose, table, selectedDate, selectedTime, onConf
                   }}
                 />
                 <span style={{ fontWeight: '600', color: '#374151' }}>
-                  Đã thanh toán tiền cọc ({table.DepositPrice.toLocaleString('vi-VN')} đ)
+                  Đã thanh toán tiền cọc ({tables.reduce((sum, t) => sum + (t.DepositPrice || 0), 0).toLocaleString('vi-VN')} đ)
                 </span>
               </label>
             </div>
@@ -278,14 +343,12 @@ const BookingModal = ({ open, onClose, table, selectedDate, selectedTime, onConf
               <span style={{ color: '#6b7280' }}>Ngày:</span>
               <span style={{ fontWeight: '600' }}>{selectedDate}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ color: '#6b7280' }}>Giờ:</span>
-              <span style={{ fontWeight: '600' }}>{selectedTime}</span>
-            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280' }}>Tiền cọc:</span>
-              <span style={{ fontWeight: '600', color: '#059669' }}>
-                {table?.DepositPrice ? table.DepositPrice.toLocaleString('vi-VN') + ' đ' : 'Miễn phí'}
+              <span style={{ color: '#6b7280' }}>Tổng tiền cọc:</span>
+              <span style={{ fontWeight: '600', color: 'rgb(var(--success))' }}>
+                {tables.reduce((sum, t) => sum + (t.DepositPrice || 0), 0) > 0 
+                  ? tables.reduce((sum, t) => sum + (t.DepositPrice || 0), 0).toLocaleString('vi-VN') + ' đ'
+                  : 'Miễn phí'}
               </span>
             </div>
           </div>
@@ -351,16 +414,10 @@ const BarTablesPage = ({ barId: propBarId }) => {
     }
     return searchParams.get('date') || new Date().toISOString().split('T')[0];
   });
-  const [selectedTime, setSelectedTime] = useState(() => {
-    if (propBarId) {
-      return '19:00';
-    }
-    return searchParams.get('time') || '19:00';
-  });
   
   // Booking modal
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
-  const [selectedTable, setSelectedTable] = useState(null);
+  const [selectedTables, setSelectedTables] = useState([]);
 
   // Toast management
   const addToast = useCallback((message, type = "info", duration = 3000) => {
@@ -415,17 +472,6 @@ const BarTablesPage = ({ barId: propBarId }) => {
     }
   }, [receiverId]);
 
-  // Check time overlap
-  const isTimeOverlap = (selectedTime, bookingStart, bookingEnd) => {
-    const [selectedHour, selectedMinute] = selectedTime.split(':').map(Number);
-    const selectedDateTime = new Date(selectedDate);
-    selectedDateTime.setHours(selectedHour, selectedMinute);
-    
-    const start = new Date(bookingStart);
-    const end = new Date(bookingEnd);
-    
-    return selectedDateTime >= start && selectedDateTime <= end;
-  };
 
   // Fetch tables
   const fetchTables = useCallback(async () => {
@@ -477,30 +523,58 @@ const BarTablesPage = ({ barId: propBarId }) => {
       
       // Enhance tables with booking status
       const enhancedTables = tablesData.map(table => {
-        // Find bookings for this table
+        // Find bookings for this table in the selected date
         const tableBookings = bookings.filter(booking => {
-          // Check if booking has this table in detailSchedule
-          const detailSchedule = booking.detailSchedule || booking.DetailSchedule;
-          if (detailSchedule && detailSchedule.Table) {
-            const tableMap = detailSchedule.Table;
-            return Object.keys(tableMap).some(key => 
-              key.toLowerCase() === table.BarTableId?.toLowerCase()
-            );
+          // 1. Kiểm tra scheduleStatus phải là "Confirmed"
+          const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
+          if (scheduleStatus !== "Confirmed") {
+            return false; // Bỏ qua booking chưa confirmed
           }
-          return false;
+
+          // 2. Kiểm tra booking có trong ngày đã chọn không
+          const bookingDate = booking.bookingDate || booking.BookingDate || booking.StartTime;
+          if (bookingDate) {
+            const bookingDateObj = new Date(bookingDate);
+            const selectedDateObj = new Date(selectedDate);
+            // So sánh theo ngày (bỏ qua giờ)
+            if (bookingDateObj.toDateString() !== selectedDateObj.toDateString()) {
+              return false; // Không cùng ngày
+            }
+          }
+
+          // 3. Check if booking has this table in detailSchedule
+          const detailSchedule = booking.detailSchedule || booking.DetailSchedule;
+          if (!detailSchedule || !detailSchedule.Table) {
+            return false; // Không có detailSchedule hoặc Table
+          }
+
+          // detailSchedule.Table có thể là Map (MongoDB) hoặc Object
+          let tableMap = detailSchedule.Table;
+          
+          // Nếu là Map, convert sang Object
+          if (tableMap instanceof Map) {
+            tableMap = Object.fromEntries(tableMap);
+          }
+          
+          // Nếu là Object với toObject method (Mongoose document)
+          if (tableMap && typeof tableMap.toObject === 'function') {
+            tableMap = tableMap.toObject();
+          }
+
+          // Kiểm tra xem bàn này có trong booking không
+          const tableKeys = Object.keys(tableMap || {});
+          const currentTableId = table.BarTableId?.toLowerCase();
+          
+          const isTableInBooking = tableKeys.some(key => {
+            const tableId = key.toLowerCase();
+            return tableId === currentTableId;
+          });
+
+          return isTableInBooking;
         });
         
-        // Check if table is booked at selected time
-        // Chỉ coi là "booked" nếu scheduleStatus = "Confirmed" (đã xác nhận)
-        const isBooked = tableBookings.some(booking => {
-          const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
-          // Chỉ coi là booked nếu đã confirmed
-          if (scheduleStatus !== "Confirmed") return false;
-          
-          const startTime = booking.startTime || booking.StartTime;
-          const endTime = booking.endTime || booking.EndTime;
-          return isTimeOverlap(selectedTime, startTime, endTime);
-        });
+        // Bàn được coi là "booked" nếu có ít nhất 1 booking confirmed trong ngày đó
+        const isBooked = tableBookings.length > 0;
         
         const status = table.Status?.toLowerCase() === 'active' 
           ? (isBooked ? 'booked' : 'available')
@@ -509,12 +583,26 @@ const BarTablesPage = ({ barId: propBarId }) => {
         return {
           ...table,
           status,
-          isSelectable: status === 'available'
+          isSelectable: status === 'available' && !isBooked // Chỉ selectable nếu available và không booked
         };
       });
 
-      console.log("✅ Enhanced Tables:", enhancedTables);
-      console.log("✅ Enhanced Tables Count:", enhancedTables.length);
+      // Log để debug
+      console.log("📅 Selected Date:", selectedDate);
+      console.log("📋 Bookings for date:", bookings.length);
+      console.log("📋 Bookings details:", bookings.map(b => ({
+        id: b.BookedScheduleId,
+        date: b.bookingDate || b.BookingDate,
+        status: b.scheduleStatus || b.ScheduleStatus,
+        hasDetailSchedule: !!(b.detailSchedule || b.DetailSchedule),
+        tableCount: b.detailSchedule?.Table ? Object.keys(b.detailSchedule.Table).length : 0
+      })));
+      console.log("✅ Enhanced Tables:", enhancedTables.map(t => ({
+        id: t.BarTableId,
+        name: t.TableName,
+        status: t.status,
+        isSelectable: t.isSelectable
+      })));
       setTables(enhancedTables);
     } catch (err) {
       console.error("❌ Error fetching tables:", err);
@@ -525,7 +613,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
     } finally {
       setLoading(false);
     }
-  }, [barId, selectedDate, selectedTime, receiverId, addToast, fetchBookingsForDate]);
+  }, [barId, selectedDate, receiverId, addToast, fetchBookingsForDate]);
 
   // Apply filters
   useEffect(() => {
@@ -539,12 +627,11 @@ const BarTablesPage = ({ barId: propBarId }) => {
     if (!propBarId) {
       const params = new URLSearchParams();
       if (selectedDate) params.set('date', selectedDate);
-      if (selectedTime) params.set('time', selectedTime);
       setSearchParams(params);
     }
-  }, [selectedDate, selectedTime, propBarId, setSearchParams]);
+  }, [selectedDate, propBarId, setSearchParams]);
 
-  // Refetch when date/time changes
+  // Refetch when date changes
   useEffect(() => {
     // Chỉ fetch khi có barId
     if (barId) {
@@ -552,53 +639,106 @@ const BarTablesPage = ({ barId: propBarId }) => {
       fetchTables();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [barId, selectedDate, selectedTime, receiverId]); // Loại bỏ fetchTables khỏi deps để tránh loop
+  }, [barId, selectedDate, receiverId]); // Loại bỏ fetchTables khỏi deps để tránh loop
 
-  // Handle table click
+  // Handle table click - toggle selection
   const handleTableClick = (table) => {
+    // Kiểm tra lại trạng thái bàn trước khi cho phép chọn
+    if (table.status === 'booked') {
+      addToast("Bàn này đã được đặt trong ngày này", "warning");
+      return;
+    }
+    
     if (!table.isSelectable) {
       addToast("Bàn này đã được đặt hoặc đang bảo trì", "warning");
       return;
     }
-    setSelectedTable(table);
+    
+    // Toggle selection
+    setSelectedTables(prev => {
+      const isSelected = prev.some(t => t.BarTableId === table.BarTableId);
+      if (isSelected) {
+        // Bỏ chọn
+        return prev.filter(t => t.BarTableId !== table.BarTableId);
+      } else {
+        // Thêm vào danh sách
+        return [...prev, table];
+      }
+    });
+  };
+
+  // Handle open booking modal
+  const handleOpenBookingModal = () => {
+    if (selectedTables.length === 0) {
+      addToast("Vui lòng chọn ít nhất một bàn", "warning");
+      return;
+    }
     setBookingModalOpen(true);
   };
 
   // Handle booking confirm
   const handleBookingConfirm = async (formData) => {
-    if (!receiverId || !selectedTable) {
+    if (!receiverId || selectedTables.length === 0) {
       addToast("Lỗi: Thiếu thông tin", "error");
       return;
     }
 
     try {
       // Format tables data for API
-      const tablesData = [{
-        id: selectedTable.BarTableId,
-        tableName: selectedTable.TableName,
-        price: selectedTable.DepositPrice || 0
-      }];
+      const tablesData = selectedTables.map(table => ({
+        id: table.BarTableId,
+        tableName: table.TableName,
+        price: table.DepositPrice || 0
+      }));
+
+      const totalAmount = selectedTables.reduce((sum, table) => sum + (table.DepositPrice || 0), 0);
+
+      // Tính startTime và endTime
+      // startTime: Nếu ngày hôm nay thì từ thời điểm hiện tại, nếu ngày tương lai thì từ 00:00:00
+      // endTime: Cuối ngày đã chọn (23:59:59)
+      const now = new Date();
+      const selectedDateObj = new Date(selectedDate);
+      const isToday = selectedDateObj.toDateString() === now.toDateString();
+      
+      let startTime, endTime;
+      if (isToday) {
+        // Nếu là hôm nay, bắt đầu từ thời điểm hiện tại
+        startTime = now.toISOString();
+        // Kết thúc vào cuối ngày hôm nay
+        const endOfDay = new Date(selectedDateObj);
+        endOfDay.setHours(23, 59, 59, 999);
+        endTime = endOfDay.toISOString();
+      } else {
+        // Nếu là ngày tương lai, bắt đầu từ đầu ngày
+        const startOfDay = new Date(selectedDateObj);
+        startOfDay.setHours(0, 0, 0, 0);
+        startTime = startOfDay.toISOString();
+        // Kết thúc vào cuối ngày
+        const endOfDay = new Date(selectedDateObj);
+        endOfDay.setHours(23, 59, 59, 999);
+        endTime = endOfDay.toISOString();
+      }
 
       const bookingData = {
         receiverId: receiverId,
         tables: tablesData,
         note: `${formData.customerName} - ${formData.phone}${formData.note ? ` - ${formData.note}` : ''}`,
-        totalAmount: selectedTable.DepositPrice || 0,
+        totalAmount: totalAmount,
         bookingDate: selectedDate,
-        startTime: `${selectedDate}T${selectedTime}:00Z`,
-        endTime: `${selectedDate}T${parseInt(selectedTime.split(':')[0]) + 3}:${selectedTime.split(':')[1]}:00Z`,
-        // Nếu đã thanh toán → paymentStatus = "Paid", scheduleStatus = "Confirmed"
+        startTime: startTime,
+        endTime: endTime,
+        // Nếu đã thanh toán → paymentStatus = "Done", scheduleStatus = "Confirmed"
         // Nếu chưa thanh toán → paymentStatus = "Pending", scheduleStatus = "Confirmed" (vẫn confirmed vì không cần bar xác nhận)
-        paymentStatus: formData.isPaid ? "Paid" : "Pending",
+        paymentStatus: formData.isPaid ? "Done" : "Pending",
         scheduleStatus: "Confirmed" // Luôn confirmed vì không cần bar xác nhận
       };
 
       const result = await bookingApi.createBooking(bookingData);
       
       if (result.success) {
-        addToast("Đặt bàn thành công!", "success");
+        addToast(`Đặt ${selectedTables.length} bàn thành công!`, "success");
         setBookingModalOpen(false);
-        setSelectedTable(null);
+        setSelectedTables([]);
         // Refresh tables to update status
         fetchTables();
       } else {
@@ -639,6 +779,61 @@ const BarTablesPage = ({ barId: propBarId }) => {
         <p style={{ color: '#6b7280' }}>Chọn ngày và bàn phù hợp với bạn</p>
       </div>
 
+      {/* Selected tables summary and booking button - Sử dụng CSS variables */}
+      {selectedTables.length > 0 && (
+        <div style={{
+          background: 'rgba(var(--success), 0.1)', // 10% opacity của success
+          border: '2px solid rgb(var(--success))',
+          borderRadius: '12px',
+          padding: '16px',
+          marginBottom: '24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div>
+            <div style={{ fontWeight: '600', color: 'rgb(var(--success))', marginBottom: '4px' }}>
+              Đã chọn {selectedTables.length} bàn
+            </div>
+            <div style={{ fontSize: '0.9rem', color: 'rgb(var(--success))' }}>
+              Tổng tiền cọc: {selectedTables.reduce((sum, t) => sum + (t.DepositPrice || 0), 0).toLocaleString('vi-VN')} đ
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => setSelectedTables([])}
+              style={{
+                padding: '10px 20px',
+                border: '1px solid rgb(var(--success))',
+                borderRadius: '8px',
+                background: 'rgb(var(--card))',
+                color: 'rgb(var(--success))',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              Bỏ chọn tất cả
+            </button>
+            <button
+              onClick={handleOpenBookingModal}
+              style={{
+                padding: '10px 20px',
+                border: 'none',
+                borderRadius: '8px',
+                background: 'rgb(var(--success))',
+                color: 'rgb(var(--white))',
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              Đặt bàn ({selectedTables.length})
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div style={{
         display: 'flex',
@@ -669,36 +864,6 @@ const BarTablesPage = ({ barId: propBarId }) => {
           />
         </div>
 
-        <div>
-          <label style={{
-            display: 'block',
-            marginBottom: '8px',
-            fontWeight: '600',
-            color: '#374151'
-          }}>
-            Giờ
-          </label>
-          <select
-            value={selectedTime}
-            onChange={(e) => setSelectedTime(e.target.value)}
-            style={{
-              padding: '10px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '1rem',
-              minWidth: '120px'
-            }}
-          >
-            {Array.from({ length: 13 }, (_, i) => {
-              const hour = i + 10;
-              return hour <= 22 ? (
-                <option key={hour} value={`${hour}:00`}>
-                  {hour}:00
-                </option>
-              ) : null;
-            })}
-          </select>
-        </div>
       </div>
 
       {/* Error State */}
@@ -727,15 +892,16 @@ const BarTablesPage = ({ barId: propBarId }) => {
         </div>
       )}
 
-      {/* Tables Grid */}
-      <div style={{
+      {/* Tables Grid - 3 bàn 1 hàng */}
+      <div className="bar-tables-grid" style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+        gridTemplateColumns: 'repeat(3, 1fr)',
         gap: '24px'
       }}>
         <AnimatePresence>
           {filteredTables.map((table) => {
             const isDisabled = !table.isSelectable;
+            const isSelected = selectedTables.some(t => t.BarTableId === table.BarTableId);
             
             return (
               <motion.div
@@ -746,14 +912,18 @@ const BarTablesPage = ({ barId: propBarId }) => {
                 transition={{ duration: 0.2 }}
                 onClick={() => handleTableClick(table)}
                 style={{
-                  background: 'white',
-                  borderRadius: '12px',
+                  background: isSelected ? 'rgba(var(--success), 0.1)' : 'rgb(var(--card))',
+                  borderRadius: isSelected ? '0' : '12px', // Hình vuông khi được chọn
                   padding: '24px',
                   boxShadow: isDisabled 
-                    ? '0 2px 8px rgba(0, 0, 0, 0.1)' 
+                    ? '0 2px 8px rgba(0, 0, 0, 0.1)'
+                    : isSelected
+                    ? '0 4px 12px rgba(var(--success), 0.3)'
                     : '0 2px 8px rgba(0, 0, 0, 0.1)',
                   border: isDisabled 
-                    ? '2px solid #e5e7eb' 
+                    ? `2px solid rgb(var(--border))` 
+                    : isSelected
+                    ? '2px solid rgb(var(--success))'
                     : '2px solid transparent',
                   cursor: isDisabled ? 'not-allowed' : 'pointer',
                   opacity: isDisabled ? 0.6 : 1,
@@ -772,6 +942,27 @@ const BarTablesPage = ({ barId: propBarId }) => {
                   e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
                 }}
               >
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '12px',
+                    right: '12px',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'rgb(var(--success))',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'rgb(var(--white))',
+                    fontWeight: 'bold',
+                    fontSize: '14px'
+                  }}>
+                    ✓
+                  </div>
+                )}
+
                 {/* Table Icon */}
                 <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
                   <TableIcon status={table.status} color={table.Color} />
@@ -806,7 +997,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
                 <p style={{
                   fontSize: '1rem',
                   fontWeight: '600',
-                  color: '#059669',
+                  color: 'rgb(var(--success))',
                   margin: '8px 0 0 0'
                 }}>
                   {table.DepositPrice 
@@ -873,11 +1064,9 @@ const BarTablesPage = ({ barId: propBarId }) => {
         open={bookingModalOpen}
         onClose={() => {
           setBookingModalOpen(false);
-          setSelectedTable(null);
         }}
-        table={selectedTable}
+        tables={selectedTables}
         selectedDate={selectedDate}
-        selectedTime={selectedTime}
         onConfirm={handleBookingConfirm}
       />
     </div>

@@ -248,6 +248,26 @@
   padding: 40px 0;
 }
 
+/* Bar Tables Grid - 3 bàn 1 hàng */
+.bar-tables-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+/* Responsive cho bar-tables-grid */
+@media (max-width: 1024px) {
+  .bar-tables-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .bar-tables-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .customer-tables-page {
