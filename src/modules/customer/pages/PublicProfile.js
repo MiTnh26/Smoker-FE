@@ -1,6 +1,6 @@
 /* global globalThis */
 import React, { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import FollowButton from "../../../components/common/FollowButton";
 import publicProfileApi from "../../../api/publicProfileApi";
@@ -18,6 +18,7 @@ import BarMenu from "../../bar/components/BarMenuCombo";
 import BarVideo from "../../bar/components/BarVideo";
 import BarReview from "../../bar/components/BarReview";
 import BarTables from "../../bar/components/BarTables";
+import BarTablesPage from "./BarTablesPage";
 import { useProfilePosts } from "../../../hooks/useProfilePosts";
 import { useCurrentUserEntity } from "../../../hooks/useCurrentUserEntity";
 import { ProfileHeader } from "../../../components/profile/ProfileHeader";
@@ -32,6 +33,7 @@ const getWindow = () => (typeof globalThis !== "undefined" ? globalThis : undefi
 // eslint-disable-next-line complexity
 export default function PublicProfile() {
   const { entityId } = useParams();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,6 +58,7 @@ export default function PublicProfile() {
   const [activeTab, setActiveTab] = useState("info");
   const [tableTypes, setTableTypes] = useState([]);
   const [isBanned, setIsBanned] = useState(false);
+  const [showBookingView, setShowBookingView] = useState(false); // Toggle booking view
 
   useEffect(() => {
     let alive = true;
@@ -437,7 +440,32 @@ export default function PublicProfile() {
         const canCreateTables = isOwnProfile && currentUserRole === "BAR";
         return (
           <div className="profile-section">
-            <BarTables barPageId={barPageId} readOnly={!canCreateTables} />
+            {!canCreateTables && (
+              <div className="mb-4 flex justify-between items-center">
+                <h2 className="text-xl font-bold">Danh sách bàn</h2>
+                <button
+                  onClick={() => setShowBookingView(!showBookingView)}
+                  className={cn(
+                    "px-6 py-3 rounded-lg font-semibold text-base",
+                    showBookingView 
+                      ? "bg-gray-500 text-white" 
+                      : "bg-primary text-primary-foreground",
+                    "border-none",
+                    "hover:opacity-90 transition-all duration-200",
+                    "active:scale-95",
+                    "flex items-center gap-2"
+                  )}
+                >
+                  <i className="bx bxs-calendar-check text-xl" />
+                  <span>{showBookingView ? "Hủy đặt bàn" : "🍽️ Đặt bàn ngay"}</span>
+                </button>
+              </div>
+            )}
+            {showBookingView && !canCreateTables ? (
+              <BarTablesPage barId={barPageId} />
+            ) : (
+              <BarTables barPageId={barPageId} readOnly={!canCreateTables} />
+            )}
           </div>
         );
       default:
