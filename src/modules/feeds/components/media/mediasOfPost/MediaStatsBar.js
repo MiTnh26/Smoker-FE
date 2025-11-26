@@ -8,7 +8,8 @@ export default function MediaStatsBar({
   sharesCount,
   onLikeClick,
   onShareClick,
-  disabled
+  disabled,
+  shareButtonRef
 }) {
   return (
     <div className="flex gap-6 p-4 px-6 border-b border-border/30">
@@ -37,6 +38,7 @@ export default function MediaStatsBar({
         <span className="font-semibold text-[0.95rem]">{commentsCount}</span>
       </div>
       <button
+        ref={shareButtonRef}
         className={cn(
           "flex items-center gap-2 text-foreground",
           "bg-transparent border-none cursor-pointer",
@@ -64,6 +66,7 @@ MediaStatsBar.propTypes = {
   sharesCount: PropTypes.number,
   onLikeClick: PropTypes.func.isRequired,
   onShareClick: PropTypes.func.isRequired,
-  disabled: PropTypes.bool
+  disabled: PropTypes.bool,
+  shareButtonRef: PropTypes.object
 };
 

@@ -139,7 +139,7 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
       if (allStoriesViewed) {
         console.log('[StoryBar] Filtering out user group - all stories viewed in DB:', {
           userId: userGroup.userId,
-          username: userGroup.displayStory?.authorName || userGroup.displayStory?.authorEntityName,
+          username: userGroup.displayStory?.authorName || userGroup.displayStory?.userName,
           totalStories: userGroup.allStories.length,
           stories: userGroup.allStories.map(s => ({
             id: s._id || s.id,
@@ -242,9 +242,9 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
           {groupedByUser.map((userGroup, idx) => {
             const story = userGroup.displayStory;
             const key = story._id || `story-${idx}`;
-            const avatarSrc = story.authorAvatar || story.authorEntityAvatar || story.avatar || '/default-avatar.png';
+            const avatarSrc = story.authorAvatar || story.avatar || '/default-avatar.png';
             const previewImage = story.images || story.thumbnail || null;
-            const username = story.authorName || story.authorEntityName || story.accountId || story.user || story.title || 'User';
+            const username = story.authorName || story.userName || story.accountId || story.user || story.title || 'User';
             
             // Kiểm tra xem tất cả stories của user đã được xem chưa
             // Nếu tất cả stories đã xem, hoặc displayStory đã xem, thì đánh dấu là viewed

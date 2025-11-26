@@ -18,16 +18,46 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
   const [sharedCurrentTime, setSharedCurrentTime] = useState(0);
   const [sharedDuration, setSharedDuration] = useState(0);
   const [sharedIsPlaying, setSharedIsPlaying] = useState(false);
+  const [showComments, setShowComments] = useState(false);
 
   // Fetch post data
   useEffect(() => {
     if (open && postId) {
       fetchPost();
+      setShowComments(false); // Reset comment state when opening modal
     } else {
       setPost(null);
       setError(null);
+      setShowComments(false);
     }
   }, [open, postId]);
+
+  // Auto-open comments if commentId is provided
+  useEffect(() => {
+    if (open && commentId && post) {
+      setShowComments(true);
+    }
+  }, [open, commentId, post]);
+
+  // Listen for comment button clicks in PostCard
+  useEffect(() => {
+    if (!open || !modalContentRef.current) return;
+
+    const handleCommentClick = (e) => {
+      // Check if click is on comment button (icon or text)
+      const commentButton = e.target.closest('button[aria-label="Comment"]');
+      if (commentButton) {
+        setShowComments(prev => !prev);
+      }
+    };
+
+    const modalElement = modalContentRef.current;
+    modalElement.addEventListener('click', handleCommentClick);
+
+    return () => {
+      modalElement.removeEventListener('click', handleCommentClick);
+    };
+  }, [open]);
 
   const fetchPost = async () => {
     try {
@@ -246,10 +276,11 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
 
     return {
       id: post._id || post.id,
-      user: post.authorName || post.authorEntityName || post.author?.userName || post.account?.userName || post.accountName || "Người dùng",
-      avatar: post.authorAvatar || post.authorEntityAvatar || post.author?.avatar || post.account?.avatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPC9zdmc+",
+      user: post.authorName || post.author?.userName || post.account?.userName || post.accountName || "Người dùng",
+      avatar: post.authorAvatar || post.author?.avatar || post.account?.avatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPC9zdmc+",
       time: formatTimeDisplay(post.createdAt || post.updatedAt),
-      content: post.content || post.caption || post["Tiêu Đề"] || "",
+        content: post.content || post.caption || post["Tiêu Đề"] || "",
+        caption: post.caption || "",
       medias: {
         images: extractedMedias.images,
         videos: extractedMedias.videos
@@ -258,7 +289,7 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
       videoSrc: extractedMedias.videos?.[0]?.url || null,
       audioSrc: audioFromMusic || audioFromSong || audioMedia?.url || post.audioSrc || null,
       audioTitle: populatedMusic?.title || populatedSong?.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
-      artistName: populatedMusic?.artist || populatedSong?.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null,
+      artistName: populatedMusic?.artist || populatedSong?.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorName || post.user || null,
       album: post.album || null,
       genre: populatedMusic?.hashTag || populatedSong?.hashTag || post.hashTag || post["HashTag"] || null,
       releaseDate: post.releaseDate || post.createdAt || null,
@@ -353,7 +384,7 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
           <h2 className={cn(
             "text-xl font-semibold m-0 text-foreground"
           )}>
-            {t('notification.postDetail') || 'Bài viết'}
+            {t('notifications.postDetail') || 'Bài viết'}
           </h2>
           <button
             className={cn(
@@ -407,7 +438,10 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
               {/* Post Card */}
               <div className={cn(
                 "p-0 border-b border-border/30 flex-shrink-0",
-                "[&_.post-card]:m-0 [&_.post-card]:rounded-none [&_.post-card]:border-none [&_.post-card]:shadow-none"
+                "[&_.post-card]:m-0 [&_.post-card]:rounded-none [&_.post-card]:border-none [&_.post-card]:shadow-none",
+                // Ẩn comment section trong PostCard vì chúng ta sẽ hiển thị riêng bên dưới
+                "[&_.post-card_.comment-section]:hidden",
+                "[&_.post-card_>_div:has(>_.comment-section)]:hidden"
               )}>
                 <PostCard
                   post={post}
@@ -421,19 +455,23 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
                 />
               </div>
 
-              {/* Comment Section - Always Open */}
-              <div className={cn(
-                "flex-1 min-h-0 overflow-y-auto p-0",
-                "[&_.comment-section]:max-h-none"
-              )}>
-                <CommentSection
-                  postId={postId}
-                  alwaysOpen={true}
-                  inline={true}
-                  scrollToCommentId={commentId}
-                  onClose={null} // No close button when alwaysOpen
-                />
-              </div>
+              {/* Comment Section - Chỉ hiển thị khi click vào icon comment */}
+              {showComments && (
+                <div className={cn(
+                  "flex-1 min-h-0 overflow-y-auto",
+                  "border-t border-border/30 pt-2",
+                  "[&_.comment-section]:max-h-none [&_.comment-section-inline]:max-h-none",
+                  "[&_.comment-section-inline]:border-none [&_.comment-section-inline]:pt-0"
+                )}>
+                  <CommentSection
+                    postId={postId}
+                    alwaysOpen={false}
+                    inline={true}
+                    scrollToCommentId={commentId}
+                    onClose={() => setShowComments(false)}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>

@@ -242,12 +242,15 @@ export default function CommentSection({ postId, onClose, inline = false, always
 
               for (const [replyId, reply] of repliesData) {
                 if (!reply || typeof reply !== 'object') continue;
+                // Preserve original likes object for checking liked status
+                const likesCount = reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0;
                 repliesArray.push({
                   id: extractId(replyId) || extractId(reply._id) || String(replyId),
                   accountId: reply.accountId,
                   content: reply.content || "",
                   images: reply.images || "",
-                  likes: reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0,
+                  likes: likesCount,
+                  likesObject: reply.likes, // Preserve original likes object
                   replyToId: reply.replyToId ? extractId(reply.replyToId) : null,
                   typeRole: reply.typeRole,
                   createdAt: reply.createdAt,
@@ -263,12 +266,15 @@ export default function CommentSection({ postId, onClose, inline = false, always
             }
 
             const extractedCommentId = extractId(commentId) || extractId(comment._id) || String(commentId);
+            // Preserve original likes object for checking liked status
+            const likesCount = comment.likes ? (typeof comment.likes === 'object' ? Object.keys(comment.likes).length : comment.likes) : 0;
             commentsArray.push({
               id: extractedCommentId,
               accountId: comment.accountId,
               content: comment.content || "",
               images: comment.images || "",
-              likes: comment.likes ? (typeof comment.likes === 'object' ? Object.keys(comment.likes).length : comment.likes) : 0,
+              likes: likesCount,
+              likesObject: comment.likes, // Preserve original likes object
               typeRole: comment.typeRole,
               replies: repliesArray,
               createdAt: comment.createdAt,
@@ -286,6 +292,97 @@ export default function CommentSection({ postId, onClose, inline = false, always
         // Sort comments with current sortOrder
         const sortedComments = sortComments(commentsArray, sortOrder);
         setComments(sortedComments);
+
+        // Initialize likedComments and likedReplies from backend data
+        // Get current user info
+        let session;
+        try {
+          const raw = localStorage.getItem("session");
+          session = raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          session = null;
+        }
+        const activeEntity = session?.activeEntity || session?.account;
+        const currentUserId = activeEntity?.id || activeEntity?.AccountId || activeEntity?.accountId;
+        const currentEntityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || currentUserId;
+
+        if (currentEntityAccountId) {
+          const likedCommentsSet = new Set();
+          const likedRepliesSet = new Set();
+
+          // Check each comment's likes
+          for (const comment of sortedComments) {
+            // Use likesObject if available, otherwise check if likes is still an object
+            const likesObj = comment.likesObject || (typeof comment.likes === 'object' ? comment.likes : null);
+            if (likesObj) {
+              if (likesObj instanceof Map) {
+                for (const [accountId, likeData] of likesObj.entries()) {
+                  // Check both accountId key and likeData.accountId
+                  const accountIdToCheck = likeData?.accountId || accountId;
+                  if (String(accountIdToCheck) === String(currentEntityAccountId) || 
+                      String(accountIdToCheck) === String(currentUserId) ||
+                      String(accountId) === String(currentEntityAccountId) || 
+                      String(accountId) === String(currentUserId)) {
+                    likedCommentsSet.add(comment.id);
+                    break;
+                  }
+                }
+              } else if (typeof likesObj === 'object') {
+                // Plain object - check keys and values
+                const accountIds = Object.keys(likesObj);
+                const hasLiked = accountIds.some(id => {
+                  const likeData = likesObj[id];
+                  const accountIdToCheck = likeData?.accountId || id;
+                  return String(accountIdToCheck) === String(currentEntityAccountId) || 
+                         String(accountIdToCheck) === String(currentUserId) ||
+                         String(id) === String(currentEntityAccountId) || 
+                         String(id) === String(currentUserId);
+                });
+                if (hasLiked) {
+                  likedCommentsSet.add(comment.id);
+                }
+              }
+            }
+
+            // Check each reply's likes
+            if (comment.replies && Array.isArray(comment.replies)) {
+              for (const reply of comment.replies) {
+                const replyLikesObj = reply.likesObject || (typeof reply.likes === 'object' ? reply.likes : null);
+                if (replyLikesObj) {
+                  const replyKey = `${comment.id}-${reply.id}`;
+                  if (replyLikesObj instanceof Map) {
+                    for (const [accountId, likeData] of replyLikesObj.entries()) {
+                      const accountIdToCheck = likeData?.accountId || accountId;
+                      if (String(accountIdToCheck) === String(currentEntityAccountId) || 
+                          String(accountIdToCheck) === String(currentUserId) ||
+                          String(accountId) === String(currentEntityAccountId) || 
+                          String(accountId) === String(currentUserId)) {
+                        likedRepliesSet.add(replyKey);
+                        break;
+                      }
+                    }
+                  } else if (typeof replyLikesObj === 'object') {
+                    const accountIds = Object.keys(replyLikesObj);
+                    const hasLiked = accountIds.some(id => {
+                      const likeData = replyLikesObj[id];
+                      const accountIdToCheck = likeData?.accountId || id;
+                      return String(accountIdToCheck) === String(currentEntityAccountId) || 
+                             String(accountIdToCheck) === String(currentUserId) ||
+                             String(id) === String(currentEntityAccountId) || 
+                             String(id) === String(currentUserId);
+                    });
+                    if (hasLiked) {
+                      likedRepliesSet.add(replyKey);
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          setLikedComments(likedCommentsSet);
+          setLikedReplies(likedRepliesSet);
+        }
       } else {
         setComments([]);
       }

@@ -1,434 +1,387 @@
-import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { cn } from "../../utils/cn";
-import { ImageUploadField } from "./ImageUploadField";
-import AddressSelector from "../common/AddressSelector";
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '../../utils/cn';
+import { userApi } from '../../api/userApi';
+import barPageApi from '../../api/barPageApi';
+import businessApi from '../../api/businessApi';
+import { ImageUploadField } from './ImageUploadField';
+import AddressSelector from '../common/AddressSelector';
+import { X } from 'lucide-react';
 
-/**
- * Reusable Profile Edit Modal Component
- * Supports config-based field rendering with collapsible fields
- * Keep exact same modal structure and styling as original
- */
-export const ProfileEditModal = ({
-  profile,
-  fields = [],
-  onSave,
-  onClose,
-  addressConfig,
-  saving = false,
-  uploadingStates = {},
-  title = "Chỉnh sửa hồ sơ",
-  onUploadStateChange,
-}) => {
+export default function ProfileEditModal({ profile, profileType, onClose, onSuccess }) {
   const { t } = useTranslation();
-  const [editingField, setEditingField] = useState(null);
-  const [localProfile, setLocalProfile] = useState(profile);
+  const [formData, setFormData] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingBackground, setUploadingBackground] = useState(false);
+  const [errors, setErrors] = useState({});
+  
+  // Address selector states
+  const [selectedProvinceId, setSelectedProvinceId] = useState('');
+  const [selectedDistrictId, setSelectedDistrictId] = useState('');
+  const [selectedWardId, setSelectedWardId] = useState('');
+  const [addressDetail, setAddressDetail] = useState('');
 
-  // Update local profile when prop changes
-  React.useEffect(() => {
-    setLocalProfile(profile);
-  }, [profile]);
+  useEffect(() => {
+    if (profile) {
+      // For BarPage, use BarName; for others, use userName
+      const nameField = profileType === 'BarPage' 
+        ? (profile.BarName || profile.barName || profile.userName || profile.name || '')
+        : (profile.userName || profile.name || '');
+      
+      setFormData({
+        userName: nameField,
+        BarName: profileType === 'BarPage' ? nameField : undefined,
+        bio: profile.bio || profile.Bio || '',
+        phone: profile.phone || profile.Phone || '',
+        address: profile.address || profile.Address || '',
+        pricePerHours: profile.pricePerHours || profile.PricePerHours || '',
+        pricePerSession: profile.pricePerSession || profile.PricePerSession || '',
+        avatar: profile.avatar || profile.Avatar || '',
+        background: profile.background || profile.Background || '',
+      });
+    }
+  }, [profile, profileType]);
 
-  // Check if save button should be disabled
-  const isSaveDisabled = saving || 
-    (uploadingStates.avatar === true) || 
-    (uploadingStates.background === true) ||
-    Object.values(uploadingStates).some(state => state === true);
-
-  const handleFieldChange = (fieldKey, value) => {
-    setLocalProfile(prev => ({ ...prev, [fieldKey]: value }));
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
-  const handleSave = () => {
-    onSave(localProfile);
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.userName?.trim()) {
+      newErrors.userName = t('profile.nameRequired') || 'Name is required';
+    }
+    return newErrors;
   };
 
-  const renderField = (field) => {
-    const { key, type, label, uploadMode, urlInput, options, placeholder } = field;
-    const value = localProfile[key] || "";
-    const isEditing = editingField === key;
-
-    // Image field
-    if (type === "image") {
-      return (
-        <div key={key} className={cn("flex justify-between items-center border-b border-border/30 pb-4")}>
-          <div className={cn("flex items-center gap-4")}>
-            <div className={cn("relative")}>
-              <img
-                src={value || (key === "avatar" || key === "Avatar" ? "https://via.placeholder.com/100" : "https://i.imgur.com/6IUbEMn.jpg")}
-                alt={label}
-                className={cn(
-                  key === "avatar" || key === "Avatar" 
-                    ? "w-20 h-20 rounded-full object-cover border-2 border-border/20"
-                    : "w-24 h-16 rounded-lg object-cover border-2 border-border/20"
-                )}
-              />
-              {uploadingStates[key] && (
-                <div className={cn(
-                  "absolute inset-0 bg-black/50 rounded-full flex items-center justify-center",
-                  key !== "avatar" && key !== "Avatar" && "rounded-lg"
-                )}>
-                  <div className={cn("text-primary-foreground text-xs")}>
-                    Đang upload...
-                  </div>
-                </div>
-              )}
-            </div>
-            <div>
-              <p className={cn("font-semibold text-base text-foreground")}>
-                {label}
-              </p>
-              <p className={cn("text-sm text-muted-foreground")}>
-                {key === "avatar" || key === "Avatar" ? "Hiển thị cho người dùng" : "Hiển thị ở đầu trang"}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setEditingField(isEditing ? null : key)}
-            className={cn(
-              "px-4 py-2 rounded-lg font-medium text-sm",
-              "bg-transparent border-none text-primary",
-              "hover:bg-primary/10 transition-all duration-200",
-              "active:scale-95"
-            )}
-          >
-            {isEditing ? t('profile.close') : t('profile.editProfile')}
-          </button>
-        </div>
-      );
+  const handleSave = async () => {
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
     }
 
-    // Text/Textarea/Email/Number fields
-    if (["text", "textarea", "email", "number"].includes(type)) {
-      const displayValue = value || `Chưa có ${label.toLowerCase()}`;
-      return (
-        <div key={key} className={cn("flex justify-between items-center border-b border-border/30 pb-4")}>
-          <div>
-            <p className={cn("font-semibold text-base text-foreground")}>
-              {label}
-            </p>
-            <p className={cn("text-sm text-muted-foreground mt-1")}>
-              {displayValue}
-            </p>
-          </div>
-          <button
-            onClick={() => setEditingField(isEditing ? null : key)}
-            className={cn(
-              "px-4 py-2 rounded-lg font-medium text-sm",
-              "bg-transparent border-none text-primary",
-              "hover:bg-primary/10 transition-all duration-200",
-              "active:scale-95"
-            )}
-          >
-            {isEditing ? t('profile.close') : t('profile.editProfile')}
-          </button>
-        </div>
-      );
-    }
+    setSaving(true);
+    setErrors({});
+    try {
+      let res;
+      const data = { ...formData };
+      
+      // Remove empty fields
+      for (const key of Object.keys(data)) {
+        if (data[key] === '' || data[key] === null || data[key] === undefined) {
+          delete data[key];
+        }
+      }
 
-    // Select field
-    if (type === "select") {
-      const displayValue = value || `Chưa có ${label.toLowerCase()}`;
-      return (
-        <div key={key} className={cn("flex justify-between items-center border-b border-border/30 pb-4")}>
-          <div>
-            <p className={cn("font-semibold text-base text-foreground")}>
-              {label}
-            </p>
-            <p className={cn("text-sm text-muted-foreground mt-1")}>
-              {displayValue}
-            </p>
-          </div>
-          <button
-            onClick={() => setEditingField(isEditing ? null : key)}
-            className={cn(
-              "px-4 py-2 rounded-lg font-medium text-sm",
-              "bg-transparent border-none text-primary",
-              "hover:bg-primary/10 transition-all duration-200",
-              "active:scale-95"
-            )}
-          >
-            {isEditing ? t('profile.close') : t('profile.editProfile')}
-          </button>
-        </div>
-      );
+      switch (profileType) {
+        case 'Account':
+          res = await userApi.updateProfile(data);
+          break;
+        case 'BarPage':
+          // With the improved data flow, `profile.id` is now guaranteed to be the correct BarPageId.
+          // `profile.EntityAccountId` holds the entity account ID.
+          const barPageId = profile.id || profile.Id;
+          if (!barPageId) {
+            console.error("BarPageId is missing from profile object in ProfileEditModal", profile);
+            setErrors({ submit: "Internal Error: Bar ID is missing. Cannot save." });
+            setSaving(false);
+            return;
     }
+          const barData = { ...data };
+          // Map userName to BarName for BarPage API
+          if (barData.userName && !barData.BarName) {
+            barData.BarName = barData.userName;
+          }
+          res = await barPageApi.updateBarPage(barPageId, barData);
+          break;
+        case 'BusinessAccount':
+          res = await businessApi.updateBusiness(profile.id || profile.Id, data);
+          break;
+        default:
+          throw new Error('Invalid profile type');
+      }
 
-    // Address field
-    if (type === "address") {
-      return (
-        <div key={key} className={cn("flex justify-between items-start border-b border-border/30 pb-4")}>
-          <div>
-            <p className={cn("font-semibold text-base text-foreground mb-2")}>
-              {label}
-            </p>
-            <div className={cn("text-sm text-muted-foreground space-y-1")}>
-              {Object.entries(localProfile).filter(([k]) => 
-                addressConfig && (k === "Address" || k === "address")
-              ).map(([k, v]) => (
-                <p key={k}><strong className={cn("text-foreground")}>{k}:</strong> {v || "Chưa có"}</p>
-              ))}
-            </div>
-          </div>
-          <button
-            onClick={() => setEditingField(isEditing ? null : key)}
-            className={cn(
-              "px-4 py-2 rounded-lg font-medium text-sm",
-              "bg-transparent border-none text-primary",
-              "hover:bg-primary/10 transition-all duration-200",
-              "active:scale-95 self-start"
-            )}
-          >
-            {isEditing ? t('profile.close') : t('profile.editProfile')}
-          </button>
-        </div>
-      );
+      if (res?.status === 'success') {
+        onSuccess();
+        onClose();
+      } else {
+        setErrors({ submit: res?.message || t('profile.updateFailed') || 'Update failed' });
+      }
+    } catch (error) {
+      setErrors({ submit: error.response?.data?.message || error.message || t('profile.updateFailed') || 'Update failed' });
+    } finally {
+      setSaving(false);
     }
-
-    return null;
   };
 
-  const renderFieldEditor = (field) => {
-    const { key, type, label, uploadMode, urlInput, options, placeholder } = field;
-    const value = localProfile[key] || "";
-    const isEditing = editingField === key;
+  const renderFields = () => {
+    const isPerformer = profileType === 'BusinessAccount';
 
-    if (!isEditing) return null;
-
-    // Image field editor
-    if (type === "image") {
       return (
-        <div key={`${key}-editor`} className={cn("mt-4")}>
+      <div className={cn('space-y-6')}>
+        {/* Avatar & Background */}
+        <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-4')}>
+          <div>
+            <label className={cn('block text-sm font-semibold text-foreground mb-2')}>
+              {t('profile.avatar') || 'Avatar'}
+            </label>
+            <ImageUploadField 
+              label="" 
+              value={formData.avatar} 
+              onChange={url => setFormData(p => ({...p, avatar: url}))} 
+              uploading={uploadingAvatar} 
+              onUploadStateChange={setUploadingAvatar} 
+            />
+          </div>
+          <div>
+            <label className={cn('block text-sm font-semibold text-foreground mb-2')}>
+              {t('profile.background') || 'Background'}
+            </label>
           <ImageUploadField
-            label={label}
-            value={value}
-            onChange={(url) => handleFieldChange(key, url)}
-            uploadMode={uploadMode}
-            urlInput={urlInput}
-            uploadEndpoint="/posts/upload"
-            maxSize={5 * 1024 * 1024}
-            uploading={uploadingStates[key] || false}
-            onUploadStateChange={(uploading) => {
-              if (onUploadStateChange) {
-                onUploadStateChange(key, uploading);
-              }
-            }}
-            previewClassName={key === "avatar" || key === "Avatar" ? "w-20 h-20 rounded-full" : "w-24 h-16 rounded-lg"}
+              label="" 
+              value={formData.background} 
+              onChange={url => setFormData(p => ({...p, background: url}))} 
+              uploading={uploadingBackground} 
+              onUploadStateChange={setUploadingBackground} 
           />
         </div>
-      );
-    }
+        </div>
 
-    // Text field editor
-    if (type === "text" || type === "email") {
-      return (
-        <div key={`${key}-editor`} className={cn("mt-4")}>
+        {/* Name */}
+        <div>
+          <label htmlFor="userName" className={cn('block text-sm font-semibold text-foreground mb-2')}>
+            {t('profile.name') || 'Name'} <span className={cn('text-danger')}>*</span>
+          </label>
           <input
-            type={type === "email" ? "email" : "text"}
-            placeholder={placeholder || `Nhập ${label.toLowerCase()}...`}
-            value={value}
-            onChange={(e) => handleFieldChange(key, e.target.value)}
+            id="userName"
+            name="userName"
+            type="text"
+            value={formData.userName || ''}
+            onChange={handleChange}
             className={cn(
-              "w-full px-4 py-2.5 rounded-lg",
-              "border-[0.5px] border-border/20",
-              "bg-background text-foreground",
-              "outline-none transition-all duration-200",
-              "placeholder:text-muted-foreground/60",
-              "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+              'w-full px-4 py-2.5 rounded-lg border',
+              'bg-background text-foreground',
+              'border-border focus:border-primary focus:ring-2 focus:ring-primary/20',
+              'transition-all duration-200',
+              errors.userName && 'border-danger focus:border-danger focus:ring-danger/20'
             )}
+            placeholder={t('profile.namePlaceholder') || 'Enter your name'}
           />
+          {errors.userName && (
+            <p className={cn('mt-1 text-sm text-danger')}>{errors.userName}</p>
+          )}
         </div>
-      );
-    }
 
-    // Textarea field editor
-    if (type === "textarea") {
-      return (
-        <div key={`${key}-editor`} className={cn("mt-4")}>
+        {/* Bio */}
+        <div>
+          <label htmlFor="bio" className={cn('block text-sm font-semibold text-foreground mb-2')}>
+            {t('profile.bio') || 'Bio'}
+          </label>
           <textarea
-            rows={3}
-            placeholder={placeholder || `Nhập ${label.toLowerCase()}...`}
-            value={value}
-            onChange={(e) => handleFieldChange(key, e.target.value)}
+            id="bio"
+            name="bio"
+            rows={4}
+            value={formData.bio || ''}
+            onChange={handleChange}
             className={cn(
-              "w-full px-4 py-2.5 rounded-lg",
-              "border-[0.5px] border-border/20",
-              "bg-background text-foreground",
-              "outline-none transition-all duration-200",
-              "placeholder:text-muted-foreground/60",
-              "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
-              "resize-y"
+              'w-full px-4 py-2.5 rounded-lg border resize-none',
+              'bg-background text-foreground',
+              'border-border focus:border-primary focus:ring-2 focus:ring-primary/20',
+              'transition-all duration-200'
             )}
+            placeholder={t('profile.bioPlaceholder') || 'Tell us about yourself...'}
           />
         </div>
-      );
-    }
 
-    // Number field editor
-    if (type === "number") {
-      return (
-        <div key={`${key}-editor`} className={cn("mt-4")}>
+        {/* Phone */}
+        <div>
+          <label htmlFor="phone" className={cn('block text-sm font-semibold text-foreground mb-2')}>
+            {t('profile.phone') || 'Phone'}
+          </label>
           <input
-            type="number"
-            placeholder={placeholder || `Nhập ${label.toLowerCase()}...`}
-            value={value}
-            onChange={(e) => handleFieldChange(key, e.target.value)}
+            id="phone"
+            name="phone"
+            type="tel"
+            value={formData.phone || ''}
+            onChange={handleChange}
             className={cn(
-              "w-full px-4 py-2.5 rounded-lg",
-              "border-[0.5px] border-border/20",
-              "bg-background text-foreground",
-              "outline-none transition-all duration-200",
-              "placeholder:text-muted-foreground/60",
-              "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+              'w-full px-4 py-2.5 rounded-lg border',
+              'bg-background text-foreground',
+              'border-border focus:border-primary focus:ring-2 focus:ring-primary/20',
+              'transition-all duration-200'
             )}
+            placeholder={t('profile.phonePlaceholder') || 'Enter your phone number'}
           />
         </div>
-      );
-    }
 
-    // Select field editor
-    if (type === "select" && options) {
-      return (
-        <div key={`${key}-editor`} className={cn("mt-4")}>
-          <select
-            value={value}
-            onChange={(e) => handleFieldChange(key, e.target.value)}
-            className={cn(
-              "w-full px-4 py-2.5 rounded-lg",
-              "border-[0.5px] border-border/20",
-              "bg-background text-foreground",
-              "outline-none transition-all duration-200",
-              "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
-            )}
-          >
-            <option value="">Chọn {label.toLowerCase()}</option>
-            {options.map(option => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      );
-    }
-
-    // Address field editor
-    if (type === "address" && addressConfig) {
-      return (
-        <div key={`${key}-editor`} className={cn("mt-4 space-y-4")}>
+        {/* Address - AddressSelector with dropdowns */}
           <div>
-            <span className={cn("text-sm font-medium text-foreground block mb-2")}>
-              {label}:
-            </span>
+          <label className={cn('block text-sm font-semibold text-foreground mb-2')}>
+            {t('profile.address') || 'Address'}
+          </label>
             <AddressSelector
-              selectedProvinceId={addressConfig.selectedProvinceId}
-              selectedDistrictId={addressConfig.selectedDistrictId}
-              selectedWardId={addressConfig.selectedWardId}
-              addressDetail={addressConfig.addressDetail}
+            selectedProvinceId={selectedProvinceId}
+            selectedDistrictId={selectedDistrictId}
+            selectedWardId={selectedWardId}
+            addressDetail={addressDetail}
               onProvinceChange={(id) => {
-                addressConfig.onProvinceChange(id);
+              setSelectedProvinceId(id);
+              setSelectedDistrictId('');
+              setSelectedWardId('');
               }}
               onDistrictChange={(id) => {
-                addressConfig.onDistrictChange(id);
+              setSelectedDistrictId(id);
+              setSelectedWardId('');
               }}
-              onWardChange={addressConfig.onWardChange}
-              onAddressDetailChange={addressConfig.onAddressDetailChange}
-              onAddressChange={(fullAddr) => {
-                handleFieldChange(key, fullAddr);
-                if (addressConfig.onAddressChange) {
-                  addressConfig.onAddressChange(fullAddr);
-                }
+            onWardChange={(id) => {
+              setSelectedWardId(id);
+            }}
+            onAddressDetailChange={(detail) => {
+              setAddressDetail(detail);
+            }}
+            onAddressChange={(fullAddress) => {
+              // Update formData.address with the full address string
+              setFormData(prev => ({ ...prev, address: fullAddress }));
               }}
             />
           </div>
+
+        {/* Price fields for Performers */}
+        {isPerformer && (
+          <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-4')}>
+            <div>
+              <label htmlFor="pricePerHours" className={cn('block text-sm font-semibold text-foreground mb-2')}>
+                {t('profile.pricePerHour') || 'Price per Hour'}
+              </label>
+              <input
+                id="pricePerHours"
+                name="pricePerHours"
+                type="number"
+                min="0"
+                value={formData.pricePerHours || ''}
+                onChange={handleChange}
+                className={cn(
+                  'w-full px-4 py-2.5 rounded-lg border',
+                  'bg-background text-foreground',
+                  'border-border focus:border-primary focus:ring-2 focus:ring-primary/20',
+                  'transition-all duration-200'
+                )}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label htmlFor="pricePerSession" className={cn('block text-sm font-semibold text-foreground mb-2')}>
+                {t('profile.pricePerSession') || 'Price per Session'}
+              </label>
+              <input
+                id="pricePerSession"
+                name="pricePerSession"
+                type="number"
+                min="0"
+                value={formData.pricePerSession || ''}
+                onChange={handleChange}
+                className={cn(
+                  'w-full px-4 py-2.5 rounded-lg border',
+                  'bg-background text-foreground',
+                  'border-border focus:border-primary focus:ring-2 focus:ring-primary/20',
+                  'transition-all duration-200'
+                )}
+                placeholder="0"
+              />
+            </div>
+          </div>
+        )}
         </div>
       );
-    }
-
-    return null;
   };
 
   return (
-    <div className={cn(
-      "fixed inset-0 bg-black/50 backdrop-blur-sm",
-      "flex items-center justify-center z-50 p-4"
-    )}>
-      <div className={cn(
-        "bg-card text-card-foreground rounded-lg",
-        "border-[0.5px] border-border/20",
-        "shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
-        "w-full max-w-2xl max-h-[90vh] overflow-y-auto",
-        "flex flex-col"
-      )}>
+    <div 
+      className={cn('fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4')}
+      onClick={onClose}
+    >
+      <div 
+        className={cn(
+          'bg-card rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col',
+          'shadow-[0_20px_60px_rgba(0,0,0,0.3)]',
+          'border border-border/50'
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className={cn(
-          "p-4 border-b border-border/30",
-          "flex items-center justify-between flex-shrink-0"
-        )}>
-          <h3 className={cn("text-xl font-semibold text-foreground")}>
-            {title}
+        <div className={cn('p-6 border-b border-border/50 flex items-center justify-between')}>
+          <h3 className={cn('text-2xl font-bold text-foreground')}>
+            {t('profile.editProfile') || 'Edit Profile'}
           </h3>
           <button
             onClick={onClose}
             className={cn(
-              "w-8 h-8 flex items-center justify-center",
-              "bg-transparent border-none text-muted-foreground",
-              "rounded-lg transition-all duration-200",
-              "hover:bg-muted/50 hover:text-foreground",
-              "active:scale-95"
+              'w-10 h-10 rounded-full flex items-center justify-center',
+              'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              'transition-all duration-200 active:scale-95'
             )}
+            aria-label="Close"
           >
-            <i className="bx bx-x text-xl"></i>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className={cn("p-6 flex-1 overflow-y-auto")}>
-          <div className={cn("space-y-6")}>
-            {fields.map(field => (
-              <React.Fragment key={field.key}>
-                {renderField(field)}
-                {renderFieldEditor(field)}
-              </React.Fragment>
-            ))}
+        <div className={cn('p-6 overflow-y-auto flex-1')}>
+          {errors.submit && (
+            <div className={cn(
+              'mb-4 p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm'
+            )}>
+              {errors.submit}
           </div>
+          )}
+          {renderFields()}
         </div>
 
         {/* Footer */}
-        <div className={cn(
-          "p-4 border-t border-border/30",
-          "flex items-center justify-end gap-3 flex-shrink-0"
-        )}>
+        <div className={cn('p-6 border-t border-border/50 flex justify-end gap-3')}>
           <button
             onClick={onClose}
-            disabled={isSaveDisabled}
+            disabled={saving}
             className={cn(
-              "px-4 py-2 rounded-lg font-semibold text-sm",
-              "bg-transparent border-none text-muted-foreground",
-              "hover:text-foreground hover:bg-muted/50",
-              "transition-all duration-200",
-              "active:scale-95",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              'px-6 py-2.5 rounded-lg font-semibold',
+              'bg-muted text-foreground',
+              'hover:bg-muted/80 transition-all duration-200',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              'active:scale-95'
             )}
           >
-            {t('profile.close')}
+            {t('common.cancel') || 'Cancel'}
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaveDisabled}
+            disabled={saving || uploadingAvatar || uploadingBackground}
             className={cn(
-              "px-4 py-2 rounded-lg font-semibold text-sm",
-              "bg-primary text-primary-foreground border-none",
-              "hover:bg-primary/90 transition-all duration-200",
-              "active:scale-95",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              'px-6 py-2.5 rounded-lg font-semibold',
+              'bg-primary text-primary-foreground',
+              'hover:bg-primary/90 transition-all duration-200',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              'active:scale-95',
+              'flex items-center gap-2'
             )}
           >
-            {saving ? t('profile.saving') : t('profile.saveChanges')}
+            {saving && (
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {saving ? (t('common.saving') || 'Saving...') : (t('common.saveChanges') || 'Save Changes')}
           </button>
         </div>
       </div>
     </div>
   );
-};
-
+}

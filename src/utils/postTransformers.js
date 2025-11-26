@@ -146,7 +146,6 @@ export const mapPostForCard = (post, t) => {
 
   const resolveUserName = () =>
     post.authorName ||
-    post.authorEntityName ||
     author.userName ||
     author.name ||
     post.user ||
@@ -154,7 +153,6 @@ export const mapPostForCard = (post, t) => {
 
   const resolveAvatar = () =>
     post.authorAvatar ||
-    post.authorEntityAvatar ||
     author.avatar ||
     post.avatar ||
     "https://via.placeholder.com/40";
@@ -171,12 +169,13 @@ export const mapPostForCard = (post, t) => {
     avatar: resolveAvatar(),
     time: formatPostTime(post.createdAt, t),
     content: post.content || post.caption || post["Tiêu Đề"] || "",
+    caption: post.caption || "",
     medias: { images, videos, audios: audioSrc ? [{ url: audioSrc }] : audios },
     image: images[0]?.url || null,
     videoSrc: videos[0]?.url || null,
     audioSrc: audioSrc,
     audioTitle: music.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
-    artistName: music.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null,
+    artistName: music.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorName || post.user || null,
     thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
     purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
     likes: countCollection(post.likes),
@@ -195,6 +194,8 @@ export const mapPostForCard = (post, t) => {
     authorEntityType: post.authorEntityType || post.entityType || post.type || null,
     ownerAccountId: post.accountId || post.ownerAccountId || author.id || null,
     targetType: post.type || "post",
+    // Repost fields - chỉ lưu ID, query lại khi hiển thị
+    repostedFromId: post.repostedFromId || null
   };
 };
 
