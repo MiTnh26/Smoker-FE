@@ -301,7 +301,7 @@ export default function PostCard({
       "post-card",
       /* Base Styles - Instagram-inspired Minimalist Design */
       "bg-card text-card-foreground rounded-lg",
-      "shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 mb-4",
+      "shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 mb-0",
       "border-[0.5px] border-border/20 relative overflow-hidden",
       /* Transitions */
       "transition-all duration-200 ease-out",
@@ -310,7 +310,7 @@ export default function PostCard({
       "hover:border-border/30"
     )}>
       {/* Header */}
-      <div className="flex justify-between items-start mb-2 relative">
+      <div className="flex justify-between items-start mb-1.5 relative">
         <div className="flex items-center gap-3.5 flex-1 min-w-0">
           <div className="relative flex-shrink-0">
             <img

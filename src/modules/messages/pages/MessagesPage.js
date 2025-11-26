@@ -419,6 +419,23 @@ function ConversationView({ chat, onBack }) {
   const fetchPostPreview = useCallback(async (postId) => {
     if (!postId || postPreviews.has(postId)) return;
     
+    // Validate postId format (MongoDB ObjectId: 24 hex characters)
+    const isValidObjectId = (id) => {
+      if (!id) return false;
+      const idStr = String(id);
+      return /^[0-9a-fA-F]{24}$/.test(idStr);
+    };
+    
+    if (!isValidObjectId(postId)) {
+      // Mark as invalid to prevent retry
+      setPostPreviews(prev => {
+        const newMap = new Map(prev);
+        newMap.set(postId, null); // null means invalid
+        return newMap;
+      });
+      return;
+    }
+    
     try {
       const response = await getPostById(postId, { includeMedias: true });
       const postData = response?.success && response.data ? response.data : (response?._id ? response : null);
@@ -435,18 +452,38 @@ function ConversationView({ chat, onBack }) {
           });
           return newMap;
         });
+      } else {
+        // Mark as failed to prevent retry
+        setPostPreviews(prev => {
+          const newMap = new Map(prev);
+          newMap.set(postId, null);
+          return newMap;
+        });
       }
     } catch (error) {
-      console.warn('[MessagesPage] Failed to fetch post preview:', error);
+      // Only log non-404/400 errors
+      if (error?.response?.status !== 404 && error?.response?.status !== 400) {
+        console.warn('[MessagesPage] Failed to fetch post preview:', error);
+      }
+      // Mark as failed to prevent retry
+      setPostPreviews(prev => {
+        const newMap = new Map(prev);
+        newMap.set(postId, null);
+        return newMap;
+      });
     }
   }, [postPreviews]);
 
   // Render post preview card
   const renderPostPreviewCard = useCallback((postId, isMine) => {
     const preview = postPreviews.get(postId);
-    if (!preview) {
+    if (preview === undefined) {
       // Fetch preview if not loaded
       fetchPostPreview(postId);
+      return null;
+    }
+    if (preview === null) {
+      // Invalid or failed to load - don't show preview
       return null;
     }
 
