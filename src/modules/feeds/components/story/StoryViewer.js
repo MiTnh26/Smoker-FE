@@ -686,7 +686,10 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
                     String(storyAuthorId)
                   );
                   
-                  const conversationId = convResponse?.data?.conversationId || convResponse?.data?._id || convResponse?.data?.id;
+                  // Backend returns: { success: true, data: conversation }
+                  // Conversation has _id field (English structure)
+                  const conversation = convResponse?.data?.data || convResponse?.data;
+                  const conversationId = conversation?._id || conversation?.id || conversation?.conversationId;
                   
                   if (!conversationId) {
                     alert(t("story.replyError") || "Không thể tạo cuộc trò chuyện. Vui lòng thử lại.");
@@ -713,7 +716,7 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
                   );
                   
                   // Success - Show toast notification
-                  const authorName = story?.authorName || story?.authorEntityName || story?.userName || "người dùng";
+                  const authorName = story?.authorName || story?.userName || "người dùng";
                   const toastMsg = t("story.replySentTo", { name: authorName });
                   setToastMessage(toastMsg || `Đã reply story ${authorName}`);
                   setShowToast(true);

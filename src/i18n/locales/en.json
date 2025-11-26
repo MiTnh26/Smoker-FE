@@ -17,7 +17,10 @@
     "user": "User",
     "email": "Email",
     "phone": "Phone",
-    "address": "Address"
+    "address": "Address",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "saveChanges": "Save changes"
   },
   "sidebar": {
     "home": "Home",
@@ -63,7 +66,10 @@
     "goLive": "Go Live",
     "photoVideo": "Photo/Video",
     "music": "Music",
-    "feeling": "Feeling"
+    "feeling": "Feeling",
+    "reposted": "reposted",
+    "repostedPost": "Post has been reposted",
+    "repostedMedia": "Media has been reposted"
   },
   "menu": {
     "settings": "Settings & Privacy",
@@ -604,7 +610,16 @@
     "saveChanges": "Save changes",
     "saving": "Saving...",
     "saved": "Changes saved!",
-    "saveFailed": "Save failed"
+    "saveFailed": "Save failed",
+    "avatar": "Avatar",
+    "background": "Background",
+    "name": "Name",
+    "namePlaceholder": "Enter your name",
+    "nameRequired": "Name is required",
+    "bioPlaceholder": "Tell us about yourself...",
+    "phonePlaceholder": "Enter your phone number",
+    "addressPlaceholder": "Enter your address",
+    "updateFailed": "Update failed"
   }
   ,
   "publicProfile": {
@@ -626,6 +641,17 @@
     "blockError": "Unable to block this profile right now. Please try again later.",
     "reportSubmitted": "Thanks. Your report has been submitted.",
     "thisUser": "this user"
+  },
+  "notifications": {
+    "likedYourPost": "{{name}} liked your post",
+    "likedYourStory": "{{name}} liked your story",
+    "commentedOnYourPost": "{{name}} commented on your post",
+    "repliedToYourComment": "{{name}} replied to your comment",
+    "startedFollowingYou": "{{name}} started following you",
+    "sentYouAMessage": "{{name}} sent you a message",
+    "sentYouAMessageWithPreview": "{{name}}: {{preview}}",
+    "postDetail": "Post detail",
+    "default": "You have a new notification"
   }
 }
 

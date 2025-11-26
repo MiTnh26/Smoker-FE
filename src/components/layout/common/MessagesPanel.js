@@ -35,9 +35,7 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
   }), []);
   const tabs = [
     { id: "all", label: t('messages.tabAll') || "All" },
-    { id: "unread", label: t('messages.tabUnread') || "Unread" },
-    { id: "groups", label: t('messages.tabGroups') || "Groups" },
-    { id: "communities", label: t('messages.tabCommunities') || "Communities" }
+    { id: "unread", label: t('messages.tabUnread') || "Unread" }
   ];
   const [activeTab, setActiveTab] = React.useState("all");
 
@@ -211,22 +209,18 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
 
         const mappedResults = await Promise.allSettled(
           conversationsData.map(async (conv) => {
-            // Determine the other participant's EntityAccountId
-            const participant1 = String(conv["Người 1"] || "").toLowerCase().trim();
-            const participant2 = String(conv["Người 2"] || "").toLowerCase().trim();
+            // Use English fields only
+            const participants = conv.participants || [];
             const currentUserIdNormalized = String(currentUserEntityId || "").toLowerCase().trim();
             
-            const otherParticipantId = 
-              participant1 === currentUserIdNormalized 
-                ? conv["Người 2"] 
-                : participant2 === currentUserIdNormalized
-                ? conv["Người 1"]
-                : null; // Fallback if neither matches
+            // Find other participant (not the current user)
+            const otherParticipantId = participants.find(p => 
+              String(p).toLowerCase().trim() !== currentUserIdNormalized
+            ) || null;
             
             if (!otherParticipantId) {
               console.warn('[MessagesPanel] ⚠️ Could not determine other participant for conversation:', conv._id, {
-                participant1: conv["Người 1"],
-                participant2: conv["Người 2"],
+                participants: conv.participants,
                 currentUserEntityId
               });
             }
@@ -252,8 +246,11 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
 
             const profile = await resolveProfile(otherParticipantId);
             if (profile) {
-              // Check status from conversation data or profile
-              const status = conv.participant1Status || conv.participant2Status || profile.status;
+              // Check status from conversation data (new structure: participantStatuses) or profile
+              const status = conv.participantStatuses?.[otherParticipantId] || 
+                           conv.participant1Status || 
+                           conv.participant2Status || 
+                           profile.status;
               
               if (status === 'banned') {
                 userName = "người dùng Smoker";
@@ -265,106 +262,19 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
               entityId = profile.entityId || otherParticipantId;
             }
             
-            // Lấy tin nhắn cuối cùng
-            // Backend now sends "Cuộc Trò Chuyện" as sorted array (newest first)
-            const conversationData = conv["Cuộc Trò Chuyện"] || [];
-            
-            let messages = [];
-            
-            // Handle array (from backend) or fallback to object/map
-            if (Array.isArray(conversationData)) {
-              messages = conversationData;
-            } else if (conversationData instanceof Map) {
-              messages = Array.from(conversationData.values());
-            } else if (typeof conversationData === 'object' && conversationData !== null) {
-              // Handle object - Map from MongoDB serializes to object with message IDs as keys
-              messages = Object.values(conversationData);
-              
-              // Filter out any non-message objects
-              messages = messages.filter(msg => 
-                msg && 
-                typeof msg === 'object' && 
-                (msg["Gửi Lúc"] || msg["Gửi lúc"] || msg["SentAt"] || msg["createdAt"])
-              );
-              
-              // Sort by time if not already sorted
-              messages.sort((a, b) => {
-                const getTime = (msg) => {
-                  if (!msg) return 0;
-                  const timeField = msg["Gửi Lúc"] || 
-                                  msg["Gửi lúc"] ||
-                                  msg["SentAt"] ||
-                                  msg["sentAt"] ||
-                                  msg["createdAt"] ||
-                                  msg["timestamp"] ||
-                                  null;
-                  if (!timeField) return 0;
-                  const parsed = new Date(timeField);
-                  return isNaN(parsed.getTime()) ? 0 : parsed.getTime();
-                };
-                
-                const timeA = getTime(a);
-                const timeB = getTime(b);
-                return timeB - timeA; // Descending order (newest first)
-              });
-            }
-            
-            // Get last message (first in sorted array)
-            const lastMsg = messages.length > 0 ? messages[0] : null;
-            
-            // Count unread messages
-            let unreadCount = 0;
-            if (currentUserEntityId && messages.length > 0) {
-              unreadCount = messages.filter(msg => {
-                const senderId = String(msg["Người Gửi"] || "").toLowerCase().trim();
-                const currentUserIdNormalized = String(currentUserEntityId).toLowerCase().trim();
-                return senderId !== currentUserIdNormalized && !msg["Đã Đọc"];
-              }).length;
-            }
-            
-            // Get last message content - try all possible field names
-            let lastMessageText = "";
-            if (lastMsg) {
-              // Try all possible field name variations
-              lastMessageText = lastMsg["Nội Dung Tin Nhắn"] || 
-                               lastMsg["Nội dung tin nhắn"] ||
-                               lastMsg["noi dung tin nhan"] ||
-                               lastMsg["Content"] || 
-                               lastMsg["content"] || 
-                               lastMsg["nội dung"] ||
-                               lastMsg["message"] ||
-                               lastMsg["Message"] ||
-                               lastMsg["text"] ||
-                               lastMsg["Text"] ||
-                               "";
-              
-              // Debug: Log all keys to see what's available
-              if (!lastMessageText) {
-                console.warn('[MessagesPanel] No message content found. Available keys:', Object.keys(lastMsg));
-                console.warn('[MessagesPanel] Full lastMsg object:', JSON.stringify(lastMsg, null, 2));
-              }
-            }
-            
-            // Format time - try all possible field names
+            // Get last message content and time from new structure (English fields only)
+            let lastMessageText = conv.last_message_content || "";
             let timeText = "";
-            if (lastMsg) {
-              const timeValue = lastMsg["Gửi Lúc"] || 
-                               lastMsg["Gửi lúc"] ||
-                               lastMsg["gui luc"] ||
-                               lastMsg["SentAt"] ||
-                               lastMsg["sentAt"] ||
-                               lastMsg["createdAt"] ||
-                               lastMsg["timestamp"] ||
-                               lastMsg["time"] ||
-                               null;
-              
-              if (timeValue) {
-                const parsedTime = new Date(timeValue);
-                if (!isNaN(parsedTime.getTime())) {
-                  timeText = formatRelativeTime(parsedTime);
-                }
-              }
+            
+            // Format time from last_message_time
+            if (conv.last_message_time) {
+              timeText = formatRelativeTime(conv.last_message_time);
+            } else if (conv.updatedAt) {
+              timeText = formatRelativeTime(conv.updatedAt);
             }
+            
+            // Get unread count from new structure
+            let unreadCount = conv.unreadCount || 0;
             
             return {
               id: conv._id,
@@ -411,7 +321,15 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
     };
     
     fetchConversations();
-  }, [activeEntityId, onUnreadCountChange]); // Re-fetch when data changes
+
+    // Listen for the global message refresh event
+    const handleRefresh = () => fetchConversations();
+    window.addEventListener("messageRefresh", handleRefresh);
+
+    return () => {
+      window.removeEventListener("messageRefresh", handleRefresh);
+    };
+  }, [activeEntityId, onUnreadCountChange]);
 
   const filteredConversations = conversations.filter((conv) => {
     const matchesSearch = conv.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -515,6 +433,12 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
                 color: themeVars.foreground,
               }}
               onClick={() => {
+                // Optimistically clear unread and mark as read
+                setConversations((prev) =>
+                  prev.map((c) => (String(c.id) === String(conv.id) ? { ...c, unread: 0 } : c))
+                );
+                try { if (activeEntityId) messageApi.markMessagesRead(conv.id, activeEntityId).catch(() => {}); } catch {}
+                try { window.dispatchEvent(new Event("messageRefresh")); } catch {}
                 if (window.__openChat) {
                   window.__openChat({ 
                     id: conv.id, 

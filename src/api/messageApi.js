@@ -5,9 +5,11 @@ const messageApi = {
     const params = entityAccountId ? { entityAccountId } : {};
     return axiosClient.get("/messages/conversations", { params });
   },
-  // Allow optional query params (before, limit, etc.)
-  getMessages: (conversationId, params = undefined) =>
-    axiosClient.get(`/messages/messages/${conversationId}`, params ? { params } : undefined),
+  // Allow optional query params (before, limit, offset, etc.)
+  getMessages: (conversationId, params = {}) => {
+    const queryParams = Object.keys(params).length > 0 ? params : undefined;
+    return axiosClient.get(`/messages/messages/${conversationId}`, queryParams ? { params: queryParams } : undefined);
+  },
   // Allow extra fields (e.g., clientId) via extra object
   sendMessage: (
     conversationId,
@@ -27,8 +29,8 @@ const messageApi = {
       entityId,
       ...extra,
     }),
-  markMessagesRead: (conversationId) =>
-    axiosClient.post("/messages/messages/read", { conversationId }),
+  markMessagesRead: (conversationId, entityAccountId, lastMessageId = null) =>
+    axiosClient.post("/messages/messages/read", { conversationId, entityAccountId, lastMessageId }),
   createOrGetConversation: (participant1Id, participant2Id) =>
     axiosClient.post("/messages/conversation", { participant1Id, participant2Id }),
 };

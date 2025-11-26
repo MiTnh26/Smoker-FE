@@ -2,23 +2,26 @@ import axiosClient from "./axiosClient";
 
 const notificationApi = {
   // Lấy danh sách notifications
-  getNotifications: (params) => {
+  getNotifications: (params = {}) => {
     return axiosClient.get("/notifications", { params });
   },
 
   // Đánh dấu đã đọc
-  markAsRead: (notificationId) => {
-    return axiosClient.put(`/notifications/${notificationId}/read`);
+  markAsRead: (notificationId, entityAccountId) => {
+    const params = entityAccountId ? { entityAccountId } : {};
+    return axiosClient.put(`/notifications/${notificationId}/read`, null, { params });
   },
 
   // Đánh dấu tất cả đã đọc
-  markAllAsRead: () => {
-    return axiosClient.put("/notifications/read-all");
+  markAllAsRead: (entityAccountId) => {
+    const params = entityAccountId ? { entityAccountId } : {};
+    return axiosClient.put("/notifications/read-all", null, { params });
   },
 
   // Lấy số lượng chưa đọc
-  getUnreadCount: () => {
-    return axiosClient.get("/notifications/unread-count");
+  getUnreadCount: (entityAccountId) => {
+    const params = entityAccountId ? { entityAccountId } : {};
+    return axiosClient.get("/notifications/unread-count", { params });
   },
 
   // Tạo notification mới
