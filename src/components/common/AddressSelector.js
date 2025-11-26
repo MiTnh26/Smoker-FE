@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { cn } from "../../utils/cn";
 import { locationApi } from "../../api/locationApi";
 
 export default function AddressSelector({
@@ -14,6 +16,7 @@ export default function AddressSelector({
   className = "",
   disabled = false
 }) {
+  const { t } = useTranslation();
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [wards, setWards] = useState([]);
@@ -100,11 +103,13 @@ export default function AddressSelector({
   }, [selectedProvinceId, selectedDistrictId, selectedWardId, addressDetail, buildAddress, onAddressChange]);
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div className={cn("space-y-3", className)}>
       {/* Province */}
       <div>
-        <label htmlFor="province" className="block text-sm font-medium text-gray-700 mb-2">
-          Tỉnh/Thành phố
+        <label htmlFor="province" className={cn(
+          "block text-sm font-medium text-foreground mb-2"
+        )}>
+          {t('address.province')}
         </label>
         <select
           id="province"
@@ -112,9 +117,16 @@ export default function AddressSelector({
           value={selectedProvinceId || ""}
           onChange={(e) => onProvinceChange(e.target.value)}
           disabled={locationLoading || disabled}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+          className={cn(
+            "w-full px-3 py-2 rounded-lg",
+            "border-[0.5px] border-border/20",
+            "bg-background text-foreground",
+            "outline-none transition-all duration-200",
+            "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
+            "disabled:bg-muted/50 disabled:text-muted-foreground disabled:cursor-not-allowed"
+          )}
         >
-          <option value="">-- Chọn Tỉnh/Thành phố --</option>
+          <option value="">-- {t('address.selectProvince')} --</option>
           {provinces.map((province) => (
             <option key={province.id} value={province.id}>
               {province.name} ({province.typeText})
@@ -126,8 +138,10 @@ export default function AddressSelector({
       {/* District */}
       {selectedProvinceId && (
         <div>
-          <label htmlFor="district" className="block text-sm font-medium text-gray-700 mb-2">
-            Quận/Huyện
+          <label htmlFor="district" className={cn(
+            "block text-sm font-medium text-foreground mb-2"
+          )}>
+            {t('address.district')}
           </label>
           <select
             id="district"
@@ -135,9 +149,16 @@ export default function AddressSelector({
             value={selectedDistrictId || ""}
             onChange={(e) => onDistrictChange(e.target.value)}
             disabled={locationLoading || disabled || !selectedProvinceId}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className={cn(
+              "w-full px-3 py-2 rounded-lg",
+              "border-[0.5px] border-border/20",
+              "bg-background text-foreground",
+              "outline-none transition-all duration-200",
+              "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
+              "disabled:bg-muted/50 disabled:text-muted-foreground disabled:cursor-not-allowed"
+            )}
           >
-            <option value="">-- Chọn Quận/Huyện --</option>
+            <option value="">-- {t('address.selectDistrict')} --</option>
             {districts.map((district) => (
               <option key={district.id} value={district.id}>
                 {district.name} ({district.typeText})
@@ -150,8 +171,10 @@ export default function AddressSelector({
       {/* Ward */}
       {selectedDistrictId && (
         <div>
-          <label htmlFor="ward" className="block text-sm font-medium text-gray-700 mb-2">
-            Phường/Xã
+          <label htmlFor="ward" className={cn(
+            "block text-sm font-medium text-foreground mb-2"
+          )}>
+            {t('address.ward')}
           </label>
           <select
             id="ward"
@@ -159,9 +182,16 @@ export default function AddressSelector({
             value={selectedWardId || ""}
             onChange={(e) => onWardChange(e.target.value)}
             disabled={locationLoading || disabled || !selectedDistrictId}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className={cn(
+              "w-full px-3 py-2 rounded-lg",
+              "border-[0.5px] border-border/20",
+              "bg-background text-foreground",
+              "outline-none transition-all duration-200",
+              "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
+              "disabled:bg-muted/50 disabled:text-muted-foreground disabled:cursor-not-allowed"
+            )}
           >
-            <option value="">-- Chọn Phường/Xã --</option>
+            <option value="">-- {t('address.selectWard')} --</option>
             {wards.map((ward) => (
               <option key={ward.id} value={ward.id}>
                 {ward.name} ({ward.typeText})
@@ -174,7 +204,9 @@ export default function AddressSelector({
       {/* Address Detail */}
       {(selectedProvinceId || selectedDistrictId || selectedWardId) && (
         <div>
-          <label htmlFor="addressDetail" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="addressDetail" className={cn(
+            "block text-sm font-medium text-foreground mb-2"
+          )}>
             Địa chỉ chi tiết (số nhà, tên đường...)
           </label>
           <input
@@ -184,10 +216,17 @@ export default function AddressSelector({
             value={addressDetail || ""}
             onChange={(e) => onAddressDetailChange(e.target.value)}
             disabled={disabled}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+            className={cn(
+              "w-full px-3 py-2 rounded-lg",
+              "border-[0.5px] border-border/20",
+              "bg-background text-foreground",
+              "outline-none transition-all duration-200",
+              "placeholder:text-muted-foreground/60",
+              "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+            )}
             placeholder="Số nhà, tên đường, tổ, khu phố..."
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className={cn("mt-1 text-xs text-muted-foreground")}>
             Địa chỉ đầy đủ: {buildAddress() || 'Chưa chọn'}
           </p>
         </div>

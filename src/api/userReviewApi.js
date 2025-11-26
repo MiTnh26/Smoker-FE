@@ -2,6 +2,9 @@ import axiosClient from "./axiosClient";
 const userReviewApi = {
   // Lấy tất cả review
   getAll: () => axiosClient.get("/user-reviews"),
+  // Lấy review theo business (DJ/Dancer)
+  getByBusiness: (businessAccountId) =>
+    axiosClient.get(`/user-reviews/business/${businessAccountId}`),
   // Lấy review theo id
   getById: (id) => axiosClient.get(`/user-reviews/${id}`),
   // Tạo review mới

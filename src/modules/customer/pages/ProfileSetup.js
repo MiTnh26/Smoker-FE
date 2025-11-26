@@ -193,7 +193,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     switch (name) {
       case 'userName':
         if (!val) newErrors.userName = 'Tên người dùng là bắt buộc';
-        else if (val.length < 2) newErrors.userName = 'Tên phải có ít nhất 2 ký tự';
+        else if (val.length < 4) newErrors.userName = 'Tên người dùng phải có ít nhất 4 ký tự';
         else delete newErrors.userName;
         break;
 
@@ -236,6 +236,22 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     const limitedValue = name === 'bio' ? nextValue.slice(0, 500) : nextValue;
     setForm(prev => ({ ...prev, [name]: limitedValue }));
 
+    // Clear errors when user starts typing in the field
+    if (errors[name] || errors.submit) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        // Clear field-specific error
+        if (newErrors[name]) {
+          delete newErrors[name];
+        }
+        // Clear submit error when user starts typing any field
+        if (newErrors.submit) {
+          delete newErrors.submit;
+        }
+        return newErrors;
+      });
+    }
+
     // Validate field immediately for phone to fix the issue
     if (name === 'phone') {
       validateField(name, limitedValue);
@@ -276,6 +292,20 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     const { name, files } = e.target;
     const file = files && files[0];
 
+    // Clear errors when user selects a new file
+    if (errors[name] || errors.submit) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        if (newErrors[name]) {
+          delete newErrors[name];
+        }
+        if (newErrors.submit) {
+          delete newErrors.submit;
+        }
+        return newErrors;
+      });
+    }
+
     if (name === 'avatar') {
       setAvatarFile(file || null);
       const previewUrl = file ? URL.createObjectURL(file) : form.avatar;
@@ -300,18 +330,21 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     e.preventDefault();
     setSuccess('');
 
-    // Validate all required fields and phone if provided
-    let isValid = true;
-    
-    // Validate required fields
-    if (!validateField('userName', form.userName)) isValid = false;
-    if (!validateField('avatar', form.avatar)) isValid = false;
-    
-    // Validate phone if provided
-    if (form.phone && !validateField('phone', form.phone)) isValid = false;
-
-    if (!isValid) {
+    // Basic validation: check required fields are filled
+    if (!form.userName.trim() || form.userName.trim().length < 4) {
+      setErrors(prev => ({ ...prev, userName: 'Tên người dùng phải có ít nhất 4 ký tự' }));
       return;
+    }
+    
+    if (!form.avatar.trim() && !avatarFile) {
+      setErrors(prev => ({ ...prev, avatar: 'Ảnh đại diện là bắt buộc' }));
+      return;
+    }
+
+    // Validate phone if provided (but don't block submit - let backend validate)
+    if (form.phone && !validateField('phone', form.phone)) {
+      // Show warning but allow submit to see backend validation
+      console.warn('Phone validation failed, but allowing submit to see backend error');
     }
 
     setIsLoading(true);
@@ -385,41 +418,57 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
 
         // IMPORTANT: Update session in localStorage so menu and sidebar show new avatar
         try {
-          const sessionRaw = localStorage.getItem("session");
-          if (sessionRaw && updatedUserData) {
-            const session = JSON.parse(sessionRaw);
+          const { getSession, updateSession } = await import("../../../utils/sessionManager");
+          const session = getSession();
+          
+          if (session && updatedUserData) {
             console.log(`[PROFILE SETUP] Current session:`, session);
             
-            // Update avatar in session.account
-            if (session.account) {
-              console.log(`[PROFILE SETUP] Updating account.avatar from ${session.account.avatar} to ${updatedUserData.avatar}`);
-              session.account.avatar = updatedUserData.avatar || session.account.avatar;
-              session.account.userName = updatedUserData.userName || session.account.userName;
-              session.account.phone = updatedUserData.phone || session.account.phone;
-              session.account.bio = updatedUserData.bio || session.account.bio;
-              session.account.address = updatedUserData.address || session.account.address;
-            }
+            // Preserve EntityAccountId when updating account
+            const accountEntityAccountId = session.account?.EntityAccountId || session.account?.entityAccountId || null;
             
-            // Update activeEntity if exists
-            if (session.activeEntity) {
-              console.log(`[PROFILE SETUP] Updating activeEntity.avatar`);
-              session.activeEntity.avatar = updatedUserData.avatar || session.activeEntity.avatar;
-              session.activeEntity.name = updatedUserData.userName || session.activeEntity.name;
-            }
+            // Update account (preserve EntityAccountId)
+            const updatedAccount = {
+              ...session.account,
+              avatar: updatedUserData.avatar || session.account.avatar,
+              userName: updatedUserData.userName || session.account.userName,
+              phone: updatedUserData.phone || session.account.phone,
+              bio: updatedUserData.bio || session.account.bio,
+              address: updatedUserData.address || session.account.address,
+              EntityAccountId: accountEntityAccountId, // Preserve EntityAccountId
+            };
+            
+            // Update activeEntity if exists (preserve EntityAccountId)
+            const updatedActiveEntity = session.activeEntity ? {
+              ...session.activeEntity,
+              avatar: updatedUserData.avatar || session.activeEntity.avatar,
+              name: updatedUserData.userName || session.activeEntity.name,
+              EntityAccountId: session.activeEntity.EntityAccountId || session.activeEntity.entityAccountId || null, // Preserve EntityAccountId
+            } : null;
             
             // Update entities array if exists
-            if (session.entities && Array.isArray(session.entities)) {
-              session.entities.forEach(entity => {
-                if (entity.type === "Account" && entity.id === session.account?.id) {
-                  console.log(`[PROFILE SETUP] Updating entity.avatar in entities array`);
-                  entity.avatar = updatedUserData.avatar || entity.avatar;
-                  entity.name = updatedUserData.userName || entity.name;
-                }
-              });
-            }
+            const updatedEntities = session.entities && Array.isArray(session.entities) 
+              ? session.entities.map(entity => {
+                  if (entity.type === "Account" && entity.id === session.account?.id) {
+                    return {
+                      ...entity,
+                      avatar: updatedUserData.avatar || entity.avatar,
+                      name: updatedUserData.userName || entity.name,
+                      EntityAccountId: entity.EntityAccountId || entity.entityAccountId || null, // Preserve EntityAccountId
+                    };
+                  }
+                  return entity;
+                })
+              : session.entities;
             
-            localStorage.setItem("session", JSON.stringify(session));
-            console.log(`[PROFILE SETUP] Session updated in localStorage`);
+            // Update session using sessionManager
+            updateSession({
+              account: updatedAccount,
+              activeEntity: updatedActiveEntity || session.activeEntity,
+              entities: updatedEntities,
+            });
+            
+            console.log(`[PROFILE SETUP] Session updated via sessionManager`);
             
             // Dispatch custom event to notify other components (menu, sidebar, etc.)
             const event = new Event('profileUpdated');
@@ -444,15 +493,44 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
         throw new Error(result?.message || 'Cập nhật thất bại');
       }
     } catch (error) {
-      setErrors({ submit: error?.response?.data?.message || error.message || 'Cập nhật thất bại' });
+      const errorMessage = error?.response?.data?.message || error.message || 'Cập nhật thất bại';
+      
+      // If error is about userName validation, set it to userName field
+      if (errorMessage.includes('Tên người dùng') || errorMessage.includes('userName')) {
+        setErrors(prev => ({ 
+          ...prev, 
+          userName: errorMessage,
+          submit: errorMessage 
+        }));
+      } 
+      // If error is about phone validation, set it to phone field
+      else if (errorMessage.includes('điện thoại') || errorMessage.includes('phone')) {
+        setErrors(prev => ({ 
+          ...prev, 
+          phone: errorMessage,
+          submit: errorMessage 
+        }));
+      } 
+      // If error is about gender validation, set it to gender field
+      else if (errorMessage.includes('Giới tính') || errorMessage.includes('gender')) {
+        setErrors(prev => ({ 
+          ...prev, 
+          gender: errorMessage,
+          submit: errorMessage 
+        }));
+      } 
+      else {
+        setErrors({ submit: errorMessage });
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
 
-  const isFormValid = !errors.userName && !errors.avatar && !errors.background && !errors.phone &&
-    form.userName.trim() && form.avatar.trim();
+  // Form is valid if required fields are filled (userName, avatar)
+  // Don't block submit due to validation errors - let user submit and see backend errors
+  const isFormValid = form.userName.trim().length >= 4 && form.avatar.trim();
 
   if (!isInitialized) {
     return (
@@ -463,11 +541,11 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   }
 
   return (
-    <div className="profile-setup min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <div className="profile-setup min-h-screen py-4 px-3 sm:px-5 lg:px-6">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="ps-title text-3xl font-bold mb-2">
+        <div className="text-center mb-6">
+          <h1 className="ps-title text-3xl font-bold mb-1">
             Hoàn thiện hồ sơ
           </h1>
           <p className="ps-muted max-w-2xl mx-auto">
@@ -475,10 +553,10 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Form Section */}
-          <div className="ps-card rounded-2xl p-6 sm:p-8">
-            <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="ps-card rounded-2xl p-5 sm:p-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* User Name */}
               <div>
                 <label htmlFor="userName" className="ps-label block text-sm font-medium mb-2">
@@ -739,8 +817,8 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={!isFormValid || isLoading}
-                className={`ps-btn-primary w-full py-3 px-6 rounded-xl font-medium ${!isFormValid || isLoading ? 'ps-btn-disabled' : ''}`}
+                disabled={isLoading}
+                className={`ps-btn-primary w-full py-3 px-5 rounded-xl font-medium ${isLoading ? 'ps-btn-disabled' : ''}`}
                 aria-describedby="submit-help"
               >
                 {isLoading ? (
@@ -760,11 +838,11 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
           </div>
 
           {/* Preview Section */}
-          <div className="ps-card ps-preview rounded-2xl p-6 sm:p-8">
-            <h3 className="ps-title text-lg font-semibold mb-6">Xem trước hồ sơ</h3>
+          <div className="ps-card ps-preview rounded-2xl p-5 sm:p-6">
+            <h3 className="ps-title text-lg font-semibold mb-4">Xem trước hồ sơ</h3>
 
             {/* Profile Card Preview */}
-            <div className="ps-preview-body rounded-xl p-6 space-y-4">
+            <div className="ps-preview-body rounded-xl p-5 space-y-4">
               {/* Background Image */}
               {form.background ? (
                 <div className="relative h-32 rounded-lg overflow-hidden">
@@ -837,7 +915,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
             </div>
 
             {/* Tips */}
-            <div className="mt-6 p-4 ps-subtle rounded-xl">
+            <div className="mt-4 p-4 ps-subtle rounded-xl">
               <h4 className="ps-title font-medium mb-2">💡 Mẹo hay</h4>
               <ul className="text-sm ps-muted space-y-1">
                 <li>• Sử dụng ảnh chất lượng cao cho avatar</li>

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import { sidebarConfig } from "../../config/sidebarConfig.js";
 import barPageApi from "../../api/barPageApi.js";
-import "../../styles/layouts/sidebarSubmenu.css";
+import { cn } from "../../utils/cn";
 import { useTranslation } from "react-i18next"; // i18n
 
 export default function Sidebar() {
@@ -55,7 +55,7 @@ export default function Sidebar() {
 
     let menus = sidebarConfig[role] || [];
 
-    // Hide "Đăng ký tài khoản kinh doanh" menu if user has all three types (Bar, DJ, Dancer)
+    // Hide register business account menu if user has all three types (Bar, DJ, Dancer)
     if (role === "customer" && session.entities) {
       const entities = session.entities || [];
       const hasBar = entities.some(
@@ -69,8 +69,9 @@ export default function Sidebar() {
       );
 
       if (hasBar && hasDJ && hasDancer) {
+        const registerBusinessLabel = t('sidebar.registerBusiness');
         menus = menus.filter(
-          (menu) => menu.label !== "Đăng ký tài khoản kinh doanh"
+          (menu) => menu.label !== registerBusinessLabel && menu.label !== "Đăng ký tài khoản kinh doanh"
         );
       }
     }
@@ -110,7 +111,10 @@ export default function Sidebar() {
   // Fetch table types when barPageId is available
   useEffect(() => {
     const fetchTableTypes = async () => {
-      if (!barPageId) {
+      // Guard: must have a valid barPageId (GUID-like) and be on bar routes
+      const isGuid = typeof barPageId === "string" && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(barPageId);
+      const onBarRoute = location?.pathname?.startsWith?.("/bar");
+      if (!barPageId || !isGuid || !onBarRoute) {
         setTableTypes([]);
         return;
       }
@@ -124,7 +128,8 @@ export default function Sidebar() {
           setTableTypes([]);
         }
       } catch (error) {
-        console.error("[Sidebar] Error fetching table types:", error);
+        // Swallow API errors to avoid noisy console in non-bar contexts or BE downtime
+        console.warn("[Sidebar] Skipped table types fetch or backend error.");
         setTableTypes([]);
       } finally {
         setLoadingTableTypes(false);
@@ -133,12 +138,13 @@ export default function Sidebar() {
 
     // Only fetch if we're in bar context
     const role = activeEntity?.role?.toLowerCase() || activeEntity?.type?.toLowerCase();
-    if (role === "bar" || activeEntity?.type === "BarPage") {
+    const onBarRoute = location?.pathname?.startsWith?.("/bar");
+    if ((role === "bar" || activeEntity?.type === "BarPage") && onBarRoute) {
       fetchTableTypes();
     } else {
       setTableTypes([]);
     }
-  }, [barPageId, activeEntity]);
+  }, [barPageId, activeEntity, location?.pathname]);
 
   // Listen for table types updates
   useEffect(() => {
@@ -178,6 +184,18 @@ export default function Sidebar() {
       "Tin nhắn": "messages",
       "Hồ sơ": "profile",
       "Bank info": "bankInfo",
+      "Dashboard": "dashboard",
+      "Nhân sự (DJ, Dancer)": "staff",
+      "Lịch diễn": "schedule",
+      "Khách hàng / Bar hợp tác": "partners",
+      "Đối tác / Bar": "partners",
+      "Đánh giá & sao": "reviewsStars",
+      "Bar page": "barPage",
+      "Cài đặt quán": "barSettings",
+      "Quản lý loại bàn": "tableTypesManage",
+      "Quản lý bàn": "tablesManage",
+      "Quản lý voucher": "vouchersManage",
+      "Quản lý combo": "combosManage",
     };
     const kSub = labelKeyMap[subLabel] || subLabel;
     let resolvedSubPath = subPath;
@@ -210,12 +228,20 @@ export default function Sidebar() {
         <Link
           to={resolvedSubPath}
           onClick={handleClick}
-          className={`sidebar-submenu-item ${isSubActive ? "active" : ""} ${isDisabled ? "disabled" : ""}`}
+          className={cn(
+            "px-2.5 py-1 rounded-lg text-xs transition-colors",
+            "text-muted-foreground no-underline block truncate",
+            isSubActive 
+              ? "bg-border text-foreground" 
+              : "hover:bg-muted hover:text-foreground",
+            isDisabled && "opacity-50 cursor-not-allowed",
+            !isDisabled && "cursor-pointer"
+          )}
           style={{
             opacity: isDisabled ? 0.5 : 1,
             cursor: isDisabled ? "not-allowed" : "pointer"
           }}
-          title={isDisabled ? t('bar.needTableTypes') : ""}
+          title={isDisabled ? t('bar.needTableTypes') : subLabel}
         >
           {t(`sidebar.${kSub}`, { defaultValue: subLabel })}
         </Link>
@@ -236,38 +262,76 @@ export default function Sidebar() {
     // Map Vietnamese labels to stable keys
     const labelKeyMap = {
       "Trang chủ": "home",
+      "Newsfeed": "newsfeed",
       "Hội nhóm": "groups",
       "Sự kiện": "events",
       "Tin nhắn": "messages",
       "Hồ sơ": "profile",
       "Bank info": "bankInfo",
+      "Dashboard": "dashboard",
+      "Nhân sự (DJ, Dancer)": "staff",
+      "Bar page": "barPage",
+      "Cài đặt quán": "barSettings",
+      "Lịch diễn": "schedule",
+      "Khách hàng / Bar hợp tác": "partners",
+      "Đối tác / Bar": "partners",
+      "Đánh giá & sao": "reviewsStars",
+      "Quản lý người dùng": "adminUsers",
+      "Quản lý quán / Bar": "adminBars",
+      "Báo cáo & thống kê": "adminReports",
+      "Cài đặt hệ thống": "adminSettings",
+      "Đăng ký tài khoản kinh doanh": "registerBusiness",
     };
     const k = labelKeyMap[label] || label;
     return (
-      <div key={label + resolvedPath} className="sidebar-nav-item-wrapper">
+      <div key={label + resolvedPath}>
         {subMenu ? (
           // Menu cha có submenu
           <div
-            className={`sidebar-nav-item ${isActive ? "active" : ""}`}
+            className={cn(
+              "block px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              "text-muted-foreground no-underline cursor-pointer",
+              "flex items-center gap-2.5",
+              isActive 
+                ? "bg-primary/10 text-primary" 
+                : "hover:bg-muted hover:text-foreground"
+            )}
             onClick={() => toggleSubMenu(label)}
           >
-            {Icon && <Icon size={20} />}
-            <span>{t(`sidebar.${k}`, { defaultValue: label })}</span>
-            <span className="submenu-arrow">{isOpen ? "▾" : "▸"}</span>
+            {Icon && <Icon size={18} className="flex-shrink-0" />}
+            <span className={cn("flex-1 truncate")}>
+              {t(`sidebar.${k}`, { defaultValue: label })}
+            </span>
+            <span className="text-xs flex-shrink-0">{isOpen ? "▾" : "▸"}</span>
           </div>
         ) : (
           // Menu bình thường
           <Link
             to={resolvedPath}
-            className={`sidebar-nav-item ${isActive ? "active" : ""}`}
+            onClick={(e) => {
+              // Ensure navigation always happens (prevent any interference)
+              e.preventDefault();
+              navigate(resolvedPath);
+            }}
+            className={cn(
+              "block px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              "text-muted-foreground no-underline",
+              "flex items-center gap-2.5",
+              isActive 
+                ? "bg-primary/10 text-primary" 
+                : "hover:bg-muted hover:text-foreground"
+            )}
           >
-            {Icon && <Icon size={20} />}
-            <span>{t(`sidebar.${k}`, { defaultValue: label })}</span>
+            {Icon && <Icon size={18} className="flex-shrink-0" />}
+            <span className="truncate">{t(`sidebar.${k}`, { defaultValue: label })}</span>
           </Link>
         )}
 
         {subMenu && isOpen && (
-          <ul className="sidebar-submenu">
+          <ul className={cn(
+            "flex flex-col gap-1 mt-1 ml-5 pl-1 border-l-2",
+            "border-border/30"
+          )}>
             {subMenu.map((sub) => renderSubMenuItem(sub))}
           </ul>
         )}
@@ -276,26 +340,51 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="newsfeed-sidebar-left">
-      <div className="sidebar-user-profile">
-        <div className="sidebar-user-avatar">
+    <aside className={cn(
+      "sticky p-4 rounded-lg",
+      "w-[240px] bg-card",
+      "border-[0.5px] border-border/20",
+      "top-[4.5rem] max-h-[calc(100vh-5.5rem)]",
+      "overflow-y-auto overflow-x-hidden"
+    )}>
+      <div className={cn(
+        "flex items-center gap-2.5 mb-4 pb-4",
+        "border-b border-border/30"
+      )}>
+        <div className={cn(
+          "flex items-center justify-center rounded-full p-1.5",
+          "bg-gradient-to-br from-primary to-secondary",
+          "text-primary-foreground w-10 h-10 flex-shrink-0"
+        )}>
           {activeEntity.avatar ? (
             <img
               src={activeEntity.avatar}
               alt={activeEntity.name}
-              className="rounded-full w-12 h-12 object-cover"
+              className="rounded-full w-full h-full object-cover"
             />
           ) : (
-            <span>👤</span>
+            <span className="text-sm">👤</span>
           )}
         </div>
-        <div className="sidebar-user-info">
-          <h3>{activeEntity.name}</h3>
-          {activeEntity.email && <p>@{activeEntity.email.split("@")[0]}</p>}
+        <div className={cn("min-w-0 flex-1")}>
+          <h3 className={cn(
+            "m-0 text-sm font-semibold text-foreground",
+            "truncate"
+          )}>
+            {activeEntity.name}
+          </h3>
+          {activeEntity.email && (
+            <p className={cn(
+              "m-0 mt-0.5 text-xs text-muted-foreground",
+              "truncate"
+            )}>
+              @{activeEntity.email.split("@")[0]}
+            </p>
+          )}
         </div>
       </div>
 
-      <nav className="sidebar-nav">
+      <nav className={cn("flex flex-col gap-0.5")}>
         {menus.map((menu) => renderMenuItem(menu))}
       </nav>
     </aside>

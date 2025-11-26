@@ -8,6 +8,7 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use((config) => {
   console.log(`[REQUEST] ${config.method?.toUpperCase()} ${config.url}`);
   
+  // Use sessionManager for consistent token retrieval (synchronous fallback)
   let token = localStorage.getItem("token");
   if (!token) {
     try {
@@ -46,17 +47,32 @@ axiosClient.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    console.error(`[ERROR] ${error.config?.method?.toUpperCase()} ${error.config?.url}`);
-    console.error("Error response:", error.response);
-    console.error("Error details:", {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message,
-    });
-    // Log full error data for debugging
-    if (error.response?.data) {
-      console.error("Full error response data:", JSON.stringify(error.response.data, null, 2));
+    const status = error.response?.status;
+    const method = error.config?.method?.toUpperCase();
+    const url = error.config?.url;
+    
+    // Don't log 404 errors as errors - they're expected in some cases (e.g., entity not found)
+    // Only log 404 for /user/by-entity endpoints as INFO, skip others
+    if (status === 404) {
+      if (url?.includes('/user/by-entity/')) {
+        // Silently handle 404 for entity lookups - this is expected when entity doesn't exist
+        // Don't log to reduce console noise
+      } else {
+        console.log(`[INFO] ${method} ${url} - 404 Not Found (this may be expected)`);
+      }
+    } else {
+      console.error(`[ERROR] ${method} ${url}`);
+      console.error("Error response:", error.response);
+      console.error("Error details:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+      });
+      // Log full error data for debugging (only for non-404 errors)
+      if (error.response?.data) {
+        console.error("Full error response data:", JSON.stringify(error.response.data, null, 2));
+      }
     }
     throw error;
   }

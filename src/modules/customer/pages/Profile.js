@@ -1,13 +1,24 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { userApi } from "../../../api/userApi";
 import { locationApi } from "../../../api/locationApi";
 import axiosClient from "../../../api/axiosClient";
 import AddressSelector from "../../../components/common/AddressSelector";
-import "../../../styles/modules/profile.css";
-import CreatePostBox from "../../feeds/components/CreatePostBox";
-import PostComposerModal from "../../feeds/components/PostComposerModal";
+import { useFollowers, useFollowing } from "../../../hooks/useFollow";
+import { cn } from "../../../utils/cn";
+import CreatePostBox from "../../feeds/components/shared/CreatePostBox";
+import PostComposerModal from "../../feeds/components/modals/PostComposerModal";
+import PostCard from "../../feeds/components/post/PostCard";
+import { getPostsByAuthor } from "../../../api/postApi";
+import { mapPostForCard } from "../../../utils/postTransformers";
+import { useProfilePosts } from "../../../hooks/useProfilePosts";
+import { useCurrentUserEntity } from "../../../hooks/useCurrentUserEntity";
+import { ProfileHeader } from "../../../components/profile/ProfileHeader";
+import { ProfileStats } from "../../../components/profile/ProfileStats";
+import { ImageUploadField } from "../../../components/profile/ImageUploadField";
 
 export default function Profile() {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState({
     userName: "",
     email: "",
@@ -24,8 +35,6 @@ export default function Profile() {
   const handleEditClick = () => setShowEditModal(true);
   const handleCloseEdit = () => setShowEditModal(false);
   const [editingField, setEditingField] = useState(null);
-  const [userPosts, setUserPosts] = useState([]);
-  const [postsLoading, setPostsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBackground, setUploadingBackground] = useState(false);
@@ -39,6 +48,30 @@ export default function Profile() {
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
   const [selectedWardId, setSelectedWardId] = useState('');
   const [addressDetail, setAddressDetail] = useState('');
+  
+  // Get current user entity ID using shared hook
+  const currentUserEntityId = useCurrentUserEntity();
+  
+  const { followers, fetchFollowers } = useFollowers(currentUserEntityId);
+  const { following, fetchFollowing } = useFollowing(currentUserEntityId);
+  
+  // Use shared hook for posts
+  const { posts: userPosts, loading: postsLoading } = useProfilePosts(currentUserEntityId);
+  
+  useEffect(() => {
+    if (currentUserEntityId) {
+      fetchFollowers();
+      fetchFollowing();
+    }
+  }, [currentUserEntityId, fetchFollowers, fetchFollowing]);
+
+  // Load videos when userPosts are available
+  useEffect(() => {
+    if (userPosts && userPosts.length >= 0) {
+      loadUserContent();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userPosts]);
 
   useEffect(() => {
     (async () => {
@@ -74,8 +107,7 @@ export default function Profile() {
             }
           }
           
-          // Load user posts and videos after profile is loaded
-          await loadUserContent();
+          // Videos will be loaded when userPosts are available
         } else setError(res.message || "Không tải được hồ sơ");
       } catch (e) {
         setError(e?.response?.data?.message || "Không tải được hồ sơ");
@@ -87,91 +119,38 @@ export default function Profile() {
 
   const loadUserContent = async () => {
     try {
-      setPostsLoading(true);
       setVideosLoading(true);
       
-      // Get session to determine current user
-      let session;
-      try {
-        const raw = localStorage.getItem("session");
-        session = raw ? JSON.parse(raw) : null;
-      } catch (e) {
-        session = null;
+      // Extract videos from userPosts (already loaded by useProfilePosts)
+      if (!userPosts || userPosts.length === 0) {
+        setUserVideos([]);
+        setVideosLoading(false);
+        return;
       }
       
-      const currentUserId = session?.activeEntity?.id || session?.account?.id;
-      
-      // Load posts from posts collection (include medias for videos tab)
-      const postsResponse = await axiosClient.get(`/posts/author/${currentUserId}`, {
-        params: { includeMedias: true }
-      });
-      const posts = postsResponse.success ? postsResponse.data : [];
-      
-      // Load music posts from musics collection  
-      const musicResponse = await axiosClient.get(`/music/author/${currentUserId}`);
-      const musics = musicResponse.success ? musicResponse.data : [];
-      
-      // Transform and combine posts
-      const transformedPosts = posts.map(post => ({
-        id: post._id,
-        type: 'post',
-        title: post.title || post["Tiêu Đề"],
-        content: post.content || post.caption,
-        image: post.url && post.url !== "default-post.jpg" ? post.url : (post.medias && post.medias[0]?.url && !/\.(mp4|webm|mov)$/i.test(post.medias[0]?.url) ? post.medias[0].url : null),
-        createdAt: post.createdAt,
-        likes: post.likes ? Object.keys(post.likes).length : 0,
-        comments: post.comments ? Object.keys(post.comments).length : 0,
-        authorName: post.authorEntityName || "Người dùng",
-        authorAvatar: post.authorEntityAvatar || null
-      }));
-      
-      const transformedMusics = musics.map(music => ({
-        id: music._id,
-        type: 'music',
-        title: music["Tên Bài Nhạc"],
-        content: music["Chi Tiết"],
-        image: music["Ảnh Nền Bài Nhạc"],
-        audioUrl: music["Link Mua Nhạc"],
-        artist: music["Tên Nghệ Sĩ"],
-        createdAt: music.createdAt,
-        likes: music["Thích"] ? Object.keys(music["Thích"]).length : 0,
-        comments: music["Bình Luận"] ? Object.keys(music["Bình Luận"]).length : 0,
-        authorName: music.authorEntityName || "Người dùng",
-        authorAvatar: music.authorEntityAvatar || null
-      }));
-      
-      // Combine and sort by creation date
-      const allPosts = [...transformedPosts, ...transformedMusics]
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
-      setUserPosts(allPosts);
-
-      // Extract videos from post medias
-      const isVideoMedia = (m) => {
-        const mime = (m?.mime || '').toLowerCase();
-        const url = m?.url || '';
-        return mime.startsWith('video/') || /\.(mp4|webm|mov|mkv|m4v)$/i.test(url);
-      };
-
-      const videos = (posts || []).flatMap(p => {
-        const medias = Array.isArray(p.medias) ? p.medias : [];
-        return medias.filter(isVideoMedia).map(m => ({
-          id: m._id || `${p._id}-${m.url}`,
-          postId: p._id,
-          url: m.url,
-          mime: m.mime || '',
-          createdAt: p.createdAt,
-          title: p.title || p.caption || 'Video',
-          authorName: p.authorEntityName || 'Người dùng',
-          authorAvatar: p.authorEntityAvatar || null
-        }));
-      }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // Extract videos from posts
+      const videos = userPosts
+        .filter(p => p.videoSrc || (p.medias?.videos && p.medias.videos.length > 0))
+        .map(p => ({
+          id: p.id,
+          postId: p.id,
+          url: p.videoSrc || p.medias?.videos?.[0]?.url,
+          createdAt: p.time,
+          title: p.title || p.content || 'Video',
+          user: p.user,
+          avatar: p.avatar,
+          ...p
+        }))
+        .sort((a, b) => {
+          const dateA = new Date(a.createdAt || 0);
+          const dateB = new Date(b.createdAt || 0);
+          return dateB - dateA;
+        });
 
       setUserVideos(videos);
     } catch (error) {
-      console.error("Error loading user posts:", error);
+      console.error("Error loading user videos:", error);
     } finally {
-      setPostsLoading(false);
       setVideosLoading(false);
     }
   };
@@ -333,38 +312,54 @@ export default function Profile() {
           
           // IMPORTANT: Update session in localStorage so other components show new avatar
           try {
-            const sessionRaw = localStorage.getItem("session");
-            if (sessionRaw) {
-              const session = JSON.parse(sessionRaw);
+            const { getSession, updateSession } = await import("../../../utils/sessionManager");
+            const session = getSession();
+            
+            if (session) {
               console.log(`[SAVE PROFILE] Current session:`, session);
               
-              // Update avatar in session
-              if (session.account) {
-                console.log(`[SAVE PROFILE] Updating account.avatar from ${session.account.avatar} to ${res.data.avatar}`);
-                session.account.avatar = res.data.avatar;
-                session.account.userName = res.data.userName;
-              }
+              // Preserve EntityAccountId when updating account
+              const accountEntityAccountId = session.account?.EntityAccountId || session.account?.entityAccountId || null;
               
-              // Update activeEntity if exists
-              if (session.activeEntity) {
-                console.log(`[SAVE PROFILE] Updating activeEntity.avatar from ${session.activeEntity.avatar} to ${res.data.avatar}`);
-                session.activeEntity.avatar = res.data.avatar;
-                session.activeEntity.name = res.data.userName;
-              }
+              // Update account (preserve EntityAccountId)
+              const updatedAccount = {
+                ...session.account,
+                avatar: res.data.avatar,
+                userName: res.data.userName,
+                EntityAccountId: accountEntityAccountId, // Preserve EntityAccountId
+              };
+              
+              // Update activeEntity if exists (preserve EntityAccountId)
+              const updatedActiveEntity = session.activeEntity ? {
+                ...session.activeEntity,
+                avatar: res.data.avatar,
+                name: res.data.userName,
+                EntityAccountId: session.activeEntity.EntityAccountId || session.activeEntity.entityAccountId || null, // Preserve EntityAccountId
+              } : null;
               
               // Update entities array if exists
-              if (session.entities && Array.isArray(session.entities)) {
-                session.entities.forEach(entity => {
-                  if (entity.type === "Account" && entity.id === session.account?.id) {
-                    console.log(`[SAVE PROFILE] Updating entity.avatar in entities array`);
-                    entity.avatar = res.data.avatar;
-                    entity.name = res.data.userName;
-                  }
-                });
-              }
+              const updatedEntities = session.entities && Array.isArray(session.entities) 
+                ? session.entities.map(entity => {
+                    if (entity.type === "Account" && entity.id === session.account?.id) {
+                      return {
+                        ...entity,
+                        avatar: res.data.avatar,
+                        name: res.data.userName,
+                        EntityAccountId: entity.EntityAccountId || entity.entityAccountId || null, // Preserve EntityAccountId
+                      };
+                    }
+                    return entity;
+                  })
+                : session.entities;
               
-              localStorage.setItem("session", JSON.stringify(session));
-              console.log(`[SAVE PROFILE] Session updated in localStorage`);
+              // Update session using sessionManager
+              updateSession({
+                account: updatedAccount,
+                activeEntity: updatedActiveEntity || session.activeEntity,
+                entities: updatedEntities,
+              });
+              
+              console.log(`[SAVE PROFILE] Session updated via sessionManager`);
               
               // Dispatch custom event to notify other components
               const event = new Event('profileUpdated');
@@ -404,275 +399,287 @@ export default function Profile() {
     }
   };
 
-  if (loading) return <div className="profile-loading">Đang tải hồ sơ...</div>;
+  if (loading) {
+    return (
+      <div className={cn("min-h-screen bg-background flex items-center justify-center")}>
+        <div className={cn("text-muted-foreground")}>{t('publicProfile.loading')}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="profile-container">
-      {/* --- COVER & AVATAR --- */}
-      <section
-        className="profile-cover"
-        style={{
-          backgroundImage: `url(${profile.background || "https://i.imgur.com/6IUbEMn.jpg"
-            })`,
-        }}
-      >
-        <div className="profile-info-header">
-          <div className="avatar-container">
-            <img
-              src={profile.avatar || "https://via.placeholder.com/120"}
-              alt="avatar"
-              className="profile-avatar"
-            />
-            {/* Thay nút bằng icon nhỏ góc avatar */}
-            <i className="bx bx-camera text-[#a78bfa] text-xl cursor-pointer hover:text-white transition"></i>
-          </div>
+    <div className={cn("min-h-screen bg-background")}>
+      <ProfileHeader
+        background={profile.background}
+        avatar={profile.avatar}
+        name={profile.userName || t('profile.editPersonalProfile')}
+        role="USER"
+        actionButtons={
+          <button
+            onClick={handleEditClick}
+            className={cn(
+              "px-4 py-2 rounded-lg font-semibold text-sm",
+              "bg-card/80 backdrop-blur-sm text-foreground border-none",
+              "hover:bg-card/90 transition-all duration-200",
+              "active:scale-95",
+              "flex items-center gap-2"
+            )}
+          >
+            <i className="bx bx-edit text-base"></i>
+            {t('profile.editProfile')}
+          </button>
+        }
+      />
 
-          <div className="profile-details">
-            <h2>{profile.userName || "Người dùng mới"}</h2>
-            <p>{profile.address || "Chưa có địa chỉ"}</p>
-            <p>{profile.gender || "Chưa có địa chỉ"}</p>
-            <p>
-              Giá thuê: <span className="highlight">300k/giờ</span>
-            </p>
-            <p>⭐ 4.1 (5 đánh giá)</p>
-          </div>
+      {/* Main Content Container */}
+      <div className={cn("max-w-6xl mx-auto px-4 md:px-6 py-6")}>
+        <ProfileStats followers={followers} following={following} />
 
-           <div className="profile-actions flex gap-3 items-center">
-            <i className="bx bx-share-alt text-[#a78bfa] text-2xl cursor-pointer hover:text-white transition"></i>
-
-            {/* 🟢 Nút chỉnh sửa hồ sơ */}
-            <button
-              onClick={handleEditClick}
-              className="flex items-center gap-1 px-3 py-1 bg-[#a78bfa] text-white rounded-xl hover:bg-[#8b5cf6] transition"
-            >
-              <i className="bx bx-edit text-lg"></i>
-              Chỉnh sửa hồ sơ
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* --- TABS --- */}
-      <div className="profile-tabs">
-        <button 
-          className={activeTab === "posts" ? "active" : ""}
-          onClick={() => setActiveTab("posts")}
-        >
-          Bài viết
-        </button>
-        <button 
-          className={activeTab === "videos" ? "active" : ""}
-          onClick={() => setActiveTab("videos")}
-        >
-          Video
-        </button>
-      </div>
-
-      {/* Info tab removed per requirement */}
-
-      {/* --- TAB: POSTS --- */}
-      {activeTab === "posts" && (
-        <div className="profile-posts-tab">
-          {/* POST CREATE AREA (reuse global form) */}
-          <section className="post-section">
-            <CreatePostBox onCreate={() => setComposerOpen(true)} onMediaClick={() => setComposerOpen(true)} />
-            <PostComposerModal 
-              open={composerOpen}
-              onClose={() => setComposerOpen(false)}
-              onCreated={() => {
-                // Reload posts/videos after successful create
-                loadUserContent();
-              }}
-            />
-          </section>
-
-          {/* POST LIST */}
-          <section className="post-list">
-            {postsLoading ? (
-              <div className="text-center py-8">
-                <p className="text-gray-400">Đang tải bài viết...</p>
+        {/* Bio & Info Section */}
+        {(profile.bio || profile.email || profile.phone || profile.address || profile.gender) && (
+          <section className={cn(
+            "py-6 border-b border-border/30",
+            "bg-card rounded-lg p-6 mb-6",
+            "border-[0.5px] border-border/20",
+            "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+          )}>
+            {profile.bio && (
+              <div className={cn("mb-4")}>
+                <h3 className={cn("text-lg font-semibold text-foreground mb-2")}>
+                  {t("publicProfile.about")}
+                </h3>
+                <p className={cn("text-foreground whitespace-pre-wrap leading-relaxed")}>
+                  {profile.bio}
+                </p>
               </div>
-            ) : userPosts.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-400">Chưa có bài viết nào.</p>
-              </div>
-            ) : (
-              userPosts.map((post) => (
-                <div key={post.id} className="post-card">
-                  <div className="post-header">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={post.authorAvatar || profile.avatar || "https://via.placeholder.com/40"}
-                        alt="avatar"
-                        className="avatar-small"
-                      />
-                      <div>
-                        <h4>{post.authorName || profile.userName || "Người dùng"}</h4>
-                        <p className="text-sm text-gray-400">
-                          {new Date(post.createdAt).toLocaleString('vi-VN')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {post.type === 'music' && <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">🎵 Nhạc</span>}
-                      <i className="bx bx-dots-horizontal-rounded text-[#a78bfa]"></i>
-                    </div>
-                  </div>
-                  
-                  <div className="post-content mt-3">
-                    <h5 className="font-semibold mb-2">{post.title}</h5>
-                    <p>{post.content}</p>
-                    {post.type === 'music' && post.artist && (
-                      <p className="text-sm text-gray-500 mt-1">🎤 {post.artist}</p>
-                    )}
-                  </div>
-                  
-                  {post.image && (
-                    <div className="post-image mt-3">
-                      <img 
-                        src={post.image} 
-                        alt="post" 
-                        className="w-full h-64 object-cover rounded-lg"
-                      />
+            )}
+            {(profile.email || profile.phone || profile.address || profile.gender) && (
+              <div className={cn("mt-4 pt-4 border-t border-border/30")}>
+                <h4 className={cn("text-base font-semibold text-foreground mb-3")}>
+                  {t("publicProfile.contact")}
+                </h4>
+                <div className={cn("space-y-2 text-sm text-muted-foreground")}>
+                  {profile.email && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-envelope text-base"></i>
+                      <span>{t("common.email")}: {profile.email}</span>
                     </div>
                   )}
-                  
-                  {post.type === 'music' && post.audioUrl && (
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                      <audio controls className="w-full">
-                        <source src={post.audioUrl} type="audio/mpeg" />
-                        Trình duyệt không hỗ trợ phát audio.
-                      </audio>
+                  {profile.phone && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-phone text-base"></i>
+                      <span>{t("common.phone") || "Phone"}: {profile.phone}</span>
                     </div>
                   )}
-                  
-                  <div className="post-actions mt-3">
-                    <button>❤️ {post.likes}</button>
-                    <button>💬 {post.comments}</button>
-                    <button>↗️ Chia sẻ</button>
-                  </div>
+                  {profile.address && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-map text-base"></i>
+                      <span>{t("common.address") || "Address"}: {profile.address}</span>
+                    </div>
+                  )}
+                  {profile.gender && (
+                    <div className={cn("flex items-center gap-2")}>
+                      <i className="bx bx-user text-base"></i>
+                      <span>{t("profile.gender")}: {profile.gender}</span>
+                    </div>
+                  )}
                 </div>
-              ))
+              </div>
             )}
           </section>
-        </div>
-      )}
+        )}
 
-      {/* --- TAB: VIDEOS --- */}
-      {activeTab === "videos" && (
-        <div className="profile-videos-tab">
-          {videosLoading ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400">Đang tải video...</p>
-            </div>
-          ) : userVideos.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400">Chưa có video nào.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {userVideos.map((v) => (
-                <div key={v.id} className="post-card">
-                  <div className="post-header">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={v.authorAvatar || profile.avatar || "https://via.placeholder.com/40"}
-                        alt="avatar"
-                        className="avatar-small"
-                      />
-                      <div>
-                        <h4>{v.authorName || profile.userName || "Người dùng"}</h4>
-                        <p className="text-sm text-gray-400">
-                          {new Date(v.createdAt).toLocaleString('vi-VN')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-purple-100 text-purple-600 px-2 py-1 rounded">🎬 Video</span>
-                      <i className="bx bx-dots-horizontal-rounded text-[#a78bfa]"></i>
-                    </div>
-                  </div>
+        {/* Posts Section - Instagram Grid Style */}
+        <section className={cn("py-6")}>
+          {/* Tabs */}
+          <div className={cn("flex items-center gap-1 mb-6 border-b border-border/30")}>
+            <button
+              onClick={() => setActiveTab("posts")}
+              className={cn(
+                "px-6 py-3 text-sm font-semibold border-none bg-transparent",
+                "transition-all duration-200 relative",
+                activeTab === "posts"
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t("publicProfile.posts")}
+              {activeTab === "posts" && (
+                <span className={cn(
+                  "absolute bottom-0 left-0 right-0 h-0.5",
+                  "bg-primary"
+                )} />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("videos")}
+              className={cn(
+                "px-6 py-3 text-sm font-semibold border-none bg-transparent",
+                "transition-all duration-200 relative",
+                activeTab === "videos"
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Videos
+              {activeTab === "videos" && (
+                <span className={cn(
+                  "absolute bottom-0 left-0 right-0 h-0.5",
+                  "bg-primary"
+                )} />
+              )}
+            </button>
+          </div>
 
-                  <div className="mt-3">
-                    <h5 className="font-semibold mb-2">{v.title}</h5>
-                    <video controls className="w-full rounded-lg">
-                      <source src={v.url} type={v.mime || 'video/mp4'} />
-                      Trình duyệt không hỗ trợ phát video.
-                    </video>
-                  </div>
+          {/* Content */}
+          {activeTab === "posts" ? (
+            <>
+              {postsLoading ? (
+                <div className={cn("text-center py-12 text-muted-foreground")}>
+                  {t('common.loading')}
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Reviews tab removed per requirement */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 overflow-y-auto max-h-[90vh]">
-            <h3 className="text-2xl font-semibold mb-5 text-center">
-              Chỉnh sửa hồ sơ cá nhân
-            </h3>
-
-            <div className="space-y-6">
-              {/* --- Ảnh đại diện --- */}
-              <div className="flex justify-between items-center border-b pb-3">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <img
-                      src={profile.avatar || "https://via.placeholder.com/100"}
-                      alt="Avatar"
-                      className="w-20 h-20 rounded-full object-cover border"
+              ) : userPosts && userPosts.length > 0 ? (
+                <div className={cn("space-y-4")}>
+                  {userPosts.map(post => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onShared={() => loadUserContent()}
                     />
-                    {uploadingAvatar && (
-                      <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
-                        <div className="text-white text-xs">Đang upload...</div>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-medium text-lg">Ảnh đại diện</p>
-                    <p className="text-sm text-gray-500">Hiển thị cho người dùng</p>
-                  </div>
+                  ))}
                 </div>
-                <button
-                  onClick={() => setEditingField(editingField === "avatar" ? null : "avatar")}
-                  className="text-[#a78bfa] hover:text-[#8b5cf6] font-medium"
-                >
-                  {editingField === "avatar" ? "Đóng" : "Chỉnh sửa"}
-                </button>
-              </div>
-              {editingField === "avatar" && (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Upload ảnh từ máy tính:</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      disabled={uploadingAvatar}
-                      className="w-full border rounded-lg px-3 py-2"
-                    />
-                    {uploadingAvatar && (
-                      <p className="text-sm text-blue-600 mt-1">Đang upload ảnh...</p>
-                    )}
-                  </div>
-                  <div className="text-center text-gray-500">hoặc</div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Nhập link ảnh:</label>
-                    <input
-                      type="text"
-                      placeholder="Nhập link ảnh đại diện..."
-                      value={profile.avatar || ""}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, avatar: e.target.value }))
-                      }
-                      className="w-full border rounded-lg px-3 py-2"
-                    />
-                  </div>
+              ) : (
+                <div className={cn(
+                  "text-center py-12 text-muted-foreground",
+                  "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+                )}>
+                  {t("publicProfile.noPosts")}
                 </div>
               )}
+            </>
+          ) : (
+            <>
+              {videosLoading ? (
+                <div className={cn("text-center py-12 text-muted-foreground")}>
+                  {t('common.loading')}
+                </div>
+              ) : userVideos && userVideos.length > 0 ? (
+                <div className={cn("space-y-4")}>
+                  {userVideos.map(video => (
+                    <PostCard
+                      key={video.id}
+                      post={video}
+                      onShared={() => loadUserContent()}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className={cn(
+                  "text-center py-12 text-muted-foreground",
+                  "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+                )}>
+                  Không có video
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      </div>
+
+      {showEditModal && (
+        <div className={cn(
+          "fixed inset-0 bg-black/50 backdrop-blur-sm",
+          "flex items-center justify-center z-50 p-4"
+        )}>
+          <div className={cn(
+            "bg-card text-card-foreground rounded-lg",
+            "border-[0.5px] border-border/20",
+            "shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
+            "w-full max-w-2xl max-h-[90vh] overflow-y-auto",
+            "flex flex-col"
+          )}>
+            {/* Header */}
+            <div className={cn(
+              "p-4 border-b border-border/30",
+              "flex items-center justify-between flex-shrink-0"
+            )}>
+              <h3 className={cn("text-xl font-semibold text-foreground")}>
+                {t('profile.editPersonalProfile')}
+              </h3>
+              <button
+                onClick={handleCloseEdit}
+                className={cn(
+                  "w-8 h-8 flex items-center justify-center",
+                  "bg-transparent border-none text-muted-foreground",
+                  "rounded-lg transition-all duration-200",
+                  "hover:bg-muted/50 hover:text-foreground",
+                  "active:scale-95"
+                )}
+              >
+                <i className="bx bx-x text-xl"></i>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className={cn("p-6 flex-1 overflow-y-auto")}>
+              <div className={cn("space-y-6")}>
+                {/* --- Ảnh đại diện --- */}
+                <div className={cn("flex justify-between items-center border-b border-border/30 pb-4")}>
+                  <div className={cn("flex items-center gap-4")}>
+                    <div className={cn("relative")}>
+                      <img
+                        src={profile.avatar || "https://via.placeholder.com/100"}
+                        alt="Avatar"
+                        className={cn(
+                          "w-20 h-20 rounded-full object-cover",
+                          "border-2 border-border/20"
+                        )}
+                      />
+                      {uploadingAvatar && (
+                        <div className={cn(
+                          "absolute inset-0 bg-black/50 rounded-full",
+                          "flex items-center justify-center"
+                        )}>
+                          <div className={cn("text-primary-foreground text-xs")}>
+                            Đang upload...
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className={cn("font-semibold text-base text-foreground")}>
+                        Ảnh đại diện
+                      </p>
+                      <p className={cn("text-sm text-muted-foreground")}>
+                        Hiển thị cho người dùng
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEditingField(editingField === "avatar" ? null : "avatar")}
+                    className={cn(
+                      "px-4 py-2 rounded-lg font-medium text-sm",
+                      "bg-transparent border-none text-primary",
+                      "hover:bg-primary/10 transition-all duration-200",
+                      "active:scale-95"
+                    )}
+                  >
+                    {editingField === "avatar" ? "Đóng" : "Chỉnh sửa"}
+                  </button>
+                </div>
+                {editingField === "avatar" && (
+                  <div className={cn("mt-4")}>
+                    <ImageUploadField
+                      label="Ảnh đại diện"
+                      value={profile.avatar}
+                      onChange={(url) => setProfile((prev) => ({ ...prev, avatar: url }))}
+                      uploadMode={true}
+                      urlInput={true}
+                      uploading={uploadingAvatar}
+                      onUploadStateChange={(uploading) => setUploadingAvatar(uploading)}
+                      />
+                  </div>
+                )}
 
               {/* --- Ảnh nền --- */}
               <div className="flex justify-between items-center border-b pb-3">
@@ -702,33 +709,16 @@ export default function Profile() {
                 </button>
               </div>
               {editingField === "background" && (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Upload ảnh từ máy tính:</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleBackgroundChange}
-                      disabled={uploadingBackground}
-                      className="w-full border rounded-lg px-3 py-2"
-                    />
-                    {uploadingBackground && (
-                      <p className="text-sm text-blue-600 mt-1">Đang upload ảnh...</p>
-                    )}
-                  </div>
-                  <div className="text-center text-gray-500">hoặc</div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Nhập link ảnh:</label>
-                    <input
-                      type="text"
-                      placeholder="Nhập link ảnh bìa..."
-                      value={profile.background || ""}
-                      onChange={(e) =>
-                        setProfile((prev) => ({ ...prev, background: e.target.value }))
-                      }
-                      className="w-full border rounded-lg px-3 py-2"
-                    />
-                  </div>
+                <div className={cn("mt-4")}>
+                  <ImageUploadField
+                    label="Ảnh bìa"
+                    value={profile.background}
+                    onChange={(url) => setProfile((prev) => ({ ...prev, background: url }))}
+                    uploadMode={true}
+                    urlInput={true}
+                    uploading={uploadingBackground}
+                    onUploadStateChange={(uploading) => setUploadingBackground(uploading)}
+                  />
                 </div>
               )}
 
@@ -849,23 +839,41 @@ export default function Profile() {
                 </div>
               )}
 
-              {/* --- Nút Lưu / Hủy --- */}
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={handleCloseEdit}
-                  disabled={saving}
-                  className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50"
-                >
-                  Đóng
-                </button>
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={saving}
-                  className="px-4 py-2 bg-[#a78bfa] text-white rounded-lg hover:bg-[#8b5cf6] disabled:opacity-50"
-                >
-                  {saving ? "Đang lưu..." : "Lưu thay đổi"}
-                </button>
               </div>
+            </div>
+
+            {/* Footer */}
+            <div className={cn(
+              "p-4 border-t border-border/30",
+              "flex items-center justify-end gap-3 flex-shrink-0"
+            )}>
+              <button
+                onClick={handleCloseEdit}
+                disabled={saving || uploadingAvatar || uploadingBackground}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-semibold text-sm",
+                  "bg-transparent border-none text-muted-foreground",
+                  "hover:text-foreground hover:bg-muted/50",
+                  "transition-all duration-200",
+                  "active:scale-95",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                Đóng
+              </button>
+              <button
+                onClick={handleSaveProfile}
+                disabled={saving || uploadingAvatar || uploadingBackground}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-semibold text-sm",
+                  "bg-primary text-primary-foreground border-none",
+                  "hover:bg-primary/90 transition-all duration-200",
+                  "active:scale-95",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                {saving || uploadingAvatar || uploadingBackground ? "Đang lưu..." : "Lưu thay đổi"}
+              </button>
             </div>
           </div>
         </div>

@@ -19,6 +19,7 @@ export const userApi = {
   me: () => axiosClient.get("/user/me"),
   updateProfile: (payload, config = {}) => axiosClient.put("/user/profile", payload, config),
   getEntities: (accountId) => axiosClient.get(`/user/${accountId}/entities`),
+  getEntityAccountId: (accountId) => axiosClient.get(`/user/entity-account/${accountId}`),
 };
 
 

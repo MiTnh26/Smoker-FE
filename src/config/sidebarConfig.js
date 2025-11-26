@@ -10,7 +10,8 @@ import {
   Star,
   MessageCircle,
   Store,
-  CreditCard
+  CreditCard,
+  ClipboardCheck
 } from "lucide-react";
 
 /**
@@ -44,6 +45,7 @@ export const sidebarConfig = {
   //   { label: "Cài đặt quán", icon: Settings, path: "/bar/settings/:barPageId" },
   // ],
   bar: [
+    { label: "Newsfeed", icon: Home, path: "/bar/newsfeed" },
     { label: "Dashboard", icon: BarChart3, path: "/bar/dashboard" },
     { label: "Sự kiện", icon: Calendar, path: "/bar/events" },
     { label: "Nhân sự (DJ, Dancer)", icon: Users, path: "/bar/staff" },
@@ -66,6 +68,7 @@ export const sidebarConfig = {
     },
   ],
   dj: [
+    { label: "Newsfeed", icon: Home, path: "/dj/newsfeed" },
     { label: "Dashboard", icon: BarChart3, path: "/dj/dashboard" },
     { label: "Lịch diễn", icon: Calendar, path: "/dj/schedule" },
     { label: "Khách hàng / Bar hợp tác", icon: Users, path: "/dj/partners" },
@@ -74,6 +77,7 @@ export const sidebarConfig = {
   ],
 
   dancer: [
+    { label: "Newsfeed", icon: Home, path: "/dancer/newsfeed" },
     { label: "Dashboard", icon: BarChart3, path: "/dancer/dashboard" },
     { label: "Lịch diễn", icon: Calendar, path: "/dancer/schedule" },
     { label: "Đối tác / Bar", icon: Users, path: "/dancer/partners" },
@@ -84,6 +88,8 @@ export const sidebarConfig = {
   admin: [
     { label: "Dashboard", icon: BarChart3, path: "/admin/dashboard" },
     { label: "Quản lý người dùng", icon: Users, path: "/admin/users" },
+    { label: "Quản lý duyệt", icon: ClipboardCheck, path: "/admin/approvals" },
+    { label: "Thư viện nhạc", icon: Music2, path: "/admin/music" },
     { label: "Quản lý quán / Bar", icon: Store, path: "/admin/bars" },
     { label: "Báo cáo & thống kê", icon: BarChart3, path: "/admin/reports" },
     { label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },

@@ -3,6 +3,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import CustomerLayout from "../layouts/CustomerLayout";
 import SettingsPrivacyPage from "../modules/settings/pages/SettingsPrivacy";
 import LanguageSettings from "../modules/settings/pages/LanguageSettings";
+import SongLibraryPage from "../modules/settings/pages/SongLibrary";
 
 export default function SettingsRoutes() {
   return (
@@ -20,6 +21,14 @@ export default function SettingsRoutes() {
         element={
           <ProtectedRoute roles={["customer", "bar", "dj", "dancer", "admin", "business"]}>
             <CustomerLayout><LanguageSettings /></CustomerLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/songs"
+        element={
+          <ProtectedRoute roles={["customer", "bar", "dj", "dancer", "admin", "business"]}>
+            <CustomerLayout><SongLibraryPage /></CustomerLayout>
           </ProtectedRoute>
         }
       />

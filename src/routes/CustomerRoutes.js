@@ -2,9 +2,13 @@ import { Fragment } from "react";
 import { Route } from "react-router-dom";
 import CustomerLayout from "../layouts/CustomerLayout";
 import {  Profile, AddBankInfo } from "../modules/customer";
+import PublicProfile from "../modules/customer/pages/PublicProfile";
+import DynamicLayout from "../layouts/DynamicLayout";
 import ProtectedRoute from "./ProtectedRoute";
-import Newsfeed from "../modules/feeds/pages/Newsfeed"
-import StoryEditor from "../modules/feeds/components/StoryEditor";
+import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed"
+import { StoryEditor } from "../modules/feeds/components/story";
+import MessagesPage from "../modules/messages/pages/MessagesPage";
+import MessagesLayout from "../layouts/MessagesLayout";
 export default function CustomerRoutes() {
   return (
     <Fragment>
@@ -14,6 +18,14 @@ export default function CustomerRoutes() {
         element={
           <ProtectedRoute roles={["customer"]}>
             <CustomerLayout><Newsfeed /></CustomerLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customer/messages"
+        element={
+          <ProtectedRoute roles={["customer"]}>
+            <MessagesLayout><MessagesPage /></MessagesLayout>
           </ProtectedRoute>
         }
       />
@@ -31,6 +43,12 @@ export default function CustomerRoutes() {
           <ProtectedRoute roles={["customer"]}>
             <CustomerLayout><Profile /></CustomerLayout>
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile/:entityId"
+        element={
+          <DynamicLayout><PublicProfile /></DynamicLayout>
         }
       />
       <Route

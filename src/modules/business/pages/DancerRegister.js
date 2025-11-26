@@ -13,6 +13,7 @@ export default function DancerRegister() {
   // Step control
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [message, setMessage] = useState("");
 
   // Step 1: basic info
@@ -162,8 +163,8 @@ export default function DancerRegister() {
         // Continue anyway, registration was successful
       }
 
-      setMessage("🎉 Đăng ký Dancer thành công!");
-      navigate("/customer/newsfeed");
+      setIsSuccess(true);
+      setMessage("Đăng ký thành công! Hồ sơ của bạn đang chờ quản trị viên duyệt.");
     } catch (err) {
       console.error(err);
       setMessage(err?.response?.data?.message || err.message || "Lỗi không xác định");
@@ -171,6 +172,18 @@ export default function DancerRegister() {
       setIsLoading(false);
     }
   };
+
+  if (isSuccess) {
+    return (
+      <div className="business-register-container text-center">
+        <h2>Đăng ký thành công</h2>
+        <p className="business-register-message">{message}</p>
+        <button onClick={() => navigate('/')} className="btn-primary mt-4">
+          Về trang chủ
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="business-register-container">
@@ -261,7 +274,7 @@ export default function DancerRegister() {
         </form>
       )}
 
-      {message && <p className="business-register-message">{message}</p>}
+      {message && !isSuccess && <p className="business-register-message">{message}</p>}
     </div>
   );
 }

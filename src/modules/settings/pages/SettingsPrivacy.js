@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next"; // i18n: translate UI strings
+import { Link } from "react-router-dom";
 import LanguageSwitcher from "../../../components/common/LanguageSwitcher"; // i18n: language buttons
+import TrashManager from "../components/TrashManager";
 import "../../../styles/modules/settings/settings.css";
 
 export default function SettingsPrivacyPage() {
@@ -76,6 +78,21 @@ export default function SettingsPrivacyPage() {
                 <option value="friends">{t('settings.friends')}</option>
                 <option value="onlyme">{t('settings.onlyme')}</option>
               </select>
+            </div>
+          </section>
+
+          <TrashManager />
+
+          <section className="settings-card">
+            <h2>{t('settings.content') || 'Nội dung'}</h2>
+            <div className="settings-item">
+              <div className="settings-item-info">
+                <div className="settings-item-title">{t('settings.songLibrary') || 'Quản lý nhạc'}</div>
+                <div className="settings-item-desc">{t('settings.songLibraryDesc') || 'Upload và quản lý nhạc trong library của bạn'}</div>
+              </div>
+              <Link to="/settings/songs" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                {t('settings.manageSongs') || 'Quản lý nhạc'}
+              </Link>
             </div>
           </section>
         </div>

@@ -1,35 +1,50 @@
 import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import comboApi from "../../../api/comboApi";
-import { useParams } from "react-router-dom";
 
-export default function BarMenuCombo() {
-  const { barPageId } = useParams();
+export default function BarMenuCombo({ barPageId }) {
+  const { t } = useTranslation();
   const [combos, setCombos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (!barPageId) {
+      setLoading(false);
+      return;
+    }
+    
     const fetchCombos = async () => {
       try {
         setLoading(true);
+        setMessage("");
         const res = await comboApi.getCombosByBar(barPageId);
-        setCombos(res.data || []);
+        if (res.status === "success") {
+          setCombos(res.data || []);
+        } else if (Array.isArray(res.data)) {
+          setCombos(res.data);
+        } else if (Array.isArray(res)) {
+          setCombos(res);
+        } else {
+          setCombos([]);
+        }
       } catch (err) {
-        console.error(err);
-        setMessage("Lỗi tải combo");
+        console.error("Error loading combos:", err);
+        setMessage(t("bar.errorLoadingCombos") || "Error loading combos");
+        setCombos([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchCombos();
-  }, [barPageId]);
+  }, [barPageId, t]);
 
-  if (loading) return <div className="text-center py-4">Đang tải menu...</div>;
+  if (loading) return <div className="text-center py-4">{t("bar.loadingMenu")}</div>;
 
   return (
     <div className="profile-card mt-6">
-      <h3 className="section-title text-2xl font-bold mb-4">Menu Combo</h3>
+      <h3 className="section-title text-2xl font-bold mb-4">{t("bar.menuComboTitle")}</h3>
 
       {message && <p className="text-red-500 mb-4">{message}</p>}
 
@@ -45,14 +60,14 @@ export default function BarMenuCombo() {
 
               <i
                 className="bx bx-edit-alt text-yellow-300 cursor-pointer absolute top-2 right-2 text-lg hover:text-white transition-colors"
-                title="Chỉnh sửa combo"
+                title={t("bar.editCombo")}
               // onClick={() => handleEdit(combo.ComboId)}
               ></i>
             </div>
 
           ))
         ) : (
-          <p className="text-gray-400 col-span-full text-center">Chưa có combo nào</p>
+          <p className="text-gray-400 col-span-full text-center">{t("bar.noCombos")}</p>
         )}
       </div>
     </div>

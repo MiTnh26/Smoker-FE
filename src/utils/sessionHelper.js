@@ -28,11 +28,13 @@ export async function fetchAllEntities(accountId, user) {
     if (barsResponse && barsResponse.data && Array.isArray(barsResponse.data)) {
       barsResponse.data.forEach(bar => {
         // Ensure we use BarPageId, not AccountId
+        // Preserve EntityAccountId from API response
         const normalized = normalizeEntity({
           ...bar,
           id: bar.BarPageId,  // Force use BarPageId
           type: "BarPage",
-          role: "bar"
+          role: "bar",
+          EntityAccountId: bar.EntityAccountId || bar.entityAccountId  // Preserve EntityAccountId
         });
         if (normalized) {
           entities.push(normalized);
@@ -44,7 +46,8 @@ export async function fetchAllEntities(accountId, user) {
         ...barsResponse.data,
         id: barsResponse.data.BarPageId,  // Force use BarPageId
         type: "BarPage",
-        role: "bar"
+        role: "bar",
+        EntityAccountId: barsResponse.data.EntityAccountId || barsResponse.data.entityAccountId  // Preserve EntityAccountId
       });
       if (normalized) {
         entities.push(normalized);
@@ -67,7 +70,8 @@ export async function fetchAllEntities(accountId, user) {
           ...business,
           id: businessId,  // Force use business ID
           type: "Business",
-          role: businessRole  // Use role from backend, not hardcoded
+          role: businessRole,  // Use role from backend, not hardcoded
+          EntityAccountId: business.EntityAccountId || business.entityAccountId  // Preserve EntityAccountId
         });
         if (normalized) {
           entities.push(normalized);
@@ -82,7 +86,8 @@ export async function fetchAllEntities(accountId, user) {
         ...businessesResponse.data,
         id: businessId,  // Force use business ID
         type: "Business",
-        role: businessRole  // Use role from backend, not hardcoded
+        role: businessRole,  // Use role from backend, not hardcoded
+        EntityAccountId: businessesResponse.data.EntityAccountId || businessesResponse.data.entityAccountId  // Preserve EntityAccountId
       });
       if (normalized) {
         entities.push(normalized);
@@ -94,5 +99,47 @@ export async function fetchAllEntities(accountId, user) {
 
   console.log("[fetchAllEntities] Fetched entities:", entities);
   return entities;
+}
+
+/**
+ * Build a map of EntityAccountId -> entity info from session stored in localStorage
+ * @returns {Map<string, {name: string, avatar: string, role: string, type: string, raw: object}>}
+ */
+export function getEntityMapFromSession() {
+  try {
+    const session = JSON.parse(localStorage.getItem("session") || "{}");
+    const entities = session?.entities || [];
+    const active = session?.activeEntity;
+    const list = [...entities];
+
+    if (active) {
+      const activeId = String(active.EntityAccountId || active.entityAccountId || active.id);
+      if (
+        activeId &&
+        !entities.some(
+          e => String(e.EntityAccountId || e.entityAccountId || e.id) === activeId
+        )
+      ) {
+        list.push(active);
+      }
+    }
+
+    const map = new Map();
+    for (const entity of list) {
+      const key = String(entity.EntityAccountId || entity.entityAccountId || entity.id).toLowerCase();
+      if (!key) return;
+      map.set(key, {
+        name: entity.name || entity.BarName || entity.BusinessName || entity.displayName || entity.UserName || entity.userName,
+        avatar: entity.avatar || entity.Avatar || null,
+        role: entity.role || entity.Role,
+        type: entity.type,
+        raw: entity,
+      });
+    }
+    return map;
+  } catch (error) {
+    console.warn("[sessionHelper] getEntityMapFromSession error:", error);
+    return new Map();
+  }
 }
 

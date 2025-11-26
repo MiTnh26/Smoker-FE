@@ -16,17 +16,20 @@ export const SocketProvider = ({ children }) => {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Initialize socket connection
-    const socketURL = process.env.REACT_APP_SOCKET_URL || "http://localhost:9999";
-    const newSocket = io(socketURL, {
-      transports: ["websocket"],
+    const rawURL =
+      process.env.REACT_APP_SOCKET_URL || "http://localhost:9999";
+    // BỎ /api ở cuối để lấy origin
+    const socketOrigin = rawURL.replace(/\/api\/?$/, "");
+
+    const newSocket = io(socketOrigin, {
+      path: "/api/socket.io",          // 👈 trùng với backend
+      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: 5,
     });
 
-    // Connection event handlers
     newSocket.on("connect", () => {
       console.log("🔌 Socket connected:", newSocket.id);
       setIsConnected(true);
@@ -43,7 +46,6 @@ export const SocketProvider = ({ children }) => {
 
     setSocket(newSocket);
 
-    // Cleanup on unmount
     return () => {
       console.log("🔌 Disconnecting socket");
       newSocket.close();
@@ -58,4 +60,3 @@ export const SocketProvider = ({ children }) => {
 };
 
 export default SocketContext;
-

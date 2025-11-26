@@ -1,0 +1,51 @@
+/* CSS file nhỏ chỉ cho pseudo-elements phức tạp */
+/* Phần lớn styles đã được migrate sang Tailwind utility classes */
+
+/* Post card gradient overlay on hover */
+.post-card-gradient::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  background: linear-gradient(90deg, rgb(var(--primary)), rgb(var(--secondary)));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.post-card-gradient:hover::before {
+  opacity: 1;
+}
+
+/* Action button ripple effect */
+.action-btn-ripple::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(var(--primary), 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+.action-btn-ripple:hover::before {
+  width: 200%;
+  height: 200%;
+}
+
+/* Heart beat animation for liked button */
+@keyframes heartBeat {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.2); }
+  50% { transform: scale(1); }
+  75% { transform: scale(1.15); }
+}
+
+.like-btn-animated .action-icon {
+  animation: heartBeat 0.5s ease;
+}
+

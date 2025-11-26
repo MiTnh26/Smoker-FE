@@ -6,12 +6,13 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next"; // i18n
 import { Link, useNavigate } from "react-router-dom";
-import { User, ChevronDown, ChevronUp } from "lucide-react";
+import { User, ChevronDown, ChevronUp } from "lucide-react";      
 import {
   normalizeSession,
   normalizeEntity,
 } from "../../utils/menuDataNormalizer";
 import { menuConfigs, getThemeLabel, getNextTheme, getEntityRoute } from "../../config/menuConfigs";
+import { userApi } from "../../api/userApi";
 import "../../styles/components/unifiedMenu.css";
 
 export default function UnifiedMenu({
@@ -102,7 +103,7 @@ export default function UnifiedMenu({
 
   const renderAvatar = (src, size = 48) =>
     src ? (
-      <img src={src} alt="avatar" style={{ width: "100%", height: "100%" }} />
+      <img src={src} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
     ) : (
       <User size={size} />
     );
@@ -111,11 +112,32 @@ export default function UnifiedMenu({
     const normalized = normalizeEntity(entity);
     if (!normalized) return;
 
+    // Ensure EntityAccountId is preserved from the entity
+    // Priority: entity.EntityAccountId > found in entities list > null
+    if (!normalized.EntityAccountId && session?.entities) {
+      const foundEntity = session.entities.find(
+        e => String(e.id) === String(normalized.id) && 
+             (e.type === normalized.type || 
+              (e.type === "BusinessAccount" && normalized.type === "Business"))
+      );
+      if (foundEntity?.EntityAccountId) {
+        normalized.EntityAccountId = foundEntity.EntityAccountId;
+        console.log("[UnifiedMenu] Found EntityAccountId from entities list:", normalized.EntityAccountId);
+      } else {
+        console.warn("[UnifiedMenu] EntityAccountId not found for entity:", normalized.id, normalized.type);
+      }
+    } else if (normalized.EntityAccountId) {
+      console.log("[UnifiedMenu] Using EntityAccountId from entity:", normalized.EntityAccountId);
+    }
+
     // Update session
     try {
       const currentSession = JSON.parse(localStorage.getItem("session")) || {};
       currentSession.activeEntity = normalized;
       localStorage.setItem("session", JSON.stringify(currentSession));
+      
+      // Dispatch event to notify other components (MessagesPanel, RightSidebar, etc.)
+      window.dispatchEvent(new Event('profileUpdated'));
     } catch (error) {
       console.error("[UnifiedMenu] Error updating session:", error);
     }
@@ -126,8 +148,36 @@ export default function UnifiedMenu({
     onClose?.();
   };
 
-  const handleBackToAccount = () => {
+  const handleBackToAccount = async () => {
     if (!session?.account) return;
+
+    // Priority: EntityAccountId from account > EntityAccountId from entities list > fetch from API
+    let accountEntityAccountId = 
+      session.account.EntityAccountId || 
+      session.account.entityAccountId || 
+      null;
+
+    // If not found in account, try entities list
+    if (!accountEntityAccountId && session?.entities) {
+      const accountEntity = session.entities.find(e => e.type === "Account");
+      accountEntityAccountId = accountEntity?.EntityAccountId || null;
+    }
+
+    // If still not found, fetch it
+    if (!accountEntityAccountId) {
+      try {
+        const entityAccountRes = await userApi.getEntityAccountId(session.account.id);
+        accountEntityAccountId = entityAccountRes?.data?.data?.EntityAccountId || null;
+        
+        // Update account with EntityAccountId for future use
+        if (accountEntityAccountId) {
+          const { updateSessionField } = await import("../../utils/sessionManager");
+          updateSessionField("account.EntityAccountId", accountEntityAccountId);
+        }
+      } catch (err) {
+        console.warn("[UnifiedMenu] Failed to fetch EntityAccountId for Account:", err);
+      }
+    }
 
     const accountEntity = {
       id: session.account.id,
@@ -135,6 +185,7 @@ export default function UnifiedMenu({
       avatar: session.account.avatar,
       role: session.account.role,
       type: "Account",
+      EntityAccountId: accountEntityAccountId,  // Add EntityAccountId
     };
 
     // Update session
@@ -142,6 +193,9 @@ export default function UnifiedMenu({
       const currentSession = JSON.parse(localStorage.getItem("session")) || {};
       currentSession.activeEntity = accountEntity;
       localStorage.setItem("session", JSON.stringify(currentSession));
+      
+      // Dispatch event to notify other components (MessagesPanel, RightSidebar, etc.)
+      window.dispatchEvent(new Event('profileUpdated'));
     } catch (error) {
       console.error("[UnifiedMenu] Error updating session:", error);
     }
@@ -150,15 +204,36 @@ export default function UnifiedMenu({
     onClose?.();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("session");
-    localStorage.removeItem("access_token");
+  const handleLogout = async () => {
+    try {
+      const { clearSession } = await import("../../utils/sessionManager");
+      clearSession();
+    } catch (err) {
+      // Fallback to direct localStorage removal
+      localStorage.removeItem("session");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("token");
+    }
     navigate("/login");
   };
 
   const handleThemeToggle = () => {
     const nextTheme = getNextTheme(theme);
     setTheme(nextTheme);
+  };
+
+  const handleViewProfile = () => {
+    if (!activeEntity) return;
+    
+    if (activeEntity.type === "Account") {
+      // Navigate to personal profile
+      navigate("/customer/profile");
+    } else {
+      // Navigate to entity profile using getEntityRoute
+      const route = getEntityRoute(activeEntity);
+      navigate(route);
+    }
+    onClose?.();
   };
 
   const handleMenuItemClick = (item) => {
@@ -179,7 +254,10 @@ export default function UnifiedMenu({
     <aside className="user-menu-sidebar">
       <div className="user-menu">
         {/* Header */}
-        <div className="user-menu-header">
+        <div 
+          className="user-menu-header"
+          onClick={handleViewProfile}
+        >
           <div className="user-menu-avatar">
             {renderAvatar(activeEntity?.avatar || currentUser?.avatar)}
           </div>
@@ -194,7 +272,8 @@ export default function UnifiedMenu({
         </div>
 
         {/* Back to Account Button (for Bar/Business menus) */}
-        {config.showBackToAccount && session?.account && (
+        {/* Only show if user is NOT already on Account entity */}
+        {config.showBackToAccount && session?.account && activeEntity?.type !== "Account" && (
           <button
             className="user-menu-back-to-account"
             onClick={handleBackToAccount}
@@ -210,7 +289,7 @@ export default function UnifiedMenu({
         {/* Entities List */}
         {config.showEntities && filteredEntities.length > 0 && (
           <div className="user-menu-businesses">
-            <h4>{config.entityLabel || t('unifiedMenu.entityLabel')}</h4>
+            <h4>{t('unifiedMenu.entityLabel')}</h4>
             <ul>
               {visibleEntities.map((entity) => (
                 <li
@@ -241,7 +320,7 @@ export default function UnifiedMenu({
           </div>
         )}
 
-        {filteredEntities.length === 0 && config.showEntities && (
+        {filteredEntities.length === 0 && config.showEntities && activeEntity?.type !== "Account" && (
           <div className="user-menu-no-entities">
             <p>{t('unifiedMenu.noEntities')}</p>
           </div>
@@ -257,7 +336,7 @@ export default function UnifiedMenu({
                   onClick={() => handleMenuItemClick(item)}
                 >
                   <span>{t(`menu.${item.id}`, { defaultValue: item.label })}</span>
-                  <span className="theme-label">{getThemeLabel(theme)}</span>
+                  <span className="theme-label">{getThemeLabel(theme, t)}</span>
                 </button>
               ) : item.href ? (
                 <Link

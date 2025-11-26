@@ -6,54 +6,65 @@
 
   /* --- Layout tổng thể --- */
   .profile-container {
-    @apply min-h-screen font-inter pb-12;
+    @apply min-h-screen font-inter pb-12 px-4;
     background-color: rgb(var(--background));
     color: rgb(var(--foreground));
-  }
-
-  /* --- Header --- */
-  .profile-topbar {
-    @apply flex justify-between items-center px-6 py-3 border-b;
-    background-color: rgb(var(--card));
-    border-color: rgb(var(--border));
-  }
-
-  .profile-logo {
-    @apply font-semibold text-lg;
-    color: rgb(var(--primary));
-  }
-
-  .search-bar {
-    @apply rounded-md px-3 py-1 border-none;
-    background-color: rgb(var(--input));
-    color: rgb(var(--input-foreground));
-  }
-
-  .profile-icons i {
-    @apply text-xl ml-3 cursor-pointer transition;
-    color: rgb(var(--primary));
-  }
-
-  .profile-icons i:hover {
-    color: rgb(var(--secondary));
+    max-width: 1080px;
+    margin: 0 auto;
   }
 
   /* --- Cover & Avatar --- */
   .profile-cover {
-    @apply relative bg-center bg-cover px-6 py-10;
+    @apply relative bg-center bg-cover px-6 py-10 overflow-hidden;
+    border-radius: var(--radius);
+    border: 1px solid rgb(var(--border));
+    min-height: 200px;
   }
 
   .profile-info-header {
-    @apply flex justify-between items-start gap-6;
+    @apply flex justify-between items-end gap-6 w-full;
+    position: absolute;
+    left: 24px;
+    bottom: 16px;
+    right: 24px;
   }
 
   .avatar-container {
-    @apply flex flex-col items-center gap-2;
+    @apply flex items-center gap-3;
   }
 
   .profile-avatar {
-    @apply w-[120px] h-[120px] rounded-full border-4 object-cover shadow-md;
-    border-color: rgb(var(--primary));
+    @apply w-[120px] h-[120px] rounded-full object-cover shadow-lg;
+    border: 4px solid rgb(var(--card));
+  }
+
+  .profile-details {
+    @apply text-left;
+  }
+
+  .profile-details h2 {
+    @apply text-2xl font-semibold mb-1;
+    color: rgb(var(--card-foreground));
+  }
+
+  .profile-details p {
+    @apply text-sm;
+    color: rgb(var(--muted-foreground));
+  }
+
+  .profile-actions {
+    @apply flex items-center gap-3;
+  }
+
+  .profile-actions .btn-primary {
+    @apply px-4 py-2 rounded-full font-medium;
+    background: rgb(var(--primary));
+    color: rgb(var(--primary-foreground));
+    box-shadow: 0 10px 30px rgba(var(--primary), 0.25);
+  }
+
+  .profile-actions .btn-primary:hover {
+    filter: brightness(1.05);
   }
 
   .btn-outline {
@@ -68,14 +79,13 @@
 
   /* --- Tabs --- */
   .profile-tabs {
-    @apply flex justify-center border-b;
-    background-color: rgb(var(--card));
-    border-color: rgb(var(--border));
+    @apply flex justify-start mt-12 gap-4;
+    border-bottom: 1px solid rgb(var(--border));
   }
 
   .profile-tabs button {
-    @apply bg-transparent border-none px-6 py-3 text-sm cursor-pointer transition;
-    color: rgb(var(--primary));
+    @apply bg-transparent border-none px-4 py-2 text-sm cursor-pointer transition rounded-full;
+    color: rgb(var(--muted-foreground));
   }
 
   .profile-tabs button:hover {
@@ -83,33 +93,79 @@
   }
 
   .profile-tabs button.active {
-    border-bottom-width: 2px;
-    border-bottom-color: rgb(var(--primary));
+    background: rgb(var(--primary));
+    color: rgb(var(--primary-foreground));
+  }
+
+  .profile-stats {
+    @apply flex gap-4 flex-wrap mt-6;
+  }
+
+  .profile-stat-card {
+    @apply flex-1 min-w-[160px] p-4 rounded-2xl border;
+    background: rgb(var(--card));
+    border-color: rgb(var(--border));
+    box-shadow: 0 14px 28px rgba(0,0,0,0.12);
+  }
+
+  .profile-stat-label {
+    @apply text-sm mb-1;
+    color: rgb(var(--muted-foreground));
+  }
+
+  .profile-stat-value {
+    @apply text-xl font-semibold;
     color: rgb(var(--foreground));
   }
 
   /* --- Main Body --- */
   .profile-body {
-    @apply flex justify-between p-6 flex-wrap;
-    gap: 1rem;
-    /* khoảng cách giữa left và right */
+    @apply flex justify-between flex-wrap gap-6 mt-10;
   }
 
   @media (min-width: 1024px) {
     .profile-body {
-      @apply flex-nowrap;
+      @apply flex-nowrap gap-10;
     }
   }
 
   .profile-left {
-    @apply flex-1 min-w-[60%];
+    @apply flex-1 min-w-[60%] flex flex-col gap-6;
   }
 
   .profile-sidebar {
-    @apply flex-[0.4] p-5 rounded-xl border text-sm;
+    @apply flex-[0.4] p-6 rounded-2xl border text-sm flex flex-col gap-6;
     background-color: rgb(var(--card));
     border-color: rgb(var(--border));
     color: rgb(var(--foreground));
+    min-width: 260px;
+    box-shadow: 0 18px 36px rgba(0,0,0,0.14);
+  }
+
+  .profile-section {
+    @apply p-6 rounded-2xl border flex flex-col gap-4;
+    background: rgb(var(--card));
+    border-color: rgb(var(--border));
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+  }
+
+  .profile-section-header {
+    @apply flex items-center justify-between;
+  }
+
+  .profile-section-title {
+    @apply text-lg font-semibold;
+    color: rgb(var(--foreground));
+  }
+
+  .profile-section-subtitle {
+    @apply text-sm;
+    color: rgb(var(--muted-foreground));
+  }
+
+  .profile-section-divider {
+    @apply border-t;
+    border-color: rgb(var(--border));
   }
 
   /* --- Event & Menu --- */
@@ -130,13 +186,14 @@
 
   /* --- Post Section --- */
   .post-section {
-    @apply px-6 py-6 border-t;
-    border-color: rgb(var(--border));
+    @apply px-0 py-6;
   }
 
   .post-create {
-    @apply flex items-center p-4 rounded-xl gap-3;
+    @apply flex items-center p-4 rounded-2xl gap-3 border;
     background-color: rgb(var(--card));
+    border-color: rgb(var(--border));
+    box-shadow: 0 12px 24px rgba(0,0,0,0.12);
   }
 
   .post-create input {
@@ -150,13 +207,14 @@
 
   /* --- Post Card --- */
   .post-list {
-    @apply px-6 pb-16;
+    @apply px-0 pb-16;
   }
 
   .post-card {
-    @apply p-4 rounded-xl mt-4 border shadow-sm;
+    @apply p-4 rounded-2xl mt-6 border;
     background-color: rgb(var(--card));
     border-color: rgb(var(--border));
+    box-shadow: 0 16px 32px rgba(0,0,0,0.18);
   }
 
   .post-header {
@@ -174,12 +232,8 @@
   }
 
   .post-actions {
-    @apply flex gap-5;
-    color: rgb(var(--primary));
-  }
-
-  .post-actions:hover {
-    color: rgb(var(--secondary));
+    @apply flex gap-5 text-sm;
+    color: rgb(var(--muted-foreground));
   }
 
   /* --- Button nhỏ --- */

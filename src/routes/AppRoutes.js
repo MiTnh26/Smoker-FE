@@ -12,6 +12,10 @@ import BarRoutes from "./BarRoutes";
 import AdminRoutes from "./AdminRoutes";
 import BusinessRouters from "./BusinessRouters";
 import SettingsRoutes from "./SettingsRoutes";
+import SearchResults from "../modules/search/pages/SearchResults";
+import CustomerLayout from "../layouts/CustomerLayout";
+import DynamicLayout from "../layouts/DynamicLayout";
+import PublicProfile from "../modules/customer/pages/PublicProfile";
 
 export default function AppRoutes() {
   return (
@@ -38,6 +42,8 @@ export default function AppRoutes() {
         {AdminRoutes()}
         {BusinessRouters()}
         {SettingsRoutes()}
+        <Route path="/search" element={<SearchResults />} />
+        <Route path="/profile/:entityId" element={<DynamicLayout><PublicProfile /></DynamicLayout>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

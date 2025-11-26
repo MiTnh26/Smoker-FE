@@ -68,12 +68,16 @@ export function normalizeEntity(entity) {
     type = "Business";
   }
 
+  // Extract EntityAccountId if present
+  const entityAccountId = entity.EntityAccountId || entity.entityAccountId || null;
+
   return {
     id,
     name: name || "(Không tên)",
     avatar,
     role: role || "customer",
     type: type || "Account",
+    EntityAccountId: entityAccountId,  // Preserve EntityAccountId
   };
 }
 
@@ -114,13 +118,18 @@ export function normalizeSession(session) {
   if (session.activeEntity) {
     activeEntity = normalizeEntity(session.activeEntity);
 
-    // Try to find the full entity in the entities list
+    // Try to find the full entity in the entities list to preserve EntityAccountId
     if (activeEntity && entities.length > 0) {
       const found = entities.find(
-        (e) => String(e.id) === String(activeEntity.id)
+        (e) => String(e.id) === String(activeEntity.id) && e.type === activeEntity.type
       );
       if (found) {
-        activeEntity = { ...found, ...activeEntity };
+        // Preserve EntityAccountId from found entity, or keep existing one
+        activeEntity = { 
+          ...found, 
+          ...activeEntity,
+          EntityAccountId: found.EntityAccountId || activeEntity.EntityAccountId || null
+        };
       }
     }
   }
@@ -129,12 +138,15 @@ export function normalizeSession(session) {
   if (!activeEntity && entities.length > 0) {
     activeEntity = entities[0];
   } else if (!activeEntity && account) {
+    // Try to find Account entity in entities list to get EntityAccountId
+    const accountEntity = entities.find(e => e.type === "Account");
     activeEntity = {
       id: account.id,
       name: account.userName,
       avatar: account.avatar,
       role: account.role,
       type: "Account",
+      EntityAccountId: accountEntity?.EntityAccountId || account?.EntityAccountId || account?.entityAccountId || null,
     };
   }
 
@@ -151,7 +163,7 @@ export function normalizeSession(session) {
  * @param {Object} account - Account object
  * @returns {Object} Default entity
  */
-export function createAccountEntity(account) {
+export function createAccountEntity(account, entityAccountId = null) {
   const normalizedAccount = normalizeAccount(account);
   if (!normalizedAccount) return null;
 
@@ -161,6 +173,7 @@ export function createAccountEntity(account) {
     avatar: normalizedAccount.avatar,
     role: normalizedAccount.role,
     type: "Account",
+    EntityAccountId: entityAccountId || account?.EntityAccountId || account?.entityAccountId || null,  // Preserve EntityAccountId if provided
   };
 }
 
