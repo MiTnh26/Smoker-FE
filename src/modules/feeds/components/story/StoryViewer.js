@@ -469,8 +469,13 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
   const audioUrl = useMemo(() => {
     if (!story) return null;
     // Story chỉ dùng songFilename từ songId
-    return story.audioUrl || 
-           (story.songFilename ? `http://localhost:9999/api/song/stream/${story.songFilename}` : null);
+    if (story.audioUrl) return story.audioUrl;
+    if (story.songFilename) {
+      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:9999/api";
+      const baseUrl = apiUrl.replace(/\/api\/?$/, "");
+      return `${baseUrl}/api/song/stream/${story.songFilename}`;
+    }
+    return null;
   }, [story?.audioUrl, story?.songFilename]);
   
   const audioKey = useMemo(() => {
