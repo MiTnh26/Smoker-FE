@@ -6,13 +6,12 @@ import ReviveAdCard from "./ReviveAdCard";
 import PostComposerModal from "../modals/PostComposerModal";
 import MusicPostModal from "../music/MusicPostModal";
 import CreatePostBox from "../shared/CreatePostBox";
-import LivestreamCard from "../livestream/LivestreamCard";
 import AudioPlayerBar from "../audio/AudioPlayerBar";
 import PostEditModal from "../modals/PostEditModal";
 import ReportPostModal from "../modals/ReportPostModal";
 import ImageDetailModal from "../media/mediasOfPost/ImageDetailModal";
 
-export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClick }) {
+export default function PostFeed({ onGoLive }) {
   const { t } = useTranslation();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -305,7 +304,6 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         const firstPost = postsData[0];
         console.log('[PostFeed] First post author info:', {
           authorName: firstPost.authorName,
-          authorEntityName: firstPost.authorEntityName,
           entityAccountId: firstPost.entityAccountId,
           accountId: firstPost.accountId
         });
@@ -397,6 +395,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       _id: postObj._id || postObj.id || postObj.postId,
       createdAt: postObj.createdAt || new Date().toISOString(),
       content: postObj.content || postObj.caption || "",
+      caption: postObj.caption || "",
       title: postObj.title || "",
       likes: postObj.likes || {},
       comments: postObj.comments || {},
@@ -661,20 +660,24 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
     const populatedSong = (post.song && typeof post.song === 'object') ? post.song : null;
     const populatedMusic = (post.music && typeof post.music === 'object') ? post.music : null;
 
-    return {
-      id: post._id || post.postId,
-      user:
-        post.authorName ||
-        post.authorEntityName ||
+    // Get author name and avatar from post data (backend đã populate đầy đủ)
+    const authorName = post.authorName ||
         post.author?.userName ||
         post.account?.userName ||
         post.accountName ||
-        "Người dùng", // Không fallback về activeEntity/currentUser để tránh hiển thị sai tên
-      avatar:
-        post.authorAvatar || post.authorEntityAvatar ||
+      post.BarName ||
+      post.barName ||
+      "Người dùng";
+    
+    const authorAvatar = post.authorAvatar ||
         post.author?.avatar ||
         post.account?.avatar ||
-        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxNC4yMDkxIDEyIDE2IDEwLjIwOTEgMTYgOEMxNiA1Ljc5MDg2IDE0LjIwOTEgNCAxMiA0QzkuNzkwODYgNCA4IDUuNzkwODYgOCA4QzggMTAuMjA5MSA5Ljc5MDg2IDEyIDEyIDEyWiIgZmlsbD0iIzljYTNhZiIvPgo8cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cjwvc3ZnPgo=", // Không fallback về currentUser avatar
+      null;
+
+    return {
+      id: post._id || post.postId,
+      user: authorName,
+      avatar: authorAvatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxNC4yMDkxIDEyIDE2IDEwLjIwOTEgMTYgOEMxNiA1Ljc5MDg2IDE0LjIwOTEgNCAxMiA0QzkuNzkwODYgNCA4IDUuNzkwODYgOCA4QzggMTAuMjA5MSA5Ljc5MDg2IDEyIDEyIDEyWiIgZmlsbD0iIzljYTNhZiIvPgo8cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cjwvc3ZnPgo=",
       time: formatTimeDisplay(post.createdAt || post.updatedAt),
       content: post.content || post.caption || post["Tiêu Đề"],
       // Extract medias from post.medias Map/Object
@@ -727,7 +730,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
 
         // Prefer music fields for display if available
         const displayTitle = (populatedMusic?.title) || (populatedSong?.title) || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null;
-        const displayArtist = (populatedMusic?.artist) || (populatedSong?.artist) || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null;
+        const displayArtist = (populatedMusic?.artist) || (populatedSong?.artist) || post.artistName || post["Tên Nghệ Sĩ"] || post.authorName || post.user || null;
         const displayThumb = (populatedMusic?.coverUrl) || (populatedSong?.coverUrl) || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null;
         const displayPurchaseLink = (populatedMusic?.purchaseLink) || (populatedSong?.purchaseLink) || post.purchaseLink || post.musicPurchaseLink || null;
 
@@ -798,7 +801,9 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         post.author?.id ||
         post.account?.AccountId ||
         post.account?.id ||
-        null
+        null,
+      // Repost fields - chỉ lưu ID, query lại khi hiển thị
+      repostedFromId: post.repostedFromId || null
     };
   };
 
@@ -839,19 +844,6 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       />
 
       <div className="feed-posts">
-        {/* Active Livestreams */}
-        {activeLivestreams && activeLivestreams.length > 0 && (
-          <div className="livestreams-section">
-            {activeLivestreams.map((livestream) => (
-              <LivestreamCard
-                key={livestream.livestreamId}
-                livestream={livestream}
-                onClick={() => onLivestreamClick?.(livestream)}
-              />
-            ))}
-          </div>
-        )}
-
         {posts.length === 0 ? (
           <p key="empty-feed" className="text-gray-400">{t('feed.noPosts')}</p>
         ) : (
@@ -1007,6 +999,19 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
           imageUrl={selectedImage.imageUrl}
           postId={selectedImage.postId}
           mediaId={selectedImage.mediaId}
+          allImages={selectedImage.allImages || []}
+          currentIndex={selectedImage.currentIndex !== undefined ? selectedImage.currentIndex : -1}
+          onNavigateImage={(newIndex) => {
+            if (selectedImage.allImages && selectedImage.allImages[newIndex]) {
+              const newImage = selectedImage.allImages[newIndex];
+              setSelectedImage({
+                ...selectedImage,
+                imageUrl: newImage.url,
+                mediaId: newImage._id || newImage.id || newImage.mediaId || null,
+                currentIndex: newIndex
+              });
+            }
+          }}
         />
       )}
 

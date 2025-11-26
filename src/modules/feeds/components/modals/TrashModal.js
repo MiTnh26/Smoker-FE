@@ -351,8 +351,8 @@ export default function TrashModal({ open, posts, loading, onClose, onRestore, o
     
     return {
       id: post._id || post.postId || post.id,
-      authorName: post.authorName || post.authorEntityName || post.author?.userName || post.account?.userName || 'Người dùng',
-      authorAvatar: post.authorAvatar || post.authorEntityAvatar || post.author?.avatar || post.account?.avatar || null,
+      authorName: post.authorName || post.author?.userName || post.account?.userName || 'Người dùng',
+      authorAvatar: post.authorAvatar || post.author?.avatar || post.account?.avatar || null,
       content: post.content || post.caption || post.title || '',
       postType,
       thumbnail,

@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import "../../../../../styles/modules/feeds/components/media/mediasOfPost/MediaImageViewer.css";
 
 export default function MediaImageViewer({
   imageUrl,
@@ -10,22 +9,22 @@ export default function MediaImageViewer({
   onImageError
 }) {
   if (loading) {
-    return <div className="media-viewer-loading">Đang tải...</div>;
+    return <div className="p-8 text-center text-muted-foreground">Đang tải...</div>;
   }
 
   if (error && !media) {
-    return <div className="media-viewer-error">{error}</div>;
+    return <div className="p-8 text-center text-destructive">{error}</div>;
   }
 
   if (imageError) {
-    return <div className="media-viewer-error">Không thể tải ảnh</div>;
+    return <div className="p-8 text-center text-destructive">Không thể tải ảnh</div>;
   }
 
   return (
     <img
       src={media?.url || imageUrl}
       alt={media?.caption || "Image"}
-      className="media-viewer-image"
+      className="max-w-full max-h-[90vh] object-contain w-full h-auto"
       onError={onImageError}
     />
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Star } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import barReviewApi from "../../../api/barReviewApi";
@@ -176,6 +176,26 @@ export default function BarReview({ barPageId }) {
     }
   };
 
+  // Kiểm tra user đã review chưa
+  const myReview = user && reviews.find((r) => r.AccountId === user.id);
+
+  // Kiểm tra user có phải là customer không (không phải BAR, DJ, DANCER)
+  const isCustomer = useMemo(() => {
+    if (!user) return false;
+    try {
+      const sessionRaw = localStorage.getItem("session");
+      if (!sessionRaw) return false;
+      const session = JSON.parse(sessionRaw);
+      const active = session?.activeEntity || {};
+      const role = (active.Role || active.role || user.role || user.Role || "").toString().toUpperCase();
+      // Customer là user không có role BAR, DJ, DANCER, hoặc không có role
+      return !role || (!role.includes("BAR") && !role.includes("DJ") && !role.includes("DANCER") && !role.includes("BUSINESS"));
+    } catch {
+      // Nếu không parse được session, giả sử là customer nếu có user
+      return !!user;
+    }
+  }, [user]);
+
   if (loading) {
     return (
       <div className={cn("w-full py-8 flex items-center justify-center")}>
@@ -183,9 +203,6 @@ export default function BarReview({ barPageId }) {
       </div>
     );
   }
-
-  // Kiểm tra user đã review chưa
-  const myReview = user && reviews.find((r) => r.AccountId === user.id);
 
   return (
     <div className={cn("w-full")}>
@@ -208,7 +225,8 @@ export default function BarReview({ barPageId }) {
         </div>
       )}
 
-      {/* Form đánh giá */}
+      {/* Form đánh giá - chỉ hiển thị cho customer */}
+      {isCustomer && (
       <form
         className={cn(
           "mb-6 bg-card rounded-lg",
@@ -286,6 +304,20 @@ export default function BarReview({ barPageId }) {
           </div>
         )}
       </form>
+      )}
+      
+      {!isCustomer && user && (
+        <div className={cn(
+          "mb-6 bg-card rounded-lg",
+          "border-[0.5px] border-border/20",
+          "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
+          "p-4 md:p-5"
+        )}>
+          <p className={cn("text-sm text-muted-foreground")}>
+            Chỉ khách hàng mới có thể đánh giá quán bar.
+          </p>
+        </div>
+      )}
 
       {/* Danh sách đánh giá */}
       <div className={cn("flex flex-col gap-4")}>

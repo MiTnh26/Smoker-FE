@@ -261,8 +261,8 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
         entityType: normalizedEntityType,
         authorEntityId: entityId,
         authorEntityType: normalizedEntityType,
-        authorEntityName: activeEntity?.name || session?.account?.userName,
-        authorEntityAvatar: activeEntity?.avatar || session?.account?.avatar,
+        authorName: activeEntity?.name || session?.account?.userName,
+        authorAvatar: activeEntity?.avatar || session?.account?.avatar,
         musicId: musicId,
         songId: null,
       };

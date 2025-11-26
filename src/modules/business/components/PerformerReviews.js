@@ -153,6 +153,22 @@ export default function PerformerReviews({
     [accountCandidates]
   );
 
+  // Kiểm tra user hiện tại có phải là DJ, BAR, hoặc DANCER không
+  const isBusinessRole = useMemo(() => {
+    if (!user) return false;
+    try {
+      const sessionRaw = localStorage.getItem("session");
+      if (!sessionRaw) return false;
+      const session = sessionRaw ? JSON.parse(sessionRaw) : {};
+      const active = session?.activeEntity || {};
+      const role = (active.Role || active.role || user.role || user.Role || "").toString().toUpperCase();
+      // Kiểm tra nếu role là BAR, DJ, DANCER, hoặc BUSINESS
+      return role.includes("BAR") || role.includes("DJ") || role.includes("DANCER") || role.includes("BUSINESS");
+    } catch {
+      return false;
+    }
+  }, [user]);
+
   const fetchReviews = useCallback(async () => {
     if (!businessAccountId) {
       setReviews([]);
@@ -315,7 +331,7 @@ export default function PerformerReviews({
         </div>
       )}
 
-      {allowSubmission && !isOwnProfile && (
+      {allowSubmission && !isOwnProfile && !isBusinessRole && (
         <div
           className={cn(
             "rounded-xl border border-border/30 bg-background/60",
@@ -465,13 +481,15 @@ export default function PerformerReviews({
         </div>
       )}
 
-      {isOwnProfile && (
+      {(isOwnProfile || isBusinessRole) && (
         <div
           className={cn(
             "rounded-xl border border-border/30 bg-muted/20 p-4 text-sm text-muted-foreground"
           )}
         >
-          {t("performerReviews.ownerNotice")}
+          {isOwnProfile 
+            ? t("performerReviews.ownerNotice")
+            : t("performerReviews.businessRoleNotice")}
         </div>
       )}
 

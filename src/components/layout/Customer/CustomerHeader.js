@@ -2,6 +2,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Home, MessageCircle, User, Search, Bell } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useSocket } from "../../../contexts/SocketContext";
+import { getSession, getActiveEntity, getEntities } from "../../../utils/sessionManager";
 import UnifiedMenu from "../../common/UnifiedMenu";
 import MessagesPanel from "../common/MessagesPanel";
 import NotificationPanel from "../common/NotificationPanel";
@@ -21,13 +23,41 @@ export default function CustomerHeader() {
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const { t } = useTranslation();
+  const { socket, isConnected } = useSocket();
 
-  // Fetch unread notification count
+  // Get entityAccountId from session
+  const getEntityAccountId = () => {
+    try {
+      const active = getActiveEntity() || {};
+      const entities = getEntities();
+      let entityAccountId = active.EntityAccountId || active.entityAccountId || null;
+      if (!entityAccountId && active.id && active.type) {
+        const foundEntity = entities.find(
+          e => String(e.id) === String(active.id) && 
+               (e.type === active.type || 
+                (e.type === "BusinessAccount" && active.type === "Business"))
+        );
+        entityAccountId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
+      }
+      return entityAccountId;
+    } catch (error) {
+      console.warn("[CustomerHeader] Error getting entityAccountId:", error);
+      return null;
+    }
+  };
+
+  // Fetch unread notification count (exclude Messages type)
   const fetchUnreadNotificationCount = async () => {
     try {
-      const response = await notificationApi.getUnreadCount();
-      if (response.success && response.data) {
-        setUnreadNotificationCount(response.data.count || 0);
+      const entityAccountId = getEntityAccountId();
+      if (!entityAccountId) {
+        console.warn("[CustomerHeader] No entityAccountId available, skipping unread count fetch");
+        return;
+      }
+      const resp = await notificationApi.getUnreadCount(entityAccountId);
+      if (resp?.success) {
+        const count = resp.data?.count || 0;
+        setUnreadNotificationCount(count);
       }
     } catch (error) {
       console.error("[CustomerHeader] Error fetching unread notification count:", error);
@@ -56,17 +86,12 @@ export default function CustomerHeader() {
       const res = await messageApi.getConversations(currentUserEntityId);
       const conversationsData = res.data?.data || res.data || [];
       
-      // Calculate total unread messages
+      // Calculate total unread messages from new structure (English fields)
       let totalUnread = 0;
       conversationsData.forEach((conv) => {
-        const messages = Object.values(conv["Cuộc Trò Chuyện"] || {});
-        if (messages.length > 0) {
-          const unread = messages.filter(msg => {
-            const senderId = String(msg["Người Gửi"] || "").toLowerCase().trim();
-            const currentUserIdNormalized = String(currentUserEntityId).toLowerCase().trim();
-            return senderId !== currentUserIdNormalized && !msg["Đã Đọc"];
-          }).length;
-          totalUnread += unread;
+        // Use unreadCount from new structure if available
+        if (typeof conv.unreadCount === 'number') {
+          totalUnread += conv.unreadCount;
         }
       });
       
@@ -76,38 +101,109 @@ export default function CustomerHeader() {
     }
   };
 
-  // Fetch unread notification count on mount and periodically
+  // Join socket room and listen for real-time notifications
   useEffect(() => {
-    fetchUnreadNotificationCount();
+    if (!socket || !isConnected) return;
+
+    // Get current user's entityAccountId to join room
+    const session = getSession();
+    if (!session) return;
+
+    const active = getActiveEntity() || {};
+    const entities = getEntities();
     
-    const interval = setInterval(() => {
+    // Get EntityAccountId (priority: activeEntity > matching entity > first entity)
+    let entityAccountId = active.EntityAccountId || active.entityAccountId || null;
+    
+    if (!entityAccountId && active.id && active.type) {
+      const foundEntity = entities.find(
+        e => String(e.id) === String(active.id) && 
+             (e.type === active.type || 
+              (e.type === "BusinessAccount" && active.type === "Business"))
+      );
+      entityAccountId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
+    }
+    
+    // Join socket room với EntityAccountId (theo NOTIFICATION_FLOW.md)
+    // Backend emit với receiverEntityAccountId, nên frontend phải join với EntityAccountId
+    if (entityAccountId) {
+      socket.emit("join", String(entityAccountId));
+    } else {
+      // Fallback: Join với AccountId chỉ khi không có EntityAccountId (backward compatibility)
+      const accountId = active.id || session.account?.id || null;
+      if (accountId) {
+        socket.emit("join", String(accountId));
+      }
+    }
+
+    // Listen for new notifications to update unread notification count ONLY (exclude Messages)
+    const handleNewNotification = () => {
+      // Always recalc from API to ensure we exclude type === "Messages"
       fetchUnreadNotificationCount();
-    }, 60000); // Update every 60 seconds
-    
-    return () => clearInterval(interval);
-  }, []);
+    };
+
+    socket.on("new_notification", handleNewNotification);
+
+    // Also set up an interval as a fallback
+    const interval = setInterval(fetchUnreadNotificationCount, 60000);
+
+    // Initial fetch
+    fetchUnreadNotificationCount();
+
+    return () => {
+      socket.off("new_notification", handleNewNotification);
+      clearInterval(interval);
+    };
+  }, [socket, isConnected]);
 
   // Fetch unread message count on mount and periodically
   useEffect(() => {
+    if (!socket || !isConnected) return;
+    
     fetchUnreadMessageCount();
     
     const interval = setInterval(() => {
       fetchUnreadMessageCount();
     }, 60000); // Update every 60 seconds
     
-    return () => clearInterval(interval);
-  }, []);
+    // Listen for message refresh events (e.g., when new messages arrive)
+    const handleMessageRefresh = () => {
+      fetchUnreadMessageCount();
+    };
+    
+    // Listen for new_message socket event to update message count in real-time
+    const handleNewMessage = () => {
+      fetchUnreadMessageCount();
+    };
+    
+    // Listen for message_notification_created event
+    const handleMessageNotificationCreated = () => {
+      fetchUnreadMessageCount();
+    };
+    
+    socket.on("new_message", handleNewMessage);
+    socket.on("message_notification_created", handleMessageNotificationCreated);
+    
+    // eslint-disable-next-line no-undef
+    const win = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : null);
+    if (win) {
+      win.addEventListener("messageRefresh", handleMessageRefresh);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      socket.off("new_message", handleNewMessage);
+      socket.off("message_notification_created", handleMessageNotificationCreated);
+      if (win) {
+        win.removeEventListener("messageRefresh", handleMessageRefresh);
+      }
+    };
+  }, [socket, isConnected]);
 
   const togglePanel = (panel) => {
-    console.log("[CustomerHeader] Toggling panel:", panel, "Current:", activePanel);
     const newPanel = activePanel === panel ? null : panel;
-    console.log("[CustomerHeader] New activePanel:", newPanel);
     setActivePanel(newPanel);
   };
-
-  // Debug activePanel
-  console.log("[CustomerHeader] Current activePanel:", activePanel);
-  console.log("[CustomerHeader] Panel should be open:", !!activePanel);
 
   return (
     <>
@@ -169,7 +265,6 @@ export default function CustomerHeader() {
                 "sm:p-1.5 md:p-2"
               )}
               onClick={() => {
-                console.log("[CustomerHeader] Message button clicked!");
                 togglePanel("messages");
               }}
             >
@@ -203,7 +298,6 @@ export default function CustomerHeader() {
                 "sm:p-1.5 md:p-2"
               )}
               onClick={() => {
-                console.log("[CustomerHeader] Notification button clicked!");
                 togglePanel("notifications");
               }}
             >
@@ -236,7 +330,6 @@ export default function CustomerHeader() {
                 "sm:p-1.5 md:p-2"
               )}
               onClick={() => {
-                console.log("[CustomerHeader] User button clicked!");
                 togglePanel("user");
               }}
             >
@@ -249,7 +342,6 @@ export default function CustomerHeader() {
       <DropdownPanel
         isOpen={!!activePanel}
         onClose={() => {
-          console.log("[CustomerHeader] Closing panel");
           setActivePanel(null);
         }}
         title={(() => {
@@ -262,11 +354,9 @@ export default function CustomerHeader() {
         {activePanel === "notifications" && (
           <NotificationPanel
             onClose={() => {
-              console.log("[CustomerHeader] NotificationPanel onClose");
               setActivePanel(null);
             }}
             onOpenModal={(postId, commentId) => {
-              console.log("[CustomerHeader] Opening modal from NotificationPanel:", postId, commentId);
               setModalPostId(postId);
               setModalCommentId(commentId);
               setModalOpen(true);
@@ -280,7 +370,6 @@ export default function CustomerHeader() {
         {activePanel === "messages" && (
           <MessagesPanel
             onClose={() => {
-              console.log("[CustomerHeader] MessagesPanel onClose");
               setActivePanel(null);
             }}
             onUnreadCountChange={(count) => {
@@ -291,7 +380,6 @@ export default function CustomerHeader() {
         {activePanel === "user" && (
           <UnifiedMenu
             onClose={() => {
-              console.log("[CustomerHeader] UnifiedMenu onClose");
               setActivePanel(null);
             }}
             menuConfig="customer"
@@ -306,7 +394,6 @@ export default function CustomerHeader() {
         postId={modalPostId}
         commentId={modalCommentId}
         onClose={() => {
-          console.log("[CustomerHeader] Closing modal");
           setModalOpen(false);
           setModalPostId(null);
           setModalCommentId(null);

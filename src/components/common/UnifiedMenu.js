@@ -222,6 +222,20 @@ export default function UnifiedMenu({
     setTheme(nextTheme);
   };
 
+  const handleViewProfile = () => {
+    if (!activeEntity) return;
+    
+    if (activeEntity.type === "Account") {
+      // Navigate to personal profile
+      navigate("/customer/profile");
+    } else {
+      // Navigate to entity profile using getEntityRoute
+      const route = getEntityRoute(activeEntity);
+      navigate(route);
+    }
+    onClose?.();
+  };
+
   const handleMenuItemClick = (item) => {
     if (item.onClick === "handleLogout") {
       handleLogout();
@@ -240,7 +254,10 @@ export default function UnifiedMenu({
     <aside className="user-menu-sidebar">
       <div className="user-menu">
         {/* Header */}
-        <div className="user-menu-header">
+        <div 
+          className="user-menu-header"
+          onClick={handleViewProfile}
+        >
           <div className="user-menu-avatar">
             {renderAvatar(activeEntity?.avatar || currentUser?.avatar)}
           </div>

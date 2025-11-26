@@ -9,6 +9,7 @@ import ComboManager from "../modules/bar/pages/ComboManager";
 import VoucherManager from "../modules/bar/pages/VoucherManager";
 import ManagePost from "../modules/bar/pages/ManagePost";
 import ManageStory from "../modules/bar/pages/ManageStory";
+import EventsPage from "../modules/bar/pages/EventsPage";
 import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed";
 import MessagesPage from "../modules/messages/pages/MessagesPage";
 import MessagesLayout from "../layouts/MessagesLayout";
@@ -60,6 +61,12 @@ export default function BarRoutes() {
           path="/bar/newsfeed"
           element={
             <BarLayout><Newsfeed /></BarLayout>
+          }
+        />
+        <Route
+          path="/bar/events"
+          element={
+            <BarLayout><EventsPage /></BarLayout>
           }
         />
         <Route

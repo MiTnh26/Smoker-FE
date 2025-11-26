@@ -17,7 +17,10 @@
     "user": "User",
     "email": "Email",
     "phone": "Phone",
-    "address": "Address"
+    "address": "Address",
+    "cancel": "Cancel",
+    "saving": "Saving...",
+    "saveChanges": "Save changes"
   },
   "sidebar": {
     "home": "Home",
@@ -63,7 +66,10 @@
     "goLive": "Go Live",
     "photoVideo": "Photo/Video",
     "music": "Music",
-    "feeling": "Feeling"
+    "feeling": "Feeling",
+    "reposted": "reposted",
+    "repostedPost": "Post has been reposted",
+    "repostedMedia": "Media has been reposted"
   },
   "menu": {
     "settings": "Settings & Privacy",
@@ -306,6 +312,7 @@
     "loginRequired": "Please sign in as a customer to leave feedback.",
     "ratingRequired": "Please choose a star rating.",
     "ownerNotice": "You cannot review your own profile. Ask your customers to leave feedback after a booking.",
+    "businessRoleNotice": "Only customers can leave reviews. You are currently logged in with a business role (Bar/DJ/Dancer).",
     "anonymous": "Anonymous"
   },
   "bar": {
@@ -405,7 +412,60 @@
     "errorSavingTableApply": "Error saving table.",
     "tableApplyDeleted": "Table deleted.",
     "cannotDeleteTableApply": "Cannot delete this table.",
-    "confirmDeleteTableApply": "Are you sure you want to delete this table?"
+    "confirmDeleteTableApply": "Are you sure you want to delete this table?",
+    "eventsPage": {
+      "title": "Event Management",
+      "tabOtherBars": "Events from other bars",
+      "tabManage": "Event Management",
+      "createEvent": "Create Event",
+      "editEvent": "Edit Event",
+      "deleteEvent": "Delete Event",
+      "confirmDelete": "Are you sure you want to delete this event?",
+      "noOtherEvents": "No events from other bars yet.",
+      "editEventTitle": "Edit Event",
+      "eventDeleted": "Event deleted successfully!",
+      "eventUpdated": "Event updated successfully!",
+      "errorDelete": "Error deleting event",
+      "errorUpdate": "Error updating event",
+      "update": "Update",
+      "picture": "Picture"
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Admin Dashboard",
+      "totalUsers": "Total users",
+      "totalBars": "Total bars",
+      "totalEvents": "Total events",
+      "pendingReports": "Pending reports",
+      "activity": "Recent activity",
+      "activityHint": "Charts and logs will be displayed here."
+    },
+    "users": {
+      "title": "Manage Users",
+      "search": "Search by email or username...",
+      "allRoles": "All roles",
+      "allStatus": "All status",
+      "empty": "No users found.",
+      "view": "View",
+      "ban": "Ban"
+    },
+    "music": {
+      "title": "Music Library",
+      "hint": "Upload and manage songs used in Stories.",
+      "upload": "Upload",
+      "uploading": "Uploading...",
+      "uploadFailed": "Upload failed",
+      "confirmDelete": "Delete this song?",
+      "deleteFailed": "Delete failed",
+      "empty": "No songs yet.",
+      "columns": {
+        "name": "Name",
+        "size": "Size",
+        "created": "Created",
+        "actions": "Actions"
+      }
+    }
   },
   "input": {
     "writeComment": "Write a comment...",
@@ -480,6 +540,7 @@
     "createStory": "Create Story",
     "createStoryButton": "+ Create Story",
     "selectImage": "Select image or video",
+    "selectImageFirst": "Please select an image first",
     "selectMusicFromLibrary": "Select music from library",
     "searchSongPlaceholder": "Search song name or artist...",
     "loadingSongs": "Loading songs...",
@@ -498,8 +559,12 @@
     "deleteFailed": "Failed to delete story",
     "yourStory": "Your story",
     "reply": "Reply to story",
-    "replyEmpty": "No messages yet. Start the conversation!",
     "replyPlaceholder": "Type a message...",
+    "replySent": "Reply sent!",
+    "replySentTo": "Replied to story {{name}}",
+    "replyYourStory": "Reply story",
+    "replyError": "Failed to send reply. Please try again.",
+    "replyEmpty": "No messages yet. Start the conversation!",
     "addText": "Add text",
     "addMusic": "Add music",
     "alternativeText": "Alternative text",
@@ -521,6 +586,12 @@
     "editPersonalProfile": "Edit personal profile",
     "infoTab": "Info",
     "postsTab": "Posts",
+    "videosTab": "Videos",
+    "reviewsTab": "Reviews",
+    "tablesTab": "Tables",
+    "musicTab": "Music",
+    "priceTable": "Price List",
+    "musicTabDescription": "Will display DJ's music tracks",
     "loadingProfile": "Loading profile...",
     "about": "About",
     "gender": "Gender",
@@ -539,7 +610,16 @@
     "saveChanges": "Save changes",
     "saving": "Saving...",
     "saved": "Changes saved!",
-    "saveFailed": "Save failed"
+    "saveFailed": "Save failed",
+    "avatar": "Avatar",
+    "background": "Background",
+    "name": "Name",
+    "namePlaceholder": "Enter your name",
+    "nameRequired": "Name is required",
+    "bioPlaceholder": "Tell us about yourself...",
+    "phonePlaceholder": "Enter your phone number",
+    "addressPlaceholder": "Enter your address",
+    "updateFailed": "Update failed"
   }
   ,
   "publicProfile": {
@@ -561,6 +641,17 @@
     "blockError": "Unable to block this profile right now. Please try again later.",
     "reportSubmitted": "Thanks. Your report has been submitted.",
     "thisUser": "this user"
+  },
+  "notifications": {
+    "likedYourPost": "{{name}} liked your post",
+    "likedYourStory": "{{name}} liked your story",
+    "commentedOnYourPost": "{{name}} commented on your post",
+    "repliedToYourComment": "{{name}} replied to your comment",
+    "startedFollowingYou": "{{name}} started following you",
+    "sentYouAMessage": "{{name}} sent you a message",
+    "sentYouAMessageWithPreview": "{{name}}: {{preview}}",
+    "postDetail": "Post detail",
+    "default": "You have a new notification"
   }
 }
 

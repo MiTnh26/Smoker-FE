@@ -63,7 +63,7 @@ const TableIcon = ({ className = "", color = null }) => {
   );
 };
 
-export default function BarTables({ barPageId }) {
+export default function BarTables({ barPageId, readOnly = false }) {
   const { t } = useTranslation();
   const [tables, setTables] = useState([]);
   const [tableTypes, setTableTypes] = useState([]);
@@ -150,6 +150,7 @@ export default function BarTables({ barPageId }) {
 
   // Thêm bàn mới
   const addTable = () => {
+    if (readOnly) return; // Prevent adding tables in read-only mode
     const newId = `new-${Date.now()}-${Math.random()}`;
     setTables((prev) => [
       ...prev,
@@ -318,21 +319,23 @@ export default function BarTables({ barPageId }) {
             {t("bar.totalTables")} {totalTables}
           </p>
         </div>
-        <div className="bar-tables-actions">
-          <button
-            onClick={addTable}
-            className="btn-add-table"
-          >
-             {t("bar.addTable")}
-          </button>
-          <button
-            onClick={saveAllTables}
-            disabled={saving || !tables.some((t) => t.dirty)}
-            className={`btn-save-all-tables ${saving ? "loading" : ""}`}
-          >
-            {saving ? t("bar.saving") : ` ${t("bar.saveAll")}`}
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="bar-tables-actions">
+            <button
+              onClick={addTable}
+              className="btn-add-table"
+            >
+               {t("bar.addTable")}
+            </button>
+            <button
+              onClick={saveAllTables}
+              disabled={saving || !tables.some((t) => t.dirty)}
+              className={`btn-save-all-tables ${saving ? "loading" : ""}`}
+            >
+              {saving ? t("bar.saving") : ` ${t("bar.saveAll")}`}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table Layout Preview Section */}
@@ -488,6 +491,8 @@ export default function BarTables({ barPageId }) {
                   placeholder={t("bar.tableNamePlaceholder")}
                   onChange={(e) => updateTable(i, "tableName", e.target.value)}
                   className="bar-table-name-input"
+                  disabled={readOnly}
+                  readOnly={readOnly}
                 />
 
                 {/* Table Type Select */}
@@ -497,6 +502,7 @@ export default function BarTables({ barPageId }) {
                     updateTable(i, "tableClassificationId", e.target.value)
                   }
                   className="bar-table-type-select"
+                  disabled={readOnly}
                 >
                   <option value="">{t("bar.selectTableType")}</option>
                   {tableTypes.map((tt) => (
@@ -535,7 +541,7 @@ export default function BarTables({ barPageId }) {
                       <>✅ {t("bar.statusSaved")}</>
                     )}
                   </div>
-                  {table.BarTableId && (
+                  {table.BarTableId && !readOnly && (
                     <button
                       onClick={() => deleteTable(table.BarTableId, i)}
                       className="bar-table-delete-btn"
@@ -550,14 +556,16 @@ export default function BarTables({ barPageId }) {
         </AnimatePresence>
         
         {/* Add Table Button - Below last table */}
-        <div className="bar-table-add-card">
-          <button
-            onClick={addTable}
-            className="bar-table-add-card-btn"
-          >
-             {t("bar.addTable")}
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="bar-table-add-card">
+            <button
+              onClick={addTable}
+              className="bar-table-add-card-btn"
+            >
+               {t("bar.addTable")}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Back to Top Button - At bottom of page */}

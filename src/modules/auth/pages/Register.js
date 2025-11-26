@@ -4,7 +4,11 @@ import { Input } from "../../../components/common/Input";
 import { Link, useNavigate } from "react-router-dom";
 import { Checkbox } from "../../../components/common/Checkbox";
 import { authApi } from "../../../api/userApi";
-import PublicHeader from "../../../components/layout/PublicHeader";
+import AuthHeader from "../../../components/layout/AuthHeader";
+import { Modal } from "../../../components/common/Modal";
+import { Button } from "../../../components/common/Button";
+import { Eye, EyeOff, Mail, LockKeyhole } from "lucide-react";
+import { cn } from "../../../utils/cn";
 
 export function Register() {
   const navigate = useNavigate();
@@ -17,17 +21,25 @@ export function Register() {
   const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Google register modal states
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [googleEmail, setGoogleEmail] = useState("");
+  const [googleError, setGoogleError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
     if (!agreed) return;
+    
+    setIsLoading(true);
     try {
       const res = await authApi.register(email, password, confirmPassword);
       if (res && res.message) {
         setSuccess(t('auth.registerSuccess'));
-        setTimeout(() => navigate("/"), 1000);
+        setTimeout(() => navigate("/login"), 5000);
       } else {
         setError(res?.message || t('auth.registerFailed'));
       }
@@ -37,33 +49,54 @@ export function Register() {
           ? t('auth.emailExists')
           : err?.response?.data?.message || t('auth.registerFailed');
       setError(msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleGoogleRegister = async (e) => {
+  const handleGoogleRegisterClick = (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
-    if (!email) {
-      setError(t('auth.pleaseEnterEmail'));
+    setShowGoogleModal(true);
+    setGoogleEmail("");
+    setGoogleError("");
+  };
+
+  const handleGoogleRegisterSubmit = async () => {
+    if (!googleEmail) {
+      setGoogleError(t('auth.pleaseEnterEmail', "Vui lòng nhập email"));
       return;
     }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(googleEmail)) {
+      setGoogleError(t('auth.invalidEmail', "Email không hợp lệ"));
+      return;
+    }
+
+    setIsLoading(true);
+    setGoogleError("");
+    
     try {
-      const response = await authApi.googleRegister({ email });
+      const response = await authApi.googleRegister({ email: googleEmail });
       if (response.status === "NEW_USER") {
         setSuccess(response.message);
+        setShowGoogleModal(false);
+        setTimeout(() => navigate("/login"), 5000);
       } else if (response.status === "EXISTING_USER") {
-        setError(response.message);
+        setGoogleError(response.message);
       } else {
-        setError(t('auth.registerFailed'));
+        setGoogleError(t('auth.registerFailed'));
       }
     } catch (err) {
       const msg =
         err?.response?.status === 409
-          ? t('auth.emailExists')
-          : err?.response?.data?.message || t('auth.registerFailed');
+          ? t('auth.emailExists', "Email đã tồn tại")
+          : err?.response?.data?.message || t('auth.registerFailed', "Đăng ký thất bại");
       console.error("Google register failed:", err);
-      setError(msg);
+      setGoogleError(msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -75,10 +108,13 @@ export function Register() {
       setError(t('auth.pleaseEnterEmail'));
       return;
     }
+    
+    setIsLoading(true);
     try {
       const response = await authApi.facebookRegister(email);
       if (response.status === "NEW_USER") {
         setSuccess(response.message);
+        setTimeout(() => navigate("/login"), 5000);
       } else if (response.status === "EXISTING_USER") {
         setError(response.message);
       } else {
@@ -91,204 +127,380 @@ export function Register() {
           : err?.response?.data?.message || t('auth.registerFailed');
       console.error("Facebook register failed:", err);
       setError(msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="bg-background text-foreground">
-      <PublicHeader />
-      <div className="container mx-auto min-h-[calc(100vh-73px)] px-4 pt-[73px] pb-12 flex items-center justify-center">
-        <div className="signup-wrapper w-full max-w-2xl">
-          {/* Logo */}
-          <div className="signup-logo">
-            <Link to="/">Smoker</Link>
-          </div>
-
+    <div className="bg-background text-foreground h-screen overflow-hidden relative">
+      <AuthHeader />
+      <div
+        className={cn(
+          "container mx-auto flex w-full items-center justify-center",
+          "px-3 sm:px-4",
+          "h-[calc(100vh-73px)]",
+          "absolute top-[73px] left-0 right-0"
+        )}
+      >
+        <div className="w-full max-w-lg">
           {/* Signup Form */}
-          <div className="signup-form-box bg-card rounded-lg border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-6">
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              <Input
-                type="email"
-                placeholder={t('auth.email') + ' (example@gmail.com)'}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+          <div
+            className={cn(
+              "bg-card rounded-3xl border-[0.5px] border-border/20",
+              "shadow-[0_12px_32px_rgba(15,23,42,0.08)]",
+              "p-5 sm:p-6"
+            )}
+          >
+            {/* Header */}
+            <div className="mb-3 text-center sm:text-left">
+              <h1 className="text-xl font-semibold mb-0.5 sm:text-2xl">
+                {t("auth.registerTitle", "Tạo tài khoản mới")}
+              </h1>
+              <p className="text-xs text-muted-foreground sm:text-sm">
+                {t("auth.registerSubtitle", "Tham gia cộng đồng nightlife của chúng tôi")}
+              </p>
+            </div>
 
-              {/* Password field with eye icon */}
-              <div style={{ position: "relative" }}>
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder={t('auth.password')}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={{ paddingRight: "38px" }}
-                />
-                <span
-                  onClick={() => setShowPassword((v) => !v)}
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    cursor: "pointer",
-                    color: "#666",
-                  }}
-                  aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
-                >
-                  {showPassword ? (
-                    // 👁️ Eye Open
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  ) : (
-                    // 👁️ Eye Closed
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M17.94 17.94A10.06 10.06 0 0 1 12 19c-7 0-11-7-11-7a21.75 21.75 0 0 1 5.06-5.94" />
-                      <path d="m1 1 22 22" />
-                    </svg>
-                  )}
-                </span>
-              </div>
-
-              {/* Confirm password field with eye icon */}
-              <div style={{ position: "relative" }}>
-                <Input
-                  type={showConfirm ? "text" : "password"}
-                  placeholder={t('auth.confirmPassword')}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  style={{ paddingRight: "38px" }}
-                />
-                <span
-                  onClick={() => setShowConfirm((v) => !v)}
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    cursor: "pointer",
-                    color: "#666",
-                  }}
-                  aria-label={showConfirm ? t('auth.hidePassword') : t('auth.showPassword')}
-                >
-                  {showConfirm ? (
-                    // Eye open
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  ) : (
-                    // Eye closed
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="22"
-                      height="22"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M17.94 17.94A10.06 10.06 0 0 1 12 19c-7 0-11-7-11-7a21.75 21.75 0 0 1 5.06-5.94" />
-                      <path d="m1 1 22 22" />
-                    </svg>
-                  )}
-                </span>
-              </div>
-
-              {error && <div style={{ color: "red", fontSize: 12 }}>{error}</div>}
-              {success && (
-                <div style={{ color: "green", fontSize: 12 }}>{success}</div>
-              )}
-
-              <div className="terms">
-                <Checkbox
-                  checked={agreed}
-                  onChange={(e) => setAgreed(e.target.checked)}
-                />
-                <label>
-                  {t('auth.termsAgree')}
-                </label>
-              </div>
-
-              <div className="divider">
-                <div className="divider-line"></div>
-              </div>
-
-              <div style={{ fontSize: 12, color: "#555" }}>
-                {t('auth.googleRegisterHow')}
-              </div>
-
+            {/* Social Login Buttons - ĐẶT TRƯỚC */}
+            <div className="space-y-2.5 mb-3">
               <button
                 type="button"
-                onClick={handleGoogleRegister}
-                className="w-full bg-muted/40 text-foreground border-none rounded-lg py-2.5 text-sm font-semibold transition-all duration-200 hover:bg-muted/60 active:scale-95"
+                onClick={handleGoogleRegisterClick}
+                disabled={isLoading}
+                className={cn(
+                  "w-full bg-muted/40 text-foreground border-none rounded-lg py-2.5 text-sm font-semibold",
+                  "sm:rounded-xl sm:py-3",
+                  "transition-all duration-200 hover:bg-muted/60 active:scale-95",
+                  "flex items-center justify-center gap-2",
+                  isLoading && "opacity-60 cursor-not-allowed"
+                )}
               >
-                {t('auth.registerWithGoogle')}
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    fill="currentColor"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+                {t("auth.registerWithGoogle", "Đăng ký với Google")}
               </button>
-
-              <div style={{ fontSize: 12, color: "#555", marginTop: "10px" }}>
-                {t('auth.facebookRegisterHow')}
-              </div>
 
               <button
                 type="button"
                 onClick={handleFacebookRegister}
-                className="w-full rounded-lg py-2.5 text-sm font-semibold text-white bg-[#1877F2] border-none transition-all duration-200 hover:bg-[#1664CF] active:scale-95"
+                disabled={isLoading}
+                className={cn(
+                  "w-full rounded-lg py-2.5 text-sm font-semibold text-white bg-[#1877F2] border-none",
+                  "sm:rounded-xl sm:py-3",
+                  "transition-all duration-200 hover:bg-[#1664CF] active:scale-95",
+                  "flex items-center justify-center gap-2",
+                  isLoading && "opacity-60 cursor-not-allowed"
+                )}
               >
-                {t('auth.registerWithFacebook')}
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+                {t("auth.registerWithFacebook", "Đăng ký với Facebook")}
               </button>
+            </div>
 
-              <div className="text-center text-sm text-muted-foreground">
-                {t('auth.alreadyHave')} {" "}
-                <Link to="/login" className="text-primary">
-                  {t('auth.loginLink')}
-                </Link>
+            {/* Divider */}
+            <div className="flex items-center gap-3 mb-3">
+              <span className="h-[1px] flex-1 bg-border/30" />
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                {t("auth.orContinue", "hoặc tiếp tục với email")}
+              </span>
+              <span className="h-[1px] flex-1 bg-border/30" />
+            </div>
+
+            {/* Form đăng ký thường */}
+            <form className="space-y-2.5" onSubmit={handleSubmit}>
+              <div className="space-y-2.5">
+                {/* Email */}
+                <div className="space-y-0.5">
+                  <label className="text-xs font-medium text-muted-foreground sm:text-sm">
+                    {t("auth.email")}
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                    <Input
+                      type="email"
+                      placeholder={t("auth.email") + " (example@gmail.com)"}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-12"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div className="space-y-0.5">
+                  <label className="text-xs font-medium text-muted-foreground sm:text-sm">
+                    {t("auth.password")}
+                  </label>
+                  <div className="relative">
+                    <LockKeyhole className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder={t("auth.password")}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-12 pr-12"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className={cn(
+                        "absolute right-3 top-1/2 -translate-y-1/2",
+                        "text-muted-foreground/70",
+                        "bg-transparent border-none p-1 rounded-lg",
+                        "hover:text-foreground hover:bg-muted/50",
+                        "transition-colors duration-200"
+                      )}
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Confirm Password */}
+                <div className="space-y-0.5">
+                  <label className="text-xs font-medium text-muted-foreground sm:text-sm">
+                    {t("auth.confirmPassword")}
+                  </label>
+                  <div className="relative">
+                    <LockKeyhole className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                    <Input
+                      type={showConfirm ? "text" : "password"}
+                      placeholder={t("auth.confirmPassword")}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="pl-12 pr-12"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className={cn(
+                        "absolute right-3 top-1/2 -translate-y-1/2",
+                        "text-muted-foreground/70",
+                        "bg-transparent border-none p-1 rounded-lg",
+                        "hover:text-foreground hover:bg-muted/50",
+                        "transition-colors duration-200"
+                      )}
+                      onClick={() => setShowConfirm((v) => !v)}
+                      aria-label={showConfirm ? t("auth.hidePassword") : t("auth.showPassword")}
+                    >
+                      {showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
               </div>
 
+              {/* Error/Success Messages */}
+              {error && (
+                <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
+                  {success}
+                </div>
+              )}
+
+              {/* Terms Checkbox */}
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  id="terms"
+                />
+                <label htmlFor="terms" className="text-xs text-muted-foreground cursor-pointer sm:text-sm">
+                  {t("auth.termsAgree")}
+                </label>
+              </div>
+
+              {/* Submit Button */}
               <button
                 type="submit"
-                disabled={!agreed}
-                className={`w-full bg-primary text-primary-foreground border-none rounded-lg py-2.5 font-semibold transition-all duration-200 hover:bg-primary/90 active:scale-95 ${!agreed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                disabled={!agreed || isLoading}
+                className={cn(
+                  "w-full bg-primary text-primary-foreground border-none rounded-lg py-2.5 text-base font-semibold",
+                  "sm:rounded-xl sm:py-3",
+                  "transition-all duration-200 hover:bg-primary/90 active:scale-95",
+                  (!agreed || isLoading) && "opacity-60 cursor-not-allowed"
+                )}
               >
-                {t('auth.signUp')}
+                {isLoading
+                  ? t("auth.registering", "Đang đăng ký...")
+                  : t("auth.signUp", "Đăng ký")}
               </button>
+
+              {/* Login Link */}
+              <div className="text-center text-sm text-muted-foreground">
+                {t("auth.alreadyHave", "Đã có tài khoản?")}{" "}
+                <Link
+                  to="/login"
+                  className="font-semibold text-primary hover:text-primary/90"
+                >
+                  {t("auth.loginLink", "Đăng nhập")}
+                </Link>
+              </div>
             </form>
           </div>
         </div>
       </div>
+
+      {/* Google Register Modal */}
+      <Modal
+        isOpen={showGoogleModal}
+        onClose={() => {
+          setShowGoogleModal(false);
+          setGoogleEmail("");
+          setGoogleError("");
+        }}
+        size="md"
+        className="p-6"
+      >
+        <div className="flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">
+              {t("auth.registerWithGoogle", "Đăng ký với Google")}
+            </h2>
+            <button
+              onClick={() => {
+                setShowGoogleModal(false);
+                setGoogleEmail("");
+                setGoogleError("");
+              }}
+              className={cn(
+                "text-muted-foreground hover:text-foreground",
+                "text-2xl leading-none",
+                "transition-colors"
+              )}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t("auth.googleRegisterDesc", "Vui lòng nhập email của bạn để tiếp tục đăng ký với Google")}
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                {t("auth.email", "Email")}
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
+                <Input
+                  type="email"
+                  placeholder={t("auth.emailPlaceholder", "example@gmail.com")}
+                  value={googleEmail}
+                  onChange={(e) => {
+                    setGoogleEmail(e.target.value);
+                    setGoogleError("");
+                  }}
+                  className="pl-12"
+                  disabled={isLoading}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !isLoading) {
+                      handleGoogleRegisterSubmit();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            {googleError && (
+              <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
+                {googleError}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-border">
+            <Button
+              onClick={() => {
+                setShowGoogleModal(false);
+                setGoogleEmail("");
+                setGoogleError("");
+              }}
+              disabled={isLoading}
+              className={cn(
+                "px-4 py-2 rounded-lg",
+                "bg-muted text-muted-foreground",
+                "hover:bg-muted/80",
+                "transition-colors",
+                isLoading && "opacity-60 cursor-not-allowed"
+              )}
+            >
+              {t("common.cancel", "Hủy")}
+            </Button>
+            <Button
+              onClick={handleGoogleRegisterSubmit}
+              disabled={isLoading || !googleEmail}
+              className={cn(
+                "px-4 py-2 rounded-lg",
+                "bg-primary text-primary-foreground",
+                "hover:bg-primary/90",
+                "transition-colors",
+                "flex items-center gap-2",
+                (isLoading || !googleEmail) && "opacity-60 cursor-not-allowed"
+              )}
+            >
+              {isLoading ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  {t("auth.processing", "Đang xử lý...")}
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path
+                      fill="currentColor"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  {t("auth.continue", "Tiếp tục")}
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

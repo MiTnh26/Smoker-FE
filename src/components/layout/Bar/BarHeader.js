@@ -10,12 +10,21 @@ import DropdownPanel from "../../common/DropdownPanel";
 import { cn } from "../../../utils/cn";
 import GlobalSearch from "../common/GlobalSearch";
 import notificationApi from "../../../api/notificationApi";
+import messageApi from "../../../api/messageApi";
+import { useSocket } from "../../../contexts/SocketContext";
+import { getSession, getActiveEntity, getEntities } from "../../../utils/sessionManager";
+import NotificationToPostModal from "../../../modules/feeds/components/modals/NotificationToPostModal";
 
 export default function BarHeader() {
+  const { socket, isConnected } = useSocket();
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | 'notifications' | null
   const [barUser, setBarUser] = useState(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [postModalOpen, setPostModalOpen] = useState(false);
+  const [postModalPostId, setPostModalPostId] = useState(null);
+  const [postModalCommentId, setPostModalCommentId] = useState(null);
   const { t } = useTranslation();
   const [session, setSession] = useState(() => {
     try {
@@ -87,23 +96,172 @@ export default function BarHeader() {
     }
   }, []);
 
-  useEffect(() => {
-    const fetchUnreadNotificationCount = async () => {
-      try {
-        const response = await notificationApi.getUnreadCount();
-        if (response.success && response.data) {
-          setUnreadNotificationCount(response.data.count || 0);
-        }
-      } catch (error) {
-        console.error("[BarHeader] Error fetching unread notification count:", error);
+  // Get entityAccountId from session
+  const getEntityAccountId = () => {
+    try {
+      const active = getActiveEntity() || {};
+      const entities = getEntities();
+      let entityAccountId = active.EntityAccountId || active.entityAccountId || null;
+      if (!entityAccountId && active.id && active.type) {
+        const found = entities.find(
+          e => String(e.id) === String(active.id) && (e.type === active.type || (e.type === "BusinessAccount" && active.type === "Business"))
+        );
+        entityAccountId = found?.EntityAccountId || found?.entityAccountId || null;
       }
-    };
+      return entityAccountId;
+    } catch (error) {
+      console.warn("[BarHeader] Error getting entityAccountId:", error);
+      return null;
+    }
+  };
 
+  // Fetch unread notification count (exclude Messages type)
+  const fetchUnreadNotificationCount = async () => {
+    try {
+      const entityAccountId = getEntityAccountId();
+      if (!entityAccountId) {
+        console.warn("[BarHeader] No entityAccountId available, skipping unread count fetch");
+        return;
+      }
+      const resp = await notificationApi.getUnreadCount(entityAccountId);
+      if (resp?.success) {
+        const count = resp.data?.count || 0;
+        setUnreadNotificationCount(count);
+      }
+    } catch (error) {
+      console.error("[BarHeader] Error fetching unread notification count:", error);
+    }
+  };
+
+  // Fetch unread message count
+  const fetchUnreadMessageCount = async () => {
+    try {
+      const session = JSON.parse(localStorage.getItem("session") || "{}");
+      const active = session?.activeEntity || {};
+      const entities = session?.entities || [];
+      
+      const currentUserEntityId =
+        active.EntityAccountId ||
+        active.entityAccountId ||
+        entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
+        entities[0]?.EntityAccountId ||
+        null;
+      
+      if (!currentUserEntityId) {
+        setUnreadMessageCount(0);
+        return;
+      }
+      
+      const res = await messageApi.getConversations(currentUserEntityId);
+      const conversationsData = res.data?.data || res.data || [];
+      
+      // Calculate total unread messages from new structure (English fields)
+      let totalUnread = 0;
+      conversationsData.forEach((conv) => {
+        // Use unreadCount from new structure if available
+        if (typeof conv.unreadCount === 'number') {
+          totalUnread += conv.unreadCount;
+        }
+      });
+      
+      setUnreadMessageCount(totalUnread);
+    } catch (error) {
+      console.error("[BarHeader] Error fetching unread message count:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchUnreadNotificationCount();
     const interval = setInterval(fetchUnreadNotificationCount, 60000);
-    return () => clearInterval(interval);
+    
+    // Listen for notification refresh events (e.g., when someone follows)
+    const handleNotificationRefresh = () => {
+      fetchUnreadNotificationCount();
+    };
+    
+    const win = (typeof window !== "undefined") ? window : null;
+    if (win) {
+      win.addEventListener("notificationRefresh", handleNotificationRefresh);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (win) {
+        win.removeEventListener("notificationRefresh", handleNotificationRefresh);
+      }
+    };
+  }, []);
+
+  // Fetch unread message count on mount and periodically
+  useEffect(() => {
+    fetchUnreadMessageCount();
+    const interval = setInterval(fetchUnreadMessageCount, 60000);
+    
+    // Listen for message refresh events (e.g., when new messages arrive)
+    const handleMessageRefresh = () => {
+      fetchUnreadMessageCount();
+    };
+    
+    // eslint-disable-next-line no-undef
+    const win = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : null);
+    if (win) {
+      win.addEventListener("messageRefresh", handleMessageRefresh);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (win) {
+        win.removeEventListener("messageRefresh", handleMessageRefresh);
+      }
+    };
   }, []);
   
+  // Join socket room and realtime updates for bar/dj/dancer headers
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+    try {
+      const session = getSession();
+      if (!session) return;
+      const active = getActiveEntity() || {};
+      const entities = getEntities();
+      let entityAccountId = active.EntityAccountId || active.entityAccountId || null;
+      if (!entityAccountId && active.id && active.type) {
+        const found = entities.find(
+          e => String(e.id) === String(active.id) && (e.type === active.type || (e.type === "BusinessAccount" && active.type === "Business"))
+        );
+        entityAccountId = found?.EntityAccountId || found?.entityAccountId || null;
+      }
+      // Join socket room với EntityAccountId (theo NOTIFICATION_FLOW.md)
+      // Backend emit với receiverEntityAccountId, nên frontend phải join với EntityAccountId
+      if (entityAccountId) {
+        socket.emit("join", String(entityAccountId));
+        console.log("[BarHeader] Joined socket room with EntityAccountId:", entityAccountId);
+      } else {
+        // Fallback: Join với AccountId chỉ khi không có EntityAccountId (backward compatibility)
+        const accountId = active.id || session?.account?.id || null;
+        if (accountId) {
+          socket.emit("join", String(accountId));
+          console.log("[BarHeader] Joined socket room with AccountId (fallback):", accountId);
+        }
+      }
+    } catch {}
+
+    const onNewNotification = () => {
+      // Recompute from API so we exclude Messages
+      fetchUnreadNotificationCount();
+    };
+    const onNewMessage = () => {
+      fetchUnreadMessageCount();
+    };
+
+    socket.on("new_notification", onNewNotification);
+    socket.on("new_message", onNewMessage);
+    return () => {
+      socket.off("new_notification", onNewNotification);
+      socket.off("new_message", onNewMessage);
+    };
+  }, [socket, isConnected]);
+
   if (!session || !session.activeEntity) {
     return null; // or a loading state
   }
@@ -190,6 +348,20 @@ export default function BarHeader() {
               onClick={() => togglePanel("messages")}
             >
               <MessageCircle size={24} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
+              {unreadMessageCount > 0 && (
+                <span className={cn(
+                  "absolute -top-1 -right-1 min-w-[18px] h-[18px]",
+                  "px-1 flex items-center justify-center",
+                  "bg-danger text-primary-foreground rounded-full",
+                  "text-[11px] font-semibold leading-none",
+                  "border-2 border-card z-10",
+                  "shadow-[0_2px_4px_rgba(0,0,0,0.2)]",
+                  "sm:min-w-[16px] sm:h-[16px] sm:text-[10px] sm:-top-0.5 sm:-right-0.5",
+                  "md:min-w-[18px] md:h-[18px] md:text-[11px] md:-top-1 md:-right-1"
+                )}>
+                  {unreadMessageCount > 9 ? '9+' : unreadMessageCount}
+                </span>
+              )}
             </button>
             
             <button 
@@ -260,15 +432,37 @@ export default function BarHeader() {
           />
         )}
         {activePanel === "messages" && (
-          <MessagesPanel conversations={conversations} onClose={() => setActivePanel(null)} />
+          <MessagesPanel 
+            conversations={conversations} 
+            onClose={() => setActivePanel(null)}
+            onUnreadCountChange={(count) => setUnreadMessageCount(count)}
+          />
         )}
         {activePanel === "notifications" && (
           <NotificationPanel
             onClose={() => setActivePanel(null)}
             onUnreadCountChange={(count) => setUnreadNotificationCount(count)}
+            onOpenModal={(postId, commentId) => {
+              setPostModalPostId(postId);
+              setPostModalCommentId(commentId);
+              setPostModalOpen(true);
+              setActivePanel(null); // Close notification panel when opening modal
+            }}
           />
         )}
       </DropdownPanel>
+
+      {/* Post Detail Modal */}
+      <NotificationToPostModal
+        open={postModalOpen}
+        postId={postModalPostId}
+        commentId={postModalCommentId}
+        onClose={() => {
+          setPostModalOpen(false);
+          setPostModalPostId(null);
+          setPostModalCommentId(null);
+        }}
+      />
     </>
   );
 }

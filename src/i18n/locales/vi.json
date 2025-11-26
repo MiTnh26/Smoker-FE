@@ -17,7 +17,11 @@
     "user": "Người dùng",
     "email": "Email",
     "phone": "Điện thoại",
-    "address": "Địa chỉ"
+    "address": "Địa chỉ",
+    "back": "Quay lại",
+    "cancel": "Hủy",
+    "saving": "Đang lưu...",
+    "saveChanges": "Lưu thay đổi"
   },
   "sidebar": {
     "home": "Trang chủ",
@@ -63,7 +67,10 @@
     "goLive": "Phát trực tiếp",
     "photoVideo": "Ảnh/Video",
     "music": "Âm nhạc",
-    "feeling": "Cảm xúc"
+    "feeling": "Cảm xúc",
+    "reposted": "đã đăng lại",
+    "repostedPost": "Bài viết đã được đăng lại",
+    "repostedMedia": "Ảnh/Video đã được đăng lại"
   },
   "menu": {
     "settings": "Cài đặt & quyền riêng tư",
@@ -261,7 +268,6 @@
     "searchPlaceholder": "Tìm kiếm cuộc trò chuyện...",
     "empty": "Không có tin nhắn",
     "loading": "Đang tải...",
-    "replyYourStory": "Trả lời story",
     "selectConversation": "Chọn một cuộc trò chuyện",
     "securedInfo": "Tin nhắn được mã hóa trên Smoker",
     "you": "Bạn",
@@ -306,6 +312,7 @@
     "loginRequired": "Vui lòng đăng nhập với vai trò khách hàng để đánh giá.",
     "ratingRequired": "Vui lòng chọn số sao.",
     "ownerNotice": "Bạn không thể tự đánh giá trang cá nhân của mình. Hãy mời khách hàng phản hồi sau mỗi lịch đặt.",
+    "businessRoleNotice": "Chỉ khách hàng mới có thể đánh giá. Bạn đang đăng nhập với vai trò kinh doanh (Bar/DJ/Dancer).",
     "anonymous": "Ẩn danh"
   },
   "bar": {
@@ -404,7 +411,60 @@
     "errorSavingTableApply": "Lỗi khi lưu TableApply.",
     "tableApplyDeleted": "Đã xóa TableApply.",
     "cannotDeleteTableApply": "Không thể xóa TableApply này.",
-    "confirmDeleteTableApply": "Bạn có chắc muốn xóa TableApply này?"
+    "confirmDeleteTableApply": "Bạn có chắc muốn xóa TableApply này?",
+    "eventsPage": {
+      "title": "Quản lý sự kiện",
+      "tabOtherBars": "Sự kiện từ các quán bar khác",
+      "tabManage": "Quản lý sự kiện",
+      "createEvent": "Tạo sự kiện",
+      "editEvent": "Sửa sự kiện",
+      "deleteEvent": "Xóa sự kiện",
+      "confirmDelete": "Bạn có chắc muốn xóa sự kiện này?",
+      "noOtherEvents": "Chưa có sự kiện từ các quán bar khác.",
+      "editEventTitle": "Chỉnh sửa sự kiện",
+      "eventDeleted": "Đã xóa sự kiện thành công!",
+      "eventUpdated": "Đã cập nhật sự kiện thành công!",
+      "errorDelete": "Lỗi khi xóa sự kiện",
+      "errorUpdate": "Lỗi khi cập nhật sự kiện",
+      "update": "Cập nhật",
+      "picture": "Hình ảnh"
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Bảng điều khiển",
+      "totalUsers": "Tổng người dùng",
+      "totalBars": "Tổng số quán",
+      "totalEvents": "Tổng sự kiện",
+      "pendingReports": "Báo cáo chờ xử lý",
+      "activity": "Hoạt động gần đây",
+      "activityHint": "Biểu đồ và log hoạt động sẽ hiển thị tại đây."
+    },
+    "users": {
+      "title": "Quản lý người dùng",
+      "search": "Tìm theo email hoặc username...",
+      "allRoles": "Tất cả vai trò",
+      "allStatus": "Tất cả trạng thái",
+      "empty": "Chưa có người dùng.",
+      "view": "Xem",
+      "ban": "Cấm"
+    },
+    "music": {
+      "title": "Thư viện nhạc",
+      "hint": "Upload và quản lý nhạc dùng cho Stories.",
+      "upload": "Tải lên",
+      "uploading": "Đang tải...",
+      "uploadFailed": "Tải lên thất bại",
+      "confirmDelete": "Xóa bài nhạc này?",
+      "deleteFailed": "Xóa thất bại",
+      "empty": "Chưa có bài nhạc nào.",
+      "columns": {
+        "name": "Tên",
+        "size": "Kích thước",
+        "created": "Tạo lúc",
+        "actions": "Thao tác"
+      }
+    }
   },
   "input": {
     "writeComment": "Viết bình luận...",
@@ -479,6 +539,7 @@
     "createStory": "Tạo Story",
     "createStoryButton": "+ Tạo Story",
     "selectImage": "Chọn ảnh hoặc video",
+    "selectImageFirst": "Vui lòng chọn ảnh trước",
     "selectMusicFromLibrary": "Chọn nhạc từ thư viện",
     "searchSongPlaceholder": "Tìm kiếm tên bài hát hoặc nghệ sĩ...",
     "loadingSongs": "Đang tải danh sách nhạc...",
@@ -497,8 +558,12 @@
     "deleteFailed": "Không thể xóa story",
     "yourStory": "Story của bạn",
     "reply": "Trả lời story",
+    "replyPlaceholder": "Nhập reply...",
+    "replySent": "Đã gửi reply!",
+    "replySentTo": "Đã reply story {{name}}",
+    "replyYourStory": "Trả lời story",
+    "replyError": "Không thể gửi reply. Vui lòng thử lại.",
     "replyEmpty": "Chưa có tin nhắn nào. Hãy bắt đầu cuộc trò chuyện!",
-    "replyPlaceholder": "Nhập tin nhắn...",
     "addText": "Thêm văn bản",
     "addMusic": "Thêm nhạc",
     "alternativeText": "Văn bản thay thế",
@@ -520,6 +585,12 @@
     "editPersonalProfile": "Chỉnh sửa hồ sơ cá nhân",
     "infoTab": "Thông tin",
     "postsTab": "Bài viết",
+    "videosTab": "Video",
+    "reviewsTab": "Đánh giá",
+    "tablesTab": "Bàn",
+    "musicTab": "Nhạc",
+    "priceTable": "Bảng giá",
+    "musicTabDescription": "Sẽ hiển thị các bài nhạc của DJ",
     "loadingProfile": "Đang tải hồ sơ...",
     "about": "Giới thiệu",
     "gender": "Giới tính",
@@ -538,7 +609,20 @@
     "saveChanges": "Lưu thay đổi",
     "saving": "Đang lưu...",
     "saved": "Đã lưu thay đổi!",
-    "saveFailed": "Lưu thất bại"
+    "saveFailed": "Lưu thất bại",
+    "bannedTitle": "Tài khoản đã bị cấm",
+    "bannedDescriptionBar": "Trang Bar này đã bị khóa. Mọi truy cập đều bị chặn cho đến khi được mở lại. Liên hệ smokerteam@gmail.com để được hỗ trợ.",
+    "bannedDescriptionBusiness": "Tài khoản {{role}} này đã bị khóa. Mọi truy cập đều bị chặn cho đến khi được mở lại. Liên hệ smokerteam@gmail.com để được hỗ trợ.",
+    "bannedDescriptionCustomer": "Tài khoản của bạn đã bị khóa. Mọi truy cập đều bị chặn cho đến khi được mở lại. Liên hệ smokerteam@gmail.com để được hỗ trợ.",
+    "avatar": "Ảnh đại diện",
+    "background": "Ảnh nền",
+    "name": "Tên",
+    "namePlaceholder": "Nhập tên của bạn",
+    "nameRequired": "Tên là bắt buộc",
+    "bioPlaceholder": "Giới thiệu về bản thân...",
+    "phonePlaceholder": "Nhập số điện thoại của bạn",
+    "addressPlaceholder": "Nhập địa chỉ của bạn",
+    "updateFailed": "Cập nhật thất bại"
   }
   ,
   "publicProfile": {
@@ -560,6 +644,17 @@
     "blockError": "Tạm thời không thể chặn hồ sơ. Vui lòng thử lại sau.",
     "reportSubmitted": "Cảm ơn bạn. Báo cáo đã được gửi.",
     "thisUser": "người dùng này"
+  },
+  "notifications": {
+    "likedYourPost": "{{name}} đã thích bài viết của bạn",
+    "likedYourStory": "{{name}} đã thích story của bạn",
+    "commentedOnYourPost": "{{name}} đã bình luận bài viết của bạn",
+    "repliedToYourComment": "{{name}} đã trả lời bình luận của bạn",
+    "startedFollowingYou": "{{name}} đã bắt đầu theo dõi bạn",
+    "sentYouAMessage": "{{name}} đã gửi tin nhắn cho bạn",
+    "sentYouAMessageWithPreview": "{{name}}: {{preview}}",
+    "postDetail": "Chi tiết bài viết",
+    "default": "Bạn có thông báo mới"
   }
 }
 

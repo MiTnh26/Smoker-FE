@@ -1,19 +1,25 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
+import { Search, ArrowLeft, Check } from "lucide-react";
 import messageApi from "../../../../api/messageApi";
-import { createPost, trackPostShare } from "../../../../api/postApi";
+import publicProfileApi from "../../../../api/publicProfileApi";
+import { createPost, trackPostShare, trackMediaShare, getPostById } from "../../../../api/postApi";
 import { cn } from "../../../../utils/cn";
 
 export default function ShareModal({ open, post, onClose, onShared, triggerRef }) {
+  const { t } = useTranslation();
   const [shareType, setShareType] = useState(null); // 'message' or 'wall'
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [repostComment, setRepostComment] = useState(""); // Comment when reposting
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [originalPreviewPost, setOriginalPreviewPost] = useState(null);
+  const [loadingOriginalPreview, setLoadingOriginalPreview] = useState(false);
   const popupRef = useRef(null);
-  const { t } = useTranslation();
 
   useEffect(() => {
     if (open && shareType === 'message') {
@@ -21,9 +27,13 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
     }
   }, [open, shareType]);
 
-  // Tính toán vị trí popup dựa trên trigger element
+  // Tính toán và cập nhật vị trí popup dựa trên trigger element
   useEffect(() => {
-    if (open && triggerRef?.current) {
+    if (!open || !triggerRef?.current) return;
+    
+    const updatePosition = () => {
+      if (!triggerRef?.current) return;
+      
       const rect = triggerRef.current.getBoundingClientRect();
       const popupWidth = 280; // Approximate width
       const popupHeight = 200; // Approximate height
@@ -47,8 +57,30 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
       }
       
       setPosition({ top, left });
-    }
+    };
+
+    // Update position initially
+    updatePosition();
+
+    // Update position on scroll
+    const handleScroll = () => {
+      updatePosition();
+    };
+    
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
   }, [open, triggerRef]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      const originalStyle = window.getComputedStyle(document.body).overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalStyle;
+      };
+    }
+  }, [open]);
 
   const loadConversations = async () => {
     try {
@@ -64,13 +96,107 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
       const activeEntity = session?.activeEntity || session?.account;
       const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id;
 
-      if (entityAccountId) {
-        const response = await messageApi.getConversations(entityAccountId);
-        const data = response?.data || response;
-        setConversations(data?.conversations || data || []);
+      if (!entityAccountId) {
+        setConversations([]);
+        setLoading(false);
+        return;
       }
+
+      const response = await messageApi.getConversations(entityAccountId);
+      const conversationsData = response?.data?.data || response?.data || [];
+      
+      if (!Array.isArray(conversationsData) || conversationsData.length === 0) {
+        setConversations([]);
+        setLoading(false);
+        return;
+      }
+
+      // Resolve profile for each conversation participant
+      const resolveProfile = async (entityAccountId) => {
+        if (!entityAccountId) return null;
+        try {
+          const res = await publicProfileApi.getByEntityId(entityAccountId);
+          const data = res?.data?.data || res?.data || {};
+          return {
+            name: data.name || data.BarName || data.BusinessName || data.userName || data.UserName || entityAccountId,
+            avatar: data.avatar || data.Avatar || null,
+            entityId: entityAccountId,
+          };
+        } catch (err) {
+          if (err?.response?.status === 404) {
+            return { name: entityAccountId, avatar: null, entityId: entityAccountId };
+          }
+          console.warn(`[ShareModal] Failed to fetch profile for ${entityAccountId}:`, err);
+          return { name: entityAccountId, avatar: null, entityId: entityAccountId };
+        }
+      };
+
+      // Map conversations with user profiles
+      const currentUserIdNormalized = String(entityAccountId || "").toLowerCase().trim();
+      const mappedResults = await Promise.allSettled(
+        conversationsData.map(async (conv) => {
+          const participants = conv.participants || [];
+          
+          // Find other participant (not the current user)
+          const otherParticipantId = participants.find(p => 
+            String(p).toLowerCase().trim() !== currentUserIdNormalized
+          ) || null;
+          
+          if (!otherParticipantId) {
+            return {
+              ...conv,
+              name: "Người dùng",
+              avatar: null,
+              displayName: "Người dùng",
+              displayAvatar: null,
+            };
+          }
+
+          const profile = await resolveProfile(otherParticipantId);
+          if (profile) {
+            // Check status from conversation data
+            const status = conv.participantStatuses?.[otherParticipantId] || 
+                         conv.participant1Status || 
+                         conv.participant2Status;
+            
+            if (status === 'banned') {
+              return {
+                ...conv,
+                name: "người dùng Smoker",
+                avatar: null,
+                displayName: "người dùng Smoker",
+                displayAvatar: null,
+              };
+            }
+            
+            return {
+              ...conv,
+              name: profile.name,
+              avatar: profile.avatar,
+              displayName: profile.name,
+              displayAvatar: profile.avatar,
+            };
+          }
+          
+          return {
+            ...conv,
+            name: otherParticipantId,
+            avatar: null,
+            displayName: otherParticipantId,
+            displayAvatar: null,
+          };
+        })
+      );
+
+      // Filter out rejected promises and extract values
+      const mapped = mappedResults
+        .filter(result => result.status === 'fulfilled')
+        .map(result => result.value);
+      
+      setConversations(mapped);
     } catch (error) {
       console.error("[ShareModal] Error loading conversations:", error);
+      setConversations([]);
     } finally {
       setLoading(false);
     }
@@ -95,26 +221,47 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
                         (activeEntity?.role === "dj" || activeEntity?.role === "dancer") ? "BusinessAccount" : "Account";
       const entityId = activeEntity?.entityId || activeEntity?.id;
 
-      const postUrl = typeof window !== "undefined" ? `${window.location.origin}/posts/${post.id}` : `https://smoker.app/posts/${post.id}`;
-      const messageContent = `📎 ${post.title || post.content || "Bài viết"}\n${postUrl}`;
+      // Check if this is a media (has isMedia flag or url field) or a post
+      const isMedia = post.isMedia || (post.url && (!post.content || !post.content.trim()) && (!post.title || !post.title.trim()));
+      const postUrl = typeof window !== "undefined" 
+        ? `${window.location.origin}/${isMedia ? 'medias' : 'posts'}/${post.id}` 
+        : `https://smoker.app/${isMedia ? 'medias' : 'posts'}/${post.id}`;
+      const messageContent = `📎 ${post.title || post.content || (isMedia ? "Xem ảnh" : "Bài viết")}\n${postUrl}`;
+
+      // Get conversation ID from new structure (English fields)
+      const conversationId = selectedConversation._id || selectedConversation.id || selectedConversation.conversationId;
+
+      // Get post ID - use original post ID if it's a repost
+      const originalPostId = post.repostedFromId || post.id || post._id;
 
       await messageApi.sendMessage(
-        selectedConversation.conversationId || selectedConversation.id,
+        conversationId,
         messageContent,
         "text",
         entityAccountId,
         entityType,
-        entityId
+        entityId,
+        { postId: originalPostId } // Pass postId to backend for post summary
       );
 
-      // Track share
+      // Track share (for both post and media)
       if (post.id) {
-        trackPostShare(post.id).catch(err => {
-          console.warn('[ShareModal] Failed to track share:', err);
-        });
+        const isMedia = post.isMedia || (post.url && (!post.content || !post.content.trim()) && (!post.title || !post.title.trim()));
+        if (isMedia) {
+          trackMediaShare(post.id).catch(err => {
+            console.warn('[ShareModal] Failed to track media share:', err);
+          });
+        } else {
+          trackPostShare(post.id).catch(err => {
+            console.warn('[ShareModal] Failed to track post share:', err);
+          });
+        }
       }
 
-      onShared?.({ type: 'message', conversationId: selectedConversation.conversationId || selectedConversation.id });
+      onShared?.({ type: 'message', conversationId });
+      // Reset state before closing
+      setShareType(null);
+      setSelectedConversation(null);
       onClose?.();
     } catch (error) {
       console.error("[ShareModal] Error sharing to message:", error);
@@ -150,42 +297,227 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
       const entityId = activeEntity?.entityId || currentUser?.id;
       const entityType = typeRole;
 
-      // Tạo repost với reference đến post gốc
+      // Validate required fields
+      if (!entityAccountId) {
+        console.error("[ShareModal] Missing entityAccountId:", { activeEntity, currentUser });
+        alert("Không thể xác định thông tin người dùng. Vui lòng đăng nhập lại.");
+        return;
+      }
+
+      // Determine source post (nếu đang đăng lại một bài đã được đăng lại thì dùng bài gốc)
+      const sourcePost = (post.repostedFromId && originalPreviewPost) ? originalPreviewPost : post;
+
+      // Check if this is a media or a post
+      const isMedia = sourcePost.isMedia || (sourcePost.url && (!sourcePost.content || !sourcePost.content.trim()) && (!sourcePost.title || !sourcePost.title.trim()));
+
+      // Get original post ID: nếu post hiện tại đã là repost thì dùng repostedFromId để dẫn về bài gốc
+      const originalPostId = post.repostedFromId || post.id || post._id;
+      
+      if (!originalPostId) {
+        console.error("[ShareModal] Missing originalPostId:", post);
+        alert("Không tìm thấy bài viết gốc. Vui lòng thử lại.");
+        return;
+      }
+      
+      // Get medias from post (chỉ để copy mediaIds, không cần snapshot)
+      let mediaIds = [];
+      
+      // First, try to get from post.mediaIds (array of IDs)
+      if (sourcePost.mediaIds && Array.isArray(sourcePost.mediaIds) && sourcePost.mediaIds.length > 0) {
+        mediaIds = sourcePost.mediaIds.map(entry => {
+          if (!entry) return null;
+          const rawId = entry?._id || entry?.id || entry;
+          if (!rawId) return null;
+          if (typeof rawId === "string") return rawId;
+          if (typeof rawId === "object" && rawId.toHexString) return rawId.toHexString();
+          if (typeof rawId === "object" && rawId.$oid) return rawId.$oid;
+          if (typeof rawId === "object" && rawId.toString) {
+            const str = rawId.toString();
+            return str === "[object Object]" ? null : str;
+          }
+          return String(rawId);
+        }).filter(Boolean);
+      }
+      
+      // If no mediaIds, try to extract from post.medias (populated array)
+      if (!mediaIds.length && sourcePost.medias) {
+        // Extract media IDs from medias object/array
+        if (Array.isArray(sourcePost.medias)) {
+          mediaIds = sourcePost.medias.map(m => {
+            const id = m?._id || m?.id || m?.mediaId;
+            if (!id) return null;
+            if (typeof id === "string") return id;
+            if (typeof id === "object" && id.toHexString) return id.toHexString();
+            if (typeof id === "object" && id.$oid) return id.$oid;
+            if (typeof id === "object" && id.toString) {
+              const str = id.toString();
+              return str === "[object Object]" ? null : str;
+            }
+            return String(id);
+          }).filter(Boolean);
+        } else if (typeof sourcePost.medias === 'object') {
+          const allMedias = [
+            ...(sourcePost.medias.images || []),
+            ...(sourcePost.medias.videos || []),
+            ...(sourcePost.medias.audios || [])
+          ];
+          mediaIds = allMedias.map(m => {
+            const id = m?._id || m?.id || m?.mediaId;
+            if (!id) return null;
+            if (typeof id === "string") return id;
+            if (typeof id === "object" && id.toHexString) return id.toHexString();
+            if (typeof id === "object" && id.$oid) return id.$oid;
+            if (typeof id === "object" && id.toString) {
+              const str = id.toString();
+              return str === "[object Object]" ? null : str;
+            }
+            return String(id);
+          }).filter(Boolean);
+        }
+      }
+      
+      // If it's a single media (image/video), add it to mediaIds
+      if (isMedia && originalPostId) {
+        const postIdStr = originalPostId?.toString ? originalPostId.toString() : String(originalPostId);
+        if (!mediaIds.includes(postIdStr)) {
+          mediaIds.push(postIdStr);
+        }
+      }
+
+      // Nội dung hiển thị cho bài repost chỉ là ghi chú của người đăng lại (nếu có)
+      const repostNote = repostComment.trim();
+      const finalTitle = repostNote || "";
+      const finalContent = repostNote || "";
+
+      // Tạo repost với reference đến post gốc (chỉ lưu ID, query lại khi hiển thị)
+      // Backend expect: entityAccountId, authorEntityId, authorEntityType, authorName, authorAvatar
       const postData = {
-        title: post.title || "",
-        content: post.content || "",
+        title: finalTitle,
+        content: finalContent,
         type: "post",
-        repostedFromId: post.id || post._id, // Reference đến post gốc
-        typeRole: typeRole,
+        repostedFromId: originalPostId, // Reference đến post gốc - query lại khi hiển thị
+        // Current user info (người đăng lại) - Backend sẽ dùng để tìm entityAccountId nếu chưa có
         entityAccountId: entityAccountId,
-        entityId: entityId,
-        entityType: entityType,
-        authorEntityId: entityId,
+        authorEntityId: entityId || null,
         authorEntityType: entityType,
-        authorEntityName: activeEntity?.name || activeEntity?.userName || "Người dùng",
-        authorEntityAvatar: activeEntity?.avatar || activeEntity?.profilePicture || "",
-        // Copy medias từ post gốc nếu có
-        mediaIds: post.mediaIds || []
+        authorName: activeEntity?.name || activeEntity?.userName || "Người dùng",
+        authorAvatar: activeEntity?.avatar || activeEntity?.profilePicture || "",
+        // Copy medias từ post/media gốc
+        mediaIds: mediaIds.length > 0 ? mediaIds : undefined // Chỉ gửi nếu có mediaIds
       };
 
-      await createPost(postData);
+      console.log("[ShareModal] Creating repost with data:", {
+        ...postData,
+        mediaIds: mediaIds.length,
+        repostedFromId: originalPostId
+      });
 
-      // Track share
+      const response = await createPost(postData);
+      
+      // Axios interceptor đã unwrap response.data, nên response chính là data rồi
+      if (!response?.success) {
+        console.error("[ShareModal] Post creation failed:", response);
+        throw new Error(response?.message || "Failed to create repost");
+      }
+
+      // Track share (for both post and media)
       if (post.id) {
-        trackPostShare(post.id).catch(err => {
-          console.warn('[ShareModal] Failed to track share:', err);
-        });
+        if (isMedia) {
+          trackMediaShare(post.id).catch(err => {
+            console.warn('[ShareModal] Failed to track media share:', err);
+          });
+        } else {
+          trackPostShare(post.id).catch(err => {
+            console.warn('[ShareModal] Failed to track post share:', err);
+          });
+        }
       }
 
       onShared?.({ type: 'wall' });
+      // Reset state before closing
+      setShareType(null);
+      setSelectedConversation(null);
       onClose?.();
     } catch (error) {
       console.error("[ShareModal] Error reposting:", error);
-      alert("Không thể đăng lại bài viết. Vui lòng thử lại.");
+      console.error("[ShareModal] Error details:", {
+        message: error?.message,
+        response: error?.response?.data,
+        status: error?.response?.status
+      });
+      
+      const errorMessage = error?.response?.data?.message || error?.message || "Unknown error";
+      const isMedia = post.isMedia || (post.url && (!post.content || !post.content.trim()) && (!post.title || !post.title.trim()));
+      
+      alert(isMedia 
+        ? `Không thể đăng lại ảnh: ${errorMessage}` 
+        : `Không thể đăng lại bài viết: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
   };
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setShareType(null);
+      setSelectedConversation(null);
+      setSearchQuery("");
+      setRepostComment("");
+      setOriginalPreviewPost(null);
+      setLoadingOriginalPreview(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!open || !post?.repostedFromId) {
+      setOriginalPreviewPost(null);
+      setLoadingOriginalPreview(false);
+      return () => {};
+    }
+
+    const fetchOriginalPreview = async () => {
+      try {
+        setLoadingOriginalPreview(true);
+        const response = await getPostById(post.repostedFromId, { includeMedias: true, includeMusic: true });
+        if (!isMounted) return;
+        if (response?.success && response.data) {
+          setOriginalPreviewPost(response.data);
+        } else if (response && response._id) {
+          setOriginalPreviewPost(response);
+        } else {
+          setOriginalPreviewPost(null);
+        }
+      } catch (err) {
+        if (isMounted) {
+          console.error("[ShareModal] Failed to fetch original post preview:", err);
+          setOriginalPreviewPost(null);
+        }
+      } finally {
+        if (isMounted) {
+          setLoadingOriginalPreview(false);
+        }
+      }
+    };
+
+    fetchOriginalPreview();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [open, post?.repostedFromId]);
+
+  // Filter conversations based on search query
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    const query = searchQuery.toLowerCase().trim();
+    return conversations.filter(conv => {
+      const name = (conv.displayName || conv.name || conv.userName || "").toLowerCase();
+      const lastMessage = (conv.last_message_content || conv.lastMessage || "").toLowerCase();
+      return name.includes(query) || lastMessage.includes(query);
+    });
+  }, [conversations, searchQuery]);
 
   // Handle click outside để đóng popup
   useEffect(() => {
@@ -204,22 +536,30 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
 
   if (!open) return null;
 
+  // Determine if we should center the modal (when selecting conversation or reposting)
+  const shouldCenter = shareType === 'message' || shareType === 'wall';
+
   return (
     <>
       <div 
-        className="fixed inset-0 z-[9998] bg-transparent" 
+        className={cn(
+          "fixed inset-0 z-[9998]",
+          shouldCenter ? "bg-black/50 backdrop-blur-sm" : "bg-transparent"
+        )}
         onClick={onClose} 
       />
       <div 
         ref={popupRef}
         className={cn(
-          "fixed bg-card/90 backdrop-blur-xl rounded-xl min-w-[200px] max-w-[320px] max-h-[400px]",
-          "flex flex-col shadow-[0_2px_8px_rgba(0,0,0,0.15)] z-[9999]",
-          "overflow-hidden border-[0.5px] border-border/20",
+          "fixed bg-card/95 backdrop-blur-xl rounded-2xl shadow-2xl z-[9999]",
+          "flex flex-col overflow-hidden border-[0.5px] border-border/30",
           "before:absolute before:inset-0 before:bg-gradient-to-br before:from-primary/10 before:via-transparent before:to-secondary/10",
-          "before:opacity-60 before:pointer-events-none"
+          "before:opacity-60 before:pointer-events-none",
+          shouldCenter 
+            ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 min-w-[380px] max-w-[420px] max-h-[600px]"
+            : "min-w-[200px] max-w-[320px] max-h-[400px]"
         )}
-        style={{ top: `${position.top}px`, left: `${position.left}px` }}
+        style={!shouldCenter ? { top: `${position.top}px`, left: `${position.left}px` } : undefined}
         onClick={(e) => e.stopPropagation()}
       >
         {!shareType ? (
@@ -260,74 +600,152 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
             </button>
           </div>
         ) : shareType === 'message' ? (
-            <div className="flex flex-col gap-3 p-2">
-              <button 
-                className={cn(
-                  "bg-transparent border-none text-primary cursor-pointer",
-                  "py-1 text-sm self-start transition-colors duration-200",
-                  "hover:opacity-80"
-                )}
-                onClick={() => setShareType(null)}
-              >
-                ← Quay lại
-              </button>
-              <h4 className="m-0 mb-2 text-[0.95rem] font-semibold text-foreground">
-                Chọn cuộc trò chuyện
-              </h4>
-              {loading ? (
-                <div className="text-center p-4 text-muted-foreground text-sm">
-                  Đang tải...
-                </div>
-              ) : conversations.length === 0 ? (
-                <div className="text-center p-4 text-muted-foreground text-sm">
-                  Không có cuộc trò chuyện nào
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1 max-h-[250px] overflow-y-auto">
-                  {conversations.map((conv) => (
-                    <button
-                      key={conv.conversationId || conv.id}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-3.5",
-                        "bg-transparent border-none rounded-xl cursor-pointer",
-                        "transition-all duration-300 text-left w-full",
-                        selectedConversation?.conversationId === conv.conversationId || selectedConversation?.id === conv.id
-                          ? "bg-primary/20 shadow-lg scale-[1.02]"
-                          : "hover:bg-muted/20",
-                        "active:scale-95"
-                      )}
-                      onClick={() => setSelectedConversation(conv)}
-                    >
-                      <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
-                        {conv.avatar ? (
-                          <img src={conv.avatar} alt={conv.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground font-semibold text-xl">
-                            {conv.name?.[0]?.toUpperCase() || '?'}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-foreground mb-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                          {conv.name || conv.userName || "Người dùng"}
-                        </div>
-                        {conv.lastMessage && (
-                          <div className="text-sm text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap">
-                            {conv.lastMessage}
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2 justify-end p-3 border-t border-border/30 mt-2">
+            <div className="flex flex-col h-full max-h-[500px]">
+              {/* Header */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 flex-shrink-0">
                 <button 
                   className={cn(
-                    "px-5 py-2.5 rounded-xl text-sm font-semibold",
-                    "cursor-pointer transition-all duration-300 border-none",
+                    "w-8 h-8 flex items-center justify-center",
+                    "bg-transparent border-none rounded-full cursor-pointer",
+                    "text-foreground transition-all duration-200",
+                    "hover:bg-muted/50 active:scale-95"
+                  )}
+                  onClick={() => setShareType(null)}
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <h4 className="m-0 flex-1 text-base font-semibold text-foreground">
+                  Chọn cuộc trò chuyện
+                </h4>
+              </div>
+
+              {/* Search Bar */}
+              <div className="px-4 pt-3 pb-2 flex-shrink-0">
+                <div className="relative">
+                  <Search 
+                    size={16} 
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm cuộc trò chuyện..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={cn(
+                      "w-full pl-9 pr-3 py-2.5 rounded-lg",
+                      "bg-muted/50 border border-border/30",
+                      "text-sm text-foreground placeholder:text-muted-foreground",
+                      "outline-none transition-all duration-200",
+                      "focus:bg-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Conversations List */}
+              <div className="flex-1 overflow-y-auto px-2 pb-2">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-3" />
+                    <p className="text-sm text-muted-foreground">Đang tải...</p>
+                  </div>
+                ) : filteredConversations.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 px-4">
+                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+                      <Search size={24} className="text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground mb-1">
+                      {searchQuery ? "Không tìm thấy cuộc trò chuyện" : "Không có cuộc trò chuyện nào"}
+                    </p>
+                    {searchQuery && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        Thử tìm kiếm với từ khóa khác
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {filteredConversations.map((conv) => {
+                      const convId = conv._id || conv.id || conv.conversationId;
+                      const isSelected = selectedConversation && (
+                        String(selectedConversation._id) === String(convId) ||
+                        String(selectedConversation.id) === String(convId) ||
+                        String(selectedConversation.conversationId) === String(convId)
+                      );
+                      return (
+                        <button
+                          key={convId}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-3",
+                            "bg-transparent border-none rounded-xl cursor-pointer",
+                            "transition-all duration-200 text-left w-full",
+                            "group",
+                            isSelected
+                              ? "bg-primary/15 border border-primary/30 shadow-sm"
+                              : "hover:bg-muted/30",
+                            "active:scale-[0.98]"
+                          )}
+                          onClick={() => setSelectedConversation(conv)}
+                        >
+                          <div className="relative w-11 h-11 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-offset-2 ring-offset-card transition-all duration-200"
+                            style={{
+                              ringColor: isSelected ? 'rgb(var(--primary))' : 'transparent'
+                            }}
+                          >
+                            {(conv.displayAvatar || conv.avatar) ? (
+                              <img 
+                                src={conv.displayAvatar || conv.avatar} 
+                                alt={conv.displayName || conv.name} 
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  const fallback = e.target.nextElementSibling;
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                              />
+                            ) : null}
+                            <div 
+                              className={cn(
+                                "w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20",
+                                "flex items-center justify-center text-foreground font-semibold text-base",
+                                (conv.displayAvatar || conv.avatar) ? 'hidden' : ''
+                              )}
+                            >
+                              {(conv.displayName || conv.name || '?')?.[0]?.toUpperCase() || '?'}
+                            </div>
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                  <Check size={12} className="text-primary-foreground" />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-foreground mb-0.5 overflow-hidden text-ellipsis whitespace-nowrap text-[0.95rem]">
+                              {conv.displayName || conv.name || conv.userName || "Người dùng"}
+                            </div>
+                            {(conv.last_message_content || conv.lastMessage) && (
+                              <div className="text-xs text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap">
+                                {conv.last_message_content || conv.lastMessage}
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-2 justify-end px-4 py-3 border-t border-border/30 flex-shrink-0 bg-card/50">
+                <button 
+                  className={cn(
+                    "px-5 py-2.5 rounded-lg text-sm font-medium",
+                    "cursor-pointer transition-all duration-200 border-none",
                     "bg-transparent text-foreground",
-                    "hover:bg-muted/20",
+                    "hover:bg-muted/50",
                     "active:scale-95",
                     "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   )}
@@ -338,12 +756,12 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
                 </button>
                 <button
                   className={cn(
-                    "px-5 py-2.5 rounded-xl text-sm font-semibold",
-                    "cursor-pointer transition-all duration-300 border-none",
+                    "px-6 py-2.5 rounded-lg text-sm font-semibold",
+                    "cursor-pointer transition-all duration-200 border-none",
                     "bg-primary text-primary-foreground",
-                    "hover:bg-primary/90",
+                    "hover:bg-primary/90 shadow-md",
                     "active:scale-95",
-                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
                   )}
                   onClick={handleShareToMessage}
                   disabled={submitting || !selectedConversation}
@@ -353,35 +771,220 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-3 p-2">
-              <button 
-                className={cn(
-                  "bg-transparent border-none text-primary cursor-pointer",
-                  "py-1 text-sm self-start transition-colors duration-200",
-                  "hover:opacity-80"
-                )}
-                onClick={() => setShareType(null)}
-              >
-                ← Quay lại
-              </button>
-              <div className="p-3 bg-muted/20 rounded-md">
-                <p className="m-0 mb-3 text-muted-foreground text-sm">
-                  Bài viết sẽ được đăng lại trên tường của bạn:
-                </p>
-                <div className="p-3 bg-card rounded border-[0.5px] border-border/20">
-                  <strong className="text-foreground break-words">
-                    {post.title || post.content || "Bài viết"}
-                  </strong>
-                </div>
-              </div>
-              <div className="flex gap-2 justify-end p-3 border-t border-border/30 mt-2">
+            <div className="flex flex-col h-full max-h-[600px]">
+              {/* Header */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 flex-shrink-0">
                 <button 
                   className={cn(
-                    "px-4 py-2 rounded-xl text-sm font-medium",
+                    "w-8 h-8 flex items-center justify-center",
+                    "bg-transparent border-none rounded-full cursor-pointer",
+                    "text-foreground transition-all duration-200",
+                    "hover:bg-muted/50 active:scale-95"
+                  )}
+                  onClick={() => setShareType(null)}
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <h4 className="m-0 flex-1 text-base font-semibold text-foreground">
+                  Đăng lại
+                </h4>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto px-4 py-4">
+                {/* Comment Input */}
+                <div className="mb-4">
+                  <textarea
+                    placeholder="Viết gì đó về bài viết này..."
+                    value={repostComment}
+                    onChange={(e) => setRepostComment(e.target.value)}
+                    className={cn(
+                      "w-full min-h-[100px] p-3 rounded-xl",
+                      "bg-muted/50 border border-border/30",
+                      "text-sm text-foreground placeholder:text-muted-foreground",
+                      "outline-none transition-all duration-200 resize-none",
+                      "focus:bg-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                    )}
+                    maxLength={500}
+                  />
+                  <div className="text-xs text-muted-foreground text-right mt-1">
+                    {repostComment.length}/500
+                  </div>
+                </div>
+
+                {/* Original Post Preview */}
+                <div className="mb-4">
+                  <div className="p-4 bg-muted/30 rounded-xl border border-border/30">
+                    {loadingOriginalPreview && post.repostedFromId ? (
+                      <div className="text-center py-4 text-muted-foreground text-sm">
+                        {t('common.loading') || 'Đang tải...'}
+                      </div>
+                    ) : (
+                      <>
+                        {/* Original Author Info */}
+                        {(() => {
+                          const previewSource = post.repostedFromId && originalPreviewPost ? originalPreviewPost : post;
+                          const previewAvatar = previewSource.avatar || previewSource.authorAvatar || previewSource.author?.avatar || previewSource.account?.avatar || post.authorAvatar || post.avatar;
+                          const previewName = previewSource.user || previewSource.authorName || previewSource.author?.userName || previewSource.account?.userName || "Người dùng";
+                          const previewTime = previewSource.time || post.time || null;
+                          return (
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                                {previewAvatar ? (
+                                  <img
+                                    src={previewAvatar}
+                                    alt={previewName}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                      const fallback = e.target.nextElementSibling;
+                                      if (fallback) fallback.style.display = 'flex';
+                                    }}
+                                  />
+                                ) : null}
+                                <div className={cn(
+                                  "w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20",
+                                  "flex items-center justify-center text-foreground font-semibold",
+                                  previewAvatar ? 'hidden' : ''
+                                )}>
+                                  {previewName?.[0]?.toUpperCase() || '?'}
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-foreground text-sm">
+                                  {previewName}
+                                </div>
+                                {previewTime && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {previewTime}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Original Post Content */}
+                        {(() => {
+                          const source = post.repostedFromId && originalPreviewPost ? originalPreviewPost : post;
+                          const isMedia = source.isMedia || (source.url && (!source.content || !source.content?.trim()) && (!source.title || !source.title?.trim()));
+                          
+                          const collectMedias = (target) => {
+                            const result = { images: [], videos: [] };
+                            if (!target) return result;
+                            const medias = target.medias;
+                            if (Array.isArray(medias)) {
+                              medias.forEach((m) => {
+                                if (!m?.url) return;
+                                if (m.type === 'video' || m.url?.match(/\.(mp4|webm|mov)$/i)) {
+                                  result.videos.push(m);
+                                } else {
+                                  result.images.push(m);
+                                }
+                              });
+                            } else if (medias && typeof medias === 'object') {
+                              if (Array.isArray(medias.images) || Array.isArray(medias.videos)) {
+                                result.images = medias.images || [];
+                                result.videos = medias.videos || [];
+                              } else {
+                                const entries = medias instanceof Map ? Array.from(medias.values()) : Object.values(medias);
+                                entries.forEach((m) => {
+                                  if (!m?.url) return;
+                                  if (m.type === 'video' || m.url?.match(/\.(mp4|webm|mov)$/i)) {
+                                    result.videos.push(m);
+                                  } else {
+                                    result.images.push(m);
+                                  }
+                                });
+                              }
+                            }
+                            return result;
+                          };
+
+                          const { images, videos } = collectMedias(source);
+                          const hasMedia = (isMedia && source.url) || images.length > 0 || videos.length > 0;
+
+                          return (
+                            <div className="space-y-3">
+                              {(source.content || source.title) && (
+                                <p className="m-0 text-foreground text-sm break-words leading-relaxed whitespace-pre-wrap">
+                                  {source.content || source.title}
+                                </p>
+                              )}
+
+                              {hasMedia && (
+                                <div className="space-y-2">
+                                  {isMedia && source.url && (
+                                    <img
+                                      src={source.url}
+                                      alt="Media preview"
+                                      className="w-full max-h-[300px] object-contain rounded-lg bg-card"
+                                    />
+                                  )}
+                                  {images.length > 0 && (
+                                    <div className={cn(
+                                      "grid gap-2 rounded-lg overflow-hidden",
+                                      images.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                                    )}>
+                                      {images.slice(0, 4).map((img, idx) => (
+                                        <div key={idx} className="relative">
+                                          <img
+                                            src={img.url || img}
+                                            alt={`Image ${idx + 1}`}
+                                            className={cn(
+                                              "w-full object-cover bg-card",
+                                              images.length === 1 ? "h-auto max-h-[300px]" : "h-32"
+                                            )}
+                                          />
+                                          {idx === 3 && images.length > 4 && (
+                                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-semibold text-lg">
+                                              +{images.length - 4}
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {videos.length > 0 && videos[0].url && (
+                                    <div className="relative w-full rounded-lg overflow-hidden bg-card">
+                                      <video
+                                        src={videos[0].url}
+                                        className="w-full max-h-[300px] object-contain"
+                                        controls={false}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {source.hashtags && source.hashtags.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {source.hashtags.map((tag, i) => (
+                                    <span key={i} className="text-primary text-xs">
+                                      #{tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-2 justify-end px-4 py-3 border-t border-border/30 flex-shrink-0 bg-card/50">
+                <button 
+                  className={cn(
+                    "px-5 py-2.5 rounded-lg text-sm font-medium",
                     "cursor-pointer transition-all duration-200 border-none",
                     "bg-transparent text-foreground",
-                    "hover:bg-muted/20",
-                    "disabled:opacity-50 disabled:cursor-not-allowed"
+                    "hover:bg-muted/50",
+                    "active:scale-95",
+                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   )}
                   onClick={onClose} 
                   disabled={submitting}
@@ -390,11 +993,12 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
                 </button>
                 <button
                   className={cn(
-                    "px-4 py-2 rounded-xl text-sm font-medium",
+                    "px-6 py-2.5 rounded-lg text-sm font-semibold",
                     "cursor-pointer transition-all duration-200 border-none",
                     "bg-primary text-primary-foreground",
-                    "hover:opacity-90 hover:-translate-y-0.5",
-                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    "hover:bg-primary/90 shadow-md",
+                    "active:scale-95",
+                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
                   )}
                   onClick={handleShareToWall}
                   disabled={submitting}

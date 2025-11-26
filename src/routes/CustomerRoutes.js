@@ -2,12 +2,14 @@ import { Fragment } from "react";
 import { Route } from "react-router-dom";
 import CustomerLayout from "../layouts/CustomerLayout";
 import {  Profile, AddBankInfo } from "../modules/customer";
-import PublicProfile from "../modules/customer/pages/PublicProfile";
+import ProfilePage from "../modules/profile/pages/ProfilePage";
+import DynamicLayout from "../layouts/DynamicLayout";
 import ProtectedRoute from "./ProtectedRoute";
 import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed"
 import { StoryEditor } from "../modules/feeds/components/story";
 import MessagesPage from "../modules/messages/pages/MessagesPage";
 import MessagesLayout from "../layouts/MessagesLayout";
+import BarTablesPage from "../modules/customer/pages/BarTablesPage";
 export default function CustomerRoutes() {
   return (
     <Fragment>
@@ -47,7 +49,7 @@ export default function CustomerRoutes() {
       <Route
         path="/profile/:entityId"
         element={
-          <CustomerLayout><PublicProfile /></CustomerLayout>
+          <DynamicLayout><ProfilePage /></DynamicLayout>
         }
       />
       <Route
@@ -58,7 +60,20 @@ export default function CustomerRoutes() {
           </ProtectedRoute>
         }
       />
+       {/* ✅ Route mới: danh sách bàn theo bar */}
+        <Route
+          path="/customer/bars/:barId/tables"
+          element={
+            <ProtectedRoute roles={["customer"]}>
+              <CustomerLayout>
+                <BarTablesPage />
+              </CustomerLayout>
+            </ProtectedRoute>
+          }
+        />
     </>
+      
+      
     </Fragment>
   );
 }

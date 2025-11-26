@@ -31,12 +31,12 @@ export default function StoryInfo({ story, t, isOwnStory = false }) {
 
   const avatarSrc =
     story.authorAvatar ||
-    story.authorEntityAvatar ||
+    story.authorAvatar ||
     story.avatar ||
     "/default-avatar.png";
   const username =
     story.authorName ||
-    story.authorEntityName ||
+    story.authorName ||
     story.accountId ||
     story.title ||
     "User";

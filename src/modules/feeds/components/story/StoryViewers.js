@@ -108,13 +108,13 @@ export default function StoryViewers({ storyId, isOwnStory }) {
                 const avatar =
                   viewer.avatar ||
                   viewer.authorAvatar ||
-                  viewer.authorEntityAvatar ||
+                  viewer.authorAvatar ||
                   "/default-avatar.png";
                 const name =
                   viewer.userName ||
                   viewer.name ||
                   viewer.authorName ||
-                  viewer.authorEntityName ||
+                  viewer.authorName ||
                   "Người dùng";
                 const viewedAt = viewer.viewedAt || viewer.createdAt;
                 const liked = viewer.liked || false;

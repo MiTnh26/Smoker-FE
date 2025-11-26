@@ -8,7 +8,7 @@ import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { userApi } from "../../../api/userApi";
 import useChatSocket from '../../../api/useChatSocket';
-import { Phone, Video, Info, MoreVertical, Reply, Smile, CheckCheck, X } from "lucide-react";
+import { Reply, X } from "lucide-react";
 import Composer from "../../../modules/messages/components/Composer";
 
 function ChatWindow(props) {
@@ -22,6 +22,7 @@ function ChatWindow(props) {
   const [currentEntityType, setCurrentEntityType] = useState(null);
   const [currentEntityId, setCurrentEntityId] = useState(null);
   const [otherUserInfo, setOtherUserInfo] = useState(null);
+  const [otherUserId, setOtherUserId] = useState(null); // Store other participant's ID for read status check
   const [activeEntityId, setActiveEntityId] = React.useState(null);
 
   // Listen for session changes (when switching entities)
@@ -172,6 +173,9 @@ function ChatWindow(props) {
 
   // Fetch other user info from conversation
   useEffect(() => {
+    // Reset otherUserId when chat changes
+    setOtherUserId(null);
+    
     // eslint-disable-next-line complexity
     const fetchOtherUserInfo = async () => {
       if (!chat.id || !currentUserId) return;
@@ -179,6 +183,8 @@ function ChatWindow(props) {
       // If avatar and name are already provided in chat object (from MessagesPanel), use them directly
       if (chat.avatar && chat.name && chat.entityId) {
         console.log("[ChatDock] Using avatar and name from chat object:", chat.name);
+        // Store otherUserId for read status check
+        setOtherUserId(chat.entityId);
         setOtherUserInfo({
           name: chat.name,
           avatar: chat.avatar,
@@ -261,19 +267,18 @@ function ChatWindow(props) {
         );
         
         if (conversation) {
-          // Find other participant
-          const participant1 = String(conversation["Người 1"] || conversation.participant1 || "").toLowerCase().trim();
-          const participant2 = String(conversation["Người 2"] || conversation.participant2 || "").toLowerCase().trim();
+          // Find other participant from new structure (English fields)
+          const participants = conversation.participants || [];
           const currentUserIdNormalized = String(currentUserId).toLowerCase().trim();
           
-          let otherUserId = null;
-          if (participant1 === currentUserIdNormalized) {
-            otherUserId = conversation["Người 2"] || conversation.participant2;
-          } else if (participant2 === currentUserIdNormalized) {
-            otherUserId = conversation["Người 1"] || conversation.participant1;
-          }
+          const foundOtherUserId = participants.find(p => 
+            String(p).toLowerCase().trim() !== currentUserIdNormalized
+          ) || null;
           
-          if (otherUserId) {
+          // Store otherUserId for read status check
+          setOtherUserId(foundOtherUserId);
+          
+          if (foundOtherUserId) {
             // First, check if this entityId belongs to the current user's entities (own bar/business)
             try {
               const { getEntities } = await import("../../../utils/sessionManager");
@@ -294,7 +299,7 @@ function ChatWindow(props) {
                 setOtherUserInfo({
                   name: ownEntity.name || chat.name || "User",
                   avatar: ownEntity.avatar || null,
-                  entityId: otherUserId
+                  entityId: foundOtherUserId
                 });
                 return;
               } else {
@@ -311,7 +316,7 @@ function ChatWindow(props) {
               setOtherUserInfo({
                 name: profile.name || profile.BarName || profile.BusinessName || chat.name || "User",
                 avatar: profile.avatar || profile.Avatar || null,
-                entityId: otherUserId
+                entityId: foundOtherUserId
               });
             } catch (err) {
               // Handle 404 and other errors gracefully - don't show as error for 404
@@ -326,11 +331,12 @@ function ChatWindow(props) {
               setOtherUserInfo({
                 name: chat.name || "User",
                 avatar: null,
-                entityId: otherUserId
+                entityId: foundOtherUserId
               });
             }
           } else {
             // Fallback to chat.name
+            setOtherUserId(null);
             setOtherUserInfo({
               name: chat.name || "User",
               avatar: null,
@@ -339,6 +345,7 @@ function ChatWindow(props) {
           }
         } else {
           // Fallback to chat.name
+          setOtherUserId(null);
           setOtherUserInfo({
             name: chat.name || "User",
             avatar: null,
@@ -348,6 +355,7 @@ function ChatWindow(props) {
       } catch (err) {
         console.error("Error fetching conversation info:", err);
         // Fallback to chat.name
+        setOtherUserId(null);
         setOtherUserInfo({
           name: chat.name || "User",
           avatar: null,
@@ -430,13 +438,13 @@ function ChatWindow(props) {
   const { socket } = useChatSocket((message) => {
     if (message.conversationId === chat.id || message.conversationId === String(chat.id)) {
       // Check if message is from other user (not current user)
-      // Backend emits: { conversationId, messageId, "Nội Dung Tin Nhắn", "Gửi Lúc", "Người Gửi", "Loại" }
-      const messageSenderId = String(message["Người Gửi"] || message.senderId || message.senderEntityAccountId || "").toLowerCase().trim();
+      // Backend emits: { conversationId, messageId, sender_id, content, message_type, ... } (English fields)
+      const messageSenderId = String(message.sender_id || message.senderId || message.senderEntityAccountId || "").toLowerCase().trim();
       const currentUserIdNormalized = currentUserId ? String(currentUserId).toLowerCase().trim() : "";
       const isFromOtherUser = messageSenderId && messageSenderId !== currentUserIdNormalized;
       
-      // Get content from Vietnamese field name or English fallback
-      const messageContent = message["Nội Dung Tin Nhắn"] || message.content || "";
+      // Get content from English fields
+      const messageContent = message.content || "";
       
       
       // Fetch lại toàn bộ messages để đồng bộ trạng thái
@@ -460,7 +468,11 @@ function ChatWindow(props) {
         console.error("❌ Error reloading messages after socket event:", err);
       });
       // Đánh dấu đã đọc luôn nếu đang mở
-      messageApi.markMessagesRead(chat.id);
+      if (currentUserId) {
+        messageApi.markMessagesRead(chat.id, currentUserId)
+          .then(() => { try { (typeof globalThis !== "undefined" && globalThis.window) && globalThis.window.dispatchEvent(new Event("messageRefresh")); } catch (e) { console.warn("Error dispatching messageRefresh event:", e); } })
+          .catch((err) => { console.warn("Error marking messages as read:", err); });
+      }
     }
   });
 
@@ -509,7 +521,11 @@ function ChatWindow(props) {
       setLoading(false);
     });
   // Đánh dấu đã đọc (gửi conversationId qua body)
-  messageApi.markMessagesRead(chat.id);
+  if (currentUserId) {
+    messageApi.markMessagesRead(chat.id, currentUserId)
+      .then(() => { try { (typeof globalThis !== "undefined" && globalThis.window) && globalThis.window.dispatchEvent(new Event("messageRefresh")); } catch (e) { console.warn("Error dispatching messageRefresh event:", e); } })
+      .catch((err) => { console.warn("Error marking messages as read:", err); });
+  }
     // eslint-disable-next-line
   }, [chat.id, currentUserId]);
 
@@ -535,9 +551,9 @@ function ChatWindow(props) {
         setMessages((prev) => [
           ...prev,
           {
-            "Nội Dung Tin Nhắn": text,
-            "Người Gửi": senderIdToUse,
-            "Gửi Lúc": new Date(),
+            content: text,
+            sender_id: senderIdToUse,
+            createdAt: new Date(),
           },
         ]);
         setTimeout(scrollToBottom, 100);
@@ -577,13 +593,13 @@ function ChatWindow(props) {
 
   const shouldShowTimestamp = (index, list) => {
     if (index === 0) return true;
-    const current = new Date(list[index]?.["Gửi Lúc"] || list[index]?.createdAt || 0).getTime();
-    const prev = new Date(list[index - 1]?.["Gửi Lúc"] || list[index - 1]?.createdAt || 0).getTime();
+    const current = new Date(list[index]?.createdAt || 0).getTime();
+    const prev = new Date(list[index - 1]?.createdAt || 0).getTime();
     return current - prev > 30 * 60 * 1000 || new Date(current).getDate() !== new Date(prev).getDate();
   };
 
   const getSenderKey = (msg) => {
-    const raw = msg["Người Gửi"] || msg.senderId || msg.senderEntityAccountId || "";
+    const raw = msg.sender_id || msg.senderId || msg.senderEntityAccountId || "";
     return String(raw).toLowerCase().trim();
   };
 
@@ -647,21 +663,6 @@ function ChatWindow(props) {
             <span className="text-xs text-muted-foreground">&nbsp;</span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
-            {[
-              { id: "phone", Icon: Phone },
-              { id: "video", Icon: Video },
-              { id: "info", Icon: Info },
-              { id: "more", Icon: MoreVertical }
-            ].map(({ id, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                className="flex h-9 w-9 items-center justify-center rounded-full border"
-                style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))" }}
-              >
-                <Icon size={16} />
-              </button>
-            ))}
             <button
               className="flex h-9 w-9 items-center justify-center rounded-full border text-muted-foreground hover:bg-border/50"
               style={{ borderColor: "rgb(var(--border))" }}
@@ -672,7 +673,7 @@ function ChatWindow(props) {
             </button>
           </div>
         </div>
-        <div className="mt-3 h-[1px] w-full bg-border/40" />
+
       </div>
       <div
         className="flex-1 overflow-y-auto overflow-x-hidden bg-background p-4"
@@ -687,7 +688,7 @@ function ChatWindow(props) {
           displayMessages.map((msg, idx) => {
             const sender = getSenderKey(msg);
             const isMine = currentUserId ? sender === String(currentUserId).toLowerCase().trim() : false;
-            const rawContent = msg["Nội Dung Tin Nhắn"] || msg.content || msg.message || "";
+            const rawContent = msg.content || msg.message || "";
             const storyImgMatch = rawContent.match(/\[STORY_IMAGE:([^\]]+)\]/i);
             const storyImageUrl = storyImgMatch ? storyImgMatch[1] : null;
             const textContent = storyImageUrl ? rawContent.replaceAll(/\[STORY_IMAGE:[^\]]+\]/gi, "").trim() : rawContent;
@@ -697,7 +698,7 @@ function ChatWindow(props) {
               if (!refId) return null;
               const ref = messageMap.get(String(refId));
               if (!ref) return null;
-              const refText = (ref["Nội Dung Tin Nhắn"] || ref.content || ref.message || "").toString();
+              const refText = (ref.content || ref.message || "").toString();
               const refSender = getSenderKey(ref) === sender ? t("messages.you") || "Bạn" : ref.authorName || displayName;
               return (
                 <div
@@ -711,41 +712,27 @@ function ChatWindow(props) {
             })();
 
             const actionIcons = [
-              { label: t("action.moreOptions") || "More", Icon: MoreVertical },
-              { label: t("comment.reply") || "Reply", Icon: Reply },
-              { label: t("action.react") || "React", Icon: Smile }
+              { label: t("comment.reply") || "Reply", Icon: Reply }
             ];
 
-            const reactionChoices = ["👍","❤️","😂","😮","😢","😡"];
-            const handleReactionClick = async (emoji) => {
-              const mid = msg.id || msg._id;
-              setMessages((prev) =>
-                prev.map((mm) => {
-                  const key = mm.id || mm._id;
-                  if (mid && String(key) !== String(mid)) return mm;
-                  const current = mm.reactions?.[emoji] || 0;
-                  return {
-                    ...mm,
-                    reactions: { ...(mm.reactions || {}), [emoji]: current + 1 },
-                  };
-                })
-              );
-              try {
-                if (messageApi.reactMessage) {
-                  await messageApi.reactMessage(mid, emoji);
-                }
-                if (socket && chat.id) {
-                  socket.emit("message:reaction", { convId: chat.id, messageId: mid, emoji });
-                }
-              } catch {}
-            };
-
-            const messageKey = msg.id || msg._id || msg.messageId || `${msg["Gửi Lúc"] || ""}-${idx}`;
+            const messageKey = msg.id || msg._id || msg.messageId || `${msg.createdAt || ""}-${idx}`;
 
             const bubbleTextColor = isMine ? "#ffffff" : "rgb(var(--foreground))";
             const bubbleStyle = isMine
-              ? { color: bubbleTextColor }
-              : { background: "rgb(var(--card))", color: bubbleTextColor, borderColor: "rgb(var(--border))" };
+              ? { 
+                  color: bubbleTextColor,
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                  wordWrap: "break-word"
+                }
+              : { 
+                  background: "rgb(var(--card))", 
+                  color: bubbleTextColor, 
+                  borderColor: "rgb(var(--border))",
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                  wordWrap: "break-word"
+                };
 
             const bubble = (
               <div
@@ -761,48 +748,18 @@ function ChatWindow(props) {
                   {storyImageUrl && (
                     <img src={storyImageUrl} alt="" className="max-h-[150px] rounded-lg object-cover" />
                   )}
-                  <span style={{ color: bubbleTextColor }}>{textContent}</span>
+                  <span 
+                    style={{ 
+                      color: bubbleTextColor,
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                      wordWrap: "break-word"
+                    }}
+                  >
+                    {textContent}
+                  </span>
                 </div>
-                <div className="pointer-events-none absolute -top-8 left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full bg-card/95 px-2 py-1 text-lg shadow-md group-hover:flex">
-                  {reactionChoices.map((emoji) => (
-                    <button
-                      key={emoji}
-                      className="pointer-events-auto text-base"
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        handleReactionClick(emoji);
-                      }}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-                {!!msg.reactions && (
-                  <div className="mt-1 flex gap-1 text-xs">
-                    <div className="flex items-center gap-1 rounded-full bg-black/10 px-2 py-0.5">
-                      {Object.entries(msg.reactions).map(([k, v]) => (
-                        <span key={k} className="flex items-center gap-0.5">
-                          {k} {v}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div
-                  className={cn(
-                    "mt-1 flex text-[11px] opacity-0 transition group-hover:opacity-100",
-                    isMine ? "justify-end" : "justify-start"
-                  )}
-                  style={{ color: isMine ? "rgba(255,255,255,0.9)" : "rgb(var(--muted-foreground))" }}
-                >
-                  <span>{new Date(msg["Gửi Lúc"] || msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                  {isMine && (
-                    <span className="ml-2 flex items-center gap-1 select-none">
-                      <CheckCheck size={12} />
-                      {t("messages.seen")}
-                    </span>
-                  )}
-                </div>
+
               </div>
             );
 
@@ -814,7 +771,7 @@ function ChatWindow(props) {
                 {shouldShowTimestamp(idx, displayMessages) && (
                   <div className="mb-3 flex w-full justify-center">
                     <span className="rounded-full px-3 py-0.5 text-[11px] text-muted-foreground" style={{ background: "rgb(var(--card))" }}>
-                      {formatTimestampLabel(msg["Gửi Lúc"] || msg.createdAt || Date.now())}
+                      {formatTimestampLabel(msg.createdAt || Date.now())}
                     </span>
                   </div>
                 )}
@@ -831,6 +788,9 @@ function ChatWindow(props) {
                       className="h-7 w-7 rounded-full object-cover"
                     />
                   )}
+                  {!isMine && !showAvatar && (
+                    <div className="h-7 w-7 flex-shrink-0" />
+                  )}
                   {isMine && (
                     <div
                       className="hidden items-center gap-1 rounded-full border px-2 py-1 text-xs opacity-0 transition group-hover/message:opacity-100 lg:flex"
@@ -841,6 +801,9 @@ function ChatWindow(props) {
                           <Icon size={14} />
                         </button>
                       ))}
+                      <span className="ml-2 text-[11px] whitespace-nowrap text-muted-foreground">
+                        {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     </div>
                   )}
                   {bubble}
@@ -854,6 +817,9 @@ function ChatWindow(props) {
                           <Icon size={14} />
                         </button>
                       ))}
+                      <span className="ml-2 text-[11px] whitespace-nowrap text-muted-foreground">
+                        {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     </div>
                   )}
                 </div>

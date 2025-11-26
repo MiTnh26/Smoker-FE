@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
-import { Search, Bell, Video, MoreHorizontal } from "lucide-react";
+import { Search } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
@@ -35,9 +35,7 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
   }), []);
   const tabs = [
     { id: "all", label: t('messages.tabAll') || "All" },
-    { id: "unread", label: t('messages.tabUnread') || "Unread" },
-    { id: "groups", label: t('messages.tabGroups') || "Groups" },
-    { id: "communities", label: t('messages.tabCommunities') || "Communities" }
+    { id: "unread", label: t('messages.tabUnread') || "Unread" }
   ];
   const [activeTab, setActiveTab] = React.useState("all");
 
@@ -211,22 +209,18 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
 
         const mappedResults = await Promise.allSettled(
           conversationsData.map(async (conv) => {
-            // Determine the other participant's EntityAccountId
-            const participant1 = String(conv["Người 1"] || "").toLowerCase().trim();
-            const participant2 = String(conv["Người 2"] || "").toLowerCase().trim();
+            // Use English fields only
+            const participants = conv.participants || [];
             const currentUserIdNormalized = String(currentUserEntityId || "").toLowerCase().trim();
             
-            const otherParticipantId = 
-              participant1 === currentUserIdNormalized 
-                ? conv["Người 2"] 
-                : participant2 === currentUserIdNormalized
-                ? conv["Người 1"]
-                : null; // Fallback if neither matches
+            // Find other participant (not the current user)
+            const otherParticipantId = participants.find(p => 
+              String(p).toLowerCase().trim() !== currentUserIdNormalized
+            ) || null;
             
             if (!otherParticipantId) {
               console.warn('[MessagesPanel] ⚠️ Could not determine other participant for conversation:', conv._id, {
-                participant1: conv["Người 1"],
-                participant2: conv["Người 2"],
+                participants: conv.participants,
                 currentUserEntityId
               });
             }
@@ -252,33 +246,43 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
 
             const profile = await resolveProfile(otherParticipantId);
             if (profile) {
-              userName = profile.name || userName;
-              userAvatar = profile.avatar || null;
+              // Check status from conversation data (new structure: participantStatuses) or profile
+              const status = conv.participantStatuses?.[otherParticipantId] || 
+                           conv.participant1Status || 
+                           conv.participant2Status || 
+                           profile.status;
+              
+              if (status === 'banned') {
+                userName = "người dùng Smoker";
+                userAvatar = null; // Ẩn avatar
+              } else {
+                userName = profile.name || userName;
+                userAvatar = profile.avatar || null;
+              }
               entityId = profile.entityId || otherParticipantId;
             }
             
-            // Lấy tin nhắn cuối cùng
-            const messages = Object.values(conv["Cuộc Trò Chuyện"] || {});
-            const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
-            const lastTime = lastMsg ? new Date(lastMsg["Gửi Lúc"]) : null;
+            // Get last message content and time from new structure (English fields only)
+            let lastMessageText = conv.last_message_content || "";
+            let timeText = "";
             
-            // Count unread messages
-            let unreadCount = 0;
-            if (currentUserEntityId && messages.length > 0) {
-              unreadCount = messages.filter(msg => {
-                const senderId = String(msg["Người Gửi"] || "").toLowerCase().trim();
-                const currentUserIdNormalized = String(currentUserEntityId).toLowerCase().trim();
-                return senderId !== currentUserIdNormalized && !msg["Đã Đọc"];
-              }).length;
+            // Format time from last_message_time
+            if (conv.last_message_time) {
+              timeText = formatRelativeTime(conv.last_message_time);
+            } else if (conv.updatedAt) {
+              timeText = formatRelativeTime(conv.updatedAt);
             }
+            
+            // Get unread count from new structure
+            let unreadCount = conv.unreadCount || 0;
             
             return {
               id: conv._id,
               name: userName,
               avatar: userAvatar,
               entityId: entityId, // Store entityId for opening chat
-              lastMessage: lastMsg ? lastMsg["Nội Dung Tin Nhắn"] : "",
-              time: lastTime ? formatRelativeTime(lastTime) : "",
+              lastMessage: lastMessageText,
+              time: timeText,
               unread: unreadCount
             };
           })
@@ -317,7 +321,15 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
     };
     
     fetchConversations();
-  }, [activeEntityId, onUnreadCountChange]); // Re-fetch when data changes
+
+    // Listen for the global message refresh event
+    const handleRefresh = () => fetchConversations();
+    window.addEventListener("messageRefresh", handleRefresh);
+
+    return () => {
+      window.removeEventListener("messageRefresh", handleRefresh);
+    };
+  }, [activeEntityId, onUnreadCountChange]);
 
   const filteredConversations = conversations.filter((conv) => {
     const matchesSearch = conv.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -341,60 +353,6 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
       className={cn("flex h-full flex-col min-h-0")}
       style={{ background: themeVars.cardSoft, color: themeVars.foreground }}
     >
-      {/* Top header */}
-      <div
-        className="flex items-center justify-between px-4 py-3"
-        style={{
-          borderBottom: `1px solid ${themeVars.borderSoft}`,
-          background: `linear-gradient(180deg, ${themeVars.card} 0%, ${themeVars.backgroundSoft} 100%)`,
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="flex h-9 w-9 items-center justify-center rounded-full overflow-hidden flex-shrink-0"
-            style={{
-              background: currentUserAvatar ? 'transparent' : `linear-gradient(140deg, ${themeVars.primary} 0%, ${themeVars.primarySoft} 100%)`,
-              color: themeVars.primaryForeground,
-            }}
-          >
-            {currentUserAvatar ? (
-              <img 
-                src={currentUserAvatar} 
-                alt={currentUserName || "User"} 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-base font-bold">
-                {getInitial(currentUserName)}
-              </span>
-            )}
-          </div>
-          <div>
-            <p className="m-0 text-base font-semibold" style={{ color: themeVars.foreground }}>
-              {t('messages.chats') || "Chats"}
-            </p>
-            <p className="m-0 text-xs" style={{ color: themeVars.mutedForeground }}>
-              {t('messages.keepInTouch') || "Stay connected with your friends"}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {[{ id: "bell", Icon: Bell }, { id: "video", Icon: Video }, { id: "ellipsis", Icon: MoreHorizontal }].map(({ id, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className="flex h-9 w-9 items-center justify-center rounded-full transition"
-              style={{
-                border: `1px solid ${themeVars.borderStrong}`,
-                background: themeVars.card,
-                color: themeVars.mutedForeground,
-              }}
-            >
-              <Icon size={16} />
-            </button>
-          ))}
-        </div>
-      </div>
       {/* Search bar */}
       <div className="px-4 pt-3">
         <div
@@ -475,6 +433,12 @@ export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId
                 color: themeVars.foreground,
               }}
               onClick={() => {
+                // Optimistically clear unread and mark as read
+                setConversations((prev) =>
+                  prev.map((c) => (String(c.id) === String(conv.id) ? { ...c, unread: 0 } : c))
+                );
+                try { if (activeEntityId) messageApi.markMessagesRead(conv.id, activeEntityId).catch(() => {}); } catch {}
+                try { window.dispatchEvent(new Event("messageRefresh")); } catch {}
                 if (window.__openChat) {
                   window.__openChat({ 
                     id: conv.id, 

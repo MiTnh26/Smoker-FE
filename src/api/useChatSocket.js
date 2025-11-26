@@ -149,7 +149,9 @@ export default function useChatSocket(onNewMessage) {
 
       // Tạo socket mới
       const token = localStorage.getItem('token');
-      globalSocket = io(SOCKET_URL, {
+      const socketOrigin = SOCKET_URL.replace(/\/api\/?$/, "");
+      globalSocket = io(socketOrigin, {
+        path: "/api/socket.io",  // 👈 Trùng với backend
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,

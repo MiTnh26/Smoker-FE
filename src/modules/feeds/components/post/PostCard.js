@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { useNavigate } from "react-router-dom"
 import YouTubeLinkPreview from "../../../../components/common/YouTubeLinkPreview"
 import { splitTextWithYouTube } from "../../../../utils/youtube"
-import { likePost, unlikePost, trackPostView, trackPostShare } from "../../../../api/postApi"
+import { likePost, unlikePost, trackPostView, trackPostShare, getPostById } from "../../../../api/postApi"
 import AudioWaveform from "../audio/AudioWaveform"
 import VideoPlayer from "../video/VideoPlayer"
 import PostMediaLayout from "./PostMediaLayout"
 import CommentSection from "../comment/CommentSection"
 import ShareModal from "../modals/ShareModal"
+import NotificationToPostModal from "../modals/NotificationToPostModal"
 import ReadMoreText from "../comment/ReadMoreText"
 import { cn } from "../../../../utils/cn"
 import "../../../../styles/modules/feeds/components/post/post-card.css"
@@ -28,12 +30,16 @@ export default function PostCard({
   onShared
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const isPlaying = playingPost === post.id
   const [liked, setLiked] = useState(Boolean(post.likedByCurrentUser))
   const [likeCount, setLikeCount] = useState(Number(post.likes || 0))
   const [showComments, setShowComments] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  const [originalPost, setOriginalPost] = useState(null)
+  const [loadingOriginalPost, setLoadingOriginalPost] = useState(false)
+  const [originalPostModalOpen, setOriginalPostModalOpen] = useState(false)
   const menuRef = useRef(null)
   const shareButtonRef = useRef(null)
   const hasTrackedView = useRef(false) // Track xem đã gọi API view chưa
@@ -48,14 +54,114 @@ export default function PostCard({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [menuOpen])
 
-  // Track view khi post được render (chỉ track 1 lần)
+  // Update liked state when post prop changes
   useEffect(() => {
-    if (!hasTrackedView.current && post.id) {
+    setLiked(Boolean(post.likedByCurrentUser));
+    setLikeCount(Number(post.likes || 0));
+  }, [post.likedByCurrentUser, post.likes, post.id])
+
+  // Query original post if this is a repost (chỉ query 1 lần, có cache)
+  const originalPostFetched = useRef(false);
+  
+  // Validate ObjectId format
+  const isValidObjectId = (id) => {
+    if (!id) return false;
+    const idStr = String(id);
+    return /^[0-9a-fA-F]{24}$/.test(idStr);
+  };
+
+  useEffect(() => {
+    // Reset khi repostedFromId thay đổi
+    if (post.repostedFromId && post.repostedFromId.toString() !== originalPostFetched.current) {
+      originalPostFetched.current = post.repostedFromId.toString();
+      setOriginalPost(null); // Reset để query lại
+    }
+  }, [post.repostedFromId]);
+
+  useEffect(() => {
+    // Validate ObjectId trước khi query
+    if (!post.repostedFromId || !isValidObjectId(post.repostedFromId) || 
+        originalPost || loadingOriginalPost || originalPostFetched.current === 'failed') {
+      return; // Đã có data, đang loading, đã fail, hoặc ID không hợp lệ thì không query
+    }
+
+    setLoadingOriginalPost(true);
+    getPostById(post.repostedFromId, { includeMedias: true, includeMusic: true })
+      .then(response => {
+        const postData = response?.data?.post || response?.data || response;
+        if (postData && (postData._id || postData.id)) {
+          // Transform post data similar to transformPost in PostFeed
+          const transformed = {
+            id: postData._id || postData.id,
+            user: postData.authorName || postData.author?.userName || postData.account?.userName || "Người dùng",
+            avatar: postData.authorAvatar || postData.author?.avatar || postData.account?.avatar || null,
+            content: postData.content || postData.caption || "",
+            caption: postData.caption || "",
+            // Extract medias
+            medias: (() => {
+              const medias = postData.medias;
+              if (!medias) return { images: [], videos: [], audios: [] };
+              
+              if (Array.isArray(medias)) {
+                return {
+                  images: medias.filter(m => m.type === 'image').map(m => ({ id: m._id || m.id, url: m.url || m.src, caption: m.caption })),
+                  videos: medias.filter(m => m.type === 'video').map(m => ({ id: m._id || m.id, url: m.url || m.src, poster: m.poster || m.thumbnail })),
+                  audios: medias.filter(m => m.type === 'audio').map(m => ({ id: m._id || m.id, url: m.url || m.src }))
+                };
+              }
+              
+              if (typeof medias === 'object') {
+                return {
+                  images: (medias.images || []).map(m => ({ id: m._id || m.id, url: m.url || m.src, caption: m.caption })),
+                  videos: (medias.videos || []).map(m => ({ id: m._id || m.id, url: m.url || m.src, poster: m.poster || m.thumbnail })),
+                  audios: (medias.audios || []).map(m => ({ id: m._id || m.id, url: m.url || m.src }))
+                };
+              }
+              
+              return { images: [], videos: [], audios: [] };
+            })(),
+            hashtags: postData.hashtags || [],
+            time: postData.createdAt ? new Date(postData.createdAt).toLocaleDateString('vi-VN') : null
+          };
+          setOriginalPost(transformed);
+        } else {
+          // Post not found - mark as failed để không query lại
+          originalPostFetched.current = 'failed';
+          console.warn('[PostCard] Original post not found:', post.repostedFromId);
+        }
+      })
+      .catch(err => {
+        console.error('[PostCard] Failed to load original post:', err);
+        // Mark as failed để không query lại liên tục
+        originalPostFetched.current = 'failed';
+      })
+      .finally(() => {
+        setLoadingOriginalPost(false);
+      });
+  }, [post.repostedFromId, originalPost, loadingOriginalPost])
+
+  // Track view khi post được render (chỉ track 1 lần, chỉ cho post hợp lệ)
+  useEffect(() => {
+    // Validate post.id là ObjectId hợp lệ (24 hex characters)
+    const isValidObjectId = (id) => {
+      if (!id) return false;
+      const idStr = String(id);
+      return /^[0-9a-fA-F]{24}$/.test(idStr);
+    };
+
+    if (!hasTrackedView.current && post.id && isValidObjectId(post.id)) {
       hasTrackedView.current = true;
       // Track view async, không cần đợi response
       trackPostView(post.id).catch(err => {
-        console.warn('[PostCard] Failed to track view:', err);
+        // Chỉ log warning, không throw error để không ảnh hưởng UI
+        if (err?.response?.status !== 400 && err?.response?.status !== 404) {
+          console.warn('[PostCard] Failed to track view:', err);
+        }
       });
+    } else if (post.id && !isValidObjectId(post.id)) {
+      // Mark as tracked để không thử lại
+      hasTrackedView.current = true;
+      console.warn('[PostCard] Invalid post ID format, skipping view tracking:', post.id);
     }
   }, [post.id])
 
@@ -158,9 +264,35 @@ export default function PostCard({
       // Tìm media object từ images array
       const foundMedia = medias.images.find(img => img.url === imageUrl);
       const mediaId = foundMedia?._id || foundMedia?.id || foundMedia?.mediaId || null;
-      onImageClick({ imageUrl, postId: post.id, mediaId });
+      const currentIndex = medias.images.findIndex(img => img.url === imageUrl);
+      onImageClick({ 
+        imageUrl, 
+        postId: post.id, 
+        mediaId,
+        allImages: medias.images,
+        currentIndex
+      });
     } else {
       console.warn('[PostCard] onImageClick callback not provided');
+    }
+  }
+
+  // Navigate to profile based on entityType
+  const handleProfileClick = () => {
+    // Get entityAccountId and entityType from post
+    const entityAccountId = post.entityAccountId || post.authorEntityAccountId || post.ownerEntityAccountId || null;
+    const entityId = post.authorEntityId || post.entityId || post.accountId || null;
+    const entityType = post.authorEntityType || post.entityType || post.type || null;
+    
+    if (!entityAccountId && !entityId) return;
+    
+    if (entityType === 'BarPage') {
+      navigate(`/bar/${entityId || entityAccountId}`);
+    } else if (entityType === 'BusinessAccount' || entityType === 'Business') {
+      navigate(`/profile/${entityAccountId || entityId}`);
+    } else {
+      // Account or default
+      navigate(`/profile/${entityAccountId || entityId}`);
     }
   }
 
@@ -184,6 +316,7 @@ export default function PostCard({
             <img
               src={post.avatar || "https://via.placeholder.com/40"}
               alt={post.user}
+              onClick={handleProfileClick}
               className={cn(
                 "w-14 h-14 rounded-2xl object-cover",
                 "border-2 border-primary/20 ring-2 ring-primary/5",
@@ -191,7 +324,8 @@ export default function PostCard({
                 "hover:border-primary/50 hover:ring-primary/20",
                 "hover:shadow-[0_8px_24px_rgba(var(--primary),0.25)]",
                 "hover:scale-110 hover:rotate-3",
-                "shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+                "shadow-[0_4px_12px_rgba(0,0,0,0.12)]",
+                "cursor-pointer"
               )}
             />
             {post.verified && (
@@ -207,11 +341,15 @@ export default function PostCard({
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className={cn(
-              "font-semibold text-[0.95rem] mb-1",
-              "text-foreground whitespace-nowrap",
-              "overflow-hidden text-ellipsis"
-            )}>
+            <h4 
+              onClick={handleProfileClick}
+              className={cn(
+                "font-semibold text-[0.95rem] mb-1",
+                "text-foreground whitespace-nowrap",
+                "overflow-hidden text-ellipsis",
+                "cursor-pointer hover:text-primary transition-colors"
+              )}
+            >
               {post.user || "Người dùng"}
             </h4>
             <div className="flex items-center gap-2 flex-wrap">
@@ -312,6 +450,18 @@ export default function PostCard({
       </div>
 
       <div>
+      {/* Repost indicator and original post info */}
+      {post.repostedFromId && (
+        <div className="mb-3 flex items-center gap-2 text-muted-foreground text-[0.8rem]">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+            <polyline points="16 6 12 2 8 6" />
+            <line x1="12" y1="2" x2="12" y2="15" />
+          </svg>
+          <span>{post.user || "Người dùng"} {t('feed.reposted') || 'đã đăng lại'}</span>
+        </div>
+      )}
+
       {/* Content */}
         {post.content && (
       <div className="mt-3">
@@ -404,7 +554,7 @@ export default function PostCard({
 
 
         {/* Display medias using PostMediaLayout component */}
-        {!audioMedia && (medias.images.length > 0 || medias.videos.length > 0) && (
+        {!post.repostedFromId && !audioMedia && (medias.images.length > 0 || medias.videos.length > 0) && (
           <PostMediaLayout
             images={medias.images}
             videos={medias.videos}
@@ -413,7 +563,7 @@ export default function PostCard({
         )}
 
         {/* Fallback: Display single image for backward compatibility */}
-        {!audioMedia && !post.medias && post.image && (
+        {!post.repostedFromId && !audioMedia && !post.medias && post.image && (
           <PostMediaLayout
             images={[{ url: post.image, id: 'fallback-image' }]}
             videos={[]}
@@ -422,12 +572,83 @@ export default function PostCard({
         )}
         
         {/* Fallback: Display single video for backward compatibility */}
-        {!audioMedia && !post.medias && post.videoSrc && !post.image && (
+        {!post.repostedFromId && !audioMedia && !post.medias && post.videoSrc && !post.image && (
           <PostMediaLayout
             images={[]}
             videos={[{ url: post.videoSrc, id: 'fallback-video', poster: post.poster }]}
             onImageClick={handleImageClick}
           />
+        )}
+
+        {/* Original Post Preview (for reposts) - Query từ repostedFromId */}
+        {post.repostedFromId && (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setOriginalPostModalOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                setOriginalPostModalOpen(true)
+              }
+            }}
+            className={cn(
+            "mt-3 rounded-lg border border-border/30",
+            "bg-muted/30 p-3",
+            "hover:bg-muted/50 transition-colors",
+            "cursor-pointer"
+          )}>
+            {loadingOriginalPost ? (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                {t('common.loading') || 'Đang tải...'}
+              </div>
+            ) : originalPost ? (
+              <>
+                {/* Original Author Info */}
+                {originalPost.user && (
+                  <div className="flex items-center gap-2 mb-2">
+                    <img
+                      src={originalPost.avatar || "https://via.placeholder.com/32"}
+                      alt={originalPost.user}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                    <span className="font-semibold text-[0.9rem] text-foreground">
+                      {originalPost.user}
+                    </span>
+                  </div>
+                )}
+                
+                {/* Original Content */}
+                {originalPost.content && (
+                  <div className="mb-2">
+                    <ReadMoreText 
+                      text={originalPost.content} 
+                      maxLines={3}
+                      className="whitespace-pre-wrap leading-[1.6] text-[0.9rem] text-foreground/90 m-0 break-words"
+                    />
+                  </div>
+                )}
+
+                {/* Original Media - sử dụng PostMediaLayout để đồng bộ với cách hiển thị ở newsfeed */}
+                {originalPost.medias && (originalPost.medias.images?.length > 0 || originalPost.medias.videos?.length > 0) && (
+                  <div className="mt-2">
+                    <PostMediaLayout
+                      images={originalPost.medias.images || []}
+                      videos={originalPost.medias.videos || []}
+                      onImageClick={(imageUrl) => {
+                        // Optional: có thể mở ImageDetailModal nếu cần
+                        console.log('[PostCard] Original post image clicked:', imageUrl);
+                      }}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground text-sm">
+                {t('feed.postNotFound') || 'Không tìm thấy bài viết gốc'}
+              </div>
+            )}
+          </div>
         )}
 
         {post.hashtags && post.hashtags.length > 0 && (
@@ -561,6 +782,13 @@ export default function PostCard({
             inline={true}
           />
         </div>
+      )}
+      {post.repostedFromId && (
+        <NotificationToPostModal
+          open={originalPostModalOpen}
+          postId={post.repostedFromId}
+          onClose={() => setOriginalPostModalOpen(false)}
+        />
       )}
       <ShareModal
         open={shareModalOpen}
