@@ -446,17 +446,23 @@ export default function PublicProfile() {
                 <button
                   onClick={() => setShowBookingView(!showBookingView)}
                   className={cn(
-                    "px-6 py-3 rounded-lg font-semibold text-base",
-                    showBookingView 
-                      ? "bg-gray-500 text-white" 
-                      : "bg-primary text-primary-foreground",
+                    "px-6 py-3 rounded-xl font-bold text-base",
                     "border-none",
-                    "hover:opacity-90 transition-all duration-200",
+                    "transition-all duration-300",
                     "active:scale-95",
-                    "flex items-center gap-2"
+                    "flex items-center gap-2",
+                    "shadow-lg hover:shadow-xl",
+                    showBookingView 
+                      ? "bg-gray-500 text-white hover:bg-gray-600" 
+                      : "bg-gradient-to-r from-[rgb(var(--success))] to-[rgb(var(--primary))] text-white hover:from-[rgb(var(--success))] hover:to-[rgb(var(--primary-hover))]",
+                    "transform hover:scale-105"
                   )}
+                  style={{
+                    boxShadow: showBookingView 
+                      ? '0 4px 12px rgba(0, 0, 0, 0.15)' 
+                      : '0 4px 16px rgba(var(--success), 0.4)'
+                  }}
                 >
-                  <i className="bx bxs-calendar-check text-xl" />
                   <span>{showBookingView ? "Hủy đặt bàn" : "🍽️ Đặt bàn ngay"}</span>
                 </button>
               </div>
