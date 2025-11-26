@@ -89,16 +89,17 @@ export default function RightSidebar() {
         const conversationsData = res.data?.data || res.data || [];
         const contactsWithTime = await Promise.all(
           conversationsData.map(async (conv) => {
-            // Determine the other participant's EntityAccountId
-            const otherParticipantId = 
-              String(conv["Người 1"]) === String(currentUserEntityId) 
-                ? conv["Người 2"] 
-                : conv["Người 1"];
+            // Determine the other participant's EntityAccountId from new structure (English fields)
+            const participants = conv.participants || [];
+            const currentUserIdNormalized = String(currentUserEntityId).toLowerCase().trim();
+            const otherParticipantId = participants.find(p => 
+              String(p).toLowerCase().trim() !== currentUserIdNormalized
+            ) || null;
             
-            // Get last message time for sorting
-            const messages = Object.values(conv["Cuộc Trò Chuyện"] || {});
-            const lastMsg = messages.length > 0 ? messages[messages.length - 1] : null;
-            const lastMessageTime = lastMsg ? new Date(lastMsg["Gửi Lúc"]).getTime() : 0;
+            // Get last message time for sorting from new structure
+            const lastMessageTime = conv.last_message_time 
+              ? new Date(conv.last_message_time).getTime() 
+              : (conv.updatedAt ? new Date(conv.updatedAt).getTime() : 0);
             
             // Fetch user info from EntityAccountId
             let userName = otherParticipantId; // Fallback to ID

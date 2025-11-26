@@ -27,6 +27,36 @@ axiosClient.interceptors.request.use((config) => {
     console.warn(`[REQUEST] No token found for ${config.url}`);
   }
   
+  // Auto-add locale from i18n (if available)
+  try {
+    // Get locale from localStorage (frontend stores as 'lang')
+    // Or from i18next (stores as 'i18nextLng')
+    const storedLang = localStorage.getItem('lang') || localStorage.getItem('i18nextLng');
+    if (storedLang) {
+      // Normalize to 'en' or 'vi'
+      const locale = storedLang.startsWith('en') ? 'en' : 'vi';
+      config.headers['X-Locale'] = locale;
+      // Debug log (can be removed in production)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[axiosClient] Setting X-Locale header: ${locale} (from localStorage: ${storedLang})`);
+      }
+    } else {
+      // Fallback: check browser language
+      const browserLang = navigator.language || navigator.userLanguage || 'vi';
+      const locale = browserLang.startsWith('en') ? 'en' : 'vi';
+      config.headers['X-Locale'] = locale;
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[axiosClient] Setting X-Locale header: ${locale} (from browser: ${browserLang})`);
+      }
+    }
+  } catch (e) {
+    // If i18n not available, default to 'vi'
+    config.headers['X-Locale'] = 'vi';
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[axiosClient] Error getting locale, defaulting to 'vi':`, e);
+    }
+  }
+  
   console.log(`[REQUEST] Request data:`, config.data);
   
   // If sending FormData, let browser set proper multipart boundary

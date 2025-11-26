@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Phone, Video, Info, MoreVertical, Reply, Smile, Search, CheckCheck } from "lucide-react";
+import { ArrowLeft, Reply, Search } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import MessagesPanel from "../../../components/layout/common/MessagesPanel";
 import MessageList from "../components/MessageList";
@@ -63,41 +63,75 @@ function ConversationView({ chat, onBack }) {
   }, []);
 
   const getTimestamp = (m) => {
-    return (
-      m?.createdAt ||
-      m?.CreatedAt ||
-      m?.timestamp ||
-      m?.Timestamp ||
-      m?.["Thời Gian"] ||
-      0
-    );
+    // Use English fields only
+    if (m?.createdAt) {
+      return typeof m.createdAt === 'number' ? m.createdAt : new Date(m.createdAt).getTime();
+    }
+    return m?.timestamp || 0;
   };
 
   const PAGE_SIZE = 50;
 
   const loadMessages = useCallback(async () => {
     if (!chat?.id) return;
-    const res = await messageApi.getMessages(chat.id, { limit: PAGE_SIZE });
+    const res = await messageApi.getMessages(chat.id, { limit: PAGE_SIZE, offset: 0 });
     const arr = res?.data?.data || res?.data || [];
     const normalized = Array.isArray(arr) ? arr : [];
-    normalized.sort((a, b) => getTimestamp(a) - getTimestamp(b));
-    setMessages(normalized);
-    setHasMore(normalized.length >= PAGE_SIZE);
+    // Normalize message structure to use English fields only
+    const normalizedMessages = normalized.map(m => {
+      const sharedPost = m.shared_post || m.sharedPost || null;
+      const sharedPostId = sharedPost?._id || m.shared_post_id || m.sharedPostId || null;
+      return {
+        ...m,
+        id: m._id || m.id || m.messageId,
+        content: m.content || "",
+        senderId: m.sender_id || m.senderId || "",
+        createdAt: m.createdAt || m.timestamp || new Date(),
+        messageType: m.message_type || m.messageType || "text",
+        sharedPost,
+        sharedPostId,
+        isPostShare: m.is_post_share || m.isPostShare || !!sharedPostId,
+      };
+    });
+    normalizedMessages.sort((a, b) => getTimestamp(a) - getTimestamp(b));
+    setMessages(normalizedMessages);
+    setHasMore(res?.data?.pagination?.hasMore || normalizedMessages.length >= PAGE_SIZE);
     setTimeout(() => {
       if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
     }, 50);
+    // Mark as read and refresh message badge
+    try {
+      if (currentUserId) await messageApi.markMessagesRead(chat.id, currentUserId);
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("messageRefresh"));
+    } catch {}
   }, [chat?.id]);
 
   const loadMore = useCallback(async () => {
     if (!chat?.id || !hasMore || messages.length === 0) return;
     const oldest = messages[0];
-    const before = getTimestamp(oldest);
-    const res = await messageApi.getMessages(chat.id, { before, limit: PAGE_SIZE });
+    const beforeId = oldest?._id || oldest?.id;
+    const res = await messageApi.getMessages(chat.id, { before: beforeId, limit: PAGE_SIZE });
     const arr = res?.data?.data || res?.data || [];
     const more = Array.isArray(arr) ? arr : [];
-    more.sort((a, b) => getTimestamp(a) - getTimestamp(b));
-    setMessages((prev) => [...more, ...prev]);
-    if (more.length < PAGE_SIZE) setHasMore(false);
+    // Normalize message structure to use English fields only
+    const normalizedMore = more.map(m => {
+      const sharedPost = m.shared_post || m.sharedPost || null;
+      const sharedPostId = sharedPost?._id || m.shared_post_id || m.sharedPostId || null;
+      return {
+        ...m,
+        id: m._id || m.id || m.messageId,
+        content: m.content || "",
+        senderId: m.sender_id || m.senderId || "",
+        createdAt: m.createdAt || m.timestamp || new Date(),
+        messageType: m.message_type || m.messageType || "text",
+        sharedPost,
+        sharedPostId,
+        isPostShare: m.is_post_share || m.isPostShare || !!sharedPostId,
+      };
+    });
+    normalizedMore.sort((a, b) => getTimestamp(a) - getTimestamp(b));
+    setMessages((prev) => [...normalizedMore, ...prev]);
+    if (normalizedMore.length < PAGE_SIZE) setHasMore(false);
   }, [chat?.id, hasMore, messages]);
 
   useEffect(() => {
@@ -125,7 +159,9 @@ function ConversationView({ chat, onBack }) {
   const { socket } = useChatSocket(() => {
     if (!chat?.id) return;
     loadMessages();
-    messageApi.markMessagesRead(chat.id);
+    if (currentUserId) messageApi.markMessagesRead(chat.id, currentUserId)
+      .then(() => { try { (typeof window !== "undefined") && window.dispatchEvent(new Event("messageRefresh")); } catch (e) {} })
+      .catch(() => {});
   });
 
   useEffect(() => {
@@ -156,21 +192,7 @@ function ConversationView({ chat, onBack }) {
         })
       );
     };
-    // read receipt -> mark my messages up to id as read
-    const onRead = (payload) => {
-      const lastId = payload?.messageId || payload?.lastReadId;
-      if (!lastId) return;
-      setMessages((prev) =>
-        prev.map((m) => {
-          const isMine = String(m.senderId || "").toLowerCase().trim() === String(currentUserId || "").toLowerCase().trim();
-          if (!isMine) return m;
-          // naive: mark all as read when event received
-          return { ...m, _status: "read" };
-        })
-      );
-    };
     socket.on("message:ack", onAck);
-    socket.on("message:read", onRead);
     socket.on("typing:start", onTypingStart);
     socket.on("typing:stop", onTypingStop);
     socket.on("presence:update", onPresence);
@@ -192,7 +214,6 @@ function ConversationView({ chat, onBack }) {
     return () => {
       socket.off("connect", join);
       socket.off("message:ack", onAck);
-      socket.off("message:read", onRead);
       socket.off("typing:start", onTypingStart);
       socket.off("typing:stop", onTypingStop);
       socket.off("presence:update", onPresence);
@@ -364,7 +385,7 @@ function ConversationView({ chat, onBack }) {
     const q = messageQuery.trim().toLowerCase();
     if (!q) return messages;
     return messages.filter((msg) => {
-      const text = (msg["Nội Dung Tin Nhắn"] || msg.content || msg.message || "").toString().toLowerCase();
+      const text = (msg.content || msg.message || "").toString().toLowerCase();
       return text.includes(q);
     });
   }, [messages, messageQuery]);
@@ -378,7 +399,106 @@ function ConversationView({ chat, onBack }) {
     return map;
   }, [messages]);
 
-  const getSenderKey = (msg) => String(msg["Người Gửi"] || msg.senderId || "").toLowerCase().trim();
+  const getSenderKey = (msg) => String(msg.sender_id || msg.senderId || "").toLowerCase().trim();
+
+  const getPostUrl = useCallback((postId) => {
+    if (!postId) return null;
+    if (typeof window !== "undefined" && window.location?.origin) {
+      return `${window.location.origin}/posts/${postId}`;
+    }
+    return `/posts/${postId}`;
+  }, []);
+
+  const renderSharedPostCard = useCallback((sharedPost, sharedPostId, isMine) => {
+    if (!sharedPost && !sharedPostId) return null;
+    const preview = sharedPost || {};
+    const previewImage =
+      preview.previewImage ||
+      (Array.isArray(preview.medias)
+        ? (preview.medias.find((m) => (m.type || "").toLowerCase().includes("image")) || preview.medias[0])?.url
+        : null) ||
+      preview.images ||
+      null;
+    const summarySource = preview.content || preview.title || "";
+    const summary =
+      typeof summarySource === "string" && summarySource.length > 140
+        ? `${summarySource.slice(0, 140)}…`
+        : summarySource;
+    const postLink = getPostUrl(sharedPostId || preview._id);
+    const label = t("messages.sharedPostLabel") || "Đã chia sẻ một bài viết";
+    const actionLabel = t("messages.openPost") || "Xem bài viết";
+    const fallbackTitle = t("messages.sharedPostFallback") || "Bài viết trên Smoker";
+    const authorInitial = preview.authorName ? preview.authorName[0]?.toUpperCase?.() : "S";
+
+    return (
+      <div
+        className="mt-3 flex w-full gap-3 overflow-hidden rounded-2xl border"
+        style={{
+          borderColor: isMine ? "rgba(255,255,255,0.35)" : "rgb(var(--border))",
+          background: isMine ? "rgba(255,255,255,0.08)" : "rgb(var(--card))",
+        }}
+      >
+        {previewImage && (
+          <div className="relative w-28 flex-shrink-0 overflow-hidden">
+            <img src={previewImage} alt="" className="h-full w-full object-cover" />
+          </div>
+        )}
+        <div className="flex flex-1 flex-col gap-2 p-3">
+          <div
+            className="text-[11px] uppercase tracking-wide"
+            style={{ color: isMine ? "rgba(255,255,255,0.75)" : "rgb(var(--muted-foreground))" }}
+          >
+            {label}
+          </div>
+          <div
+            className="text-sm font-semibold leading-tight line-clamp-2"
+            style={{ color: isMine ? "#fff" : "rgb(var(--foreground))" }}
+          >
+            {preview.title || summary || fallbackTitle}
+          </div>
+          {summary && (
+            <div
+              className="text-xs leading-snug line-clamp-3"
+              style={{ color: isMine ? "rgba(255,255,255,0.85)" : "rgb(var(--muted-foreground))" }}
+            >
+              {summary}
+            </div>
+          )}
+          <div className="mt-auto flex items-center justify-between gap-3 text-xs">
+            {preview.authorName && (
+              <div
+                className="flex items-center gap-2"
+                style={{ color: isMine ? "rgba(255,255,255,0.85)" : "rgb(var(--muted-foreground))" }}
+              >
+                {preview.authorAvatar ? (
+                  <img
+                    src={preview.authorAvatar}
+                    alt={preview.authorName}
+                    className="h-6 w-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[11px] font-semibold uppercase">
+                    {authorInitial || "S"}
+                  </div>
+                )}
+                <span className="line-clamp-1">{preview.authorName}</span>
+              </div>
+            )}
+            {postLink && (
+              <a
+                href={postLink}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-auto text-xs font-semibold text-primary hover:underline"
+              >
+                {actionLabel}
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }, [getPostUrl, t]);
 
   return (
     <div
@@ -428,28 +548,7 @@ function ConversationView({ chat, onBack }) {
             {isTyping ? "Đang nhập..." : presence.online ? "Đang hoạt động" : presence.lastSeen ? `Hoạt động ${new Date(presence.lastSeen).toLocaleString()}` : ""}
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-2" style={{ color: themeVars.mutedForeground }}>
-          {[
-            { id: "phone", label: "Call", Icon: Phone },
-            { id: "video", label: "Video", Icon: Video },
-            { id: "info", label: "Info", Icon: Info }
-          ].map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full transition"
-              title={label}
-              style={{
-                border: `1px solid ${themeVars.borderStrong}`,
-                background: themeVars.card,
-                color: themeVars.mutedForeground,
-              }}
-            >
-              <Icon size={18} />
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-3 flex w-full">
           <div
             className="flex flex-1 items-center gap-2 rounded-full border px-3 py-2"
             style={{ borderColor: themeVars.borderSoft, background: themeVars.card }}
@@ -461,14 +560,6 @@ function ConversationView({ chat, onBack }) {
               value={messageQuery}
               onChange={(e) => setMessageQuery(e.target.value)}
             />
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <button className="rounded-full border px-3 py-1" style={{ borderColor: themeVars.borderSoft }}>
-              {t("messages.tabAll")}
-            </button>
-            <button className="rounded-full border px-3 py-1" style={{ borderColor: themeVars.borderSoft }}>
-              {t("messages.tabUnread")}
-            </button>
           </div>
         </div>
       </div>
@@ -486,13 +577,17 @@ function ConversationView({ chat, onBack }) {
           renderItem={(m, i) => {
             const sender = getSenderKey(m);
             const isMine = me && sender === me;
-            let text = m["Nội Dung Tin Nhắn"] || m.content || m.message || "";
+            let text = m.content || m.message || "";
             // Keep the "reply story :" prefix for story replies, only remove old incorrect format
             if (typeof text === "string") {
               // Only remove the old incorrect format (translation key), keep the proper format
               text = text.replace(/^story\.replyYourStory:\s*/i, "");
             }
             const status = m._status || m.status; // pending | sent | delivered | read
+            
+            // Define bubbleTextColor early (before contentNode)
+            const bubbleTextColor = isMine ? "#ffffff" : "rgb(var(--foreground))";
+            
             // link preview
             const urlMatch = typeof text === "string" ? text.match(/https?:\/\/[^\s]+/i) : null;
             const url = urlMatch?.[0];
@@ -512,72 +607,45 @@ function ConversationView({ chat, onBack }) {
                 } catch {}
               })();
             }
-            // detect special content
+            // detect special content - match ChatDock logic
+            const rawContent = text || "";
+            const storyImgMatch = rawContent.match(/\[STORY_IMAGE:([^\]]+)\]/i);
+            const storyImageUrl = storyImgMatch ? storyImgMatch[1] : null;
+            const textContent = storyImageUrl ? rawContent.replaceAll(/\[STORY_IMAGE:[^\]]+\]/gi, "").trim() : rawContent;
+            
             let contentNode = null;
-            let imageUrl = null;
             
-            // Check if this is a story reply (from metadata)
-            const isStoryReply = m.isStoryReply || m.metadata?.isStoryReply || false;
-            const storyUrl = m.storyUrl || m.metadata?.storyUrl || m.storyImage || m.metadata?.storyImage;
-            const storyId = m.storyId || m.metadata?.storyId;
-            
-            // If it's a story reply, use story URL as image
-            if (isStoryReply && storyUrl) {
-              // Handle both string URL and array of URLs
-              if (Array.isArray(storyUrl)) {
-                imageUrl = storyUrl[0]; // Use first image if array
-              } else if (typeof storyUrl === "string") {
-                imageUrl = storyUrl;
-              }
-            }
-            
-            // Fallback: check text content for image patterns
-            if (!imageUrl && typeof text === "string") {
-              const storyImg = text.match(/\[STORY_IMAGE:?\s*(https?:\/\/[^\]\s]+)[^\]]*\]/i);
-              if (storyImg?.[1]) imageUrl = storyImg[1];
-              // fallback: JSON payload { url, type }
-              if (!imageUrl) {
-                try {
-                  const parsed = JSON.parse(text);
-                  if (parsed && parsed.url && (/image\//.test(parsed.type || "") || parsed.type === "image")) {
-                    imageUrl = parsed.url;
-                  }
-                } catch {}
-              }
-            }
-            
-            // Render content with story image if available
-            if (imageUrl) {
+            // Render content with story image if available (like ChatDock)
+            if (storyImageUrl) {
               contentNode = (
-                <div className="flex flex-col gap-2">
-                  <a href={imageUrl} target="_blank" rel="noreferrer" className="block no-underline">
-                    <img
-                      src={imageUrl}
-                      alt={isStoryReply ? "Story" : "image"}
-                      className="max-h-[360px] max-w-[280px] rounded-2xl object-cover"
-                      loading="lazy"
-                    />
-                  </a>
-                  {text && text.trim() && (
-                    <span className="text-sm">
-                      {String(text || "").split(/(https?:\/\/[^\s]+)/gi).map((part, idx) =>
-                        /^https?:\/\//i.test(part) ? (
-                          <a key={idx} href={part} target="_blank" rel="noreferrer" className="text-primary underline">
-                            {part}
-                          </a>
-                        ) : (
-                          <React.Fragment key={idx}>{part}</React.Fragment>
-                        )
-                      )}
+                <div className="flex items-start gap-2">
+                  <img src={storyImageUrl} alt="" className="max-h-[150px] rounded-lg object-cover" />
+                  {textContent && (
+                    <span 
+                      style={{ 
+                        color: bubbleTextColor,
+                        wordBreak: "break-word",
+                        overflowWrap: "break-word",
+                        wordWrap: "break-word"
+                      }}
+                    >
+                      {textContent}
                     </span>
                   )}
                 </div>
               );
             } else {
               // linkify plain text urls
-              const parts = String(text || "").split(/(https?:\/\/[^\s]+)/gi);
+              const parts = String(textContent || "").split(/(https?:\/\/[^\s]+)/gi);
               contentNode = (
-                <span>
+                <span 
+                  style={{ 
+                    color: bubbleTextColor,
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word",
+                    wordWrap: "break-word"
+                  }}
+                >
                   {parts.map((part, idx) =>
                     /^https?:\/\//i.test(part) ? (
                       <a key={idx} href={part} target="_blank" rel="noreferrer" className="text-primary underline">
@@ -591,59 +659,51 @@ function ConversationView({ chat, onBack }) {
               );
             }
             const actionIcons = [
-              { label: t("action.moreOptions") || "More", Icon: MoreVertical },
-              { label: t("comment.reply") || "Reply", Icon: Reply },
-              { label: t("action.react") || "React", Icon: Smile }
+              { label: t("comment.reply") || "Reply", Icon: Reply }
             ];
-            const reactionChoices = ["👍","❤️","😂","😮","😢","😡"];
-            const handleReactionClick = async (emoji) => {
-              const mid = m.id || m._id;
-              setMessages((prev) =>
-                prev.map((mm) => {
-                  if ((mm.id || mm._id) !== mid) return mm;
-                  const currentCount = mm.reactions?.[emoji] || 0;
-                  return {
-                    ...mm,
-                    reactions: {
-                      ...(mm.reactions || {}),
-                      [emoji]: currentCount + 1
-                    }
-                  };
-                })
-              );
-              try {
-                if (messageApi.reactMessage) {
-                  await messageApi.reactMessage(mid, emoji);
-                }
-                if (socket && chat?.id) {
-                  socket.emit("message:reaction", { convId: chat.id, messageId: mid, emoji });
-                }
-              } catch (error) {
-                console.error("React message failed", error);
-              }
-            };
             const replyPreview = (() => {
               if (!m.replyToId) return null;
               const ref = messageMap.get(String(m.replyToId));
               if (!ref) return null;
-              const refText = (ref["Nội Dung Tin Nhắn"] || ref.content || ref.message || "").toString();
+              const refText = (ref.content || ref.message || "").toString();
               const refSender = getSenderKey(ref) === me ? t("messages.you") || "Bạn" : (ref.authorName || other?.name || "User");
             return (
               <div
                   className="mb-2 rounded-lg border px-3 py-1 text-xs"
-                  style={{ borderColor: themeVars.borderSoft, background: isMine ? "rgba(255,255,255,0.2)" : themeVars.cardSoft }}
+                  style={{ borderColor: "rgb(var(--border))", background: isMine ? "rgba(255,255,255,0.15)" : "rgb(var(--card)/0.8)" }}
                 >
                   <div className="font-semibold">{refSender}</div>
                   <div className="line-clamp-2 opacity-80">{refText || t("messages.attachment") || "Đính kèm"}</div>
                 </div>
               );
             })();
+            const bubbleStyle = isMine
+              ? { 
+                  color: bubbleTextColor,
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                  wordWrap: "break-word"
+                }
+              : { 
+                  background: "rgb(var(--card))", 
+                  color: bubbleTextColor, 
+                  borderColor: "rgb(var(--border))",
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                  wordWrap: "break-word"
+                };
+            const sharedPostCard = renderSharedPostCard(
+              m.sharedPost || m.shared_post,
+              m.sharedPostId || m.shared_post_id,
+              isMine
+            );
+
             const bubble = (
               <div
                 key={`bubble-${i}`}
                 className={cn(
-                  "group relative max-w-[260px] break-words rounded-2xl px-3 py-1.5 text-[14px] leading-[1.35] font-medium shadow-sm sm:max-w-[320px]",
-                  isMine ? "rounded-br-md" : "rounded-bl-md border"
+                  "group relative max-w-[240px] break-words rounded-2xl px-3 py-1.5 text-sm leading-[1.35] shadow-sm sm:max-w-[280px]",
+                  isMine ? "rounded-br-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" : "rounded-bl-md border",
                 )}
                 onClick={() => {
                   setReplyTarget({
@@ -652,38 +712,14 @@ function ConversationView({ chat, onBack }) {
                     preview: text?.slice(0, 60),
                   });
                 }}
-                style={
-                  isMine
-                    ? {
-                        background: `linear-gradient(135deg, ${themeVars.primary} 0%, ${themeVars.primarySoft} 100%)`,
-                        color: themeVars.primaryForeground,
-                        boxShadow: "0 8px 20px rgba(0,0,0,0.15)",
-                      }
-                    : {
-                        background: themeVars.card,
-                        color: themeVars.foreground,
-                        borderColor: themeVars.borderSoft,
-                      }
-                }
+                style={bubbleStyle}
               >
                 {replyPreview}
                 <div className="flex items-start gap-2">
                   {contentNode}
                 </div>
-                <div className="pointer-events-none absolute -top-9 left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full bg-card/95 px-2 py-1 text-lg shadow-md group-hover:flex">
-                  {reactionChoices.map((emoji) => (
-                        <button
-                      key={emoji}
-                      className="pointer-events-auto text-base"
-                          onClick={(ev) => {
-                            ev.stopPropagation();
-                        handleReactionClick(emoji);
-                          }}
-                        >
-                      {emoji}
-                        </button>
-                      ))}
-                </div>
+                {sharedPostCard}
+
                 {url && linkPreviewMap[url] && (
                   <a
                     href={url}
@@ -700,35 +736,6 @@ function ConversationView({ chat, onBack }) {
                     {linkPreviewMap[url]?.description && <div className="text-xs" style={{ color: themeVars.mutedForeground }}>{linkPreviewMap[url]?.description}</div>}
                   </a>
                 )}
-                {!!m.reactions && (
-                  <div className="mt-1 flex gap-1 text-xs">
-                    <div
-                      className="flex items-center gap-1 rounded-full bg-black/10 px-2 py-0.5"
-                      style={{ color: isMine ? "rgba(255,255,255,0.9)" : themeVars.foreground }}
-                    >
-                    {Object.entries(m.reactions).map(([k,v]) => (
-                        <span key={k} className="flex items-center gap-0.5 text-sm">
-                          {k} {v}
-                        </span>
-                    ))}
-                  </div>
-                  </div>
-                )}
-                <div
-                  className={cn(
-                    "mt-1 flex text-xs opacity-0 transition group-hover:opacity-100",
-                    isMine ? "justify-end" : "justify-start"
-                  )}
-                  style={{ color: isMine ? "rgba(255,255,255,0.85)" : themeVars.mutedForeground }}
-                >
-                  <span>{new Date(getTimestamp(m)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                {isMine && (
-                    <span className="ml-2 flex items-center gap-1 select-none">
-                      <CheckCheck size={14} />
-                      {status === "read" ? t("messages.seen") || "Đã xem" : status === "delivered" ? t("messages.delivered") || "Đã gửi" : status === "sent" ? "✓" : status === "pending" ? "…" : ""}
-                  </span>
-                )}
-              </div>
               </div>
             );
             const nextSender = displayMessages[i + 1] ? getSenderKey(displayMessages[i + 1]) : null;
@@ -737,17 +744,14 @@ function ConversationView({ chat, onBack }) {
               <React.Fragment key={i}>
                 {shouldShowTimestamp(i, displayMessages) && (
                   <div className="mb-3 flex w-full justify-center">
-                    <span
-                      className="rounded-full px-4 py-1 text-xs font-medium"
-                      style={{ background: themeVars.card, color: themeVars.mutedForeground }}
-                    >
+                    <span className="rounded-full px-3 py-0.5 text-[11px] text-muted-foreground" style={{ background: "rgb(var(--card))" }}>
                       {formatTimestampLabel(getTimestamp(m))}
                     </span>
                   </div>
                 )}
                 <div
                   className={cn(
-                    "group/message flex items-end gap-2",
+                    "group/message flex items-end gap-2 py-1",
                     isMine ? "justify-end" : "justify-start"
                   )}
                 >
@@ -755,35 +759,41 @@ function ConversationView({ chat, onBack }) {
                     <img
                       src={m.authorAvatar || other?.avatar}
                       alt={m.authorName || other?.name}
-                      className="h-8 w-8 rounded-full object-cover"
+                      className="h-7 w-7 rounded-full object-cover"
                     />
                   )}
                   {!isMine && !showAvatar && (
-                    <div className="h-8 w-8 flex-shrink-0" />
+                    <div className="h-7 w-7 flex-shrink-0" />
                   )}
                   {isMine && (
                     <div
                       className="hidden items-center gap-1 rounded-full border px-2 py-1 text-xs opacity-0 transition group-hover/message:opacity-100 lg:flex"
-                      style={{ borderColor: themeVars.borderSoft, color: themeVars.mutedForeground, background: themeVars.card }}
+                      style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))", color: "rgb(var(--muted-foreground))" }}
                     >
                       {actionIcons.map(({ label, Icon }) => (
-                        <button key={label} title={label}>
-                          <Icon size={16} />
+                        <button key={label} title={label} type="button">
+                          <Icon size={14} />
                         </button>
                       ))}
+                      <span className="ml-2 text-[11px] whitespace-nowrap text-muted-foreground">
+                        {new Date(getTimestamp(m)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     </div>
                   )}
                   {bubble}
                   {!isMine && (
                     <div
                       className="hidden items-center gap-1 rounded-full border px-2 py-1 text-xs opacity-0 transition group-hover/message:opacity-100 lg:flex"
-                      style={{ borderColor: themeVars.borderSoft, color: themeVars.mutedForeground, background: themeVars.card }}
+                      style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))", color: "rgb(var(--muted-foreground))" }}
                     >
                       {actionIcons.map(({ label, Icon }) => (
-                        <button key={label} title={label}>
-                          <Icon size={16} />
+                        <button key={label} title={label} type="button">
+                          <Icon size={14} />
                         </button>
                       ))}
+                      <span className="ml-2 text-[11px] whitespace-nowrap text-muted-foreground">
+                        {new Date(getTimestamp(m)).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     </div>
                   )}
                 </div>

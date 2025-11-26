@@ -1,43 +1,52 @@
 import axiosClient from "./axiosClient";
 
+const unwrap = (response) => response?.data ?? response;
+
 // Start a new livestream
 export const startLivestream = async (title, description = "") => {
-  return await axiosClient.post("/livestream/start", {
+  const response = await axiosClient.post("/livestream/start", {
     title,
     description,
   });
+  return unwrap(response);
 };
 
 // End a livestream
 export const endLivestream = async (livestreamId) => {
-  return await axiosClient.post(`/livestream/${livestreamId}/end`);
+  const response = await axiosClient.post(`/livestream/${livestreamId}/end`);
+  return unwrap(response);
 };
 
 // Get a specific livestream by ID
 export const getLivestream = async (livestreamId) => {
-  return await axiosClient.get(`/livestream/${livestreamId}`);
+  const response = await axiosClient.get(`/livestream/${livestreamId}`);
+  return unwrap(response);
 };
 
 // Get stream by channel name and viewer token
 export const getStreamByChannel = async (channelName) => {
-  return await axiosClient.get(`/livestream/channel/${channelName}`);
+  const response = await axiosClient.get(`/livestream/channel/${channelName}`);
+  return unwrap(response);
 };
 
 // Get all active livestreams
 export const getActiveLivestreams = async () => {
-  return await axiosClient.get("/livestream/active");
+  const response = await axiosClient.get("/livestream/active");
+  return unwrap(response);
 };
 
 // Increment view count
 export const incrementViewCount = async (livestreamId) => {
-  return await axiosClient.post(`/livestream/${livestreamId}/view`);
+  const response = await axiosClient.post(`/livestream/${livestreamId}/view`);
+  return unwrap(response);
 };
 
 // Get livestreams by host
 export const getLivestreamsByHost = async (hostId, limit = 20) => {
-  return await axiosClient.get(`/livestream/host/${hostId}`, {
+  const response = await axiosClient.get(`/livestream/host/${hostId}`, {
     params: { limit },
   });
+  return unwrap(response);
 };
 
 const livestreamApi = {

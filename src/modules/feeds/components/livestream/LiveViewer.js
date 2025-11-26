@@ -1,254 +1,253 @@
-import { useState, useEffect, useRef } from "react";
-import { X, Heart, ThumbsUp, Smile, MessageCircle, Send, Share2 } from "lucide-react";
-import AgoraRTC from "agora-rtc-sdk-ng";
-import { useSocket } from "../../../../contexts/SocketContext";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PropTypes from "prop-types";
+import { MessageCircle, Send, Share2, X } from "lucide-react";
 import livestreamApi from "../../../../api/livestreamApi";
-import "../../../../styles/modules/feeds/components/livestream/LiveViewer.css";
+import { cn } from "../../../../utils/cn";
+import useAgoraClient from "./hooks/useAgoraClient";
+import useLivestreamChat from "./hooks/useLivestreamChat";
+import { getSessionUser } from "./utils";
+
+const reactionOptions = ["❤️", "👍", "🔥", "😍"];
 
 export default function LiveViewer({ livestream, onClose }) {
-  const { socket } = useSocket();
-  const [isConnected, setIsConnected] = useState(false);
-  const [viewerCount, setViewerCount] = useState(livestream.viewCount || 0);
-  const [chatMessages, setChatMessages] = useState([]);
+  const videoRef = useRef(null);
+  const remoteTracksRef = useRef({ video: null, audio: null });
   const [newMessage, setNewMessage] = useState("");
   const [showChat, setShowChat] = useState(true);
+  const [isConnecting, setIsConnecting] = useState(true);
+  const [error, setError] = useState(null);
 
-  const clientRef = useRef(null);
-  const remoteTrackRef = useRef(null);
-  const [userId, setUserId] = useState(null);
+  const sessionUser = useMemo(() => getSessionUser(), []);
+  const { messages, viewerCount, sendMessage, sendReaction } = useLivestreamChat({
+    channelName: livestream.agoraChannelName,
+    user: sessionUser,
+  });
 
-  useEffect(() => {
-    const session = JSON.parse(localStorage.getItem("session") || "{}");
-    setUserId(session?.account?.id || session?.userId);
+  const { client, joinChannel, leaveChannel } = useAgoraClient({ mode: "viewer" });
+
+  const handleUserPublished = useCallback(
+    async (user, mediaType) => {
+      try {
+        const agoraClient = client.current;
+        if (!agoraClient) return;
+        const remoteTrack = await agoraClient.subscribe(user, mediaType);
+        if (mediaType === "video") {
+          remoteTracksRef.current.video = remoteTrack;
+          if (videoRef.current) {
+            remoteTrack.play(videoRef.current);
+          }
+        }
+        if (mediaType === "audio") {
+          remoteTracksRef.current.audio = remoteTrack;
+          remoteTrack.play();
+        }
+      } catch (err) {
+        console.error("[LiveViewer] Failed to subscribe remote track:", err);
+      }
+    },
+    [client]
+  );
+
+  const handleUserUnpublished = useCallback((_, mediaType) => {
+    if (mediaType === "video" && remoteTracksRef.current.video) {
+      remoteTracksRef.current.video.stop();
+      remoteTracksRef.current.video.close();
+      remoteTracksRef.current.video = null;
+    }
+    if (mediaType === "audio" && remoteTracksRef.current.audio) {
+      remoteTracksRef.current.audio.stop();
+      remoteTracksRef.current.audio.close();
+      remoteTracksRef.current.audio = null;
+    }
   }, []);
+
+  const cleanupTracks = useCallback(() => {
+    ["video", "audio"].forEach((type) => {
+      const track = remoteTracksRef.current[type];
+      if (track) {
+        track.stop();
+        track.close?.();
+        remoteTracksRef.current[type] = null;
+      }
+    });
+  }, []);
+
+  const leaveStream = useCallback(async () => {
+    cleanupTracks();
+    await leaveChannel();
+  }, [cleanupTracks, leaveChannel]);
+
+  const joinStream = useCallback(async () => {
+    try {
+      setIsConnecting(true);
+      setError(null);
+      const payload = await livestreamApi.getStreamByChannel(livestream.agoraChannelName);
+      const { agora } = payload;
+      if (!agora?.token || !agora?.uid || !agora?.appId) {
+        throw new Error("Thông tin livestream không hợp lệ");
+      }
+
+      await joinChannel({
+        appId: agora.appId,
+        channelName: livestream.agoraChannelName,
+        token: agora.token,
+        uid: agora.uid,
+        eventHandlers: {
+          "user-published": handleUserPublished,
+          "user-unpublished": handleUserUnpublished,
+        },
+      });
+      await livestreamApi.incrementViewCount(livestream.livestreamId);
+      setIsConnecting(false);
+    } catch (err) {
+      console.error("[LiveViewer] join error:", err);
+      setError(err.message || "Không thể kết nối tới livestream");
+      setIsConnecting(false);
+    }
+  }, [handleUserPublished, handleUserUnpublished, joinChannel, livestream]);
 
   useEffect(() => {
     joinStream();
     return () => {
       leaveStream();
     };
-  }, []);
+  }, [joinStream, leaveStream]);
 
-  // Socket event listeners
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on("new-chat-message", (data) => {
-      setChatMessages((prev) => [...prev, data]);
-    });
-
-    socket.on("new-reaction", (data) => {
-      // Show reaction animation
-      console.log("New reaction:", data);
-    });
-
-    socket.on("viewer-count-updated", (data) => {
-      setViewerCount(data.count);
-    });
-
-    socket.on("user-joined", () => {
-      setViewerCount((prev) => prev + 1);
-    });
-
-    socket.on("user-left", () => {
-      setViewerCount((prev) => Math.max(0, prev - 1));
-    });
-
-    return () => {
-      socket.off("new-chat-message");
-      socket.off("new-reaction");
-      socket.off("viewer-count-updated");
-      socket.off("user-joined");
-      socket.off("user-left");
-    };
-  }, [socket]);
-
-  const joinStream = async () => {
-    try {
-      // Get stream credentials
-      const response = await livestreamApi.getStreamByChannel(livestream.agoraChannelName);
-      const { agora } = response.data;
-
-      // Initialize Agora client
-      const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-      clientRef.current = client;
-
-      // Join channel as audience
-      await client.join(agora.appId, livestream.agoraChannelName, agora.token, agora.uid);
-
-      // Listen for remote tracks
-      client.on("user-published", async (user, mediaType) => {
-        if (mediaType === "video") {
-          const remoteTrack = await client.subscribe(user, mediaType);
-          remoteTrackRef.current = remoteTrack;
-          remoteTrack.play("remote-video");
-        }
-        if (mediaType === "audio") {
-          const remoteTrack = await client.subscribe(user, mediaType);
-          remoteTrack.play();
-        }
-      });
-
-      setIsConnected(true);
-
-      // Join socket room
-      socket?.emit("join-livestream", {
-        channelName: livestream.agoraChannelName,
-        userId,
-      });
-
-      // Increment view count
-      livestreamApi.incrementViewCount(livestream.livestreamId);
-    } catch (error) {
-      console.error("Error joining stream:", error);
-      alert("Không thể kết nối tới livestream. Vui lòng thử lại.");
-    }
-  };
-
-  const leaveStream = async () => {
-    try {
-      // Leave socket room
-      if (socket && livestream.agoraChannelName) {
-        socket.emit("leave-livestream", {
-          channelName: livestream.agoraChannelName,
-          userId,
-        });
-      }
-
-      // Stop remote track
-      if (remoteTrackRef.current) {
-        remoteTrackRef.current.stop();
-        remoteTrackRef.current.close();
-      }
-
-      // Leave channel
-      if (clientRef.current) {
-        await clientRef.current.leave();
-      }
-
-      setIsConnected(false);
-    } catch (error) {
-      console.error("Error leaving stream:", error);
-    }
-  };
-
-  const sendReaction = (reaction) => {
-    if (!socket) return;
-
-    const session = JSON.parse(localStorage.getItem("session") || "{}");
-    socket.emit("reaction", {
-      channelName: livestream.agoraChannelName,
-      reaction,
-      userId: session?.account?.id,
-      userName: session?.account?.fullName || "User",
-    });
-  };
-
-  const sendMessage = () => {
-    if (!newMessage.trim() || !socket) return;
-
-    const session = JSON.parse(localStorage.getItem("session") || "{}");
-    socket.emit("chat-message", {
-      channelName: livestream.agoraChannelName,
-      message: newMessage,
-      userId: session?.account?.id,
-      userName: session?.account?.fullName || "User",
-      userAvatar: session?.account?.avatar || "",
-    });
-
+  const handleSendMessage = () => {
+    if (!newMessage.trim()) return;
+    sendMessage(newMessage.trim());
     setNewMessage("");
   };
 
   const handleShare = () => {
-    const url = window.location.href;
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(url);
-    }
-    alert("Đã sao chép link!");
+    if (typeof window === "undefined") return;
+    const url = window.location?.href || "";
+    window.navigator?.clipboard?.writeText?.(url);
+  };
+
+  const handleClose = async () => {
+    await leaveStream();
+    onClose?.();
   };
 
   return (
-    <div className="live-viewer-overlay">
-      <div className="live-viewer-container">
-        <div className="viewer-main">
-          <div className="video-container">
-            <div id="remote-video" className="remote-video"></div>
-            {!isConnected && (
-              <div className="connecting-overlay">
-                <div className="loading-spinner"></div>
-                <p>Đang kết nối...</p>
-              </div>
-            )}
-            <div className="live-badge">
-              <span className="live-dot"></span>
-              <span>LIVE</span>
-            </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/90 px-4 py-8">
+      <div className="relative flex w-full max-w-6xl flex-col gap-4 rounded-3xl border border-border/40 bg-card/95 p-4 shadow-2xl md:flex-row">
+        <button
+          onClick={handleClose}
+          className="absolute right-4 top-4 rounded-full border border-border/40 bg-card/70 p-2 text-foreground/80 transition hover:text-foreground"
+        >
+          <X className="h-5 w-5" />
+        </button>
 
-            <button onClick={onClose} className="close-viewer-btn">
-              <X size={20} />
+        <div className="relative flex-1 rounded-2xl bg-black/80">
+          <div ref={videoRef} className="aspect-video w-full rounded-2xl bg-black/80" />
+          {isConnecting && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-black/70 text-primary-foreground">
+              <div className="h-12 w-12 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <p>Đang kết nối...</p>
+            </div>
+          )}
+          {error && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-danger/20 text-danger">
+              <p>{error}</p>
+            </div>
+          )}
+
+          <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-danger px-3 py-1 text-xs font-semibold text-primary-foreground shadow-lg shadow-danger/40">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-primary-foreground" />
+            <span>LIVE</span>
+          </div>
+
+          <div className="absolute left-4 bottom-4 rounded-xl bg-black/60 px-4 py-2 text-sm text-white backdrop-blur">
+            <p className="text-base font-semibold">{livestream.title}</p>
+            <p className="text-xs text-white/80">
+              {viewerCount} người đang xem · {livestream.description}
+            </p>
+          </div>
+
+          <div className="absolute right-4 bottom-4 flex gap-2">
+            {reactionOptions.map((reaction) => (
+              <button
+                key={reaction}
+                className="rounded-full bg-white/20 p-2 text-xl text-white backdrop-blur transition hover:bg-white/40"
+                onClick={() => sendReaction(reaction)}
+              >
+                {reaction}
+              </button>
+            ))}
+            <button
+              className={cn(
+                "rounded-full bg-white/20 p-2 text-white backdrop-blur transition hover:bg-white/40",
+                showChat && "bg-white/40"
+              )}
+              onClick={() => setShowChat((prev) => !prev)}
+            >
+              <MessageCircle className="h-5 w-5" />
             </button>
+            <button
+              className="rounded-full bg-white/20 p-2 text-white backdrop-blur transition hover:bg-white/40"
+              onClick={handleShare}
+            >
+              <Share2 className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
 
-            <div className="viewer-info-overlay">
-              <h3>{livestream.title}</h3>
-              <div className="viewer-count">
-                <span className="viewer-count-number">{viewerCount}</span> người đang xem
+        {showChat && (
+          <div className="flex w-full max-w-sm flex-col rounded-2xl border border-border/60 bg-card/80 p-4 backdrop-blur md:w-80">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-foreground">
+                <MessageCircle className="h-4 w-4" />
+                <span className="text-sm font-semibold uppercase tracking-wide">Bình luận</span>
               </div>
+              <span className="text-xs text-muted-foreground">{viewerCount} người xem</span>
             </div>
-
-            <div className="reactions-bar">
-              <button onClick={() => sendReaction("❤️")} className="reaction-btn">
-                <Heart size={24} />
-              </button>
-              <button onClick={() => sendReaction("👍")} className="reaction-btn">
-                <ThumbsUp size={24} />
-              </button>
-              <button onClick={() => sendReaction("😍")} className="reaction-btn">
-                <Smile size={24} />
-              </button>
-              <button onClick={() => setShowChat(!showChat)} className="reaction-btn">
-                <MessageCircle size={24} />
-              </button>
-              <button onClick={handleShare} className="reaction-btn">
-                <Share2 size={24} />
+            <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+              {messages.length === 0 && (
+                <p className="text-center text-sm text-muted-foreground">Hãy là người đầu tiên bình luận!</p>
+              )}
+              {messages.map((msg, idx) => (
+                <div key={`${msg.userId}-${idx}`} className="flex items-start gap-3 rounded-xl bg-muted/30 p-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
+                    {msg.userName?.[0] || "U"}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{msg.userName}</p>
+                    <p className="text-sm text-muted-foreground">{msg.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-2">
+              <input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                placeholder="Nhập bình luận..."
+                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+              />
+              <button
+                onClick={handleSendMessage}
+                className="rounded-full bg-primary/90 p-2 text-white shadow-lg shadow-primary/30 transition hover:bg-primary"
+              >
+                <Send className="h-4 w-4" />
               </button>
             </div>
           </div>
-
-          {showChat && (
-            <div className="viewer-chat">
-              <div className="chat-header">
-                <MessageCircle size={16} />
-                Bình luận
-              </div>
-              <div className="chat-messages">
-                {chatMessages.map((msg, idx) => (
-                  <div key={idx} className="chat-message">
-                    <img src={msg.userAvatar || "/default-avatar.png"} alt={msg.userName} className="chat-avatar" />
-                    <div className="chat-message-content">
-                      <strong>{msg.userName}</strong>
-                      <p>{msg.message}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="chat-input-container">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                  placeholder="Nhập bình luận..."
-                  className="chat-input"
-                />
-                <button onClick={sendMessage} className="chat-send-btn">
-                  <Send size={16} />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
 }
+
+LiveViewer.propTypes = {
+  livestream: PropTypes.shape({
+    livestreamId: PropTypes.string.isRequired,
+    title: PropTypes.string,
+    description: PropTypes.string,
+    agoraChannelName: PropTypes.string.isRequired,
+  }).isRequired,
+  onClose: PropTypes.func.isRequired,
+};
 

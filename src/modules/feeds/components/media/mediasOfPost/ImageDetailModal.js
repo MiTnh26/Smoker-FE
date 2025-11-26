@@ -34,6 +34,7 @@ import {
 import MediaStatsBar from "./MediaStatsBar";
 import MediaImageViewer from "./MediaImageViewer";
 import MediaCommentSection from "./MediaCommentSection";
+import ShareModal from "../../modals/ShareModal";
 
 export default function ImageDetailModal({ 
   open, 
@@ -66,9 +67,11 @@ export default function ImageDetailModal({
   // UI state
   const [viewingImage, setViewingImage] = useState(null); // Image URL for lightbox
   const [imageError, setImageError] = useState(false); // Image load error state
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   
   const hasLoadedRef = useRef(false);
   const replyInputRef = useRef(null);
+  const shareButtonRef = useRef(null);
   const navigate = useNavigate();
   const handleNavigateToProfile = createNavigateToProfile(navigate);
 
@@ -480,40 +483,43 @@ export default function ImageDetailModal({
     }
   };
 
-  // Handle Share
-  const handleShare = async () => {
-    try {
-      const mediaIdForApi = getMediaIdForApi();
-      if (!mediaIdForApi) return;
+  // Handle Share - Open ShareModal
+  const handleShare = () => {
+    setShareModalOpen(true);
+  };
 
-      const url = typeof window !== "undefined" ? `${window.location.origin}/medias/${mediaIdForApi}` : `https://smoker.app/medias/${mediaIdForApi}`;
-      
-      if (typeof navigator !== "undefined" && navigator.share) {
-        await navigator.share({
-          title: media?.caption || "Xem ảnh",
-          text: media?.caption || "",
-          url: url
-        });
-      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(url);
-      }
-      
-      // Track share sau khi share thành công
-      if (mediaIdForApi) {
-        try {
-          await trackMediaShare(mediaIdForApi);
-          // Reload media để cập nhật số lượt share (without showing loading)
-          await loadMediaDetails(false);
-        } catch (err) {
-          console.warn('[IMAGE_MODAL] Failed to track share:', err);
-        }
-      }
-    } catch (e) {
-      // User cancelled share dialog - không cần log error
-      if (e.name !== 'AbortError') {
-        console.error("[IMAGE_MODAL] Share failed", e);
+  // Handle Shared callback from ShareModal
+  const handleShared = async ({ type }) => {
+    console.log(`[ImageDetailModal] Media shared to ${type}`);
+    
+    // Track share after successful share
+    const mediaIdForApi = getMediaIdForApi();
+    if (mediaIdForApi) {
+      try {
+        await trackMediaShare(mediaIdForApi);
+        // Reload media để cập nhật số lượt share (without showing loading)
+        await loadMediaDetails(false);
+      } catch (err) {
+        console.warn('[IMAGE_MODAL] Failed to track share:', err);
       }
     }
+  };
+
+  // Create a post-like object from media for ShareModal
+  const getMediaAsPost = () => {
+    const mediaIdForApi = getMediaIdForApi();
+    if (!mediaIdForApi) return null;
+
+    return {
+      id: mediaIdForApi,
+      _id: mediaIdForApi,
+      title: media?.caption || "Xem ảnh",
+      content: media?.caption || "",
+      url: imageUrl, // This field indicates it's a media
+      isMedia: true, // Flag to indicate this is a media, not a post
+      // Add other fields that ShareModal might need
+      mediaIds: media?._id ? [media._id] : [],
+    };
   };
 
   // Handle close
@@ -665,6 +671,7 @@ export default function ImageDetailModal({
                   onLikeClick={handleToggleMediaLike}
                   onShareClick={handleShare}
                   disabled={!getMediaIdForApi()}
+                  shareButtonRef={shareButtonRef}
                 />
 
                 {/* Comments Section */}
@@ -701,6 +708,17 @@ export default function ImageDetailModal({
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {getMediaAsPost() && (
+        <ShareModal
+          open={shareModalOpen}
+          post={getMediaAsPost()}
+          onClose={() => setShareModalOpen(false)}
+          onShared={handleShared}
+          triggerRef={shareButtonRef}
+        />
+      )}
 
       {/* Image Lightbox */}
       {viewingImage && (

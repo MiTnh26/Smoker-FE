@@ -43,6 +43,7 @@ export default function FollowButton({ followingId, followingType, onChange, com
   console.log("Current User ID:", followerId);
   // Get EntityAccountId of current active role for notification (like Facebook)
   const senderEntityAccountId = useCurrentUserEntity();
+  console.log("🔑 FollowButton - senderEntityAccountId:", senderEntityAccountId, "followerId:", followerId);
   
   const { isFollowing, checkFollowing, loading: loadingCheck } = useCheckFollowing();
   const { follow, loading: loadingFollow } = useFollow();
@@ -51,9 +52,9 @@ export default function FollowButton({ followingId, followingType, onChange, com
   console.log("Current User ID:", followerId);
   // Kiểm tra trạng thái follow khi mount hoặc khi id thay đổi
   useEffect(() => {
-    if (followerId && followingId) {
-      console.log("🔍 FollowButton - Checking follow status:", { followerId, followingId });
-      checkFollowing(followerId, followingId)
+    if (senderEntityAccountId && followingId) {
+      console.log("🔍 FollowButton - Checking follow status:", { followerId: senderEntityAccountId, followingId });
+      checkFollowing(senderEntityAccountId, followingId)
         .then(res => {
           console.log("✅ FollowButton - Check result:", res?.isFollowing);
           setInternalFollowing(res?.isFollowing || false);
@@ -63,16 +64,22 @@ export default function FollowButton({ followingId, followingType, onChange, com
           setInternalFollowing(false);
         });
     } else {
-      console.warn("⚠️ FollowButton - Missing IDs:", { followerId, followingId });
+      console.warn("⚠️ FollowButton - Missing IDs:", { followerId: senderEntityAccountId, followingId });
       setInternalFollowing(false);
     }
-  }, [followerId, followingId, checkFollowing]);
+  }, [senderEntityAccountId, followingId, checkFollowing]);
 
   // Xử lý follow
   const handleFollow = async () => {
     try {
-      console.log("📤 FollowButton - Follow request:", { followerId, followingId, followingType });
-      await follow({ followerId, followingId, followingType });
+      // Ensure we use the correct EntityAccountId
+      const currentFollowerId = senderEntityAccountId || followerId;
+      if (!currentFollowerId) {
+        console.error("❌ FollowButton - Cannot follow: No followerId available");
+        return;
+      }
+      console.log("📤 FollowButton - Follow request:", { followerId: currentFollowerId, followingId, followingType, senderEntityAccountId });
+      await follow({ followerId: currentFollowerId, followingId, followingType });
       console.log("✅ FollowButton - Follow success");
       setInternalFollowing(true);
       onChange && onChange(true);
@@ -130,10 +137,21 @@ export default function FollowButton({ followingId, followingType, onChange, com
   // Xử lý unfollow
   const handleUnfollow = async () => {
     try {
-      await unfollow({ followerId, followingId });
+      // Ensure we use the correct EntityAccountId
+      const currentFollowerId = senderEntityAccountId || followerId;
+      if (!currentFollowerId) {
+        console.error("❌ FollowButton - Cannot unfollow: No followerId available");
+        return;
+      }
+      console.log("📤 FollowButton - Unfollow request:", { followerId: currentFollowerId, followingId, senderEntityAccountId });
+      await unfollow({ followerId: currentFollowerId, followingId });
+      console.log("✅ FollowButton - Unfollow success");
       setInternalFollowing(false);
       onChange && onChange(false);
-    } catch {}
+    } catch (err) {
+      console.error("❌ FollowButton - Unfollow error:", err);
+      throw err;
+    }
   };
 
   if (loadingCheck) return <button className="btn btn-primary" disabled>...</button>;
