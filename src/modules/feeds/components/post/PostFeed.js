@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getPosts, trashPost } from "../../../../api/postApi";
 import PostCard from "./PostCard";
+import ReviveAdCard from "./ReviveAdCard";
 import PostComposerModal from "../modals/PostComposerModal";
 import MusicPostModal from "../music/MusicPostModal";
 import CreatePostBox from "../shared/CreatePostBox";
@@ -29,6 +30,9 @@ export default function PostFeed({ onGoLive }) {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadMoreTriggerRef = useRef(null); // Ref for IntersectionObserver target
+  
+  // Current bar page ID for ads
+  const [currentBarPageId, setCurrentBarPageId] = useState(null);
 
   // Lấy entityAccountId của user hiện tại (cần cho trash post)
   const getCurrentEntityAccountId = () => {
@@ -213,6 +217,38 @@ export default function PostFeed({ onGoLive }) {
     };
   }, [hasMore, loadingMore, cursor]);
 
+  // Get current bar page ID from session
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      if (!session) {
+        setCurrentBarPageId(null);
+        return;
+      }
+      
+      const activeEntity = session?.activeEntity || session?.account;
+      let barPageId = null;
+      
+      if (activeEntity?.barPageId) {
+        barPageId = activeEntity.barPageId;
+      } else if (activeEntity?.id) {
+        // Could implement API call here to get barPage by entityAccountId if needed
+        barPageId = null;
+      }
+      
+      setCurrentBarPageId(barPageId);
+    } catch (error) {
+      console.warn('[PostFeed] Failed to get barPageId:', error);
+      setCurrentBarPageId(null);
+    }
+  }, []);
+
+  // Load initial posts when component mounts
+  useEffect(() => {
+    loadPosts(false);
+  }, []); // Empty dependency array - only run once on mount
+
   const loadPosts = async (isRefresh = false) => {
     try {
       if (isRefresh) {
@@ -275,14 +311,12 @@ export default function PostFeed({ onGoLive }) {
       
       // If we got posts (even if empty), set them; otherwise show error
       if (postsData.length >= 0 || response?.success) {
-        // Always replace posts in loadPosts (initial load or refresh)
-        // loadMorePosts is used for appending
         setPosts(postsData);
-        
+
         // Update cursor and hasMore
         setCursor(nextCursor);
         setHasMore(responseHasMore);
-        
+
         // Fallback to page-based if no cursor in response
         if (!nextCursor && responseHasMore) {
           console.warn('[PostFeed] No cursor in response but hasMore is true, falling back to page-based pagination');
@@ -336,7 +370,6 @@ export default function PostFeed({ onGoLive }) {
       }
 
       if (postsData.length > 0) {
-        // Append new posts to existing posts
         setPosts(prevPosts => [...prevPosts, ...postsData]);
         setCursor(nextCursor);
         setHasMore(responseHasMore);
@@ -812,64 +845,74 @@ export default function PostFeed({ onGoLive }) {
 
       <div className="feed-posts">
         {posts.length === 0 ? (
-          <p key="empty-posts" className="text-gray-400">{t('feed.noPosts')}</p>
+          <p key="empty-feed" className="text-gray-400">{t('feed.noPosts')}</p>
         ) : (
           posts.map((post, index) => {
             const postId = post._id || post.postId || post.id || `post-${index}`;
             const transformedPost = transformPost(post);
             return (
-              <PostCard
-                key={postId}
-                post={transformedPost}
-                playingPost={playingPost}
-                setPlayingPost={(playingPostId) => {
-                  setPlayingPost(playingPostId);
-                  // Set active player when starting playback
-                  if (playingPostId === postId) {
-                    setActivePlayer(transformedPost);
-                  } else if (!playingPostId) {
-                    setActivePlayer(null);
-                  }
-                }}
-                sharedAudioRef={sharedAudioRef}
-                sharedCurrentTime={sharedCurrentTime}
-                sharedDuration={sharedDuration}
-                sharedIsPlaying={sharedIsPlaying && playingPost === postId}
-                onSeek={handleSeek}
-                onEdit={(p) => setEditingPost(p)}
-                onImageClick={(imageData) => {
-                  console.log('[PostFeed] Image clicked:', imageData);
-                  setSelectedImage(imageData);
-                }}
-                onDelete={async (p) => {
-                  if (!window.confirm(t('feed.confirmTrash'))) return;
-                  
-                  try {
-                    const currentEntityAccountId = getCurrentEntityAccountId();
-                    if (!currentEntityAccountId) {
-                      alert(t('feed.errorTrash') || 'Cannot trash post: No entityAccountId');
-                      return;
+              <React.Fragment key={postId}>
+                <PostCard
+                  post={transformedPost}
+                  playingPost={playingPost}
+                  setPlayingPost={(playingPostId) => {
+                    setPlayingPost(playingPostId);
+                    // Set active player when starting playback
+                    if (playingPostId === postId) {
+                      setActivePlayer(transformedPost);
+                    } else if (!playingPostId) {
+                      setActivePlayer(null);
                     }
+                  }}
+                  sharedAudioRef={sharedAudioRef}
+                  sharedCurrentTime={sharedCurrentTime}
+                  sharedDuration={sharedDuration}
+                  sharedIsPlaying={sharedIsPlaying && playingPost === postId}
+                  onSeek={handleSeek}
+                  onEdit={(p) => setEditingPost(p)}
+                  onImageClick={(imageData) => {
+                    console.log('[PostFeed] Image clicked:', imageData);
+                    setSelectedImage(imageData);
+                  }}
+                  onDelete={async (p) => {
+                    if (!window.confirm(t('feed.confirmTrash'))) return;
 
-                    // Gọi API trash post
-                    const response = await trashPost(p.id || p._id, {
-                      entityAccountId: currentEntityAccountId
-                    });
+                    try {
+                      const currentEntityAccountId = getCurrentEntityAccountId();
+                      if (!currentEntityAccountId) {
+                        alert(t('feed.errorTrash') || 'Cannot trash post: No entityAccountId');
+                        return;
+                      }
 
-                    // axiosClient interceptor đã unwrap response.data, nên response chính là response.data
-                    if (response?.success) {
-                      // Refresh posts để cập nhật danh sách
-                      loadPosts(true);
-                    } else {
-                      alert(response?.message || t('feed.errorTrash') || 'Failed to trash post');
+                      // Gọi API trash post
+                      const response = await trashPost(p.id || p._id, {
+                        entityAccountId: currentEntityAccountId
+                      });
+
+                      // axiosClient interceptor đã unwrap response.data, nên response chính là response.data
+                      if (response?.success) {
+                        // Refresh feed để cập nhật danh sách
+                        loadPosts(true);
+                      } else {
+                        alert(response?.message || t('feed.errorTrash') || 'Failed to trash post');
+                      }
+                    } catch (error) {
+                      console.error('[PostFeed] Error trashing post:', error);
+                      alert(t('feed.errorTrash') || 'Failed to trash post');
                     }
-                  } catch (error) {
-                    console.error('[PostFeed] Error trashing post:', error);
-                    alert(t('feed.errorTrash') || 'Failed to trash post');
-                  }
-                }}
-                onReport={(p) => setReportingPost(p)}
-              />
+                  }}
+                  onReport={(p) => setReportingPost(p)}
+                />
+                
+                {/* Hiển thị Revive ad sau mỗi 3 posts */}
+                {(index + 1) % 3 === 0 && (
+                  <ReviveAdCard 
+                    key={`revive-ad-${index}`}
+                    zoneId={process.env.REACT_APP_REVIVE_NEWSFEED_ZONE_ID || "1"}
+                    barPageId={currentBarPageId}
+                  />
+                )}
+              </React.Fragment>
             );
           })
         )}
