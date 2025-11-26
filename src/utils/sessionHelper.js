@@ -54,7 +54,10 @@ export async function fetchAllEntities(accountId, user) {
       }
     }
   } catch (error) {
-    console.error("[fetchAllEntities] Error fetching bars:", error);
+    // Suppress 404 errors (bar may not exist for this account)
+    if (error?.response?.status !== 404) {
+      console.error("[fetchAllEntities] Error fetching bars:", error);
+    }
   }
 
   try {
@@ -94,7 +97,10 @@ export async function fetchAllEntities(accountId, user) {
       }
     }
   } catch (error) {
-    console.error("[fetchAllEntities] Error fetching businesses:", error);
+    // Suppress 404 errors (business may not exist for this account)
+    if (error?.response?.status !== 404) {
+      console.error("[fetchAllEntities] Error fetching businesses:", error);
+    }
   }
 
   console.log("[fetchAllEntities] Fetched entities:", entities);

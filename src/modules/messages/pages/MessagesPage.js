@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Reply, Search } from "lucide-react";
+import { ArrowLeft, Reply, Search, FileText } from "lucide-react";
 import { cn } from "../../../utils/cn";
 import MessagesPanel from "../../../components/layout/common/MessagesPanel";
 import MessageList from "../components/MessageList";
@@ -9,6 +9,8 @@ import publicProfileApi from "../../../api/publicProfileApi";
 import useChatSocket from "../../../api/useChatSocket";
 import Composer from "../components/Composer";
 import { getEntityMapFromSession } from "../../../utils/sessionHelper";
+import NotificationToPostModal from "../../feeds/components/modals/NotificationToPostModal";
+import { getPostById } from "../../../api/postApi";
 
 const themeVars = {
   background: "rgb(var(--background))",
@@ -37,6 +39,10 @@ function ConversationView({ chat, onBack }) {
   const [replyTarget, setReplyTarget] = useState(null);
   const linkPreviewCacheRef = useRef(new Map());
   const [linkPreviewMap, setLinkPreviewMap] = useState({});
+  const [postModalOpen, setPostModalOpen] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [selectedCommentId, setSelectedCommentId] = useState(null);
+  const [postPreviews, setPostPreviews] = useState(new Map()); // Store post previews by postId
 
   // Reset header info and paging when switching chats
   useEffect(() => {
@@ -409,6 +415,157 @@ function ConversationView({ chat, onBack }) {
     return `/posts/${postId}`;
   }, []);
 
+  // Fetch post preview when post link is detected
+  const fetchPostPreview = useCallback(async (postId) => {
+    if (!postId || postPreviews.has(postId)) return;
+    
+    // Validate postId format (MongoDB ObjectId: 24 hex characters)
+    const isValidObjectId = (id) => {
+      if (!id) return false;
+      const idStr = String(id);
+      return /^[0-9a-fA-F]{24}$/.test(idStr);
+    };
+    
+    if (!isValidObjectId(postId)) {
+      // Mark as invalid to prevent retry
+      setPostPreviews(prev => {
+        const newMap = new Map(prev);
+        newMap.set(postId, null); // null means invalid
+        return newMap;
+      });
+      return;
+    }
+    
+    try {
+      const response = await getPostById(postId, { includeMedias: true });
+      const postData = response?.success && response.data ? response.data : (response?._id ? response : null);
+      
+      if (postData) {
+        setPostPreviews(prev => {
+          const newMap = new Map(prev);
+          newMap.set(postId, {
+            id: postData._id || postData.id,
+            content: postData.content || postData.title || "",
+            authorName: postData.authorName || postData.author?.userName || postData.account?.userName || "Người dùng",
+            authorAvatar: postData.authorAvatar || postData.author?.avatar || postData.account?.avatar || null,
+            previewImage: postData.medias?.images?.[0]?.url || postData.medias?.videos?.[0]?.thumbnail || null,
+          });
+          return newMap;
+        });
+      } else {
+        // Mark as failed to prevent retry
+        setPostPreviews(prev => {
+          const newMap = new Map(prev);
+          newMap.set(postId, null);
+          return newMap;
+        });
+      }
+    } catch (error) {
+      // Only log non-404/400 errors
+      if (error?.response?.status !== 404 && error?.response?.status !== 400) {
+        console.warn('[MessagesPage] Failed to fetch post preview:', error);
+      }
+      // Mark as failed to prevent retry
+      setPostPreviews(prev => {
+        const newMap = new Map(prev);
+        newMap.set(postId, null);
+        return newMap;
+      });
+    }
+  }, [postPreviews]);
+
+  // Render post preview card
+  const renderPostPreviewCard = useCallback((postId, isMine) => {
+    const preview = postPreviews.get(postId);
+    if (preview === undefined) {
+      // Fetch preview if not loaded
+      fetchPostPreview(postId);
+      return null;
+    }
+    if (preview === null) {
+      // Invalid or failed to load - don't show preview
+      return null;
+    }
+
+    const summary = preview.content && preview.content.length > 100
+      ? `${preview.content.slice(0, 100)}…`
+      : preview.content || "Bài viết";
+
+    return (
+      <div
+        className="mt-2 flex w-full gap-3 overflow-hidden rounded-xl border p-2.5"
+        style={{
+          borderColor: isMine ? "rgba(255,255,255,0.25)" : "rgb(var(--border))",
+          background: isMine ? "rgba(255,255,255,0.1)" : "rgb(var(--card))",
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedPostId(postId);
+          setPostModalOpen(true);
+        }}
+      >
+        {preview.previewImage && (
+          <div className="relative w-20 h-20 flex-shrink-0 overflow-hidden rounded-lg">
+            <img src={preview.previewImage} alt="" className="h-full w-full object-cover" />
+          </div>
+        )}
+        <div className="flex flex-1 flex-col gap-1.5 min-w-0">
+          <div className="flex items-center gap-2">
+            {preview.authorAvatar ? (
+              <img
+                src={preview.authorAvatar}
+                alt={preview.authorName}
+                className="h-5 w-5 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold">
+                {preview.authorName?.[0]?.toUpperCase() || "?"}
+              </div>
+            )}
+            <span 
+              className="text-xs font-semibold truncate"
+              style={{ color: isMine ? 'rgba(255,255,255,0.9)' : 'rgb(var(--foreground))' }}
+            >
+              {preview.authorName}
+            </span>
+          </div>
+          <p 
+            className="text-xs leading-snug line-clamp-2 m-0"
+            style={{ color: isMine ? 'rgba(255,255,255,0.8)' : 'rgb(var(--muted-foreground))' }}
+          >
+            {summary}
+          </p>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelectedPostId(postId);
+              setPostModalOpen(true);
+            }}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium mt-1",
+              "transition-all duration-200",
+              "cursor-pointer select-none w-fit"
+            )}
+            style={isMine ? {
+              background: 'rgba(255, 255, 255, 0.2)',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+            } : {
+              background: 'rgb(var(--muted))',
+              color: 'rgb(var(--foreground))',
+              border: '1px solid rgb(var(--border))',
+            }}
+          >
+            <FileText size={13} style={{ opacity: 0.85 }} />
+            <span>Xem chi tiết</span>
+          </button>
+        </div>
+      </div>
+    );
+  }, [postPreviews, fetchPostPreview, setSelectedPostId, setPostModalOpen]);
+
   const renderSharedPostCard = useCallback((sharedPost, sharedPostId, isMine) => {
     if (!sharedPost && !sharedPostId) return null;
     const preview = sharedPost || {};
@@ -613,6 +770,16 @@ function ConversationView({ chat, onBack }) {
             const storyImageUrl = storyImgMatch ? storyImgMatch[1] : null;
             const textContent = storyImageUrl ? rawContent.replaceAll(/\[STORY_IMAGE:[^\]]+\]/gi, "").trim() : rawContent;
             
+            // Debug: log if message contains post link
+            if (textContent && (textContent.includes('/posts/') || textContent.includes('posts/'))) {
+              console.log('[MessagesPage] Message contains post link:', textContent);
+            }
+            
+            // Debug: Check if message contains smoker://post link
+            if (textContent && textContent.includes('smoker://post')) {
+              console.log('[MessagesPage] Found smoker://post link in message:', textContent);
+            }
+            
             let contentNode = null;
             
             // Render content with story image if available (like ChatDock)
@@ -635,28 +802,115 @@ function ConversationView({ chat, onBack }) {
                 </div>
               );
             } else {
-              // linkify plain text urls
-              const parts = String(textContent || "").split(/(https?:\/\/[^\s]+)/gi);
-              contentNode = (
-                <span 
-                  style={{ 
-                    color: bubbleTextColor,
-                    wordBreak: "break-word",
-                    overflowWrap: "break-word",
-                    wordWrap: "break-word"
-                  }}
-                >
-                  {parts.map((part, idx) =>
-                    /^https?:\/\//i.test(part) ? (
-                      <a key={idx} href={part} target="_blank" rel="noreferrer" className="text-primary underline">
-                        {part}
-                      </a>
-                    ) : (
-                      <React.Fragment key={idx}>{part}</React.Fragment>
-                    )
-                  )}
-                </span>
-              );
+              // Detect post links: /posts/:postId or http://.../posts/:postId
+              // MongoDB ObjectId is 24 hex characters (a-f0-9, case insensitive)
+              // Match pattern: /posts/ followed by 24 hex chars OR alphanumeric with dash/underscore
+              const postUrlRegex = /(?:https?:\/\/[^\s]+\/)?posts\/([a-fA-F0-9]{24}|[a-zA-Z0-9_-]+)/g;
+              
+              // Check if message contains post link
+              const hasPostLink = textContent && (textContent.includes('/posts/') || textContent.includes('posts/'));
+              
+              if (hasPostLink) {
+                // Find all post links using matchAll
+                const postMatches = [...textContent.matchAll(postUrlRegex)];
+                
+                console.log('[MessagesPage] Found post link in message:', textContent);
+                console.log('[MessagesPage] Number of matches:', postMatches.length);
+                console.log('[MessagesPage] Matches:', postMatches);
+                
+                if (postMatches.length > 0) {
+                  // Get first post ID (if multiple links, show preview for first one)
+                  const firstPostId = postMatches[0][1];
+                  
+                  // Render text before link (if any)
+                  const linkStartIndex = postMatches[0].index;
+                  const textBeforeLink = linkStartIndex > 0 ? textContent.substring(0, linkStartIndex).trim() : "";
+                  
+                  contentNode = (
+                    <div className="flex flex-col gap-2">
+                      {textBeforeLink && (
+                        <span 
+                          style={{ 
+                            color: bubbleTextColor,
+                            wordBreak: "break-word",
+                            overflowWrap: "break-word",
+                            wordWrap: "break-word"
+                          }}
+                        >
+                          {textBeforeLink}
+                        </span>
+                      )}
+                      {renderPostPreviewCard(firstPostId, isMine)}
+                    </div>
+                  );
+                } else {
+                  // Fallback to regular URL parsing
+                  const combinedPattern = /(https?:\/\/[^\s]+)/gi;
+                  const parts = textContent ? textContent.split(combinedPattern).filter(p => p && p.trim()) : [];
+                  contentNode = (
+                    <span 
+                      style={{ 
+                        color: bubbleTextColor,
+                        wordBreak: "break-word",
+                        overflowWrap: "break-word",
+                        wordWrap: "break-word"
+                      }}
+                    >
+                      {parts.map((part, idx) => {
+                        if (/^https?:\/\//i.test(part)) {
+                          return (
+                            <a key={idx} href={part} target="_blank" rel="noreferrer" className="text-primary underline">
+                              {part}
+                            </a>
+                          );
+                        }
+                        return <React.Fragment key={idx}>{part}</React.Fragment>;
+                      })}
+                    </span>
+                  );
+                }
+              } else {
+                // No smoker links, just parse regular URLs
+                const combinedPattern = /(https?:\/\/[^\s]+)/gi;
+                const parts = textContent ? textContent.split(combinedPattern).filter(p => p && p.trim()) : [];
+                contentNode = (
+                  <span 
+                    style={{ 
+                      color: bubbleTextColor,
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                      wordWrap: "break-word"
+                    }}
+                  >
+                    {parts.map((part, idx) => {
+                      if (/^https?:\/\//i.test(part)) {
+                        return (
+                          <a key={idx} href={part} target="_blank" rel="noreferrer" className="text-primary underline">
+                            {part}
+                          </a>
+                        );
+                      }
+                      return <React.Fragment key={idx}>{part}</React.Fragment>;
+                    })}
+                  </span>
+                );
+              }
+              
+              // If contentNode is still null, render plain text
+              if (!contentNode) {
+                contentNode = (
+                  <span 
+                    style={{ 
+                      color: bubbleTextColor,
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                      wordWrap: "break-word"
+                    }}
+                  >
+                    {textContent}
+                  </span>
+                );
+              }
             }
             const actionIcons = [
               { label: t("comment.reply") || "Reply", Icon: Reply }
@@ -705,7 +959,11 @@ function ConversationView({ chat, onBack }) {
                   "group relative max-w-[240px] break-words rounded-2xl px-3 py-1.5 text-sm leading-[1.35] shadow-sm sm:max-w-[280px]",
                   isMine ? "rounded-br-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" : "rounded-bl-md border",
                 )}
-                onClick={() => {
+                onClick={(e) => {
+                  // Don't set reply target if clicking on a button or link
+                  if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' || e.target.closest('button') || e.target.closest('a')) {
+                    return;
+                  }
                   setReplyTarget({
                     id: m.id || m._id,
                     text,
@@ -821,6 +1079,16 @@ function ConversationView({ chat, onBack }) {
             if (!socket || !chat?.id) return;
             if (state === "start") socket.emit("typing:start", { convId: chat.id });
             else socket.emit("typing:stop", { convId: chat.id });
+          }}
+        />
+        <NotificationToPostModal
+          open={postModalOpen}
+          postId={selectedPostId}
+          commentId={selectedCommentId}
+          onClose={() => {
+            setPostModalOpen(false);
+            setSelectedPostId(null);
+            setSelectedCommentId(null);
           }}
         />
       </div>

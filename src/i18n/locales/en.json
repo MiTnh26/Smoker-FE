@@ -69,7 +69,9 @@
     "feeling": "Feeling",
     "reposted": "reposted",
     "repostedPost": "Post has been reposted",
-    "repostedMedia": "Media has been reposted"
+    "repostedMedia": "Media has been reposted",
+    "loadingMore": "Loading more...",
+    "noMorePosts": "No more posts"
   },
   "menu": {
     "settings": "Settings & Privacy",

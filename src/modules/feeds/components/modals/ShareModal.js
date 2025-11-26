@@ -221,18 +221,17 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
                         (activeEntity?.role === "dj" || activeEntity?.role === "dancer") ? "BusinessAccount" : "Account";
       const entityId = activeEntity?.entityId || activeEntity?.id;
 
-      // Check if this is a media (has isMedia flag or url field) or a post
-      const isMedia = post.isMedia || (post.url && (!post.content || !post.content.trim()) && (!post.title || !post.title.trim()));
+      // Get post ID - use original post ID if it's a repost
+      const originalPostId = post.repostedFromId || post.id || post._id;
+      
+      // Create post URL that can be detected and opened in modal
       const postUrl = typeof window !== "undefined" 
-        ? `${window.location.origin}/${isMedia ? 'medias' : 'posts'}/${post.id}` 
-        : `https://smoker.app/${isMedia ? 'medias' : 'posts'}/${post.id}`;
-      const messageContent = `📎 ${post.title || post.content || (isMedia ? "Xem ảnh" : "Bài viết")}\n${postUrl}`;
+        ? `${window.location.origin}/posts/${originalPostId}` 
+        : `http://localhost:3000/posts/${originalPostId}`;
+      const messageContent = postUrl;
 
       // Get conversation ID from new structure (English fields)
       const conversationId = selectedConversation._id || selectedConversation.id || selectedConversation.conversationId;
-
-      // Get post ID - use original post ID if it's a repost
-      const originalPostId = post.repostedFromId || post.id || post._id;
 
       await messageApi.sendMessage(
         conversationId,

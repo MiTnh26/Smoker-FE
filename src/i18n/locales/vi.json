@@ -70,7 +70,9 @@
     "feeling": "Cảm xúc",
     "reposted": "đã đăng lại",
     "repostedPost": "Bài viết đã được đăng lại",
-    "repostedMedia": "Ảnh/Video đã được đăng lại"
+    "repostedMedia": "Ảnh/Video đã được đăng lại",
+    "loadingMore": "Đang tải thêm...",
+    "noMorePosts": "Không còn bài viết nào"
   },
   "menu": {
     "settings": "Cài đặt & quyền riêng tư",

@@ -106,7 +106,7 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
   return (
     <div 
       ref={containerRef}
-      className="bg-white rounded-lg shadow-md overflow-hidden mb-4 revive-ad-wrapper"
+      className="bg-white rounded-lg shadow-md overflow-hidden mb-1 revive-ad-wrapper"
       style={{ minHeight: '100px' }}
     />
   );
