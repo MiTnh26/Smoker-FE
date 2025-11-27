@@ -15,6 +15,25 @@ import ImageDetailModal from "../media/mediasOfPost/ImageDetailModal";
 
 const LIVESTREAM_POLL_INTERVAL = Number(process.env.REACT_APP_LIVESTREAM_POLL_INTERVAL || 30000);
 
+const normalizeGuid = (value) => {
+  if (!value) return null;
+  return String(value).trim().toLowerCase();
+};
+
+const extractLikeEntityAccountId = (like) => {
+  if (!like) return null;
+  if (typeof like === "string") return normalizeGuid(like);
+  if (typeof like === "object") {
+    return normalizeGuid(like.entityAccountId || like.EntityAccountId);
+  }
+  return null;
+};
+
+const extractLikeAccountId = (like) => {
+  if (!like || typeof like !== "object") return null;
+  return normalizeGuid(like.accountId || like.AccountId);
+};
+
 export default function PostFeed({ onGoLive, onLivestreamClick }) {
   const { t } = useTranslation();
   const [posts, setPosts] = useState([]);
@@ -677,28 +696,80 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
     }
     const currentUser = session?.account
     const activeEntity = session?.activeEntity || currentUser
+    const entities = Array.isArray(session?.entities) ? session.entities : []
+
+    const resolveViewerEntityAccountId = () => {
+      const tryNormalize = (value) => normalizeGuid(
+        value?.EntityAccountId ||
+        value?.entityAccountId ||
+        value?.entity_account_id ||
+        value
+      )
+
+      // 1. Direct fields on active entity
+      let resolved =
+        tryNormalize(activeEntity) ||
+        tryNormalize(currentUser)
+
+      // 2. Lookup from entities array if not found
+      if (!resolved && activeEntity?.id && entities.length > 0) {
+        const match = entities.find((entity) => {
+          if (!entity?.id) return false;
+          return String(entity.id).toLowerCase() === String(activeEntity.id).toLowerCase();
+        });
+        resolved = tryNormalize(match);
+      }
+
+      return resolved || null;
+    };
+
+    const viewerEntityAccountId = resolveViewerEntityAccountId();
+
+    const viewerAccountId = normalizeGuid(
+      currentUser?.id ||
+      currentUser?.AccountId ||
+      currentUser?.accountId
+    );
 
     // Determine if current user liked this post (simplified)
     const isLikedByCurrentUser = (() => {
-      const viewerId = activeEntity?.id || currentUser?.id;
-      if (!viewerId || !post?.likes) return false;
+      if (!post?.likes) return false;
+
+      const matchesLike = (likeObj) => {
+        if (!likeObj) return false;
+        const likeEntityId = extractLikeEntityAccountId(likeObj);
+        if (viewerEntityAccountId && likeEntityId) {
+          return likeEntityId === viewerEntityAccountId;
+        }
+
+        const likeAccountId = extractLikeAccountId(likeObj);
+        // Legacy fallback: khi like chưa lưu entityAccountId
+        if (!viewerEntityAccountId && viewerAccountId && likeAccountId) {
+          return likeAccountId === viewerAccountId;
+        }
+        if (viewerEntityAccountId && !likeEntityId && viewerAccountId && likeAccountId) {
+          return likeAccountId === viewerAccountId;
+        }
+        return false;
+      };
+
       const likes = post.likes;
-      const isMatch = (likeObj) => likeObj && String(likeObj.accountId) === String(viewerId);
       if (likes instanceof Map) {
-        for (const [, likeObj] of likes.entries()) if (isMatch(likeObj)) return true;
+        for (const [, likeObj] of likes.entries()) {
+          if (matchesLike(likeObj)) return true;
+        }
         return false;
       }
-      if (Array.isArray(likes)) return likes.some(isMatch);
-      if (typeof likes === 'object') return Object.values(likes).some(isMatch);
+      if (Array.isArray(likes)) return likes.some(matchesLike);
+      if (typeof likes === 'object') return Object.values(likes).some(matchesLike);
       return false;
     })();
 
     // So sánh ownership dựa trên entityAccountId
-    const ownerEntityAccountId = post.entityAccountId ? String(post.entityAccountId).trim() : null;
-    // Lấy EntityAccountId từ activeEntity (ưu tiên EntityAccountId, sau đó entityAccountId, cuối cùng mới là id nếu không có)
-    const viewerEntityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id 
-      ? String(activeEntity.EntityAccountId || activeEntity.entityAccountId || activeEntity.id).trim() 
-      : null;
+    const ownerEntityAccountId = normalizeGuid(
+      post.entityAccountId ||
+      post.authorEntityAccountId
+    );
     
     // Debug log để kiểm tra
     if (!ownerEntityAccountId || !viewerEntityAccountId) {
@@ -713,11 +784,11 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
     }
     
     // Chỉ so sánh entityAccountId - phải có cả 2 và phải khác rỗng
-    const canManage = ownerEntityAccountId && 
-                      viewerEntityAccountId && 
+    const canManage = ownerEntityAccountId &&
+                      viewerEntityAccountId &&
                       ownerEntityAccountId.length > 0 &&
                       viewerEntityAccountId.length > 0 &&
-                      ownerEntityAccountId.toLowerCase() === viewerEntityAccountId.toLowerCase();
+                      ownerEntityAccountId === viewerEntityAccountId;
 
     // Prefer populated objects if available
     const populatedSong = (post.song && typeof post.song === 'object') ? post.song : null;

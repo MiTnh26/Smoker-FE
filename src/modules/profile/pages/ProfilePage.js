@@ -32,6 +32,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [rawPosts, setRawPosts] = useState([]);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsPagination, setPostsPagination] = useState({ nextCursor: null, hasMore: false });
@@ -74,16 +75,21 @@ export default function ProfilePage() {
             : (profileData.posts && typeof profileData.posts === "object"
                 ? Object.values(profileData.posts)
                 : []);
-          const transformedPosts = rawPosts.map((post) => mapPostForCard(post, t, currentUserEntityId));
-          setPosts(transformedPosts);
+          setRawPosts(rawPosts);
           setPostsPagination(profileData.postsPagination || { nextCursor: null, hasMore: false });
         } else {
-          if (alive) setError('Profile not found');
+          if (alive) {
+            setError('Profile not found');
+            setRawPosts([]);
+            setPosts([]);
+          }
         }
       } catch (e) {
         if (alive) {
           const errorMessage = e?.response?.data?.message || e?.message || 'Failed to fetch profile';
           setError(errorMessage);
+          setRawPosts([]);
+          setPosts([]);
         }
       } finally {
         if (alive) {
@@ -99,6 +105,11 @@ export default function ProfilePage() {
 
     return () => { alive = false; };
   }, [entityId, t]);
+
+  useEffect(() => {
+    const transformedPosts = rawPosts.map((post) => mapPostForCard(post, t, currentUserEntityId));
+    setPosts(transformedPosts);
+  }, [rawPosts, currentUserEntityId, t]);
 
 
 

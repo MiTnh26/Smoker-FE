@@ -134,10 +134,12 @@ const extractAudioFromMedias = (medias) => {
   return null;
 };
 
-const normalizeEntityAccountId = (value) => {
+const normalizeGuid = (value) => {
   if (!value) return null;
   return String(value).trim().toUpperCase();
 };
+
+const normalizeEntityAccountId = normalizeGuid;
 
 const resolveViewerEntityAccountId = (explicitId) => {
   const normalizedExplicit = normalizeEntityAccountId(explicitId);
@@ -163,33 +165,73 @@ const extractLikeEntityId = (like) => {
   if (typeof like === "object") {
     return normalizeEntityAccountId(
       like.entityAccountId ||
-      like.EntityAccountId ||
-      like.accountId ||
-      like.AccountId ||
-      like.id ||
-      like.Id
+      like.EntityAccountId
     );
   }
   return null;
 };
 
-const isLikedByViewer = (likes, viewerEntityAccountId) => {
-  if (!viewerEntityAccountId || !likes) return false;
+const extractLikeAccountId = (like) => {
+  if (!like) return null;
+  if (typeof like === "object") {
+    return normalizeGuid(
+      like.accountId ||
+      like.AccountId
+    );
+  }
+  return null;
+};
+
+const isLikedByViewer = (likes, viewerEntityAccountId, viewerAccountId) => {
+  if (!likes) return false;
+  const normalizedViewerEntity = normalizeEntityAccountId(viewerEntityAccountId);
+  const normalizedViewerAccount = normalizeGuid(viewerAccountId);
+
+  const matches = (like) => {
+    const likeEntityId = extractLikeEntityId(like);
+    if (normalizedViewerEntity && likeEntityId) {
+      return likeEntityId === normalizedViewerEntity;
+    }
+    // Legacy fallback: nếu like hoặc viewer không có entityAccountId thì so sánh accountId
+    if (!normalizedViewerEntity && normalizedViewerAccount) {
+      return extractLikeAccountId(like) === normalizedViewerAccount;
+    }
+    if (normalizedViewerEntity && !likeEntityId && normalizedViewerAccount) {
+      return extractLikeAccountId(like) === normalizedViewerAccount;
+    }
+    return false;
+  };
 
   if (Array.isArray(likes)) {
-    return likes.some((like) => extractLikeEntityId(like) === viewerEntityAccountId);
+    return likes.some(matches);
   }
 
   if (likes instanceof Map) {
-    return likes.has(viewerEntityAccountId);
+    for (const value of likes.values()) {
+      if (matches(value)) return true;
+    }
+    return false;
   }
 
   if (typeof likes === "object") {
-    if (likes[viewerEntityAccountId]) return true;
-    return Object.values(likes).some((like) => extractLikeEntityId(like) === viewerEntityAccountId);
+    return Object.values(likes).some(matches);
   }
 
   return false;
+};
+
+const resolveViewerAccountId = () => {
+  try {
+    const session = getSession();
+    return normalizeGuid(
+      session?.account?.id ||
+      session?.account?.AccountId ||
+      session?.account?.accountId
+    );
+  } catch (error) {
+    console.warn("[postTransformers] Failed to read session for viewer account:", error);
+    return null;
+  }
 };
 
 /**
@@ -220,12 +262,32 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     null; // Sẽ được xử lý bởi getAvatarUrl trong component
 
   const resolvedViewerEntityId = resolveViewerEntityAccountId(viewerEntityAccountId);
+  const resolvedViewerAccountId = resolveViewerAccountId();
 
   // Get audio from various sources
   const music = post.musicId || post.music || {};
   const audioFromMusic = extractAudioFromMusic(music);
   const audioFromMedias = extractAudioFromMedias(post.medias);
   const audioSrc = audioFromMusic || audios[0]?.url || audioFromMedias || post.audioSrc || post.audioUrl || null;
+
+  const ownerEntityAccountId = normalizeEntityAccountId(
+    post.entityAccountId ||
+    post.authorEntityAccountId ||
+    author.entityAccountId ||
+    author.EntityAccountId
+  );
+
+  const ownerAccountId = normalizeGuid(
+    post.accountId ||
+    post.ownerAccountId ||
+    author.accountId ||
+    author.AccountId ||
+    author.id
+  );
+
+  const canManage =
+    (resolvedViewerEntityId && ownerEntityAccountId && resolvedViewerEntityId === ownerEntityAccountId) ||
+    (resolvedViewerAccountId && ownerAccountId && resolvedViewerAccountId === ownerAccountId);
 
   return {
     id,
@@ -243,14 +305,14 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
     purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
     likes: countCollection(post.likes),
-    likedByCurrentUser: isLikedByViewer(post.likes, resolvedViewerEntityId),
+    likedByCurrentUser: isLikedByViewer(post.likes, resolvedViewerEntityId, resolvedViewerAccountId),
     comments: countCollection(post.comments),
     shares: post.shares || 0,
     hashtags: post.hashtags || [],
     verified: !!post.verified,
     location: post.location || null,
     title: post.title || null,
-    canManage: false,
+    canManage,
     ownerEntityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
     entityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
     authorEntityAccountId: post.authorEntityAccountId || post.entityAccountId || null,
