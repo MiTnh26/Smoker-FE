@@ -36,6 +36,7 @@ export default function PublicProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [rawPosts, setRawPosts] = useState([]);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsPagination, setPostsPagination] = useState({});
@@ -110,13 +111,12 @@ export default function PublicProfile() {
           setProfile(mappedData);
           
           // Handle posts from profile response (accept array or object-map)
-          const rawPosts = Array.isArray(profileData.posts)
+          const rawFetchedPosts = Array.isArray(profileData.posts)
             ? profileData.posts
             : (profileData.posts && typeof profileData.posts === 'object'
                 ? Object.values(profileData.posts)
                 : []);
-          const transformed = rawPosts.map((post) => mapPostForCard(post, t, currentUserEntityId));
-          setPosts(transformed);
+          setRawPosts(rawFetchedPosts);
           
           // Handle pagination
           if (profileData.postsPagination) {
@@ -126,12 +126,14 @@ export default function PublicProfile() {
           }
         } else {
           setProfile(null);
+          setRawPosts([]);
           setPosts([]);
         }
       } catch (e) {
         if (alive) {
           setError(e?.response?.data?.message || e?.message || "Failed to load profile");
           setProfile(null);
+          setRawPosts([]);
           setPosts([]);
         }
       } finally {
@@ -144,6 +146,15 @@ export default function PublicProfile() {
     if (entityId) run();
     return () => { alive = false; };
   }, [entityId, t]);
+
+  useEffect(() => {
+    if (!rawPosts) {
+      setPosts([]);
+      return;
+    }
+    const transformed = rawPosts.map((post) => mapPostForCard(post, t, currentUserEntityId));
+    setPosts(transformed);
+  }, [rawPosts, currentUserEntityId, t]);
 
   // Determine if this is a bar profile (before early returns)
   const targetTypeForBar = profile ? (() => {

@@ -25,7 +25,8 @@ export const deletePost = (id) => axiosClient.delete(`/posts/${id}`);
 export const likePost = (postId, data) => axiosClient.post(`/posts/${postId}/like`, data);
 
 // Bỏ like post
-export const unlikePost = (postId) => axiosClient.delete(`/posts/${postId}/like`);
+export const unlikePost = (postId, data = {}) =>
+  axiosClient.delete(`/posts/${postId}/like`, { data });
 
 // Thêm comment
 export const addComment = (postId, data) => axiosClient.post(`/posts/${postId}/comments`, data);

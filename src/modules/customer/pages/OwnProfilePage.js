@@ -108,7 +108,8 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
   const { t } = useTranslation();
   const currentUserEntityId = useCurrentUserEntity();
   const { profile, loading, error, fetchProfile } = useProfileData(initialProfileType, currentUserEntityId);
-  const { posts, loading: postsLoading } = useProfilePosts(currentUserEntityId);
+  const profileEntityAccountId = profile?.EntityAccountId || profile?.entityAccountId || currentUserEntityId;
+  const { posts, loading: postsLoading } = useProfilePosts(profileEntityAccountId, currentUserEntityId);
   const { followers, fetchFollowers } = useFollowers(currentUserEntityId);
   const { following, fetchFollowing } = useFollowing(currentUserEntityId);
   const profileType = useProfileType(profile);

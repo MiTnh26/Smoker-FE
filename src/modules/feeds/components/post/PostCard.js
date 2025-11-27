@@ -178,6 +178,31 @@ export default function PostCard({
       }
       const currentUser = session?.account
       const activeEntity = session?.activeEntity || currentUser
+      const entities = Array.isArray(session?.entities) ? session.entities : []
+
+      const tryNormalizeEntityId = (entity) => (
+        entity?.EntityAccountId ||
+        entity?.entityAccountId ||
+        entity?.entity_account_id ||
+        null
+      )
+
+      const resolveViewerEntityAccountId = () => {
+        let resolved =
+          tryNormalizeEntityId(activeEntity) ||
+          tryNormalizeEntityId(currentUser)
+
+        if (!resolved && activeEntity?.id && entities.length > 0) {
+          const match = entities.find((entity) => {
+            if (!entity?.id) return false
+            return String(entity.id).toLowerCase() === String(activeEntity.id).toLowerCase()
+          })
+          resolved = tryNormalizeEntityId(match)
+        }
+        return resolved || null
+      }
+
+      const viewerEntityAccountId = resolveViewerEntityAccountId()
       const normalizeTypeRole = (ae) => {
         const raw = (ae?.role || "").toString().toLowerCase()
         if (raw === "bar") return "BarPage"
@@ -192,9 +217,9 @@ export default function PostCard({
       setLikeCount((c) => c + (nextLiked ? 1 : -1))
 
       if (nextLiked) {
-        await likePost(post.id, { typeRole })
+        await likePost(post.id, { typeRole, entityAccountId: viewerEntityAccountId })
       } else {
-        await unlikePost(post.id)
+        await unlikePost(post.id, { entityAccountId: viewerEntityAccountId })
       }
     } catch (error) {
       // Revert optimistic update on error
