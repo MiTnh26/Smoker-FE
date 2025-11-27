@@ -296,9 +296,9 @@ export default function PublicProfile() {
 
   const targetType = resolveTargetType();
   const isBarProfile = targetType === "BarPage";
-  const isPerformerProfile =
-    targetType === "BusinessAccount" &&
-    ["DJ", "DANCER"].includes((profile?.role || "").toString().toUpperCase());
+  // Check if profile is DJ or Dancer - check role directly
+  const profileRoleUpper = (profile?.role || profile?.Role || profile?.type || profile?.Type || "").toString().toUpperCase();
+  const isPerformerProfile = ["DJ", "DANCER"].includes(profileRoleUpper);
   const performerTargetId = isPerformerProfile
     ? profile?.targetId || profile?.targetID || null
     : null;
@@ -398,13 +398,13 @@ export default function PublicProfile() {
         const canCreateTables = isOwnProfile && currentUserRole === "BAR";
         return (
           <div className="profile-section">
-            {!canCreateTables && (
-              <div className="mb-4 flex justify-between items-center">
-                <h2 className="text-xl font-bold">Danh sách bàn</h2>
+            {!canCreateTables ? (
+              // Customer view: chỉ hiển thị nút "Đặt bàn ngay"
+              <div className="flex flex-col items-center justify-center py-12">
                 <button
                   onClick={() => setShowBookingView(!showBookingView)}
                   className={cn(
-                    "px-6 py-3 rounded-xl font-bold text-base",
+                    "px-8 py-4 rounded-xl font-bold text-lg",
                     "border-none",
                     "transition-all duration-300",
                     "active:scale-95",
@@ -423,11 +423,10 @@ export default function PublicProfile() {
                 >
                   <span>{showBookingView ? "Hủy đặt bàn" : "🍽️ Đặt bàn ngay"}</span>
                 </button>
+                {showBookingView && <BarTablesPage barId={barPageId} />}
               </div>
-            )}
-            {showBookingView && !canCreateTables ? (
-              <BarTablesPage barId={barPageId} />
             ) : (
+              // Bar owner view: hiển thị danh sách bàn để quản lý
               <BarTables barPageId={barPageId} readOnly={!canCreateTables} />
             )}
           </div>
@@ -823,19 +822,23 @@ export default function PublicProfile() {
       >
         {!isOwnProfile && (
           <>
-            <button
-              onClick={() => setBookingOpen(true)}
-              className={cn(
-                "px-4 py-2 rounded-lg font-semibold text-sm",
-                "bg-primary text-primary-foreground border-none",
-                "hover:bg-primary/90 transition-all duration-200",
-                "active:scale-95",
-                "flex items-center gap-2"
-              )}
-            >
-              <i className="bx bxs-calendar-check text-base" />
-              <span>Request booking</span>
-            </button>
+            {/* Request booking button - chỉ hiển thị cho DJ/Dancer */}
+            {isPerformerProfile && (
+              <button
+                onClick={() => setBookingOpen(true)}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-semibold text-sm",
+                  "bg-primary text-primary-foreground border-none",
+                  "hover:bg-primary/90 transition-all duration-200",
+                  "active:scale-95",
+                  "flex items-center gap-2"
+                )}
+              >
+                <i className="bx bxs-calendar-check text-base" />
+                <span>Request booking</span>
+              </button>
+            )}
+            {/* Chat button - hiển thị cho tất cả */}
             <button
               onClick={async () => {
                 try {
@@ -868,6 +871,7 @@ export default function PublicProfile() {
               <i className="bx bx-message-rounded text-base" />
               <span>Chat</span>
             </button>
+            {/* Follow button - hiển thị cho tất cả */}
             <FollowButton
               followingId={followEntityId}
               followingType={profile.type === 'BAR' ? 'BAR' : 'USER'}
@@ -1087,12 +1091,16 @@ export default function PublicProfile() {
           </section>
       </div>
 
-      {bookingOpen && (
+      {bookingOpen && isPerformerProfile && (
         <RequestBookingModal
           open={bookingOpen}
           onClose={() => setBookingOpen(false)}
           performerEntityAccountId={entityId}
           performerRole={(profile.role || profile.type || "").toString().toUpperCase().includes("DANCER") ? "DANCER" : "DJ"}
+          performerProfile={{
+            pricePerHours: profile.pricePerHours || profile.PricePerHours || profile.pricePerHour || profile.PricePerHour || 0,
+            pricePerSession: profile.pricePerSession || profile.PricePerSession || 0,
+          }}
         />
       )}
       {reportModalOpen && (

@@ -7,6 +7,11 @@ const bookingApi = {
   getMyBookings: (params) => axiosClient.get("/booking/my", { params }),
   updateStatus: (id, action) => axiosClient.post(`/booking/${id}/${action}`),
   
+  // API cho DJ/Dancer booking requests
+  confirmDJBooking: (id) => axiosClient.patch(`/booking/${id}/confirm`),
+  cancelDJBooking: (id) => axiosClient.patch(`/booking/${id}/cancel`),
+  rejectDJBooking: (id) => axiosClient.patch(`/booking/${id}/reject`),
+  
   // API mới cho booking tables
   getBookingsByBarAndDate: (barId, date) => 
     axiosClient.get(`/booking/bar/${barId}`, { params: { date } }),
