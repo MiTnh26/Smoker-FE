@@ -9,7 +9,7 @@ import PostCard from "../../feeds/components/post/PostCard";
 import { getPostsByAuthor } from "../../../api/postApi";
 import { cn } from "../../../utils/cn";
 import { useFollowers, useFollowing } from "../../../hooks/useFollow";
-import { Edit, DollarSign } from "lucide-react";
+import { Edit, DollarSign, Calendar } from "lucide-react";
 import "../../../styles/modules/publicProfile.css";
 import PerformerReviews from "../../business/components/PerformerReviews";
 import BarVideo from "../../bar/components/BarVideo";
@@ -20,6 +20,9 @@ import { ProfileHeader } from "../../../components/profile/ProfileHeader";
 import { ProfileStats } from "../../../components/profile/ProfileStats";
 import { ImageUploadField } from "../../../components/profile/ImageUploadField";
 import BannedAccountOverlay from "../../../components/common/BannedAccountOverlay";
+import PerformerSchedule from "../../dj/components/PerformerSchedule";
+import DancerBookingRequests from "../components/DancerBookingRequests";
+import bookingApi from "../../../api/bookingApi";
 
 export default function DancerProfile() {
     const { t } = useTranslation();
@@ -45,6 +48,7 @@ export default function DancerProfile() {
     const [saving, setSaving] = useState(false);
     const [businessEntityId, setBusinessEntityId] = useState(null);
     const [businessAccountId, setBusinessAccountId] = useState(null);
+    const [pendingBookingsCount, setPendingBookingsCount] = useState(0);
     
     // Location states
     const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -380,6 +384,27 @@ export default function DancerProfile() {
                     </div>
                 );
 
+            case "schedule":
+                return (
+                    <div className={cn("flex flex-col gap-6")}>
+                        {(businessEntityId || currentUserEntityId) && (
+                            <PerformerSchedule 
+                                performerEntityAccountId={businessEntityId || currentUserEntityId}
+                                isOwnProfile={isOwnProfile}
+                            />
+                        )}
+                    </div>
+                );
+
+            case "bookings":
+                return (
+                    <div className={cn("flex flex-col gap-6")}>
+                        {isOwnProfile && (businessEntityId || currentUserEntityId) && (
+                            <DancerBookingRequests performerEntityAccountId={businessEntityId || currentUserEntityId} />
+                        )}
+                    </div>
+                );
+
             default:
                 return null;
         }
@@ -491,6 +516,62 @@ export default function DancerProfile() {
                             )} />
                         )}
                     </button>
+                    <button
+                        onClick={() => setActiveTab("schedule")}
+                        className={cn(
+                            "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                            "transition-all duration-200 relative whitespace-nowrap",
+                            "flex items-center gap-2",
+                            activeTab === "schedule"
+                                ? "text-foreground"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        <Calendar size={16} />
+                        <span>Lịch diễn</span>
+                        {activeTab === "schedule" && (
+                            <span className={cn(
+                                "absolute bottom-0 left-0 right-0 h-0.5",
+                                "bg-primary"
+                            )} />
+                        )}
+                    </button>
+                    {isOwnProfile && (
+                        <button
+                            onClick={() => setActiveTab("bookings")}
+                            className={cn(
+                                "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                                "transition-all duration-200 relative whitespace-nowrap",
+                                "flex items-center gap-2",
+                                activeTab === "bookings"
+                                    ? "text-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <Calendar size={16} />
+                            <span>Yêu cầu booking</span>
+                            {pendingBookingsCount > 0 && (
+                                <span
+                                    className={cn(
+                                        "px-2 py-0.5 rounded-full text-xs font-bold",
+                                        "flex items-center justify-center min-w-[20px]"
+                                    )}
+                                    style={{
+                                        backgroundColor: "rgb(var(--danger))",
+                                        color: "white"
+                                    }}
+                                >
+                                    {pendingBookingsCount > 99 ? "99+" : pendingBookingsCount}
+                                </span>
+                            )}
+                            {activeTab === "bookings" && (
+                                <span className={cn(
+                                    "absolute bottom-0 left-0 right-0 h-0.5",
+                                    "bg-primary"
+                                )} />
+                            )}
+                        </button>
+                    )}
                 </div>
                 {/* Tab Content */}
                 {renderTabContent()}

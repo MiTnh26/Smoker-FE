@@ -33,7 +33,14 @@ const bookingApi = {
     axiosClient.get(`/bookingtable/booker/${bookerId}`, { params }),
   
   getBookingsByReceiver: (receiverId, params) => 
-    axiosClient.get(`/bookingtable/receiver/${receiverId}`, { params })
+    axiosClient.get(`/bookingtable/receiver/${receiverId}`, { params }),
+  
+  // API cho DJ/Dancer bookings (not bookingtable)
+  getDJBookingsByReceiver: (receiverId, params) => 
+    axiosClient.get(`/booking/receiver/${receiverId}`, { params }),
+  
+  getDJBookingsByBooker: (bookerId, params) => 
+    axiosClient.get(`/booking/booker/${bookerId}`, { params })
 };
 
 export default bookingApi;
