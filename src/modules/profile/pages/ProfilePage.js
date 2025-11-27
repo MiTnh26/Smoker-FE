@@ -17,6 +17,7 @@ import BannedAccountOverlay from "../../../components/common/BannedAccountOverla
 import { getSession } from "../../../utils/sessionManager";
 import { userApi } from "../../../api/userApi";
 import { normalizeProfileData } from "../../../utils/profileDataMapper";
+import { mapPostForCard } from "../../../utils/postTransformers";
 import { CustomerTabs } from "../../../components/profile/ProfileTabs/CustomerTabs";
 import { BarTabs } from "../../../components/profile/ProfileTabs/BarTabs";
 import { DJTabs } from "../../../components/profile/ProfileTabs/DJTabs";
@@ -67,8 +68,14 @@ export default function ProfilePage() {
           const mappedData = normalizeProfileData(profileData);
           setProfile(mappedData);
 
-          // Cập nhật state cho posts và pagination
-          setPosts(profileData.posts || []);
+          // Cập nhật state cho posts và pagination (chấp nhận cả array lẫn object-map)
+          const rawPosts = Array.isArray(profileData.posts)
+            ? profileData.posts
+            : (profileData.posts && typeof profileData.posts === "object"
+                ? Object.values(profileData.posts)
+                : []);
+          const transformedPosts = rawPosts.map((post) => mapPostForCard(post, t, currentUserEntityId));
+          setPosts(transformedPosts);
           setPostsPagination(profileData.postsPagination || { nextCursor: null, hasMore: false });
         } else {
           if (alive) setError('Profile not found');
@@ -91,7 +98,7 @@ export default function ProfilePage() {
     }
 
     return () => { alive = false; };
-  }, [entityId]);
+  }, [entityId, t]);
 
 
 

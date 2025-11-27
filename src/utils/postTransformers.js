@@ -3,6 +3,8 @@
  * Used across all profile pages (BarProfile, DJProfile, DancerProfile, PublicProfile, Customer Profile)
  */
 
+import { getSession } from "./sessionManager";
+
 /**
  * Check if a URL is an audio file
  */
@@ -21,6 +23,7 @@ export const isAudioUrl = (url) => {
 /**
  * Normalize media array from various formats
  */
+// eslint-disable-next-line complexity
 export const normalizeMediaArray = (medias) => {
   const images = [];
   const videos = [];
@@ -77,7 +80,7 @@ export const countCollection = (value) => {
 export const formatPostTime = (value, t) => {
   try {
     const d = value ? new Date(value) : new Date();
-    if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
+    if (Number.isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
     const now = new Date();
     const diffMs = now.getTime() - d.getTime();
     if (diffMs < 0) return d.toLocaleString('vi-VN');
@@ -112,6 +115,7 @@ const extractAudioFromMusic = (music) => {
 /**
  * Extract audio from medias array
  */
+// eslint-disable-next-line complexity
 const extractAudioFromMedias = (medias) => {
   if (Array.isArray(medias)) {
     for (const mediaItem of medias) {
@@ -130,12 +134,70 @@ const extractAudioFromMedias = (medias) => {
   return null;
 };
 
+const normalizeEntityAccountId = (value) => {
+  if (!value) return null;
+  return String(value).trim().toUpperCase();
+};
+
+const resolveViewerEntityAccountId = (explicitId) => {
+  const normalizedExplicit = normalizeEntityAccountId(explicitId);
+  if (normalizedExplicit) return normalizedExplicit;
+
+  try {
+    const session = getSession();
+    return normalizeEntityAccountId(
+      session?.activeEntity?.EntityAccountId ||
+      session?.activeEntity?.entityAccountId ||
+      session?.account?.EntityAccountId ||
+      session?.account?.entityAccountId
+    );
+  } catch (error) {
+    console.warn("[postTransformers] Failed to read session for viewer entity:", error);
+    return null;
+  }
+};
+
+const extractLikeEntityId = (like) => {
+  if (!like) return null;
+  if (typeof like === "string") return normalizeEntityAccountId(like);
+  if (typeof like === "object") {
+    return normalizeEntityAccountId(
+      like.entityAccountId ||
+      like.EntityAccountId ||
+      like.accountId ||
+      like.AccountId ||
+      like.id ||
+      like.Id
+    );
+  }
+  return null;
+};
+
+const isLikedByViewer = (likes, viewerEntityAccountId) => {
+  if (!viewerEntityAccountId || !likes) return false;
+
+  if (Array.isArray(likes)) {
+    return likes.some((like) => extractLikeEntityId(like) === viewerEntityAccountId);
+  }
+
+  if (likes instanceof Map) {
+    return likes.has(viewerEntityAccountId);
+  }
+
+  if (typeof likes === "object") {
+    if (likes[viewerEntityAccountId]) return true;
+    return Object.values(likes).some((like) => extractLikeEntityId(like) === viewerEntityAccountId);
+  }
+
+  return false;
+};
+
 /**
  * Map post data to PostCard format
  * This is the main transformation function used across all profile pages
  */
 // eslint-disable-next-line complexity
-export const mapPostForCard = (post, t) => {
+export const mapPostForCard = (post, t, viewerEntityAccountId) => {
   const id = post._id || post.id || post.postId;
   const author = post.author || post.account || {};
   const mediaFromPost = normalizeMediaArray(post.medias);
@@ -156,6 +218,8 @@ export const mapPostForCard = (post, t) => {
     author.avatar ||
     post.avatar ||
     null; // Sẽ được xử lý bởi getAvatarUrl trong component
+
+  const resolvedViewerEntityId = resolveViewerEntityAccountId(viewerEntityAccountId);
 
   // Get audio from various sources
   const music = post.musicId || post.music || {};
@@ -179,7 +243,7 @@ export const mapPostForCard = (post, t) => {
     thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
     purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
     likes: countCollection(post.likes),
-    likedByCurrentUser: false,
+    likedByCurrentUser: isLikedByViewer(post.likes, resolvedViewerEntityId),
     comments: countCollection(post.comments),
     shares: post.shares || 0,
     hashtags: post.hashtags || [],

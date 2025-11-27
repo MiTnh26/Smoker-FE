@@ -109,13 +109,14 @@ export default function PublicProfile() {
           
           setProfile(mappedData);
           
-          // Handle posts from profile response
-          if (profileData.posts && Array.isArray(profileData.posts)) {
-            const transformed = profileData.posts.map((post) => mapPostForCard(post, t));
-            setPosts(transformed);
-          } else {
-            setPosts([]);
-          }
+          // Handle posts from profile response (accept array or object-map)
+          const rawPosts = Array.isArray(profileData.posts)
+            ? profileData.posts
+            : (profileData.posts && typeof profileData.posts === 'object'
+                ? Object.values(profileData.posts)
+                : []);
+          const transformed = rawPosts.map((post) => mapPostForCard(post, t, currentUserEntityId));
+          setPosts(transformed);
           
           // Handle pagination
           if (profileData.postsPagination) {
