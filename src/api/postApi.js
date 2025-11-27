@@ -35,7 +35,8 @@ export const addComment = (postId, data) => axiosClient.post(`/posts/${postId}/c
 export const updateComment = (postId, commentId, data) => axiosClient.put(`/posts/${postId}/comments/${commentId}`, data);
 
 // Xóa comment
-export const deleteComment = (postId, commentId) => axiosClient.delete(`/posts/${postId}/comments/${commentId}`);
+export const deleteComment = (postId, commentId, data = {}) =>
+  axiosClient.delete(`/posts/${postId}/comments/${commentId}`, { data });
 
 // Like comment
 export const likeComment = (postId, commentId, data) => axiosClient.post(`/posts/${postId}/comments/${commentId}/like`, data);
@@ -53,7 +54,8 @@ export const addReplyToReply = (postId, commentId, replyId, data) => axiosClient
 export const updateReply = (postId, commentId, replyId, data) => axiosClient.put(`/posts/${postId}/comments/${commentId}/replies/${replyId}`, data);
 
 // Xóa reply
-export const deleteReply = (postId, commentId, replyId) => axiosClient.delete(`/posts/${postId}/comments/${commentId}/replies/${replyId}`);
+export const deleteReply = (postId, commentId, replyId, data = {}) =>
+  axiosClient.delete(`/posts/${postId}/comments/${commentId}/replies/${replyId}`, { data });
 
 // Like reply
 export const likeReply = (postId, commentId, replyId, data) => axiosClient.post(`/posts/${postId}/comments/${commentId}/replies/${replyId}/like`, data);
