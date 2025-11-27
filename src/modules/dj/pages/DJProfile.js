@@ -9,8 +9,9 @@ import PostCard from "../../feeds/components/post/PostCard";
 import { getPostsByAuthor } from "../../../api/postApi";
 import { cn } from "../../../utils/cn";
 import { useFollowers, useFollowing } from "../../../hooks/useFollow";
-import { Edit, DollarSign, Music2 } from "lucide-react";
+import { Edit, DollarSign, Music2, Calendar } from "lucide-react";
 import "../../../styles/modules/publicProfile.css";
+import bookingApi from "../../../api/bookingApi";
 import PerformerReviews from "../../business/components/PerformerReviews";
 import { mapPostForCard } from "../../../utils/postTransformers";
 import { useProfilePosts } from "../../../hooks/useProfilePosts";
@@ -19,6 +20,7 @@ import { ProfileHeader } from "../../../components/profile/ProfileHeader";
 import { ProfileStats } from "../../../components/profile/ProfileStats";
 import { ImageUploadField } from "../../../components/profile/ImageUploadField";
 import BannedAccountOverlay from "../../../components/common/BannedAccountOverlay";
+import DJBookingRequests from "../components/DJBookingRequests";
 
 export default function DJProfile() {
     const { t } = useTranslation();
@@ -44,6 +46,7 @@ export default function DJProfile() {
     const [saving, setSaving] = useState(false);
     const [businessEntityId, setBusinessEntityId] = useState(null);
     const [businessAccountId, setBusinessAccountId] = useState(null);
+    const [pendingBookingsCount, setPendingBookingsCount] = useState(0);
     
     // Location states
     const [selectedProvinceId, setSelectedProvinceId] = useState('');
@@ -230,6 +233,44 @@ export default function DJProfile() {
         return gender;
     };
 
+    // Calculate isOwnProfile early (before early returns)
+    const isOwnProfile = activeBusinessId && businessId && String(activeBusinessId).toLowerCase() === String(businessId).toLowerCase();
+
+    // Fetch pending bookings count for badge (must be before early returns)
+    useEffect(() => {
+        const fetchPendingCount = async () => {
+            // Calculate isOwnProfile inside useEffect to ensure it's up to date
+            const currentIsOwnProfile = activeBusinessId && businessId && String(activeBusinessId).toLowerCase() === String(businessId).toLowerCase();
+            
+            if (!currentIsOwnProfile) {
+                setPendingBookingsCount(0);
+                return;
+            }
+            
+            const entityId = businessEntityId || currentUserEntityId;
+            if (!entityId) return;
+            
+            try {
+                const res = await bookingApi.getBookingsByReceiver(entityId, { limit: 100 });
+                const bookingsData = res.data?.data || res.data || [];
+                const pendingCount = bookingsData.filter(b => 
+                    (b.scheduleStatus || b.ScheduleStatus) === "Pending"
+                ).length;
+                setPendingBookingsCount(pendingCount);
+            } catch (error) {
+                console.error("[DJProfile] Error fetching pending bookings count:", error);
+            }
+        };
+        
+        const currentIsOwnProfile = activeBusinessId && businessId && String(activeBusinessId).toLowerCase() === String(businessId).toLowerCase();
+        if (currentIsOwnProfile && (businessEntityId || currentUserEntityId)) {
+            fetchPendingCount();
+            // Refresh count every 30 seconds
+            const interval = setInterval(fetchPendingCount, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [activeBusinessId, businessId, businessEntityId, currentUserEntityId]);
+
     if (loading) return <div className="pp-container">{t('profile.loadingProfile')}</div>;
     if (error) return <div className="pp-container">{error}</div>;
 
@@ -250,10 +291,6 @@ export default function DJProfile() {
         );
     }
     const isBanned = profile.status === "banned";
-    
-    // Check if this is own profile: compare businessId (from URL) with activeBusinessId (businessId of current role)
-    // Similar to how BarProfile checks activeBarPageId
-    const isOwnProfile = activeBusinessId && businessId && String(activeBusinessId).toLowerCase() === String(businessId).toLowerCase();
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -413,6 +450,15 @@ export default function DJProfile() {
                     </div>
                 );
 
+            case "bookings":
+                return (
+                    <div className={cn("flex flex-col gap-6")}>
+                        {isOwnProfile && (businessEntityId || currentUserEntityId) && (
+                            <DJBookingRequests performerEntityAccountId={businessEntityId || currentUserEntityId} />
+                        )}
+                    </div>
+                );
+
             default:
                 return null;
         }
@@ -524,6 +570,42 @@ export default function DJProfile() {
                             )} />
                         )}
                     </button>
+                    {isOwnProfile && (
+                        <button
+                            onClick={() => setActiveTab("bookings")}
+                            className={cn(
+                                "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                                "transition-all duration-200 relative whitespace-nowrap",
+                                "flex items-center gap-2",
+                                activeTab === "bookings"
+                                    ? "text-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <Calendar size={16} />
+                            <span>Yêu cầu booking</span>
+                            {pendingBookingsCount > 0 && (
+                                <span
+                                    className={cn(
+                                        "px-2 py-0.5 rounded-full text-xs font-bold",
+                                        "flex items-center justify-center min-w-[20px]"
+                                    )}
+                                    style={{
+                                        backgroundColor: "rgb(var(--danger))",
+                                        color: "white"
+                                    }}
+                                >
+                                    {pendingBookingsCount > 99 ? "99+" : pendingBookingsCount}
+                                </span>
+                            )}
+                            {activeTab === "bookings" && (
+                                <span className={cn(
+                                    "absolute bottom-0 left-0 right-0 h-0.5",
+                                    "bg-primary"
+                                )} />
+                            )}
+                        </button>
+                    )}
                 </div>
                 {/* Tab Content */}
                 {renderTabContent()}

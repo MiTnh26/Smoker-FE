@@ -73,7 +73,29 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   // Fetch unread count separately
   const fetchUnreadCount = async () => {
     try {
-      const response = await notificationApi.getUnreadCount();
+      // Get entityAccountId from session
+      const session = getSession();
+      if (!session) {
+        setUnreadCount(0);
+        return;
+      }
+
+      const active = getActiveEntity() || {};
+      const entities = getEntities();
+      
+      const entityAccountId =
+        active.EntityAccountId ||
+        active.entityAccountId ||
+        entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
+        entities[0]?.EntityAccountId ||
+        null;
+
+      if (!entityAccountId) {
+        setUnreadCount(0);
+        return;
+      }
+
+      const response = await notificationApi.getUnreadCount(entityAccountId);
       if (response.success && response.data) {
         const count = response.data.count || 0;
         setUnreadCount(count);

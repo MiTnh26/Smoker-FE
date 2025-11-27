@@ -17,8 +17,10 @@ const notificationApi = {
   },
 
   // Lấy số lượng chưa đọc
-  getUnreadCount: () => {
-    return axiosClient.get("/notifications/unread-count");
+  getUnreadCount: (entityAccountId) => {
+    return axiosClient.get("/notifications/unread-count", {
+      params: entityAccountId ? { entityAccountId } : {}
+    });
   },
 
   // Tạo notification mới

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import PropTypes from "prop-types";
 import notificationApi from "../../api/notificationApi";
+import { getSession, getActiveEntity, getEntities } from "../../utils/sessionManager";
 import "../../styles/components/notificationDropdown.css";
 
 const NotificationDropdown = ({ onToggle }) => {
@@ -11,7 +12,24 @@ const NotificationDropdown = ({ onToggle }) => {
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
-        const response = await notificationApi.getUnreadCount();
+        // Get entityAccountId from session
+        const session = JSON.parse(localStorage.getItem("session") || "{}");
+        const active = session?.activeEntity || {};
+        const entities = session?.entities || [];
+        
+        const entityAccountId =
+          active.EntityAccountId ||
+          active.entityAccountId ||
+          entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
+          entities[0]?.EntityAccountId ||
+          null;
+
+        if (!entityAccountId) {
+          setUnreadCount(0);
+          return;
+        }
+
+        const response = await notificationApi.getUnreadCount(entityAccountId);
         if (response.success && response.data) {
           setUnreadCount(response.data.count || 0);
         }

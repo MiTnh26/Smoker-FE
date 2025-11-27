@@ -10,6 +10,7 @@ import { StoryEditor } from "../modules/feeds/components/story";
 import MessagesPage from "../modules/messages/pages/MessagesPage";
 import MessagesLayout from "../layouts/MessagesLayout";
 import BarTablesPage from "../modules/customer/pages/BarTablesPage";
+import MyBookings from "../modules/customer/pages/MyBookings";
 export default function CustomerRoutes() {
   return (
     <Fragment>
@@ -67,6 +68,17 @@ export default function CustomerRoutes() {
             <ProtectedRoute roles={["customer"]}>
               <CustomerLayout>
                 <BarTablesPage />
+              </CustomerLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* ✅ Route: My Bookings */}
+        <Route
+          path="/customer/my-bookings"
+          element={
+            <ProtectedRoute roles={["customer"]}>
+              <CustomerLayout>
+                <MyBookings />
               </CustomerLayout>
             </ProtectedRoute>
           }

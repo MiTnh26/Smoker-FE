@@ -11,7 +11,8 @@ import {
   MessageCircle,
   Store,
   CreditCard,
-  ClipboardCheck
+  ClipboardCheck,
+  BookOpen
 } from "lucide-react";
 
 /**
@@ -31,6 +32,7 @@ export const sidebarConfig = {
     { label: "Hội nhóm", icon: Users, path: "/customer/groups" },
     { label: "Sự kiện", icon: Calendar, path: "/customer/events" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/customer/messages" },
+    { label: "Đặt bàn của tôi", icon: BookOpen, path: "/customer/my-bookings" },
     { label: "Hồ sơ", icon: User, path: "/customer/profile" },
     { label: "Bank info", icon: CreditCard, path: "/customer/bank-info" },
     { label: "Đăng ký tài khoản kinh doanh", icon: Store, path: "/register/select-account-type" },

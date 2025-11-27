@@ -266,6 +266,7 @@ export default function Sidebar() {
       "Hội nhóm": "groups",
       "Sự kiện": "events",
       "Tin nhắn": "messages",
+      "Đặt bàn của tôi": "myBookings",
       "Hồ sơ": "profile",
       "Bank info": "bankInfo",
       "Dashboard": "dashboard",

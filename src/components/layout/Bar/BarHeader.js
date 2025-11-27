@@ -92,7 +92,24 @@ export default function BarHeader() {
   // Fetch unread notification count
   const fetchUnreadNotificationCount = async () => {
     try {
-      const response = await notificationApi.getUnreadCount();
+      // Get entityAccountId from session
+      const session = JSON.parse(localStorage.getItem("session") || "{}");
+      const active = session?.activeEntity || {};
+      const entities = session?.entities || [];
+      
+      const entityAccountId =
+        active.EntityAccountId ||
+        active.entityAccountId ||
+        entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
+        entities[0]?.EntityAccountId ||
+        null;
+
+      if (!entityAccountId) {
+        setUnreadNotificationCount(0);
+        return;
+      }
+
+      const response = await notificationApi.getUnreadCount(entityAccountId);
       if (response.success && response.data) {
         setUnreadNotificationCount(response.data.count || 0);
       }
