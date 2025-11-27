@@ -60,7 +60,7 @@ export default function ProfilePage() {
       try {
         const profileData = await getProfile(entityId);
         if (!alive) return;
-        
+
         // profileApi.getProfile() trả về profileData trực tiếp (không có wrapper { success, data })
         if (profileData) {
           // Dữ liệu profile đã được gộp sẵn từ backend
