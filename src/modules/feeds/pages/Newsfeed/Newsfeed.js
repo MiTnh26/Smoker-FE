@@ -9,7 +9,6 @@ import PostFeed from "../../components/post/PostFeed"
 import "../../../../styles/modules/feeds/pages/Newsfeed/Newsfeed.css"
 import LiveBroadcaster from "../../components/livestream/LiveBroadcaster";
 import LiveViewer from "../../components/livestream/LiveViewer";
-import LivestreamSection from "../../components/livestream/LivestreamSection";
 import useLivestreamManager from "../../components/livestream/useLivestreamManager";
 
 import { useStoryManager } from "../../components/story";
@@ -24,7 +23,6 @@ export default function NewsfeedPage() {
     isBroadcasterOpen,
     openBroadcaster,
     closeBroadcaster,
-    refreshKey: livestreamRefreshKey,
   } = useLivestreamManager()
   const [showStoryEditor, setShowStoryEditor] = useState(false)
   const {
@@ -104,13 +102,11 @@ export default function NewsfeedPage() {
 
 
       <main className="newsfeed-main">
-        <LivestreamSection
-          onGoLive={handleGoLive}
-          onSelectStream={handleLivestreamClick}
-          refreshKey={livestreamRefreshKey}
+        {/* PostFeed now includes livestreams merged with posts */}
+        <PostFeed 
+          onGoLive={handleGoLive} 
+          onLivestreamClick={handleLivestreamClick}
         />
-        {/* Use PostFeed component for automatic loading */}
-        <PostFeed onGoLive={handleGoLive} />
       </main>
       {activeStory && (
         <StoryViewer

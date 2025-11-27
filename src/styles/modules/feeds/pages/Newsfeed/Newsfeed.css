@@ -206,7 +206,7 @@
 .story-section {
   width: 100%;
   max-width: 960px;
-  margin: 0 auto 0.1rem; /* reduced spacing to balance feed */
+  margin: 0 auto 0rem; /* reduced spacing to balance feed */
   background: rgb(var(--card));
   border: 1px solid rgba(var(--border), 0.6);
   position: relative;
