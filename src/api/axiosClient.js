@@ -8,21 +8,33 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use((config) => {
   console.log(`[REQUEST] ${config.method?.toUpperCase()} ${config.url}`);
   
-  // Use sessionManager for consistent token retrieval (synchronous fallback)
-  let token = localStorage.getItem("token");
-  if (!token) {
-    try {
-      const sessionRaw = localStorage.getItem("session");
-      const session = sessionRaw ? JSON.parse(sessionRaw) : null;
+  // Lấy token từ 'session' trong localStorage
+  let token = null;
+  try {
+    const sessionRaw = localStorage.getItem("session");
+    if (sessionRaw) {
+      const session = JSON.parse(sessionRaw);
+      // Ưu tiên lấy token từ session.token, nếu không có thì lấy từ session.accessToken
       token = session?.token || session?.accessToken || null;
-    } catch (e) {
-      // ignore JSON parse errors; treat as no token
+      
+      // Debug log để kiểm tra
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[axiosClient] Session data:', {
+          hasToken: !!session?.token,
+          hasAccessToken: !!session?.accessToken,
+          tokenLength: token?.length || 0
+        });
+      }
     }
+  } catch (e) {
+    // Bỏ qua lỗi parse JSON, coi như không có token
+    console.warn('[axiosClient] Không thể đọc session từ localStorage', e);
   }
   
+  // Thêm token vào header nếu có
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log(`[REQUEST] Token present: ${token.substring(0, 20)}...`);
+    console.log(`[REQUEST] Token added: ${token.substring(0, 20)}...`);
   } else {
     console.warn(`[REQUEST] No token found for ${config.url}`);
   }

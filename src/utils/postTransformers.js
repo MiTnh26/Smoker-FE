@@ -155,7 +155,7 @@ export const mapPostForCard = (post, t) => {
     post.authorAvatar ||
     author.avatar ||
     post.avatar ||
-    "https://via.placeholder.com/40";
+    null; // Sẽ được xử lý bởi getAvatarUrl trong component
 
   // Get audio from various sources
   const music = post.musicId || post.music || {};

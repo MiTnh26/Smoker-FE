@@ -3,15 +3,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import FollowButton from "../../../components/common/FollowButton";
-import publicProfileApi from "../../../api/publicProfileApi";
-import { useFollowers, useFollowing } from "../../../hooks/useFollow";
+import { getProfile } from "../../../api/profileApi";
 import messageApi from "../../../api/messageApi";
-import barPageApi from "../../../api/barPageApi";
-import businessApi from "../../../api/businessApi";
 import { cn } from "../../../utils/cn";
 import RequestBookingModal from "../../../components/booking/RequestBookingModal";
 import ReportEntityModal from "../../feeds/components/modals/ReportEntityModal";
-import { useProfilePosts } from "../../../hooks/useProfilePosts";
 import { useCurrentUserEntity } from "../../../hooks/useCurrentUserEntity";
 import { useProfileType } from "../../../hooks/useProfileType";
 import { useIsOwnProfile } from "../../../hooks/useIsOwnProfile";
@@ -35,7 +31,9 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [refreshTick, setRefreshTick] = useState(0);
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsPagination, setPostsPagination] = useState({ nextCursor: null, hasMore: false });
   
   // Get current user entity ID using shared hook
   const currentUserEntityId = useCurrentUserEntity();
@@ -44,14 +42,8 @@ export default function ProfilePage() {
   const profileType = useProfileType(profile);
   const isOwnProfile = useIsOwnProfile(entityId);
   
-  // Calculate followEntityId from profile data (like own profiles)
-  // Prioritize EntityAccountId from profile, fallback to entityId from URL
-  const followEntityId = profile?.EntityAccountId || profile?.entityAccountId || profile?.entityAccountID || entityId;
-  const { followers, fetchFollowers } = useFollowers(followEntityId);
-  const { following, fetchFollowing } = useFollowing(followEntityId);
-  
-  // Use shared hook for posts
-  const { posts, loading: postsLoading } = useProfilePosts(entityId);
+  // Calculate followEntityId from profile data
+  const followEntityId = profile?.EntityAccountId || profile?.entityAccountId || entityId;
   const [bookingOpen, setBookingOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -61,89 +53,47 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let alive = true;
-    const run = async () => {
+    const fetchProfileData = async () => {
       setLoading(true);
+      setPostsLoading(true);
       setError("");
       try {
-        // Step 1: Get basic profile from entityId
-        const body = await publicProfileApi.getByEntityId(entityId);
-        if (alive) {
-          const data = body?.data || null;
-          if (data) {
-            // Use normalized profile data mapper
-            let mappedData = normalizeProfileData(data);
-            
-            // Ensure EntityAccountId and entityAccountId are set (for followers/following)
-            if (!mappedData.EntityAccountId && !mappedData.entityAccountId) {
-              mappedData.EntityAccountId = entityId;
-              mappedData.entityAccountId = entityId;
-            }
-            
-            // Step 2: If this is a DJ or Dancer profile, get full details from BusinessAccount
-            const profileRole = (mappedData.role || mappedData.Role || "").toString().toUpperCase();
-            const isPerformer = ["DJ", "DANCER"].includes(profileRole);
-            
-            if (isPerformer && alive) {
-              // Get businessAccountId from the normalized data
-              const businessAccountId = 
-                mappedData.businessAccountId ||
-                mappedData.BusinessAccountId ||
-                mappedData.BussinessAccountId ||
-                mappedData.businessId ||
-                mappedData.BusinessId ||
-                mappedData.targetId ||
-                mappedData.targetID ||
-                null;
-              
-              if (businessAccountId) {
-                try {
-                  // Fetch full business details
-                  const businessRes = await businessApi.getBusinessById(businessAccountId);
-                  
-                  if (businessRes.status === "success" && businessRes.data && alive) {
-                    const businessData = businessRes.data;
-                    
-                    // Normalize business data and merge with existing mappedData
-                    const normalizedBusinessData = normalizeProfileData(businessData);
-                    
-                    // Merge business data (prioritize business data over public profile data)
-                    mappedData = {
-                      ...mappedData,
-                      ...normalizedBusinessData,
-                      // Preserve EntityAccountId from original mappedData if business data doesn't have it
-                      EntityAccountId: normalizedBusinessData.EntityAccountId || mappedData.EntityAccountId,
-                      entityAccountId: normalizedBusinessData.entityAccountId || mappedData.entityAccountId,
-                    };
-                  }
-                } catch (businessError) {
-                  console.error("❌ Error fetching business details:", businessError);
-                  // Continue with public profile data if business API fails
-                }
-              }
-            }
-            
-            setProfile(mappedData);
-          } else {
-            setProfile(null);
-          }
+        const profileData = await getProfile(entityId);
+        if (!alive) return;
+
+        // profileApi.getProfile() trả về profileData trực tiếp (không có wrapper { success, data })
+        if (profileData) {
+          // Dữ liệu profile đã được gộp sẵn từ backend
+          const mappedData = normalizeProfileData(profileData);
+          setProfile(mappedData);
+
+          // Cập nhật state cho posts và pagination
+          setPosts(profileData.posts || []);
+          setPostsPagination(profileData.postsPagination || { nextCursor: null, hasMore: false });
+        } else {
+          if (alive) setError('Profile not found');
         }
       } catch (e) {
-        if (alive) setError(e?.response?.data?.message || e.message);
+        if (alive) {
+          const errorMessage = e?.response?.data?.message || e?.message || 'Failed to fetch profile';
+          setError(errorMessage);
+        }
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          setPostsLoading(false);
+        }
       }
     };
-    if (entityId) run();
+
+    if (entityId) {
+      fetchProfileData();
+    }
+
     return () => { alive = false; };
   }, [entityId]);
 
-  useEffect(() => {
-    // Fetch followers/following when followEntityId changes (like own profiles)
-    if (followEntityId) {
-      fetchFollowers();
-      fetchFollowing();
-    }
-  }, [followEntityId, refreshTick, fetchFollowers, fetchFollowing]);
+
 
 
 
@@ -356,7 +306,16 @@ export default function ProfilePage() {
             <FollowButton
               followingId={followEntityId}
               followingType={profile.type === 'BAR' ? 'BAR' : 'USER'}
-              onChange={() => setRefreshTick(v => v + 1)}
+              onChange={(isFollowing) => {
+                // isFollowing = true khi follow, false khi unfollow
+                setProfile(p => ({
+                  ...p,
+                  isFollowing: isFollowing,
+                  followersCount: isFollowing 
+                    ? (p.followersCount || 0) + 1  // Tăng khi follow
+                    : Math.max(0, (p.followersCount || 0) - 1),  // Giảm khi unfollow (không âm)
+                }));
+              }}
             />
             <div className="relative" ref={menuRef}>
               <button
@@ -417,7 +376,7 @@ export default function ProfilePage() {
 
       {/* Main Content Container */}
       <div className={cn("max-w-6xl mx-auto px-4 md:px-6 py-6")}>
-        <ProfileStats followers={followers} following={following} />
+                <ProfileStats followers={profile.followersCount} following={profile.followingCount} />
 
         {/* Tabs Section - All Profile Types */}
           <section className={cn("py-6")}>

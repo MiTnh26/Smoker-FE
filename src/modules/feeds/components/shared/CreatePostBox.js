@@ -137,18 +137,6 @@ export default function CreatePostBox({ onCreate, onGoLive, onMediaClick, onMusi
         >
           <i className="fa-solid fa-music text-base"></i> {t('feed.music')}
         </button>
-        <button 
-          className={cn(
-            "flex items-center gap-2 text-sm font-semibold",
-            "text-muted-foreground bg-transparent border-none",
-            "rounded-xl px-3 py-2",
-            "cursor-pointer transition-all duration-300",
-            "hover:text-primary",
-            "active:scale-95"
-          )}
-        >
-          <i className="fa-solid fa-face-smile text-base"></i> {t('feed.feeling')}
-        </button>
       </div>
     </div>
   )

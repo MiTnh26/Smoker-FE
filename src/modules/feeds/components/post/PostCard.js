@@ -12,6 +12,7 @@ import ShareModal from "../modals/ShareModal"
 import NotificationToPostModal from "../modals/NotificationToPostModal"
 import ReadMoreText from "../comment/ReadMoreText"
 import { cn } from "../../../../utils/cn"
+import { getAvatarUrl } from "../../../../utils/defaultAvatar"
 import "../../../../styles/modules/feeds/components/post/post-card.css"
 
 export default function PostCard({
@@ -314,9 +315,12 @@ export default function PostCard({
         <div className="flex items-center gap-3.5 flex-1 min-w-0">
           <div className="relative flex-shrink-0">
             <img
-              src={post.avatar || "https://via.placeholder.com/40"}
+              src={getAvatarUrl(post.avatar, 40)}
               alt={post.user}
               onClick={handleProfileClick}
+              onError={(e) => {
+                e.target.src = getAvatarUrl(null, 40);
+              }}
               className={cn(
                 "w-14 h-14 rounded-2xl object-cover",
                 "border-2 border-primary/20 ring-2 ring-primary/5",
@@ -608,9 +612,12 @@ export default function PostCard({
                 {originalPost.user && (
                   <div className="flex items-center gap-2 mb-2">
                     <img
-                      src={originalPost.avatar || "https://via.placeholder.com/32"}
+                      src={getAvatarUrl(originalPost.avatar, 32)}
                       alt={originalPost.user}
                       className="w-8 h-8 rounded-full object-cover"
+                      onError={(e) => {
+                        e.target.src = getAvatarUrl(null, 32);
+                      }}
                     />
                     <span className="font-semibold text-[0.9rem] text-foreground">
                       {originalPost.user}

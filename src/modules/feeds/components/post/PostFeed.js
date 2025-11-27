@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { getPosts, trashPost } from "../../../../api/postApi";
+import livestreamApi from "../../../../api/livestreamApi";
 import PostCard from "./PostCard";
+import LivestreamCardInline from "../livestream/LivestreamCardInline";
 import ReviveAdCard from "./ReviveAdCard";
 import PostComposerModal from "../modals/PostComposerModal";
 import MusicPostModal from "../music/MusicPostModal";
@@ -11,9 +13,12 @@ import PostEditModal from "../modals/PostEditModal";
 import ReportPostModal from "../modals/ReportPostModal";
 import ImageDetailModal from "../media/mediasOfPost/ImageDetailModal";
 
-export default function PostFeed({ onGoLive }) {
+const LIVESTREAM_POLL_INTERVAL = Number(process.env.REACT_APP_LIVESTREAM_POLL_INTERVAL || 30000);
+
+export default function PostFeed({ onGoLive, onLivestreamClick }) {
   const { t } = useTranslation();
   const [posts, setPosts] = useState([]);
+  const [livestreams, setLivestreams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [playingPost, setPlayingPost] = useState(null);
@@ -170,6 +175,64 @@ export default function PostFeed({ onGoLive }) {
       setSharedCurrentTime(clampedTime);
     }
   };
+
+  // Load livestreams
+  const loadLivestreams = async () => {
+    try {
+      const data = await livestreamApi.getActiveLivestreams();
+      setLivestreams(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("[PostFeed] Failed to load livestreams:", err);
+      setLivestreams([]);
+    }
+  };
+
+  // Poll livestreams periodically
+  useEffect(() => {
+    loadLivestreams();
+    const interval = setInterval(loadLivestreams, LIVESTREAM_POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Merge and sort posts and livestreams by time
+  const mergedFeed = useMemo(() => {
+    const feedItems = [];
+    
+    // Add posts with type marker
+    posts.forEach(post => {
+      feedItems.push({
+        type: 'post',
+        data: post,
+        timestamp: new Date(post.createdAt || post.updatedAt || Date.now()).getTime(),
+      });
+    });
+    
+    // Add livestreams with type marker
+    livestreams.forEach(livestream => {
+      feedItems.push({
+        type: 'livestream',
+        data: livestream,
+        timestamp: new Date(livestream.startTime || Date.now()).getTime(),
+      });
+    });
+    
+    // Sort by timestamp (newest first)
+    // Livestreams should appear higher (they're "live" so more recent)
+    feedItems.sort((a, b) => {
+      // Prioritize livestreams if timestamps are close (within 1 hour)
+      const timeDiff = Math.abs(a.timestamp - b.timestamp);
+      const oneHour = 60 * 60 * 1000;
+      
+      if (timeDiff < oneHour) {
+        if (a.type === 'livestream' && b.type === 'post') return -1;
+        if (a.type === 'post' && b.type === 'livestream') return 1;
+      }
+      
+      return b.timestamp - a.timestamp;
+    });
+    
+    return feedItems;
+  }, [posts, livestreams]);
 
   // Load posts automatically on component mount
   useEffect(() => {
@@ -844,10 +907,37 @@ export default function PostFeed({ onGoLive }) {
       />
 
       <div className="feed-posts gap-2">
-        {posts.length === 0 ? (
+        {mergedFeed.length === 0 ? (
           <p key="empty-feed" className="text-gray-400">{t('feed.noPosts')}</p>
         ) : (
-          posts.map((post, index) => {
+          mergedFeed.map((item, index) => {
+            // Handle livestream
+            if (item.type === 'livestream') {
+              const livestream = item.data;
+              return (
+                <React.Fragment key={`livestream-${livestream.livestreamId}`}>
+                  <LivestreamCardInline
+                    livestream={livestream}
+                    onClick={() => {
+                      if (onLivestreamClick) {
+                        onLivestreamClick(livestream);
+                      }
+                    }}
+                  />
+                  {/* Hiển thị Revive ad sau mỗi 3 items (posts hoặc livestreams) */}
+                  {(index + 1) % 3 === 0 && (
+                    <ReviveAdCard 
+                      key={`revive-ad-${index}`}
+                      zoneId={process.env.REACT_APP_REVIVE_NEWSFEED_ZONE_ID || "1"}
+                      barPageId={currentBarPageId}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            }
+            
+            // Handle post
+            const post = item.data;
             const postId = post._id || post.postId || post.id || `post-${index}`;
             const transformedPost = transformPost(post);
             return (
@@ -904,7 +994,7 @@ export default function PostFeed({ onGoLive }) {
                   onReport={(p) => setReportingPost(p)}
                 />
                 
-                {/* Hiển thị Revive ad sau mỗi 3 posts */}
+                {/* Hiển thị Revive ad sau mỗi 3 items (posts hoặc livestreams) */}
                 {(index + 1) % 3 === 0 && (
                   <ReviveAdCard 
                     key={`revive-ad-${index}`}
@@ -934,7 +1024,7 @@ export default function PostFeed({ onGoLive }) {
         )}
 
         {/* No more posts indicator */}
-        {!hasMore && posts.length > 0 && (
+        {!hasMore && mergedFeed.length > 0 && (
           <div className="flex items-center justify-center py-4">
             <p className="text-muted-foreground text-sm">{t('feed.noMorePosts') || 'Không còn bài viết nào'}</p>
           </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { cn } from "../../utils/cn";
 import { useImageUpload } from "../../hooks/useImageUpload";
+import { getAvatarUrl } from "../../utils/defaultAvatar";
 
 /**
  * Image Upload Field Component
@@ -18,7 +19,7 @@ export const ImageUploadField = ({
   uploading: externalUploading = false,
   onUploadStateChange,
   previewClassName = "",
-  defaultImage = "https://via.placeholder.com/100",
+  defaultImage = null, // Sẽ dùng getAvatarUrl
 }) => {
   const { upload, uploading: hookUploading, error } = useImageUpload({
     endpoint: uploadEndpoint,
@@ -128,7 +129,10 @@ export const ImageUploadField = ({
       {value && (
         <div className={cn("mt-2")}>
           <img
-            src={value || defaultImage}
+            src={getAvatarUrl(value || defaultImage, 100)}
+              onError={(e) => {
+                e.target.src = getAvatarUrl(null, 100);
+              }}
             alt={label || "Preview"}
             className={cn(
               "rounded-lg object-cover border-2 border-border/20",

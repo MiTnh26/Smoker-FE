@@ -3,11 +3,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import FollowButton from "../../../components/common/FollowButton";
-import publicProfileApi from "../../../api/publicProfileApi";
-import { useFollowers, useFollowing } from "../../../hooks/useFollow";
+import { getProfile } from "../../../api/profileApi";
 import messageApi from "../../../api/messageApi";
 import barPageApi from "../../../api/barPageApi";
-import businessApi from "../../../api/businessApi";
 import { cn } from "../../../utils/cn";
 import PostCard from "../../feeds/components/post/PostCard";
 import RequestBookingModal from "../../../components/booking/RequestBookingModal";
@@ -19,7 +17,6 @@ import BarVideo from "../../bar/components/BarVideo";
 import BarReview from "../../bar/components/BarReview";
 import BarTables from "../../bar/components/BarTables";
 import BarTablesPage from "./BarTablesPage";
-import { useProfilePosts } from "../../../hooks/useProfilePosts";
 import { useCurrentUserEntity } from "../../../hooks/useCurrentUserEntity";
 import { ProfileHeader } from "../../../components/profile/ProfileHeader";
 import { ProfileStats } from "../../../components/profile/ProfileStats";
@@ -27,6 +24,7 @@ import { DollarSign } from "lucide-react";
 import BannedAccountOverlay from "../../../components/common/BannedAccountOverlay";
 import { getSession } from "../../../utils/sessionManager";
 import { userApi } from "../../../api/userApi";
+import { mapPostForCard } from "../../../utils/postTransformers";
 
 const getWindow = () => (typeof globalThis !== "undefined" ? globalThis : undefined);
 
@@ -38,7 +36,9 @@ export default function PublicProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [refreshTick, setRefreshTick] = useState(0);
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsPagination, setPostsPagination] = useState({});
   
   // Get current user entity ID using shared hook
   const currentUserEntityId = useCurrentUserEntity();
@@ -46,11 +46,7 @@ export default function PublicProfile() {
   // Calculate followEntityId from profile data (like own profiles)
   // Prioritize EntityAccountId from profile, fallback to entityId from URL
   const followEntityId = profile?.EntityAccountId || profile?.entityAccountId || profile?.entityAccountID || entityId;
-  const { followers, fetchFollowers } = useFollowers(followEntityId);
-  const { following, fetchFollowing } = useFollowing(followEntityId);
   
-  // Use shared hook for posts
-  const { posts, loading: postsLoading } = useProfilePosts(entityId);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -65,126 +61,88 @@ export default function PublicProfile() {
     const run = async () => {
       setLoading(true);
       setError("");
+      setPostsLoading(true);
       try {
-        // Step 1: Get basic profile from entityId
-        const body = await publicProfileApi.getByEntityId(entityId);
-        if (alive) {
-          const data = body?.data || null;
-          if (data) {
-            // Map data from PascalCase to camelCase for consistency with own profiles
-            let mappedData = {
-              ...data,
-              userName: data.userName || data.UserName || data.name || data.Name,
-              role: data.role || data.Role,
-              avatar: data.avatar || data.Avatar,
-              background: data.background || data.Background,
-              address: data.address || data.Address || data.AddressDetail,
-              phone: data.phone || data.Phone || data.phoneNumber || data.PhoneNumber,
-              bio: data.bio || data.Bio || data.description || data.Description || data.about || data.About,
-              gender: data.gender || data.Gender,
-              pricePerHours: data.pricePerHours || data.PricePerHours || data.pricePerHour || data.PricePerHour,
-              pricePerSession: data.pricePerSession || data.PricePerSession || data.pricePerSession || data.PricePerSession,
-              name: data.name || data.Name || data.userName || data.UserName,
-              // Map EntityAccountId for followers/following (like own profiles)
-              EntityAccountId: data.EntityAccountId || data.entityAccountId || data.entityAccountID || entityId,
-              entityAccountId: data.EntityAccountId || data.entityAccountId || data.entityAccountID || entityId,
-              // Map barPageId for bar profiles
-              barPageId: data.barPageId || data.BarPageId || data.barPageID || data.targetId || data.targetID || data.id,
-            };
-            
-            // Step 2: If this is a DJ or Dancer profile, get full details from BusinessAccount
-            const profileRole = (mappedData.role || "").toString().toUpperCase();
-            const isPerformer = ["DJ", "DANCER"].includes(profileRole);
-            
-            if (isPerformer && alive) {
-              // Get businessAccountId from the data
-              const businessAccountId = 
-                data.BussinessAccountId ||
-                data.BusinessAccountId ||
-                data.BusinessId ||
-                data.businessAccountId ||
-                data.businessId ||
-                data.targetId ||
-                data.targetID ||
-                null;
-              
-              console.log("🎭 Performer profile detected, fetching business details. businessAccountId:", businessAccountId);
-              
-              if (businessAccountId) {
-                try {
-                  // Fetch full business details
-                  const businessRes = await businessApi.getBusinessById(businessAccountId);
-                  console.log("✅ Business API response:", businessRes);
-                  
-                  if (businessRes.status === "success" && businessRes.data && alive) {
-                    const businessData = businessRes.data;
-                    
-                    // Map gender from Vietnamese to English if needed
-                    const mapGender = (gender) => {
-                      if (!gender) return '';
-                      const genderLower = gender.toLowerCase();
-                      if (genderLower === 'nam' || genderLower === 'male') return 'male';
-                      if (genderLower === 'nữ' || genderLower === 'female') return 'female';
-                      if (genderLower === 'khác' || genderLower === 'other') return 'other';
-                      return gender;
-                    };
-                    
-                    // Merge business data (prioritize business data over public profile data)
-                    mappedData = {
-                      ...mappedData,
-                      userName: businessData.UserName || mappedData.userName,
-                      role: businessData.Role || mappedData.role,
-                      avatar: businessData.Avatar || mappedData.avatar,
-                      background: businessData.Background || mappedData.background,
-                      address: businessData.Address || mappedData.address,
-                      phone: businessData.Phone || mappedData.phone,
-                      bio: businessData.Bio || mappedData.bio,
-                      gender: mapGender(businessData.Gender) || mappedData.gender,
-                      pricePerHours: businessData.PricePerHours || mappedData.pricePerHours,
-                      pricePerSession: businessData.PricePerSession || mappedData.pricePerSession,
-                      // Preserve EntityAccountId from business data if available
-                      EntityAccountId: businessData.EntityAccountId || mappedData.EntityAccountId,
-                      entityAccountId: businessData.EntityAccountId || businessData.entityAccountId || mappedData.entityAccountId,
-                    };
-                    
-                    console.log("✅ Merged profile data:", {
-                      hasBio: !!mappedData.bio,
-                      hasGender: !!mappedData.gender,
-                      hasAddress: !!mappedData.address,
-                      hasPhone: !!mappedData.phone,
-                      hasPricePerHours: !!mappedData.pricePerHours,
-                      hasPricePerSession: !!mappedData.pricePerSession,
-                    });
-                  }
-                } catch (businessError) {
-                  console.error("❌ Error fetching business details:", businessError);
-                  // Continue with public profile data if business API fails
-                }
-              }
-            }
-            
-            setProfile(mappedData);
+        // Get optimized profile data from single API call
+        const profileData = await getProfile(entityId);
+        if (!alive) return;
+        
+        if (profileData) {
+          // Map gender from Vietnamese to English if needed
+          const mapGender = (gender) => {
+            if (!gender) return '';
+            const genderLower = gender.toLowerCase();
+            if (genderLower === 'nam' || genderLower === 'male') return 'male';
+            if (genderLower === 'nữ' || genderLower === 'female') return 'female';
+            if (genderLower === 'khác' || genderLower === 'other') return 'other';
+            return gender;
+          };
+          
+          // Map data from backend response to component format
+          const mappedData = {
+            ...profileData,
+            userName: profileData.userName || profileData.name,
+            name: profileData.name || profileData.userName,
+            role: profileData.role,
+            avatar: profileData.avatar,
+            background: profileData.background,
+            address: profileData.address,
+            phone: profileData.phone,
+            bio: profileData.bio,
+            gender: mapGender(profileData.gender),
+            pricePerHours: profileData.pricePerHours,
+            pricePerSession: profileData.pricePerSession,
+            // Map EntityAccountId for follow functionality
+            EntityAccountId: profileData.EntityAccountId || profileData.entityAccountId || profileData.entityAccountID || entityId,
+            entityAccountId: profileData.EntityAccountId || profileData.entityAccountId || profileData.entityAccountID || entityId,
+            // Map barPageId for bar profiles
+            barPageId: profileData.barPageId || profileData.barPageID || profileData.targetId || profileData.targetID || profileData.id,
+            // Map businessAccountId for business profiles
+            businessAccountId: profileData.businessAccountId || profileData.BussinessAccountId || profileData.BusinessAccountId,
+            // Follow stats
+            followersCount: profileData.followersCount || 0,
+            followingCount: profileData.followingCount || 0,
+            isFollowing: profileData.isFollowing || false,
+            // Entity type
+            type: profileData.EntityType || profileData.entityType || profileData.type,
+          };
+          
+          setProfile(mappedData);
+          
+          // Handle posts from profile response
+          if (profileData.posts && Array.isArray(profileData.posts)) {
+            const transformed = profileData.posts.map((post) => mapPostForCard(post, t));
+            setPosts(transformed);
           } else {
-            setProfile(null);
+            setPosts([]);
           }
+          
+          // Handle pagination
+          if (profileData.postsPagination) {
+            setPostsPagination(profileData.postsPagination);
+          } else {
+            setPostsPagination({});
+          }
+        } else {
+          setProfile(null);
+          setPosts([]);
         }
       } catch (e) {
-        if (alive) setError(e?.response?.data?.message || e.message);
+        if (alive) {
+          setError(e?.response?.data?.message || e?.message || "Failed to load profile");
+          setProfile(null);
+          setPosts([]);
+        }
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          setPostsLoading(false);
+        }
       }
     };
     if (entityId) run();
     return () => { alive = false; };
-  }, [entityId]);
-
-  useEffect(() => {
-    // Fetch followers/following when followEntityId changes (like own profiles)
-    if (followEntityId) {
-      fetchFollowers();
-      fetchFollowing();
-    }
-  }, [followEntityId, refreshTick, fetchFollowers, fetchFollowing]);
+  }, [entityId, t]);
 
   // Determine if this is a bar profile (before early returns)
   const targetTypeForBar = profile ? (() => {
@@ -913,7 +871,16 @@ export default function PublicProfile() {
             <FollowButton
               followingId={followEntityId}
               followingType={profile.type === 'BAR' ? 'BAR' : 'USER'}
-              onChange={() => setRefreshTick(v => v + 1)}
+              onChange={(isFollowing) => {
+                // Optimistically update profile state
+                setProfile(prev => ({
+                  ...prev,
+                  isFollowing: isFollowing,
+                  followersCount: isFollowing 
+                    ? (prev.followersCount || 0) + 1 
+                    : Math.max(0, (prev.followersCount || 0) - 1)
+                }));
+              }}
             />
             <div className="relative" ref={menuRef}>
               <button
@@ -974,7 +941,10 @@ export default function PublicProfile() {
 
       {/* Main Content Container */}
       <div className={cn("max-w-6xl mx-auto px-4 md:px-6 py-6")}>
-        <ProfileStats followers={followers} following={following} />
+        <ProfileStats 
+          followers={profile.followersCount || 0} 
+          following={profile.followingCount || 0} 
+        />
 
         {/* Tabs Section - All Profile Types */}
           <section className={cn("py-6")}>

@@ -1,5 +1,6 @@
 // src/components/post/PostList.js
 import React from "react";
+import { getAvatarUrl } from "../../../utils/defaultAvatar";
 import "../../../styles/modules/profile.css";
 export default function PostList({ posts = [], avatar, userName }) {
   return (
@@ -12,9 +13,12 @@ export default function PostList({ posts = [], avatar, userName }) {
           <div className="post-header">
             <div className="flex items-center gap-3">
               <img
-                src={post.avatar || avatar || "https://via.placeholder.com/40"}
+                src={getAvatarUrl(post.avatar || avatar, 40)}
                 alt={post.userName || userName}
                 className="avatar-small"
+                onError={(e) => {
+                  e.target.src = getAvatarUrl(null, 40);
+                }}
               />
               <div>
                 <h4>{post.userName || userName}</h4>
