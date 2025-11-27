@@ -501,12 +501,11 @@
     width: 58px !important;
     height: 58px !important;
   }
-
-  .post-card .text-[0\\.8rem] {
+  .post-card .text-0_8rem {
     font-size: 0.78rem !important;
   }
 
-  .post-card .text-[0\\.75rem] {
+  .post-card .text-0_75rem {
     font-size: 0.72rem !important;
   }
 
