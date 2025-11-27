@@ -33,14 +33,59 @@ const useProfileData = (profileType, entityId) => {
           // For BarPage, the entityId is the Bar's EntityAccountId.
           // We need to get the BarPageId from the public profile endpoint first.
           const publicProfileRes = await publicProfileApi.getByEntityId(entityId);
+          
+          console.log('[OwnProfilePage] publicProfileRes:', {
+            success: publicProfileRes?.success,
+            data: publicProfileRes?.data ? {
+              targetId: publicProfileRes.data.targetId,
+              targetType: publicProfileRes.data.targetType,
+              BarPageId: publicProfileRes.data.BarPageId,
+              barPageId: publicProfileRes.data.barPageId,
+              id: publicProfileRes.data.id
+            } : null
+          });
+          
           const publicProfileData = normalizeProfileData(publicProfileRes?.data);
-          const barPageId = publicProfileData?.barPageId;
+          
+          // getByEntityId returns targetId which is the BarPageId for BarPage
+          // Try multiple sources for barPageId (prioritize targetId from API response)
+          const rawData = publicProfileRes?.data || {};
+          const barPageId = rawData.targetId ||  // Primary source from API
+                           publicProfileData?.BarPageId || 
+                           publicProfileData?.barPageId || 
+                           publicProfileData?.barPageID ||
+                           publicProfileData?.BarPageID ||
+                           publicProfileData?.targetId ||
+                           publicProfileData?.targetID ||
+                           publicProfileData?.id;
+
+          console.log('[OwnProfilePage] Resolved barPageId:', {
+            barPageId,
+            barPageIdType: typeof barPageId,
+            barPageIdLength: barPageId?.length,
+            rawDataTargetId: rawData.targetId,
+            normalizedData: {
+              BarPageId: publicProfileData?.BarPageId,
+              barPageId: publicProfileData?.barPageId,
+              id: publicProfileData?.id,
+              targetId: publicProfileData?.targetId
+            }
+          });
 
           if (!barPageId) {
+            console.error('[OwnProfilePage] Could not resolve BarPageId. Full response:', publicProfileRes);
             throw new Error('Could not resolve BarPageId from EntityAccountId');
           }
 
+          // Validate GUID format
+          const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (!guidRegex.test(barPageId)) {
+            console.error('[OwnProfilePage] Invalid GUID format for barPageId:', barPageId);
+            throw new Error(`Invalid BarPageId format: ${barPageId}`);
+          }
+
           // Then, fetch the full bar page details using the correct BarPageId.
+          console.log('[OwnProfilePage] Calling barPageApi.getBarPageById with:', barPageId);
           res = await barPageApi.getBarPageById(barPageId);
           break;
         }
@@ -66,6 +111,21 @@ const useProfileData = (profileType, entityId) => {
         // Preserve EntityAccountId from entityId
         normalizedData.EntityAccountId = entityId;
         normalizedData.entityAccountId = entityId;
+        
+        // For BarPage, ensure BarPageId is set correctly
+        // res.data should have BarPageId field from barPageApi.getBarPageById()
+        if (profileType === 'BarPage' && res.data && res.data.BarPageId) {
+          normalizedData.BarPageId = res.data.BarPageId;
+          normalizedData.barPageId = res.data.BarPageId;
+          normalizedData.id = res.data.BarPageId; // Also set id to BarPageId for consistency
+        }
+        
+        console.log('[OwnProfilePage] Normalized profile data:', {
+          barPageId: normalizedData.BarPageId || normalizedData.barPageId,
+          id: normalizedData.id,
+          hasBarPageId: !!(normalizedData.BarPageId || normalizedData.barPageId)
+        });
+        
         setProfile(normalizedData);
       } else {
         setError('Failed to load profile');
@@ -121,7 +181,15 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
     ? profile?.targetId || profile?.targetID || profile?.businessAccountId || profile?.BusinessAccountId || currentUserEntityId
     : null;
   
-  const barPageId = isBarProfile ? profile?.id : null;
+  // Get barPageId for bar profile - try multiple sources
+  const barPageId = isBarProfile ? (
+    profile?.BarPageId || 
+    profile?.barPageId || 
+    profile?.barPageID ||
+    profile?.BarPageID ||
+    profile?.id ||  // Fallback to id
+    null
+  ) : null;
 
   const renderTabContent = () => {
     const props = { profile, posts, postsLoading, activeTab, isOwnProfile: true, entityId: currentUserEntityId };
@@ -290,6 +358,28 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
               >
                 {t('profile.tablesTab')}
                 {activeTab === "tables" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+            )}
+            
+            {/* Ads Tab - Bar only (for bar owners) */}
+            {isBarProfile && (
+              <button
+                onClick={() => setActiveTab("ads")}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "ads"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Quảng cáo
+                {activeTab === "ads" && (
                   <span className={cn(
                     "absolute bottom-0 left-0 right-0 h-0.5",
                     "bg-primary"

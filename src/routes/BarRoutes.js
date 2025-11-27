@@ -14,6 +14,7 @@ import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed";
 import MessagesPage from "../modules/messages/pages/MessagesPage";
 import MessagesLayout from "../layouts/MessagesLayout";
 import CustomerLayout from "../layouts/CustomerLayout";
+import BarDashboardPage from "../modules/bar/pages/BarDashboardPage";
 
 const BarProfileRoute = () => {
   const [useBarLayout, setUseBarLayout] = useState(null);
@@ -67,6 +68,14 @@ export default function BarRoutes() {
           path="/bar/events"
           element={
             <BarLayout><EventsPage /></BarLayout>
+          }
+        />
+        <Route
+          path="/bar/dashboard"
+          element={
+            <ProtectedRoute roles={["bar"]}>
+              <BarLayout><BarDashboardPage /></BarLayout>
+            </ProtectedRoute>
           }
         />
         <Route
