@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { getPosts, trashPost } from "../../../../api/postApi";
+import livestreamApi from "../../../../api/livestreamApi";
 import PostCard from "./PostCard";
+import LivestreamCardInline from "../livestream/LivestreamCardInline";
 import ReviveAdCard from "./ReviveAdCard";
 import PostComposerModal from "../modals/PostComposerModal";
 import MusicPostModal from "../music/MusicPostModal";
@@ -11,9 +13,31 @@ import PostEditModal from "../modals/PostEditModal";
 import ReportPostModal from "../modals/ReportPostModal";
 import ImageDetailModal from "../media/mediasOfPost/ImageDetailModal";
 
-export default function PostFeed({ onGoLive }) {
+const LIVESTREAM_POLL_INTERVAL = Number(process.env.REACT_APP_LIVESTREAM_POLL_INTERVAL || 30000);
+
+const normalizeGuid = (value) => {
+  if (!value) return null;
+  return String(value).trim().toLowerCase();
+};
+
+const extractLikeEntityAccountId = (like) => {
+  if (!like) return null;
+  if (typeof like === "string") return normalizeGuid(like);
+  if (typeof like === "object") {
+    return normalizeGuid(like.entityAccountId || like.EntityAccountId);
+  }
+  return null;
+};
+
+const extractLikeAccountId = (like) => {
+  if (!like || typeof like !== "object") return null;
+  return normalizeGuid(like.accountId || like.AccountId);
+};
+
+export default function PostFeed({ onGoLive, onLivestreamClick }) {
   const { t } = useTranslation();
   const [posts, setPosts] = useState([]);
+  const [livestreams, setLivestreams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [playingPost, setPlayingPost] = useState(null);
@@ -170,6 +194,64 @@ export default function PostFeed({ onGoLive }) {
       setSharedCurrentTime(clampedTime);
     }
   };
+
+  // Load livestreams
+  const loadLivestreams = async () => {
+    try {
+      const data = await livestreamApi.getActiveLivestreams();
+      setLivestreams(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("[PostFeed] Failed to load livestreams:", err);
+      setLivestreams([]);
+    }
+  };
+
+  // Poll livestreams periodically
+  useEffect(() => {
+    loadLivestreams();
+    const interval = setInterval(loadLivestreams, LIVESTREAM_POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Merge and sort posts and livestreams by time
+  const mergedFeed = useMemo(() => {
+    const feedItems = [];
+    
+    // Add posts with type marker
+    posts.forEach(post => {
+      feedItems.push({
+        type: 'post',
+        data: post,
+        timestamp: new Date(post.createdAt || post.updatedAt || Date.now()).getTime(),
+      });
+    });
+    
+    // Add livestreams with type marker
+    livestreams.forEach(livestream => {
+      feedItems.push({
+        type: 'livestream',
+        data: livestream,
+        timestamp: new Date(livestream.startTime || Date.now()).getTime(),
+      });
+    });
+    
+    // Sort by timestamp (newest first)
+    // Livestreams should appear higher (they're "live" so more recent)
+    feedItems.sort((a, b) => {
+      // Prioritize livestreams if timestamps are close (within 1 hour)
+      const timeDiff = Math.abs(a.timestamp - b.timestamp);
+      const oneHour = 60 * 60 * 1000;
+      
+      if (timeDiff < oneHour) {
+        if (a.type === 'livestream' && b.type === 'post') return -1;
+        if (a.type === 'post' && b.type === 'livestream') return 1;
+      }
+      
+      return b.timestamp - a.timestamp;
+    });
+    
+    return feedItems;
+  }, [posts, livestreams]);
 
   // Load posts automatically on component mount
   useEffect(() => {
@@ -614,28 +696,80 @@ export default function PostFeed({ onGoLive }) {
     }
     const currentUser = session?.account
     const activeEntity = session?.activeEntity || currentUser
+    const entities = Array.isArray(session?.entities) ? session.entities : []
+
+    const resolveViewerEntityAccountId = () => {
+      const tryNormalize = (value) => normalizeGuid(
+        value?.EntityAccountId ||
+        value?.entityAccountId ||
+        value?.entity_account_id ||
+        value
+      )
+
+      // 1. Direct fields on active entity
+      let resolved =
+        tryNormalize(activeEntity) ||
+        tryNormalize(currentUser)
+
+      // 2. Lookup from entities array if not found
+      if (!resolved && activeEntity?.id && entities.length > 0) {
+        const match = entities.find((entity) => {
+          if (!entity?.id) return false;
+          return String(entity.id).toLowerCase() === String(activeEntity.id).toLowerCase();
+        });
+        resolved = tryNormalize(match);
+      }
+
+      return resolved || null;
+    };
+
+    const viewerEntityAccountId = resolveViewerEntityAccountId();
+
+    const viewerAccountId = normalizeGuid(
+      currentUser?.id ||
+      currentUser?.AccountId ||
+      currentUser?.accountId
+    );
 
     // Determine if current user liked this post (simplified)
     const isLikedByCurrentUser = (() => {
-      const viewerId = activeEntity?.id || currentUser?.id;
-      if (!viewerId || !post?.likes) return false;
+      if (!post?.likes) return false;
+
+      const matchesLike = (likeObj) => {
+        if (!likeObj) return false;
+        const likeEntityId = extractLikeEntityAccountId(likeObj);
+        if (viewerEntityAccountId && likeEntityId) {
+          return likeEntityId === viewerEntityAccountId;
+        }
+
+        const likeAccountId = extractLikeAccountId(likeObj);
+        // Legacy fallback: khi like chưa lưu entityAccountId
+        if (!viewerEntityAccountId && viewerAccountId && likeAccountId) {
+          return likeAccountId === viewerAccountId;
+        }
+        if (viewerEntityAccountId && !likeEntityId && viewerAccountId && likeAccountId) {
+          return likeAccountId === viewerAccountId;
+        }
+        return false;
+      };
+
       const likes = post.likes;
-      const isMatch = (likeObj) => likeObj && String(likeObj.accountId) === String(viewerId);
       if (likes instanceof Map) {
-        for (const [, likeObj] of likes.entries()) if (isMatch(likeObj)) return true;
+        for (const [, likeObj] of likes.entries()) {
+          if (matchesLike(likeObj)) return true;
+        }
         return false;
       }
-      if (Array.isArray(likes)) return likes.some(isMatch);
-      if (typeof likes === 'object') return Object.values(likes).some(isMatch);
+      if (Array.isArray(likes)) return likes.some(matchesLike);
+      if (typeof likes === 'object') return Object.values(likes).some(matchesLike);
       return false;
     })();
 
     // So sánh ownership dựa trên entityAccountId
-    const ownerEntityAccountId = post.entityAccountId ? String(post.entityAccountId).trim() : null;
-    // Lấy EntityAccountId từ activeEntity (ưu tiên EntityAccountId, sau đó entityAccountId, cuối cùng mới là id nếu không có)
-    const viewerEntityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id 
-      ? String(activeEntity.EntityAccountId || activeEntity.entityAccountId || activeEntity.id).trim() 
-      : null;
+    const ownerEntityAccountId = normalizeGuid(
+      post.entityAccountId ||
+      post.authorEntityAccountId
+    );
     
     // Debug log để kiểm tra
     if (!ownerEntityAccountId || !viewerEntityAccountId) {
@@ -650,11 +784,11 @@ export default function PostFeed({ onGoLive }) {
     }
     
     // Chỉ so sánh entityAccountId - phải có cả 2 và phải khác rỗng
-    const canManage = ownerEntityAccountId && 
-                      viewerEntityAccountId && 
+    const canManage = ownerEntityAccountId &&
+                      viewerEntityAccountId &&
                       ownerEntityAccountId.length > 0 &&
                       viewerEntityAccountId.length > 0 &&
-                      ownerEntityAccountId.toLowerCase() === viewerEntityAccountId.toLowerCase();
+                      ownerEntityAccountId === viewerEntityAccountId;
 
     // Prefer populated objects if available
     const populatedSong = (post.song && typeof post.song === 'object') ? post.song : null;
@@ -810,7 +944,7 @@ export default function PostFeed({ onGoLive }) {
   // Minimal loader/error using existing layout classes
   if (loading) {
     return (
-      <div className="feed-posts">
+      <div className="feed-posts gap-2">
         <p className="text-gray-400">{t('feed.loadingPosts')}</p>
       </div>
     );
@@ -818,7 +952,7 @@ export default function PostFeed({ onGoLive }) {
 
   if (error) {
     return (
-      <div className="feed-posts">
+      <div className="feed-posts gap-2">
         <div>
           <p className="text-red-500">❌ {t('feed.loadFail')}</p>
           <button onClick={() => loadPosts(true)} className="btn btn-primary mt-2">{t('common.retry')}</button>
@@ -843,11 +977,38 @@ export default function PostFeed({ onGoLive }) {
         onGoLive={onGoLive}
       />
 
-      <div className="feed-posts">
-        {posts.length === 0 ? (
+      <div className="feed-posts gap-2">
+        {mergedFeed.length === 0 ? (
           <p key="empty-feed" className="text-gray-400">{t('feed.noPosts')}</p>
         ) : (
-          posts.map((post, index) => {
+          mergedFeed.map((item, index) => {
+            // Handle livestream
+            if (item.type === 'livestream') {
+              const livestream = item.data;
+              return (
+                <React.Fragment key={`livestream-${livestream.livestreamId}`}>
+                  <LivestreamCardInline
+                    livestream={livestream}
+                    onClick={() => {
+                      if (onLivestreamClick) {
+                        onLivestreamClick(livestream);
+                      }
+                    }}
+                  />
+                  {/* Hiển thị Revive ad sau mỗi 3 items (posts hoặc livestreams) */}
+                  {(index + 1) % 3 === 0 && (
+                    <ReviveAdCard 
+                      key={`revive-ad-${index}`}
+                      zoneId={process.env.REACT_APP_REVIVE_NEWSFEED_ZONE_ID || "1"}
+                      barPageId={currentBarPageId}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            }
+            
+            // Handle post
+            const post = item.data;
             const postId = post._id || post.postId || post.id || `post-${index}`;
             const transformedPost = transformPost(post);
             return (
@@ -904,7 +1065,7 @@ export default function PostFeed({ onGoLive }) {
                   onReport={(p) => setReportingPost(p)}
                 />
                 
-                {/* Hiển thị Revive ad sau mỗi 3 posts */}
+                {/* Hiển thị Revive ad sau mỗi 3 items (posts hoặc livestreams) */}
                 {(index + 1) % 3 === 0 && (
                   <ReviveAdCard 
                     key={`revive-ad-${index}`}
@@ -934,7 +1095,7 @@ export default function PostFeed({ onGoLive }) {
         )}
 
         {/* No more posts indicator */}
-        {!hasMore && posts.length > 0 && (
+        {!hasMore && mergedFeed.length > 0 && (
           <div className="flex items-center justify-center py-4">
             <p className="text-muted-foreground text-sm">{t('feed.noMorePosts') || 'Không còn bài viết nào'}</p>
           </div>

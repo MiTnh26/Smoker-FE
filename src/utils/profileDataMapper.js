@@ -88,6 +88,11 @@ export function normalizeProfileData(data) {
     // Contact object (for some API responses)
     contact: data.contact || data.Contact || null,
     
+    // Follow stats
+    followersCount: data.followersCount || data.FollowersCount || 0,
+    followingCount: data.followingCount || data.FollowingCount || 0,
+    isFollowing: data.isFollowing || data.IsFollowing || false,
+    
     // Keep original data for reference
     _original: data
   };

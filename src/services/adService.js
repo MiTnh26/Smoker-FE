@@ -13,7 +13,10 @@ export const adService = {
       // axiosClient tự động unwrap response.data
       return response;
     } catch (error) {
-      console.error('Failed to get Revive ad:', error);
+      // Suppress 404 errors (ad endpoint may not be available)
+      if (error?.response?.status !== 404) {
+        console.error('Failed to get Revive ad:', error);
+      }
       return { 
         success: false, 
         message: error.response?.data?.message || error.message || 'Failed to load ad' 
@@ -33,7 +36,10 @@ export const adService = {
       // axiosClient tự động unwrap response.data
       return response;
     } catch (error) {
-      console.error('Failed to get invocation code:', error);
+      // Suppress 404 errors (ad endpoint may not be available)
+      if (error?.response?.status !== 404) {
+        console.error('Failed to get invocation code:', error);
+      }
       return { 
         success: false, 
         message: error.response?.data?.message || error.message || 'Failed to get invocation code' 

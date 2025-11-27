@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import searchApi from "../../../api/searchApi";
 import FollowButton from "../../../components/common/FollowButton";
+import PostCard from "../../feeds/components/post/PostCard";
+import { mapPostForCard } from "../../../utils/postTransformers";
+import { getAvatarUrl } from "../../../utils/defaultAvatar";
 import "../../../styles/components/globalSearch.css";
 
 function useQuery() {
@@ -13,17 +17,17 @@ const TABS = [
   { key: "all", label: "Tất cả" },
   { key: "users", label: "Người dùng" },
   { key: "bars", label: "Bar" },
-  { key: "djs", label: "DJ" },
-  { key: "dancers", label: "Dancer" },
+  { key: "posts", label: "Bài viết" },
 ];
 
 export default function SearchResults() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const query = useQuery();
   const q = query.get("q") || "";
   const [active, setActive] = useState("all");
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState({ users: [], bars: [], djs: [], dancers: [] });
+  const [data, setData] = useState({ users: [], bars: [], posts: [] });
 
   useEffect(() => {
     let alive = true;
@@ -40,16 +44,25 @@ export default function SearchResults() {
     return () => { alive = false; };
   }, [q]);
 
-  const all = useMemo(() => (
-    [
-      ...data.users.map(x => ({ ...x, _group: "users" })),
-      ...data.bars.map(x => ({ ...x, _group: "bars" })),
-      ...data.djs.map(x => ({ ...x, _group: "djs" })),
-      ...data.dancers.map(x => ({ ...x, _group: "dancers" })),
-    ]
-  ), [data]);
+  // Transform posts để dùng với PostCard
+  const transformedPosts = useMemo(() => {
+    return (data.posts || []).map(post => mapPostForCard(post, t));
+  }, [data.posts, t]);
 
-  const list = active === "all" ? all : (data[active] || []);
+  // Tạo list cho users và bars (không include posts)
+  const all = useMemo(() => {
+    return [
+      ...(data.users || []).map(x => ({ ...x, _group: "users" })),
+      ...(data.bars || []).map(x => ({ ...x, _group: "bars" })),
+    ];
+  }, [data.users, data.bars]);
+
+  // Lấy list items dựa trên active tab
+  const list = useMemo(() => {
+    if (active === "all") return all;
+    if (active === "posts") return []; // Posts sẽ render riêng
+    return data[active] || [];
+  }, [active, all, data]);
 
   return (
     <div className="container" style={{ padding: 16 }}>
@@ -65,28 +78,76 @@ export default function SearchResults() {
 
       {loading ? (
         <div style={{ padding: 12 }}>Đang tìm...</div>
-      ) : list.length === 0 ? (
-        <div style={{ padding: 12 }}>Không có kết quả</div>
       ) : (
-        <ul className="gs-list">
-          {list.map(item => (
-            <li key={`${item.type}-${item.id}`} className="gs-item">
-              <div className="gs-left" onClick={() => onOpenItem(navigate, item)}>
-                <img className="gs-avatar" src={item.avatar || "https://via.placeholder.com/36"} alt={item.name} />
-                <div>
-                  <div className="gs-name">{item.name}</div>
-                  <div className="gs-type">{item.type}</div>
-                </div>
-              </div>
-              {(() => {
-                const itemEntityAccountId = item.raw?.EntityAccountId || item.raw?.entityAccountId || item.id || "";
-                return itemEntityAccountId && (
-                  <FollowButton followingId={itemEntityAccountId} followingType={mapType(item.type)} />
-                );
-              })()}
-            </li>
-          ))}
-        </ul>
+        <>
+          {/* Render posts với PostCard nếu active là "all" hoặc "posts" */}
+          {(active === "all" || active === "posts") && transformedPosts.length > 0 && (
+            <div style={{ marginBottom: 24 }}>
+              {transformedPosts.map(post => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  playingPost={null}
+                  setPlayingPost={() => {}}
+                  sharedAudioRef={null}
+                  sharedCurrentTime={0}
+                  sharedDuration={0}
+                  sharedIsPlaying={false}
+                  onSeek={() => {}}
+                  onEdit={null}
+                  onDelete={null}
+                  onReport={null}
+                  onImageClick={null}
+                  onShared={null}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Render users và bars với list item đơn giản */}
+          {list.length > 0 && (
+            <ul className="gs-list">
+              {list.map(item => (
+                <li key={`${item.type}-${item.id}`} className="gs-item">
+                  <div className="gs-left" onClick={() => onOpenItem(navigate, item)}>
+                    <img 
+                      className="gs-avatar" 
+                      src={getAvatarUrl(item.avatar, 36)} 
+                      alt={item.name}
+                      onError={(e) => {
+                        // Fallback to default avatar if image fails to load
+                        e.target.src = getAvatarUrl(null, 36);
+                      }}
+                    />
+                    <div>
+                      <div className="gs-name">{item.name}</div>
+                      <div className="gs-type">{item.type}</div>
+                    </div>
+                  </div>
+                  {(() => {
+                    const itemEntityAccountId = item.raw?.EntityAccountId || item.raw?.entityAccountId || item.id || "";
+                    return itemEntityAccountId && (
+                      <FollowButton followingId={itemEntityAccountId} followingType={mapType(item.type)} />
+                    );
+                  })()}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Hiển thị "Không có kết quả" nếu không có gì cả */}
+          {!loading && (() => {
+            if (active === "all") {
+              return transformedPosts.length === 0 && list.length === 0;
+            }
+            if (active === "posts") {
+              return transformedPosts.length === 0;
+            }
+            return list.length === 0;
+          })() && (
+            <div style={{ padding: 12 }}>Không có kết quả</div>
+          )}
+        </>
       )}
     </div>
   );
@@ -99,87 +160,19 @@ function mapType(t) {
 }
 
 function onOpenItem(navigate, item) {
-  // Check if this is the current user's own profile/entity
-  // Logic synchronized with GlobalSearch and ProfilePage
-  try {
-    const sessionRaw = localStorage.getItem("session");
-    if (sessionRaw) {
-      const session = JSON.parse(sessionRaw);
-      const active = session?.activeEntity || {};
-      const entities = session?.entities || [];
-      const account = session?.account || {};
-      
       const itemType = String(item.type || "").toUpperCase();
-      // Use EntityAccountId from raw if available, otherwise use id
-      const itemEntityAccountId = item.raw?.EntityAccountId || item.raw?.entityAccountId || item.id || "";
-      const itemId = String(itemEntityAccountId).toLowerCase();
-      
-      // Get current user's EntityAccountId
-      const currentUserEntityId = 
-        active.EntityAccountId ||
-        active.entityAccountId ||
-        active.id ||
-        account.EntityAccountId ||
-        account.entityAccountId ||
-        entities.find(e => e.type === "Account")?.EntityAccountId ||
-        entities.find(e => e.type === "Account")?.entityAccountId ||
-        entities[0]?.EntityAccountId ||
-        entities[0]?.entityAccountId ||
-        null;
-      
-      // Check if item matches current user's Account
-      if (itemType === "USER" || itemType === "ACCOUNT") {
-        if (currentUserEntityId && String(currentUserEntityId).toLowerCase() === itemId) {
-          navigate("/customer/profile");
+
+  // Navigate to post detail page for posts
+  if (itemType === 'POST') {
+    navigate(`/post/${item.id}`);
           return;
         }
-      }
-      
-      // Check if item matches current user's activeEntity (only exact match)
-      // Different roles (even from same AccountId) are considered different profiles
-      const activeEntityAccountId = active.EntityAccountId || active.entityAccountId || null;
-      if (activeEntityAccountId && String(activeEntityAccountId).toLowerCase() === itemId) {
-        // Navigate to own profile page based on active role
-        // Use the entity's id (not EntityAccountId) for route params
-        if (active.type === "BarPage" || active.type === "BAR") {
-          // Use BarPageId for bar route
-          const barPageId = active.id || active.BarPageId || active.barPageId;
-          if (barPageId) {
-            navigate(`/bar/${barPageId}`);
-          } else {
-            navigate("/customer/profile");
-          }
-        } else if (active.type === "Business" || active.type === "BusinessAccount") {
-          const businessId = active.id || active.BusinessAccountId || active.businessAccountId;
-          if (active.role && active.role.toLowerCase() === "dj") {
-            if (businessId) {
-              navigate(`/dj/${businessId}`);
-            } else {
-              navigate("/customer/profile");
-            }
-          } else if (active.role && active.role.toLowerCase() === "dancer") {
-            if (businessId) {
-              navigate(`/dancer/${businessId}`);
-            } else {
-              navigate("/customer/profile");
-            }
-          } else {
-            navigate("/customer/profile");
-          }
-        } else {
-          navigate("/customer/profile");
-        }
-        return;
-      }
-    }
-  } catch (error) {
-    console.error("[SearchResults] Error checking own profile:", error);
-  }
-  
-  // All items (BAR, DJ, DANCER, USER) should navigate to /profile/:id
-  // Use EntityAccountId from raw if available, otherwise use id
+
+  // For other types, navigate to profile page
   const itemEntityAccountId = item.raw?.EntityAccountId || item.raw?.entityAccountId || item.id || "";
+  if (itemEntityAccountId) {
   navigate(`/profile/${itemEntityAccountId}`);
+  }
 }
 
 

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../../../api/userApi';
 import { Input } from "../../../components/common/Input";
-import PublicHeader from "../../../components/layout/PublicHeader";
+import AuthHeader from "../../../components/layout/AuthHeader";
 import { cn } from "../../../utils/cn";
 
 const ForgotPassword = () => {
@@ -35,7 +35,7 @@ const ForgotPassword = () => {
 
   return (
     <div className="bg-background text-foreground">
-      <PublicHeader />
+      <AuthHeader />
       <div className="container mx-auto min-h-[calc(100vh-73px)] px-4 pt-[73px] pb-12 flex items-center justify-center">
         <div className="w-full max-w-md rounded-lg border-[0.5px] border-border/20 bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
           <h2 className="mb-2 text-2xl font-semibold">{t('auth.forgotTitle')}</h2>

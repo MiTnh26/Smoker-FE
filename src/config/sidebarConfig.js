@@ -31,8 +31,6 @@ import {
 export const sidebarConfig = {
   customer: [
     { label: "Trang chủ", icon: Home, path: "/customer/newsfeed" },
-   
-    { label: "Hội nhóm", icon: Users, path: "/customer/groups" },
     { label: "Sự kiện", icon: Calendar, path: "/customer/events" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/customer/messages" },
     { label: "Hồ sơ", icon: User, path: "/customer/profile" },
@@ -78,6 +76,7 @@ export const sidebarConfig = {
     { label: "Khách hàng / Bar hợp tác", icon: Users, path: "/dj/partners" },
     { label: "Đánh giá & sao", icon: Star, path: "/dj/reviews" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/dj/messages" },
+    { label: "Hồ sơ", icon: User, path: "/dj/profile" },
   ],
 
   dancer: [
@@ -87,6 +86,7 @@ export const sidebarConfig = {
     { label: "Đối tác / Bar", icon: Users, path: "/dancer/partners" },
     { label: "Đánh giá & sao", icon: Star, path: "/dancer/reviews" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/dancer/messages" },
+    { label: "Hồ sơ", icon: User, path: "/dancer/profile" },
   ],
 
   admin: [

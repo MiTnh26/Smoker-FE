@@ -22,7 +22,6 @@ export default function CustomerSidebar() {
       <nav className="sidebar-nav">
         <Link to="#" className="sidebar-nav-item"><span>{t('sidebar.home')}</span></Link>
         <Link to="#" className="sidebar-nav-item"><span>{t('sidebar.registerBusiness')}</span></Link>
-        <Link to="#" className="sidebar-nav-item"><span>{t('sidebar.groups')}</span></Link>
         <Link to="#" className="sidebar-nav-item"><span>{t('sidebar.events')}</span></Link>
       </nav>
     </aside>

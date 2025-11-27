@@ -10,7 +10,7 @@ const AuthLayout = ({ children }) => {
   return (
     <div className="auth-layout">
       {showHeader && <AuthHeader />}
-      <main className={showHeader ? "pt-24" : undefined}>{children}</main>
+      <main>{children}</main>
     </div>
   );
 };

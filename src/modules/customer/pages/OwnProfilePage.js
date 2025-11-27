@@ -16,6 +16,11 @@ import ProfileEditModal from '../../../components/profile/ProfileEditModal';
 import { normalizeProfileData } from '../../../utils/profileDataMapper';
 
 // A new hook to fetch profile data based on type
+const unwrapProfileResponse = (response) => {
+  if (!response) return null;
+  return response?.data?.data || response?.data || response;
+};
+
 const useProfileData = (profileType, entityId) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -92,7 +97,15 @@ const useProfileData = (profileType, entityId) => {
         case 'BusinessAccount': {
           // Similar to BarPage, resolve the BusinessAccountId from the EntityAccountId
           const publicProfileRes = await publicProfileApi.getByEntityId(entityId);
-          const businessAccountId = publicProfileRes?.data?.id || publicProfileRes?.data?.Id;
+          const publicProfilePayload = unwrapProfileResponse(publicProfileRes);
+          const normalizedProfile = normalizeProfileData(publicProfilePayload);
+          const businessAccountId =
+            normalizedProfile?.businessAccountId ||
+            normalizedProfile?.BusinessAccountId ||
+            normalizedProfile?.id ||
+            normalizedProfile?.Id ||
+            normalizedProfile?.entityId ||
+            normalizedProfile?.EntityId;
 
           if (!businessAccountId) {
             throw new Error('Could not resolve BusinessAccountId from EntityAccountId');
@@ -150,7 +163,8 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
   const { t } = useTranslation();
   const currentUserEntityId = useCurrentUserEntity();
   const { profile, loading, error, fetchProfile } = useProfileData(initialProfileType, currentUserEntityId);
-  const { posts, loading: postsLoading } = useProfilePosts(currentUserEntityId);
+  const profileEntityAccountId = profile?.EntityAccountId || profile?.entityAccountId || currentUserEntityId;
+  const { posts, loading: postsLoading } = useProfilePosts(profileEntityAccountId, currentUserEntityId);
   const { followers, fetchFollowers } = useFollowers(currentUserEntityId);
   const { following, fetchFollowing } = useFollowing(currentUserEntityId);
   const profileType = useProfileType(profile);
@@ -200,12 +214,16 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
     return null;
   };
 
-  if (loading || !profile) {
+  if (loading) {
     return <div className="min-h-screen bg-background flex items-center justify-center">{t('publicProfile.loading')}</div>;
   }
 
   if (error) {
     return <div className="min-h-screen bg-background flex items-center justify-center">{error}</div>;
+  }
+
+  if (!profile) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">{t('publicProfile.notFound')}</div>;
   }
 
   return (

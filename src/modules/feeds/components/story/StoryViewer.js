@@ -570,16 +570,32 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
       className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60"
       onClick={handleClose}
     >
-      <div
-        className={cn(
-          "relative flex w-[400px] max-w-[92%] flex-col overflow-hidden",
-          "bg-card text-card-foreground",
-          "rounded-lg border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
-          "max-h-[98vh]",
-          "mx-12 md:mx-16" // Add margin to make room for navigation buttons
+      <div className="relative flex items-center justify-center">
+        {/* Previous button - left side of story */}
+        {(storyIndex > 0 || userIndex > 0) && (
+          <button
+            className="absolute left-[-56px] z-[1001] flex h-12 w-12 items-center justify-center rounded-full bg-black/70 backdrop-blur-sm text-white transition-all duration-200 hover:bg-black/90 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 shadow-xl"
+            onClick={(e) => {
+              e.stopPropagation();
+              prevStory();
+            }}
+            aria-label="Previous story"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
         )}
-        onClick={(e) => e.stopPropagation()}
-      >
+
+        <div
+          className={cn(
+            "relative flex w-[400px] max-w-[92%] flex-col overflow-hidden",
+            "bg-card text-card-foreground",
+            "rounded-lg border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
+            "max-h-[98vh]"
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
         {/* Progress indicators */}
         <StoryProgressBars 
           stories={groupedStories} 
@@ -775,25 +791,6 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
           isOwnStory={isOwnStory}
         />
 
-        {/* Navigation controls - outside story area */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between">
-          <button
-            className="pointer-events-auto absolute left-[-48px] flex h-11 w-11 items-center justify-center rounded-lg bg-black/35 text-white transition-colors duration-200 hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 md:left-[-64px]"
-            onClick={prevStory}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-          </button>
-          <button
-            className="pointer-events-auto absolute right-[-48px] flex h-11 w-11 items-center justify-center rounded-lg bg-black/35 text-white transition-colors duration-200 hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 md:right-[-64px]"
-            onClick={nextStory}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </button>
-        </div>
 
         {/* Close button */}
         <button
@@ -805,6 +802,23 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
+      </div>
+
+        {/* Next button - right side of story */}
+        {!(storyIndex >= groupedStories.length - 1 && userIndex >= allUserGroups.length - 1) && (
+          <button
+            className="absolute right-[-56px] z-[1001] flex h-12 w-12 items-center justify-center rounded-full bg-black/70 backdrop-blur-sm text-white transition-all duration-200 hover:bg-black/90 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 shadow-xl"
+            onClick={(e) => {
+              e.stopPropagation();
+              nextStory();
+            }}
+            aria-label="Next story"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        )}
       </div>
       {reportModalOpen && (
         <ReportStoryModal
