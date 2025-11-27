@@ -7,16 +7,25 @@ import Reports from "../modules/admin/pages/Reports";
 import ManageMusic from "../modules/admin/pages/ManageMusic";
 import LanguageSettings from "../modules/settings/pages/LanguageSettings";
 import ManageApprovals from "../modules/admin/pages/ManageApprovals";
+import ManageAdPackages from "../modules/admin/pages/ManageAdPackages";
+import ManageEventAdApprovals from "../modules/admin/pages/ManageEventAdApprovals";
+import ManagePauseRequests from "../modules/admin/pages/ManagePauseRequests";
+import ManageResumeRequests from "../modules/admin/pages/ManageResumeRequests";
+import ProtectedRoute from "./ProtectedRoute";
 
 export default function AdminRoutes() {
   return (
     <Fragment>
-      <Route path="/admin/dashboard" element={<AdminLayout><Dashboard /></AdminLayout>} />
-      <Route path="/admin/users" element={<AdminLayout><ManageUsers /></AdminLayout>} />
-      <Route path="/admin/approvals" element={<AdminLayout><ManageApprovals /></AdminLayout>} />
-      <Route path="/admin/music" element={<AdminLayout><ManageMusic /></AdminLayout>} />
-      <Route path="/admin/reports" element={<AdminLayout><Reports /></AdminLayout>} />
-      <Route path="/admin/settings/language" element={<AdminLayout><LanguageSettings /></AdminLayout>} />
+      <Route path="/admin/dashboard" element={<ProtectedRoute roles={["admin"]}><AdminLayout><Dashboard /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/users" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageUsers /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/approvals" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageApprovals /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/music" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageMusic /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/reports" element={<ProtectedRoute roles={["admin"]}><AdminLayout><Reports /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/ad-packages" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageAdPackages /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/event-ad-approvals" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageEventAdApprovals /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/pause-requests" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManagePauseRequests /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/resume-requests" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageResumeRequests /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/settings/language" element={<ProtectedRoute roles={["admin"]}><AdminLayout><LanguageSettings /></AdminLayout></ProtectedRoute>} />
     </Fragment>
   );
 }

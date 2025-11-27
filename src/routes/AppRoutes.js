@@ -16,6 +16,7 @@ import SearchResults from "../modules/search/pages/SearchResults";
 import CustomerLayout from "../layouts/CustomerLayout";
 import DynamicLayout from "../layouts/DynamicLayout";
 import ProfilePage from "../modules/profile/pages/ProfilePage";
+import PaymentReturn from "../pages/PaymentReturn";
 
 export default function AppRoutes() {
   return (
@@ -44,6 +45,8 @@ export default function AppRoutes() {
         {SettingsRoutes()}
         <Route path="/search" element={<SearchResults />} />
         <Route path="/profile/:entityId" element={<DynamicLayout><ProfilePage /></DynamicLayout>} />
+        <Route path="/payment-return" element={<PaymentReturn />} />
+        <Route path="/payment-cancel" element={<PaymentReturn />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

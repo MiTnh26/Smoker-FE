@@ -8,6 +8,7 @@ import barEventApi from "../../../api/barEventApi";
 import notificationApi from "../../../api/notificationApi"; // Thêm import notification API
 import AddEventModal from "../components/AddEventModal";
 import EditEventModal from "../components/EditEventModal";
+import EventAdPackageModal from "../components/EventAdPackageModal";
 import { Button } from "../../../components/common/Button";
 import { ToastContainer } from "../../../components/common/Toast";
 import { 
@@ -34,11 +35,13 @@ export default function EventsPage() {
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAdPackageModal, setShowAdPackageModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [advertisingEvent, setAdvertisingEvent] = useState(null); // Event được chọn để quảng cáo
   
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
-  const [advertisingId, setAdvertisingId] = useState(null); // State cho nút quảng cáo
+  const [advertisingId, setAdvertisingId] = useState(null); // State cho loading nút quảng cáo
   const [searchQuery, setSearchQuery] = useState("");
   const [toasts, setToasts] = useState([]); // State cho toast notifications
   const [currentPage, setCurrentPage] = useState(1);
@@ -214,41 +217,18 @@ export default function EventsPage() {
     }
   };
 
-  // GỬI YÊU CẦU QUẢNG CÁO - FUNCTION MỚI
-  const handleAdvertise = async (event) => {
-    if (!event || !barInfo) return;
+  // MỞ MODAL CHỌN GÓI QUẢNG CÁO - FUNCTION MỚI
+  const handleAdvertise = (event) => {
+    if (!event) return;
+    setAdvertisingEvent(event);
+    setShowAdPackageModal(true);
+  };
 
-    setAdvertisingId(event.EventId);
-    
-    try {
-      // Tạo URL cho event (URL đầy đủ hoặc relative path)
-      const eventUrl = `${window.location.origin}/events/detail/${event.EventId}`;
-      
-      // Gửi thông tin event để quảng cáo
-      const advertisementData = {
-        eventId: event.EventId,
-        eventTitle: event.EventName,
-        eventDescription: event.Description || "",
-        barId: barPageId,
-        pictureEvent: event.Picture || "",
-        eventUrl: eventUrl, // Thêm URL của event
-      };
-
-      // Gửi API tạo quảng cáo (sẽ tự động lưu vào MongoDB với TTL 30 ngày và gửi notification cho admin)
-      const result = await barEventApi.createEventAdvertisement(advertisementData);
-      
-      if (result.data?.success || result.success) {
-        addToast("✅ Đã gửi yêu cầu quảng cáo đến admin thành công!", "success");
-      } else {
-        addToast("❌ Gửi yêu cầu thất bại: " + (result.data?.message || result.message || "Lỗi không xác định"), "error");
-      }
-
-    } catch (error) {
-      console.error("Lỗi gửi yêu cầu quảng cáo:", error);
-      addToast("❌ Có lỗi xảy ra khi gửi yêu cầu quảng cáo: " + (error.response?.data?.message || error.message), "error");
-    } finally {
-      setAdvertisingId(null);
-    }
+  // Xử lý sau khi mua gói thành công
+  const handlePurchaseSuccess = () => {
+    addToast("✅ Đã mua gói quảng cáo thành công! Admin sẽ set lên Revive và thông báo lại cho bạn.", "success");
+    // Có thể refresh events list nếu cần
+    // refresh();
   };
 
   // Format date
@@ -406,22 +386,16 @@ export default function EventsPage() {
             </div>
           </div>
 
-          {/* NÚT QUẢNG CÁO - THÊM MỚI */}
+          {/* NÚT QUẢNG CÁO - MỞ MODAL CHỌN GÓI */}
           <button
             onClick={() => handleAdvertise(ev)}
-            disabled={advertisingId === ev.EventId}
             className={cn(
               "w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-300",
-              "bg-purple-600 hover:bg-purple-700 text-white",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              "bg-purple-600 hover:bg-purple-700 text-white"
             )}
           >
-            {advertisingId === ev.EventId ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Megaphone size={14} />
-            )}
-            {advertisingId === ev.EventId ? "Đang gửi..." : "Quảng Cáo"}
+            <Megaphone size={14} />
+            Quảng Cáo
           </button>
         </div>
       </div>
@@ -595,6 +569,19 @@ export default function EventsPage() {
             setEditingEvent(null); 
           }}
           onSuccess={refresh}
+        />
+      )}
+
+      {/* Modal chọn gói quảng cáo */}
+      {showAdPackageModal && advertisingEvent && barPageId && (
+        <EventAdPackageModal
+          event={advertisingEvent}
+          barPageId={barPageId}
+          onClose={() => {
+            setShowAdPackageModal(false);
+            setAdvertisingEvent(null);
+          }}
+          onSuccess={handlePurchaseSuccess}
         />
       )}
     </div>
