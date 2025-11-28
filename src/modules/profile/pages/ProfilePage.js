@@ -17,6 +17,7 @@ import BannedAccountOverlay from "../../../components/common/BannedAccountOverla
 import { getSession } from "../../../utils/sessionManager";
 import { userApi } from "../../../api/userApi";
 import { normalizeProfileData } from "../../../utils/profileDataMapper";
+import { mapPostForCard } from "../../../utils/postTransformers";
 import { CustomerTabs } from "../../../components/profile/ProfileTabs/CustomerTabs";
 import { BarTabs } from "../../../components/profile/ProfileTabs/BarTabs";
 import { DJTabs } from "../../../components/profile/ProfileTabs/DJTabs";
@@ -31,6 +32,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [rawPosts, setRawPosts] = useState([]);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsPagination, setPostsPagination] = useState({ nextCursor: null, hasMore: false });
@@ -67,16 +69,27 @@ export default function ProfilePage() {
           const mappedData = normalizeProfileData(profileData);
           setProfile(mappedData);
 
-          // Cập nhật state cho posts và pagination
-          setPosts(profileData.posts || []);
+          // Cập nhật state cho posts và pagination (chấp nhận cả array lẫn object-map)
+          const rawPosts = Array.isArray(profileData.posts)
+            ? profileData.posts
+            : (profileData.posts && typeof profileData.posts === "object"
+                ? Object.values(profileData.posts)
+                : []);
+          setRawPosts(rawPosts);
           setPostsPagination(profileData.postsPagination || { nextCursor: null, hasMore: false });
         } else {
-          if (alive) setError('Profile not found');
+          if (alive) {
+            setError('Profile not found');
+            setRawPosts([]);
+            setPosts([]);
+          }
         }
       } catch (e) {
         if (alive) {
           const errorMessage = e?.response?.data?.message || e?.message || 'Failed to fetch profile';
           setError(errorMessage);
+          setRawPosts([]);
+          setPosts([]);
         }
       } finally {
         if (alive) {
@@ -91,7 +104,12 @@ export default function ProfilePage() {
     }
 
     return () => { alive = false; };
-  }, [entityId]);
+  }, [entityId, t]);
+
+  useEffect(() => {
+    const transformedPosts = rawPosts.map((post) => mapPostForCard(post, t, currentUserEntityId));
+    setPosts(transformedPosts);
+  }, [rawPosts, currentUserEntityId, t]);
 
 
 

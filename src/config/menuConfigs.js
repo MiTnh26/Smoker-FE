@@ -213,9 +213,9 @@ export function getEntityRoute(entity) {
     case "barpage":
       return `/bar/${id}`;
     case "dj":
-      return `/dj/${id}`;
+      return `/dj/profile`;
     case "dancer":
-      return `/dancer/${id}`;
+      return `/dancer/profile`;
     case "customer":
     case "account":
       return `/customer/profile`;

@@ -8,8 +8,9 @@ import { useTranslation } from "react-i18next";
  * @param {string} entityId - The entity ID to fetch posts for
  * @returns {Object} { posts, loading, error, refresh }
  */
-export const useProfilePosts = (entityId) => {
+export const useProfilePosts = (entityId, viewerEntityId) => {
   const { t } = useTranslation();
+  const [rawPosts, setRawPosts] = useState([]);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,12 +36,12 @@ export const useProfilePosts = (entityId) => {
           rawPosts = resp.data.data;
         }
 
-        const transformed = rawPosts.map((post) => mapPostForCard(post, t));
-        setPosts(transformed);
+        setRawPosts(rawPosts);
       } catch (err) {
         console.error("Error loading profile posts:", err);
         if (alive) {
           setError(err?.response?.data?.message || err.message || "Failed to load posts");
+          setRawPosts([]);
           setPosts([]);
         }
       } finally {
@@ -51,6 +52,11 @@ export const useProfilePosts = (entityId) => {
     loadPosts();
     return () => { alive = false; };
   }, [entityId, t]);
+
+  useEffect(() => {
+    const transformed = rawPosts.map((post) => mapPostForCard(post, t, viewerEntityId));
+    setPosts(transformed);
+  }, [rawPosts, viewerEntityId, t]);
 
   const refresh = () => {
     setLoading(true);
