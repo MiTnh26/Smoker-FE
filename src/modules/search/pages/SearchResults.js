@@ -160,6 +160,7 @@ function mapType(t) {
 }
 
 function onOpenItem(navigate, item) {
+<<<<<<< HEAD
       const itemType = String(item.type || "").toUpperCase();
 
   // Navigate to post detail page for posts
@@ -173,6 +174,16 @@ function onOpenItem(navigate, item) {
   if (itemEntityAccountId) {
   navigate(`/profile/${itemEntityAccountId}`);
   }
+=======
+  // Validate item.id before navigating
+  if (!item.id) {
+    console.error("[SearchResults] Item missing id:", item);
+    return;
+  }
+  
+  // All items (BAR, DJ, DANCER, USER) should navigate to /profile/:id
+  navigate(`/profile/${item.id}`);
+>>>>>>> dotu
 }
 
 
