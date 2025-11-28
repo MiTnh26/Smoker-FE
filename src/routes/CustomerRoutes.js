@@ -11,6 +11,7 @@ import MessagesPage from "../modules/messages/pages/MessagesPage";
 import MessagesLayout from "../layouts/MessagesLayout";
 import BarTablesPage from "../modules/customer/pages/BarTablesPage";
 import MyBookings from "../modules/customer/pages/MyBookings";
+import PublicProfile from "../modules/customer/pages/PublicProfile";
 export default function CustomerRoutes() {
   return (
     <Fragment>
@@ -89,3 +90,12 @@ export default function CustomerRoutes() {
     </Fragment>
   );
 }
+
+
+
+
+
+
+
+
+

@@ -443,6 +443,40 @@ export default function PublicProfile() {
             )}
           </div>
         );
+        case "booking":
+  // Bất kỳ user đã đăng nhập nào cũng có thể đặt bàn
+  // (Không cần kiểm tra role BAR hay chủ quán nữa)
+  return (
+    <div className="profile-section">
+      <div className="flex flex-col items-center justify-center py-12">
+        <button
+          onClick={() => setShowBookingView(!showBookingView)}
+          className={cn(
+            "px-8 py-4 rounded-xl font-bold text-lg",
+            "border-none",
+            "transition-all duration-300",
+            "active:scale-95",
+            "flex items-center gap-2",
+            "shadow-lg hover:shadow-xl",
+            showBookingView
+              ? "bg-gray-500 text-white hover:bg-gray-600"
+              : "bg-gradient-to-r from-[rgb(var(--success))] to-[rgb(var(--primary))] text-white hover:from-[rgb(var(--success))] hover:to-[rgb(var(--primary-hover))]",
+            "transform hover:scale-105"
+          )}
+          style={{
+            boxShadow: showBookingView
+              ? "0 4px 12px rgba(0, 0, 0, 0.15)"
+              : "0 4px 16px rgba(var(--success), 0.4)",
+          }}
+        >
+          <span>{showBookingView ? "Hủy đặt bàn" : "Đặt bàn ngay"}</span>
+        </button>
+
+        {/* Hiển thị form/component đặt bàn khi người dùng bấm nút */}
+        {showBookingView && <BarTablesPage barId={barPageId} />}
+      </div>
+    </div>
+  );
       default:
         return null;
     }
