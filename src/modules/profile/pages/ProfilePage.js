@@ -159,6 +159,20 @@ export default function ProfilePage() {
     checkBannedStatus();
   }, []);
 
+  const targetType = profileType.type;
+  const isBarProfile = profileType.isBar;
+  const isPerformerProfile = profileType.isPerformer;
+  const isDJProfile = profileType.isDJ;
+  const isDancerProfile = profileType.isDancer;
+  const isCustomerProfile = profileType.isCustomer;
+  const canRequestBooking = !isOwnProfile && isPerformerProfile;
+
+  useEffect(() => {
+    if (!canRequestBooking && bookingOpen) {
+      setBookingOpen(false);
+    }
+  }, [canRequestBooking, bookingOpen]);
+
   if (loading) {
     return (
       <div className={cn("min-h-screen bg-background flex items-center justify-center")}>
@@ -214,14 +228,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Use profileType hook results
-  const targetType = profileType.type;
-  const isBarProfile = profileType.isBar;
-  const isPerformerProfile = profileType.isPerformer;
-  const isDJProfile = profileType.isDJ;
-  const isDancerProfile = profileType.isDancer;
-  const isCustomerProfile = profileType.isCustomer;
-  
   const performerTargetId = isPerformerProfile
     ? profile?.targetId || profile?.targetID || profile?.businessAccountId || profile?.BusinessAccountId || null
     : null;
@@ -1063,7 +1069,7 @@ export default function ProfilePage() {
           </section>
       </div>
 
-      {bookingOpen && (
+      {canRequestBooking && bookingOpen && (
         <RequestBookingModal
           open={bookingOpen}
           onClose={() => setBookingOpen(false)}
