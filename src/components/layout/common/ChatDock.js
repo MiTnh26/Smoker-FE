@@ -8,8 +8,10 @@ import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { userApi } from "../../../api/userApi";
 import useChatSocket from '../../../api/useChatSocket';
-import { Reply, Smile, CheckCheck, X } from "lucide-react";
+import { Reply, X, FileText } from "lucide-react";
 import Composer from "../../../modules/messages/components/Composer";
+import NotificationToPostModal from "../../../modules/feeds/components/modals/NotificationToPostModal";
+import { getPostById } from "../../../api/postApi";
 
 function ChatWindow(props) {
   const { chat, onClose } = props;
@@ -22,7 +24,12 @@ function ChatWindow(props) {
   const [currentEntityType, setCurrentEntityType] = useState(null);
   const [currentEntityId, setCurrentEntityId] = useState(null);
   const [otherUserInfo, setOtherUserInfo] = useState(null);
+  const [otherUserId, setOtherUserId] = useState(null); // Store other participant's ID for read status check
   const [activeEntityId, setActiveEntityId] = React.useState(null);
+  const [postModalOpen, setPostModalOpen] = useState(false);
+  const [selectedPostId, setSelectedPostId] = useState(null);
+  const [selectedCommentId, setSelectedCommentId] = useState(null);
+  const [postPreviews, setPostPreviews] = useState(new Map()); // Store post previews by postId
 
   // Listen for session changes (when switching entities)
   useEffect(() => {
@@ -172,6 +179,9 @@ function ChatWindow(props) {
 
   // Fetch other user info from conversation
   useEffect(() => {
+    // Reset otherUserId when chat changes
+    setOtherUserId(null);
+    
     // eslint-disable-next-line complexity
     const fetchOtherUserInfo = async () => {
       if (!chat.id || !currentUserId) return;
@@ -179,6 +189,8 @@ function ChatWindow(props) {
       // If avatar and name are already provided in chat object (from MessagesPanel), use them directly
       if (chat.avatar && chat.name && chat.entityId) {
         console.log("[ChatDock] Using avatar and name from chat object:", chat.name);
+        // Store otherUserId for read status check
+        setOtherUserId(chat.entityId);
         setOtherUserInfo({
           name: chat.name,
           avatar: chat.avatar,
@@ -261,19 +273,18 @@ function ChatWindow(props) {
         );
         
         if (conversation) {
-          // Find other participant
-          const participant1 = String(conversation["Người 1"] || conversation.participant1 || "").toLowerCase().trim();
-          const participant2 = String(conversation["Người 2"] || conversation.participant2 || "").toLowerCase().trim();
+          // Find other participant from new structure (English fields)
+          const participants = conversation.participants || [];
           const currentUserIdNormalized = String(currentUserId).toLowerCase().trim();
           
-          let otherUserId = null;
-          if (participant1 === currentUserIdNormalized) {
-            otherUserId = conversation["Người 2"] || conversation.participant2;
-          } else if (participant2 === currentUserIdNormalized) {
-            otherUserId = conversation["Người 1"] || conversation.participant1;
-          }
+          const foundOtherUserId = participants.find(p => 
+            String(p).toLowerCase().trim() !== currentUserIdNormalized
+          ) || null;
           
-          if (otherUserId) {
+          // Store otherUserId for read status check
+          setOtherUserId(foundOtherUserId);
+          
+          if (foundOtherUserId) {
             // First, check if this entityId belongs to the current user's entities (own bar/business)
             try {
               const { getEntities } = await import("../../../utils/sessionManager");
@@ -294,7 +305,7 @@ function ChatWindow(props) {
                 setOtherUserInfo({
                   name: ownEntity.name || chat.name || "User",
                   avatar: ownEntity.avatar || null,
-                  entityId: otherUserId
+                  entityId: foundOtherUserId
                 });
                 return;
               } else {
@@ -311,7 +322,7 @@ function ChatWindow(props) {
               setOtherUserInfo({
                 name: profile.name || profile.BarName || profile.BusinessName || chat.name || "User",
                 avatar: profile.avatar || profile.Avatar || null,
-                entityId: otherUserId
+                entityId: foundOtherUserId
               });
             } catch (err) {
               // Handle 404 and other errors gracefully - don't show as error for 404
@@ -326,11 +337,12 @@ function ChatWindow(props) {
               setOtherUserInfo({
                 name: chat.name || "User",
                 avatar: null,
-                entityId: otherUserId
+                entityId: foundOtherUserId
               });
             }
           } else {
             // Fallback to chat.name
+            setOtherUserId(null);
             setOtherUserInfo({
               name: chat.name || "User",
               avatar: null,
@@ -339,6 +351,7 @@ function ChatWindow(props) {
           }
         } else {
           // Fallback to chat.name
+          setOtherUserId(null);
           setOtherUserInfo({
             name: chat.name || "User",
             avatar: null,
@@ -348,6 +361,7 @@ function ChatWindow(props) {
       } catch (err) {
         console.error("Error fetching conversation info:", err);
         // Fallback to chat.name
+        setOtherUserId(null);
         setOtherUserInfo({
           name: chat.name || "User",
           avatar: null,
@@ -430,13 +444,13 @@ function ChatWindow(props) {
   const { socket } = useChatSocket((message) => {
     if (message.conversationId === chat.id || message.conversationId === String(chat.id)) {
       // Check if message is from other user (not current user)
-      // Backend emits: { conversationId, messageId, "Nội Dung Tin Nhắn", "Gửi Lúc", "Người Gửi", "Loại" }
-      const messageSenderId = String(message["Người Gửi"] || message.senderId || message.senderEntityAccountId || "").toLowerCase().trim();
+      // Backend emits: { conversationId, messageId, sender_id, content, message_type, ... } (English fields)
+      const messageSenderId = String(message.sender_id || message.senderId || message.senderEntityAccountId || "").toLowerCase().trim();
       const currentUserIdNormalized = currentUserId ? String(currentUserId).toLowerCase().trim() : "";
       const isFromOtherUser = messageSenderId && messageSenderId !== currentUserIdNormalized;
       
-      // Get content from Vietnamese field name or English fallback
-      const messageContent = message["Nội Dung Tin Nhắn"] || message.content || "";
+      // Get content from English fields
+      const messageContent = message.content || "";
       
       
       // Fetch lại toàn bộ messages để đồng bộ trạng thái
@@ -460,7 +474,11 @@ function ChatWindow(props) {
         console.error("❌ Error reloading messages after socket event:", err);
       });
       // Đánh dấu đã đọc luôn nếu đang mở
-      messageApi.markMessagesRead(chat.id);
+      if (currentUserId) {
+        messageApi.markMessagesRead(chat.id, currentUserId)
+          .then(() => { try { (typeof globalThis !== "undefined" && globalThis.window) && globalThis.window.dispatchEvent(new Event("messageRefresh")); } catch (e) { console.warn("Error dispatching messageRefresh event:", e); } })
+          .catch((err) => { console.warn("Error marking messages as read:", err); });
+      }
     }
   });
 
@@ -509,7 +527,11 @@ function ChatWindow(props) {
       setLoading(false);
     });
   // Đánh dấu đã đọc (gửi conversationId qua body)
-  messageApi.markMessagesRead(chat.id);
+  if (currentUserId) {
+    messageApi.markMessagesRead(chat.id, currentUserId)
+      .then(() => { try { (typeof globalThis !== "undefined" && globalThis.window) && globalThis.window.dispatchEvent(new Event("messageRefresh")); } catch (e) { console.warn("Error dispatching messageRefresh event:", e); } })
+      .catch((err) => { console.warn("Error marking messages as read:", err); });
+  }
     // eslint-disable-next-line
   }, [chat.id, currentUserId]);
 
@@ -535,9 +557,9 @@ function ChatWindow(props) {
         setMessages((prev) => [
           ...prev,
           {
-            "Nội Dung Tin Nhắn": text,
-            "Người Gửi": senderIdToUse,
-            "Gửi Lúc": new Date(),
+            content: text,
+            sender_id: senderIdToUse,
+            createdAt: new Date(),
           },
         ]);
         setTimeout(scrollToBottom, 100);
@@ -577,13 +599,13 @@ function ChatWindow(props) {
 
   const shouldShowTimestamp = (index, list) => {
     if (index === 0) return true;
-    const current = new Date(list[index]?.["Gửi Lúc"] || list[index]?.createdAt || 0).getTime();
-    const prev = new Date(list[index - 1]?.["Gửi Lúc"] || list[index - 1]?.createdAt || 0).getTime();
+    const current = new Date(list[index]?.createdAt || 0).getTime();
+    const prev = new Date(list[index - 1]?.createdAt || 0).getTime();
     return current - prev > 30 * 60 * 1000 || new Date(current).getDate() !== new Date(prev).getDate();
   };
 
   const getSenderKey = (msg) => {
-    const raw = msg["Người Gửi"] || msg.senderId || msg.senderEntityAccountId || "";
+    const raw = msg.sender_id || msg.senderId || msg.senderEntityAccountId || "";
     return String(raw).toLowerCase().trim();
   };
 
@@ -603,6 +625,157 @@ function ChatWindow(props) {
       navigate(`/profile/${otherUserInfo.entityId}`);
     }
   };
+
+  // Fetch post preview when post link is detected
+  const fetchPostPreview = useCallback(async (postId) => {
+    if (!postId || postPreviews.has(postId)) return;
+    
+    // Validate postId format (MongoDB ObjectId: 24 hex characters)
+    const isValidObjectId = (id) => {
+      if (!id) return false;
+      const idStr = String(id);
+      return /^[0-9a-fA-F]{24}$/.test(idStr);
+    };
+    
+    if (!isValidObjectId(postId)) {
+      // Mark as invalid to prevent retry
+      setPostPreviews(prev => {
+        const newMap = new Map(prev);
+        newMap.set(postId, null); // null means invalid
+        return newMap;
+      });
+      return;
+    }
+    
+    try {
+      const response = await getPostById(postId, { includeMedias: true });
+      const postData = response?.success && response.data ? response.data : (response?._id ? response : null);
+      
+      if (postData) {
+        setPostPreviews(prev => {
+          const newMap = new Map(prev);
+          newMap.set(postId, {
+            id: postData._id || postData.id,
+            content: postData.content || postData.title || "",
+            authorName: postData.authorName || postData.author?.userName || postData.account?.userName || "Người dùng",
+            authorAvatar: postData.authorAvatar || postData.author?.avatar || postData.account?.avatar || null,
+            previewImage: postData.medias?.images?.[0]?.url || postData.medias?.videos?.[0]?.thumbnail || null,
+          });
+          return newMap;
+        });
+      } else {
+        // Mark as failed to prevent retry
+        setPostPreviews(prev => {
+          const newMap = new Map(prev);
+          newMap.set(postId, null);
+          return newMap;
+        });
+      }
+    } catch (error) {
+      // Only log non-404/400 errors
+      if (error?.response?.status !== 404 && error?.response?.status !== 400) {
+        console.warn('[ChatDock] Failed to fetch post preview:', error);
+      }
+      // Mark as failed to prevent retry
+      setPostPreviews(prev => {
+        const newMap = new Map(prev);
+        newMap.set(postId, null);
+        return newMap;
+      });
+    }
+  }, [postPreviews]);
+
+  // Render post preview card
+  const renderPostPreviewCard = useCallback((postId, isMine) => {
+    const preview = postPreviews.get(postId);
+    if (preview === undefined) {
+      // Fetch preview if not loaded
+      fetchPostPreview(postId);
+      return null;
+    }
+    if (preview === null) {
+      // Invalid or failed to load - don't show preview
+      return null;
+    }
+
+    const summary = preview.content && preview.content.length > 100
+      ? `${preview.content.slice(0, 100)}…`
+      : preview.content || "Bài viết";
+
+    return (
+      <div
+        className="mt-2 flex w-full gap-3 overflow-hidden rounded-xl border p-2.5"
+        style={{
+          borderColor: isMine ? "rgba(255,255,255,0.25)" : "rgb(var(--border))",
+          background: isMine ? "rgba(255,255,255,0.1)" : "rgb(var(--card))",
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelectedPostId(postId);
+          setPostModalOpen(true);
+        }}
+      >
+        {preview.previewImage && (
+          <div className="relative w-20 h-20 flex-shrink-0 overflow-hidden rounded-lg">
+            <img src={preview.previewImage} alt="" className="h-full w-full object-cover" />
+          </div>
+        )}
+        <div className="flex flex-1 flex-col gap-1.5 min-w-0">
+          <div className="flex items-center gap-2">
+            {preview.authorAvatar ? (
+              <img
+                src={preview.authorAvatar}
+                alt={preview.authorName}
+                className="h-5 w-5 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-semibold">
+                {preview.authorName?.[0]?.toUpperCase() || "?"}
+              </div>
+            )}
+            <span 
+              className="text-xs font-semibold truncate"
+              style={{ color: isMine ? 'rgba(255,255,255,0.9)' : 'rgb(var(--foreground))' }}
+            >
+              {preview.authorName}
+            </span>
+          </div>
+          <p 
+            className="text-xs leading-snug line-clamp-2 m-0"
+            style={{ color: isMine ? 'rgba(255,255,255,0.8)' : 'rgb(var(--muted-foreground))' }}
+          >
+            {summary}
+          </p>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelectedPostId(postId);
+              setPostModalOpen(true);
+            }}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium mt-1",
+              "transition-all duration-200",
+              "cursor-pointer select-none w-fit"
+            )}
+            style={isMine ? {
+              background: 'rgba(255, 255, 255, 0.2)',
+              color: '#ffffff',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+            } : {
+              background: 'rgb(var(--muted))',
+              color: 'rgb(var(--foreground))',
+              border: '1px solid rgb(var(--border))',
+            }}
+          >
+            <FileText size={13} style={{ opacity: 0.85 }} />
+            <span>Xem chi tiết</span>
+          </button>
+        </div>
+      </div>
+    );
+  }, [postPreviews, fetchPostPreview, setSelectedPostId, setPostModalOpen]);
 
   const displayName = otherUserInfo?.name || chat.name || "User";
   const displayAvatar = otherUserInfo?.avatar;
@@ -657,7 +830,7 @@ function ChatWindow(props) {
             </button>
           </div>
         </div>
-        <div className="mt-3 h-[1px] w-full bg-border/40" />
+
       </div>
       <div
         className="flex-1 overflow-y-auto overflow-x-hidden bg-background p-4"
@@ -672,7 +845,7 @@ function ChatWindow(props) {
           displayMessages.map((msg, idx) => {
             const sender = getSenderKey(msg);
             const isMine = currentUserId ? sender === String(currentUserId).toLowerCase().trim() : false;
-            const rawContent = msg["Nội Dung Tin Nhắn"] || msg.content || msg.message || "";
+            const rawContent = msg.content || msg.message || "";
             const storyImgMatch = rawContent.match(/\[STORY_IMAGE:([^\]]+)\]/i);
             const storyImageUrl = storyImgMatch ? storyImgMatch[1] : null;
             const textContent = storyImageUrl ? rawContent.replaceAll(/\[STORY_IMAGE:[^\]]+\]/gi, "").trim() : rawContent;
@@ -682,7 +855,7 @@ function ChatWindow(props) {
               if (!refId) return null;
               const ref = messageMap.get(String(refId));
               if (!ref) return null;
-              const refText = (ref["Nội Dung Tin Nhắn"] || ref.content || ref.message || "").toString();
+              const refText = (ref.content || ref.message || "").toString();
               const refSender = getSenderKey(ref) === sender ? t("messages.you") || "Bạn" : ref.authorName || displayName;
               return (
                 <div
@@ -696,40 +869,89 @@ function ChatWindow(props) {
             })();
 
             const actionIcons = [
-              { label: t("comment.reply") || "Reply", Icon: Reply },
-              { label: t("action.react") || "React", Icon: Smile }
+              { label: t("comment.reply") || "Reply", Icon: Reply }
             ];
 
-            const reactionChoices = ["👍","❤️","😂","😮","😢","😡"];
-            const handleReactionClick = async (emoji) => {
-              const mid = msg.id || msg._id;
-              setMessages((prev) =>
-                prev.map((mm) => {
-                  const key = mm.id || mm._id;
-                  if (mid && String(key) !== String(mid)) return mm;
-                  const current = mm.reactions?.[emoji] || 0;
-                  return {
-                    ...mm,
-                    reactions: { ...(mm.reactions || {}), [emoji]: current + 1 },
-                  };
-                })
-              );
-              try {
-                if (messageApi.reactMessage) {
-                  await messageApi.reactMessage(mid, emoji);
-                }
-                if (socket && chat.id) {
-                  socket.emit("message:reaction", { convId: chat.id, messageId: mid, emoji });
-                }
-              } catch {}
-            };
-
-            const messageKey = msg.id || msg._id || msg.messageId || `${msg["Gửi Lúc"] || ""}-${idx}`;
+            const messageKey = msg.id || msg._id || msg.messageId || `${msg.createdAt || ""}-${idx}`;
 
             const bubbleTextColor = isMine ? "#ffffff" : "rgb(var(--foreground))";
+
+            // Create contentNode with link detection
+            let contentNode;
+            const postUrlRegex = /(?:https?:\/\/[^\s]+\/)?posts\/([a-fA-F0-9]{24}|[a-zA-Z0-9_-]+)/g;
+            const hasPostLink = textContent && (textContent.includes('/posts/') || textContent.includes('posts/'));
+
+            if (hasPostLink) {
+              const postMatches = [...textContent.matchAll(postUrlRegex)];
+              if (postMatches.length > 0) {
+                // Get first post ID (if multiple links, show preview for first one)
+                const firstPostId = postMatches[0][1];
+                
+                // Render text before link (if any)
+                const linkStartIndex = postMatches[0].index;
+                const textBeforeLink = linkStartIndex > 0 ? textContent.substring(0, linkStartIndex).trim() : "";
+                
+                contentNode = (
+                  <div className="flex flex-col gap-2">
+                    {textBeforeLink && (
+                      <span 
+                        style={{ 
+                          color: bubbleTextColor,
+                          wordBreak: "break-word",
+                          overflowWrap: "break-word",
+                          wordWrap: "break-word"
+                        }}
+                      >
+                        {textBeforeLink}
+                      </span>
+                    )}
+                    {renderPostPreviewCard(firstPostId, isMine)}
+                  </div>
+                );
+              } else {
+                contentNode = (
+                  <span 
+                    style={{ 
+                      color: bubbleTextColor,
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                      wordWrap: "break-word"
+                    }}
+                  >
+                    {textContent}
+                  </span>
+                );
+              }
+            } else {
+              contentNode = (
+                <span 
+                  style={{ 
+                    color: bubbleTextColor,
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word",
+                    wordWrap: "break-word"
+                  }}
+                >
+                  {textContent}
+                </span>
+              );
+            }
+
             const bubbleStyle = isMine
-              ? { color: bubbleTextColor }
-              : { background: "rgb(var(--card))", color: bubbleTextColor, borderColor: "rgb(var(--border))" };
+              ? { 
+                  color: bubbleTextColor,
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                  wordWrap: "break-word"
+                }
+              : { 
+                  background: "rgb(var(--card))", 
+                  color: bubbleTextColor, 
+                  borderColor: "rgb(var(--border))",
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                  wordWrap: "break-word"
+                };
 
             const bubble = (
               <div
@@ -745,48 +967,9 @@ function ChatWindow(props) {
                   {storyImageUrl && (
                     <img src={storyImageUrl} alt="" className="max-h-[150px] rounded-lg object-cover" />
                   )}
-                  <span style={{ color: bubbleTextColor }}>{textContent}</span>
+                  {contentNode}
                 </div>
-                <div className="pointer-events-none absolute -top-8 left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full bg-card/95 px-2 py-1 text-lg shadow-md group-hover:flex">
-                  {reactionChoices.map((emoji) => (
-                    <button
-                      key={emoji}
-                      className="pointer-events-auto text-base"
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        handleReactionClick(emoji);
-                      }}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-                {!!msg.reactions && (
-                  <div className="mt-1 flex gap-1 text-xs">
-                    <div className="flex items-center gap-1 rounded-full bg-black/10 px-2 py-0.5">
-                      {Object.entries(msg.reactions).map(([k, v]) => (
-                        <span key={k} className="flex items-center gap-0.5">
-                          {k} {v}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div
-                  className={cn(
-                    "mt-1 flex text-[11px] opacity-0 transition group-hover:opacity-100",
-                    isMine ? "justify-end" : "justify-start"
-                  )}
-                  style={{ color: isMine ? "rgba(255,255,255,0.9)" : "rgb(var(--muted-foreground))" }}
-                >
-                  <span>{new Date(msg["Gửi Lúc"] || msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                  {isMine && (
-                    <span className="ml-2 flex items-center gap-1 select-none">
-                      <CheckCheck size={12} />
-                      {t("messages.seen")}
-                    </span>
-                  )}
-                </div>
+
               </div>
             );
 
@@ -798,7 +981,7 @@ function ChatWindow(props) {
                 {shouldShowTimestamp(idx, displayMessages) && (
                   <div className="mb-3 flex w-full justify-center">
                     <span className="rounded-full px-3 py-0.5 text-[11px] text-muted-foreground" style={{ background: "rgb(var(--card))" }}>
-                      {formatTimestampLabel(msg["Gửi Lúc"] || msg.createdAt || Date.now())}
+                      {formatTimestampLabel(msg.createdAt || Date.now())}
                     </span>
                   </div>
                 )}
@@ -828,6 +1011,9 @@ function ChatWindow(props) {
                           <Icon size={14} />
                         </button>
                       ))}
+                      <span className="ml-2 text-[11px] whitespace-nowrap text-muted-foreground">
+                        {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     </div>
                   )}
                   {bubble}
@@ -841,6 +1027,9 @@ function ChatWindow(props) {
                           <Icon size={14} />
                         </button>
                       ))}
+                      <span className="ml-2 text-[11px] whitespace-nowrap text-muted-foreground">
+                        {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -857,6 +1046,17 @@ function ChatWindow(props) {
           onTyping={handleComposerTyping}
         />
       </div>
+
+      <NotificationToPostModal
+        open={postModalOpen}
+        postId={selectedPostId}
+        commentId={selectedCommentId}
+        onClose={() => {
+          setPostModalOpen(false);
+          setSelectedPostId(null);
+          setSelectedCommentId(null);
+        }}
+      />
     </div>
   );
 }

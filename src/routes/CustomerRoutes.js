@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { Route } from "react-router-dom";
 import CustomerLayout from "../layouts/CustomerLayout";
 import {  Profile, AddBankInfo } from "../modules/customer";
-import PublicProfile from "../modules/customer/pages/PublicProfile";
+import ProfilePage from "../modules/profile/pages/ProfilePage";
 import DynamicLayout from "../layouts/DynamicLayout";
 import ProtectedRoute from "./ProtectedRoute";
 import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed"
@@ -50,7 +50,7 @@ export default function CustomerRoutes() {
       <Route
         path="/profile/:entityId"
         element={
-          <DynamicLayout><PublicProfile /></DynamicLayout>
+          <DynamicLayout><ProfilePage /></DynamicLayout>
         }
       />
       <Route

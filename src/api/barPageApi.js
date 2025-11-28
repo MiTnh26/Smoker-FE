@@ -27,6 +27,11 @@ const barPageApi = {
     return axiosClient.get(`/bar/${barPageId}`);
   },
 
+  // Update Bar Page
+  updateBarPage(barPageId, payload) {
+    return axiosClient.put(`/bar/${barPageId}`, payload);
+  },
+
   // Step 5: Xóa Bar Page
   delete(barPageId) {
     return axiosClient.delete(`/bar/${barPageId}`);

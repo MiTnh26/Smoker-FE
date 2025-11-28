@@ -2,39 +2,29 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import PropTypes from "prop-types";
+import { useTranslation } from "react-i18next";
 import { useSocket } from "../../../contexts/SocketContext";
 import { getSession, getActiveEntity, getEntities } from "../../../utils/sessionManager";
 import notificationApi from "../../../api/notificationApi";
-import publicProfileApi from "../../../api/publicProfileApi";
+
 import "../../../styles/components/notificationDropdown.css";
 
 export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountChange }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [senderAvatars, setSenderAvatars] = useState({}); // Cache avatars by senderEntityAccountId
   const navigate = useNavigate();
   const { socket, isConnected } = useSocket();
+  const { t } = useTranslation();
 
-  // Fetch avatar for a sender
-  const fetchSenderAvatar = async (senderEntityAccountId) => {
-    if (!senderEntityAccountId || senderAvatars[senderEntityAccountId]) {
-      return; // Already cached or no entityAccountId
-    }
-    
+  // Get entityAccountId from session
+  const getEntityAccountId = () => {
     try {
-      const response = await publicProfileApi.getByEntityId(senderEntityAccountId);
-      if (response?.success && response.data) {
-        const avatar = response.data.avatar || response.data.Avatar || null;
-        if (avatar) {
-          setSenderAvatars(prev => ({
-            ...prev,
-            [senderEntityAccountId]: avatar
-          }));
-        }
-      }
+      const activeEntity = getActiveEntity();
+      return activeEntity?.EntityAccountId || activeEntity?.entityAccountId || null;
     } catch (error) {
-      console.warn(`[NotificationPanel] Failed to fetch avatar for ${senderEntityAccountId}:`, error);
+      console.warn("[NotificationPanel] Error getting entityAccountId:", error);
+      return null;
     }
   };
 
@@ -42,23 +32,17 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await notificationApi.getNotifications({ limit: 20 });
+      const entityAccountId = getEntityAccountId();
+      const response = await notificationApi.getNotifications({ 
+        limit: 50,
+        ...(entityAccountId && { entityAccountId })
+      });
       if (response.success) {
         const notifs = response.data || [];
         setNotifications(notifs);
         
-        // Fetch avatars for all unique senders
-        const uniqueSenders = [...new Set(notifs.map(n => n.senderEntityAccountId).filter(Boolean))];
-        uniqueSenders.forEach(senderId => {
-          fetchSenderAvatar(senderId);
-        });
-        
-        // Update unread count from filtered notifications
-        const unread = notifs.filter(
-          (notif) => notif.status === "Unread"
-        ).length || 0;
+        const unread = notifs.filter((notif) => notif.status === "Unread").length || 0;
         setUnreadCount(unread);
-        // Notify parent of unread count change
         if (onUnreadCountChange) {
           onUnreadCountChange(unread);
         }
@@ -99,10 +83,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
       if (response.success && response.data) {
         const count = response.data.count || 0;
         setUnreadCount(count);
-        // Notify parent of unread count change
-        if (onUnreadCountChange) {
-          onUnreadCountChange(count);
-        }
+        if (onUnreadCountChange) onUnreadCountChange(count);
       }
     } catch (error) {
       console.error("Error fetching unread count:", error);
@@ -112,7 +93,8 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   // Mark notification as read
   const handleMarkAsRead = async (notificationId) => {
     try {
-      await notificationApi.markAsRead(notificationId);
+      const entityAccountId = getEntityAccountId();
+      await notificationApi.markAsRead(notificationId, entityAccountId);
       setNotifications((prev) =>
         prev.map((notif) =>
           notif._id === notificationId
@@ -130,7 +112,8 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   // Mark all as read
   const handleMarkAllAsRead = async () => {
     try {
-      await notificationApi.markAllAsRead();
+      const entityAccountId = getEntityAccountId();
+      await notificationApi.markAllAsRead(entityAccountId);
       setNotifications((prev) =>
         prev.map((notif) => ({ ...notif, status: "Read" }))
       );
@@ -146,13 +129,47 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   const handleNotificationClick = async (notification) => {
     console.log('[NotificationPanel] Clicked notification:', notification);
     
-    // Mark as read first
+    // Mark as read first (optimistically update UI, then sync with server)
     if (notification.status === "Unread") {
-      await handleMarkAsRead(notification._id);
+      // Optimistically update UI immediately
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          notif._id === notification._id
+            ? { ...notif, status: "Read" }
+            : notif
+        )
+      );
+      // Update unread count optimistically
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      if (onUnreadCountChange) {
+        onUnreadCountChange(Math.max(0, unreadCount - 1));
+      }
+      
+      // Then sync with server (don't await to avoid blocking navigation)
+      handleMarkAsRead(notification._id).catch((error) => {
+        console.error("Error marking notification as read:", error);
+        // Revert optimistic update on error
+        setNotifications((prev) =>
+          prev.map((notif) =>
+            notif._id === notification._id
+              ? { ...notif, status: "Unread" }
+              : notif
+          )
+        );
+        fetchUnreadCount(); // Re-fetch to get correct count
+      });
     }
 
     // Close panel first
     onClose?.();
+
+    // If this is a message notification, immediately refresh the message badge
+    try {
+      if (notification.type === "Messages") {
+        const win = (typeof window !== "undefined") ? window : null;
+        win?.dispatchEvent(new Event("messageRefresh"));
+      }
+    } catch {}
 
     // Handle different link formats (like Facebook)
     if (notification.link) {
@@ -222,22 +239,59 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
     }
   };
 
-  // Get avatar for notification sender
-  const getSenderAvatar = (notification) => {
-    const senderId = notification.senderEntityAccountId;
-    if (senderId && senderAvatars[senderId]) {
-      return senderAvatars[senderId];
-    }
-    return null;
-  };
 
-  // Get notification text preview
+
+  // Format notification content with translation
+  // Backend now stores raw data (sender name only), Frontend translates based on type
   const getNotificationText = (notification) => {
-    const content = notification.content || "You have a new notification";
-    if (content.length > 80) {
+    const { type, content, link, sender } = notification;
+    const senderName = sender?.name || "Someone";
+    
+    // Check if content contains ":" (old format with message preview)
+    const hasPreview = content && content.includes(":");
+    
+    switch (type) {
+      case "Like":
+        // Check if it's a story by checking link
+        const isStory = link && link.startsWith("/stories/");
+        if (isStory) {
+          return t("notifications.likedYourStory", { name: senderName });
+        }
+        return t("notifications.likedYourPost", { name: senderName });
+        
+      case "Comment":
+        // Check if it's a reply (has commentId in link)
+        const isReply = link && link.includes("commentId=");
+        if (isReply) {
+          return t("notifications.repliedToYourComment", { name: senderName });
+        }
+        return t("notifications.commentedOnYourPost", { name: senderName });
+        
+      case "Follow":
+        return t("notifications.startedFollowingYou", { name: senderName });
+        
+      case "Messages":
+        if (hasPreview) {
+          // Old format: "John: Hello..." or new format with preview
+          const parts = content.split(":");
+          const name = parts[0] || senderName;
+          const preview = parts.slice(1).join(":").trim();
+          return t("notifications.sentYouAMessageWithPreview", { 
+            name, 
+            preview: preview.length > 50 ? preview.substring(0, 50) + "..." : preview 
+          });
+        } else {
+          // New format: just sender name
+          return t("notifications.sentYouAMessage", { name: senderName });
+        }
+        
+      default:
+        // Fallback for old notifications or unknown types
+        if (content && content.length > 80) {
       return `${content.substring(0, 80)}...`;
     }
-    return content;
+        return content || t("notifications.default");
+    }
   };
 
   // Format time ago
@@ -285,6 +339,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
     const entities = getEntities();
     
     // Get EntityAccountId (priority: activeEntity > matching entity > first entity)
+    // Theo NOTIFICATION_FLOW.md: Socket room phải join với EntityAccountId
     let entityAccountId = active.EntityAccountId || active.entityAccountId || null;
     
     if (!entityAccountId && active.id && active.type) {
@@ -296,30 +351,39 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
       entityAccountId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
     }
     
-    // Fallback to AccountId if no EntityAccountId
-    const userId = entityAccountId || active.id || session.account?.id || null;
-    
-    if (userId) {
-      // Join room with userId (entityAccountId or AccountId)
-      socket.emit("join", String(userId));
-      console.log("[NotificationPanel] Joined socket room:", userId);
+    // Join socket room với EntityAccountId (theo NOTIFICATION_FLOW.md)
+    // Backend emit với receiverEntityAccountId, nên frontend phải join với EntityAccountId
+    if (entityAccountId) {
+      socket.emit("join", String(entityAccountId));
+      console.log("[NotificationPanel] Joined socket room with EntityAccountId:", entityAccountId);
+    } else {
+      // Fallback: Join với AccountId chỉ khi không có EntityAccountId (backward compatibility)
+      const accountId = active.id || session.account?.id || null;
+      if (accountId) {
+        socket.emit("join", String(accountId));
+        console.log("[NotificationPanel] Joined socket room with AccountId (fallback):", accountId);
+      }
     }
 
     // Listen for new notifications
     const handleNewNotification = (data) => {
       console.log("[NotificationPanel] Received new notification:", data);
       
-      if (data.notification) {
-        // Add new notification to the list
-        setNotifications((prev) => [data.notification, ...prev]);
-        
-        // Fetch avatar for sender
-        if (data.notification.senderEntityAccountId) {
-          fetchSenderAvatar(data.notification.senderEntityAccountId);
-        }
+      // Only process non-Messages notifications
+      // Messages notifications are handled separately in the messages module
+      if (data.notification && data.notification.type === "Messages") {
+        console.log("[NotificationPanel] Ignoring Messages notification (handled separately)");
+        return;
       }
       
-      // Update unread count
+      if (data.notification) {
+        // Add new notification to the list (only non-Messages)
+        setNotifications((prev) => [data.notification, ...prev]);
+        
+        // Sender info is now included in the notification object from the socket
+      }
+      
+      // Update unread count (backend already excludes Messages)
       if (data.unreadCount !== undefined) {
         setUnreadCount(data.unreadCount);
         if (onUnreadCountChange) {
@@ -407,7 +471,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
         {!loading && notifications.length > 0 && (
           notifications.map((notification) => {
             const isUnread = notification.status === "Unread";
-            const senderAvatar = getSenderAvatar(notification);
+                        const senderAvatar = notification.sender?.avatar;
             return (
               <button
                 key={notification._id}

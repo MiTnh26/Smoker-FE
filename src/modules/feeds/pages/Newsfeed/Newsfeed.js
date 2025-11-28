@@ -1,29 +1,29 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next";
 
 import FeedHeader from "./components/FeedHeader"
 import { StoryBar, StoryViewer, StoryEditor } from "../../components/story"
 import PostFeed from "../../components/post/PostFeed"
 import "../../../../styles/modules/feeds/pages/Newsfeed/Newsfeed.css"
-import VideoShortBar from "../../components/video/VideoShortBar";
-import VideoShortViewer from "../../components/video/VideoShortViewer";
-import { shorts as initialShorts } from "../../data/mockShorts"
 import LiveBroadcaster from "../../components/livestream/LiveBroadcaster";
 import LiveViewer from "../../components/livestream/LiveViewer";
-import livestreamApi from "../../../../api/livestreamApi";
+import useLivestreamManager from "../../components/livestream/useLivestreamManager";
 
 import { useStoryManager } from "../../components/story";
 
 export default function NewsfeedPage() {
   const { t } = useTranslation();
   const [activeStory, setActiveStory] = useState(null)
-  const [shortVideos] = useState(initialShorts)
-  const [activeShortVideo, setActiveShortVideo] = useState(null)
-  const [showBroadcaster, setShowBroadcaster] = useState(false)
-  const [activeLivestream, setActiveLivestream] = useState(null)
-  const [activeLivestreams, setActiveLivestreams] = useState([])
+  const {
+    activeLivestream,
+    openViewer,
+    closeViewer,
+    isBroadcasterOpen,
+    openBroadcaster,
+    closeBroadcaster,
+  } = useLivestreamManager()
   const [showStoryEditor, setShowStoryEditor] = useState(false)
   const {
     stories,
@@ -81,39 +81,10 @@ export default function NewsfeedPage() {
   }
   };
 
-  // Load active livestreams
-  useEffect(() => {
-    loadActiveLivestreams();
-    // Refresh every 30 seconds
-    const interval = setInterval(loadActiveLivestreams, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  const handleGoLive = () => openBroadcaster();
+  const handleLivestreamEnded = () => closeBroadcaster({ refresh: true });
+  const handleLivestreamClick = (livestream) => openViewer(livestream);
 
-  const loadActiveLivestreams = async () => {
-    try {
-      const response = await livestreamApi.getActiveLivestreams();
-      if (response?.success) {
-        setActiveLivestreams(response.data || []);
-      }
-    } catch (error) {
-      console.error("Error loading active livestreams:", error);
-    }
-  };
-
-  const handleGoLive = () => {
-    setShowBroadcaster(true);
-  };
-
-  const handleLivestreamEnded = () => {
-    setShowBroadcaster(false);
-    loadActiveLivestreams();
-  };
-
-  const handleLivestreamClick = (livestream) => {
-    setActiveLivestream(livestream);
-  };
-
- console.log("  stories ", stories)
   return (
     <div className="newsfeed-page">
       <FeedHeader />
@@ -131,20 +102,12 @@ export default function NewsfeedPage() {
 
 
       <main className="newsfeed-main">
-        {/* Use PostFeed component for automatic loading */}
+        {/* PostFeed now includes livestreams merged with posts */}
         <PostFeed 
-          onGoLive={handleGoLive}
-          activeLivestreams={activeLivestreams}
+          onGoLive={handleGoLive} 
           onLivestreamClick={handleLivestreamClick}
         />
       </main>
-      {/* Video Shorts */}
-      <div className="shorts-section">
-        <VideoShortBar
-          videos={shortVideos}
-          onVideoClick={setActiveShortVideo}
-        />
-      </div>
       {activeStory && (
         <StoryViewer
           stories={stories}
@@ -154,27 +117,18 @@ export default function NewsfeedPage() {
           onStoryDeleted={fetchStories}
         />
       )}
-      {/* Short Video Viewer */}
-      {activeShortVideo && (
-        <VideoShortViewer
-          videos={shortVideos}
-          activeVideo={activeShortVideo}
-          onClose={() => setActiveShortVideo(null)}
-          visible={!!activeShortVideo} 
-        />
-      )}
 
       {/* Live Broadcaster */}
-      {showBroadcaster && (
-        <LiveBroadcaster onClose={handleLivestreamEnded} />
+      {isBroadcasterOpen && (
+        <LiveBroadcaster
+          onClose={() => closeBroadcaster({ refresh: false })}
+          onEnded={handleLivestreamEnded}
+        />
       )}
 
       {/* Live Viewer */}
       {activeLivestream && (
-        <LiveViewer 
-          livestream={activeLivestream}
-          onClose={() => setActiveLivestream(null)} 
-        />
+        <LiveViewer livestream={activeLivestream} onClose={closeViewer} />
       )}
 
       {/* Story Editor Modal */}

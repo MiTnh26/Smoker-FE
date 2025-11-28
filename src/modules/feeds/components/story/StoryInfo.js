@@ -31,17 +31,21 @@ export default function StoryInfo({ story, t, isOwnStory = false }) {
 
   const avatarSrc =
     story.authorAvatar ||
-    story.authorEntityAvatar ||
+    story.authorAvatar ||
     story.avatar ||
     "/default-avatar.png";
   const username =
     story.authorName ||
-    story.authorEntityName ||
+    story.authorName ||
     story.accountId ||
     story.title ||
     "User";
   const audioUrl = story.songFilename
-    ? `http://localhost:9999/api/song/stream/${story.songFilename}`
+    ? (() => {
+        const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:9999/api";
+        const baseUrl = apiUrl.replace(/\/api\/?$/, "");
+        return `${baseUrl}/api/song/stream/${story.songFilename}`;
+      })()
     : null;
   const displayCaption = story.content || story.caption || "";
 

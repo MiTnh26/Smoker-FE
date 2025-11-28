@@ -12,7 +12,11 @@ import {
   Store,
   CreditCard,
   ClipboardCheck,
-  BookOpen
+  BookOpen,
+  Package,
+  CheckCircle2,
+  Pause,
+  Play
 } from "lucide-react";
 
 /**
@@ -28,8 +32,6 @@ import {
 export const sidebarConfig = {
   customer: [
     { label: "Trang chủ", icon: Home, path: "/customer/newsfeed" },
-   
-    { label: "Hội nhóm", icon: Users, path: "/customer/groups" },
     { label: "Sự kiện", icon: Calendar, path: "/customer/events" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/customer/messages" },
     { label: "Đặt bàn của tôi", icon: BookOpen, path: "/customer/my-bookings" },
@@ -76,6 +78,7 @@ export const sidebarConfig = {
     { label: "Khách hàng / Bar hợp tác", icon: Users, path: "/dj/partners" },
     { label: "Đánh giá & sao", icon: Star, path: "/dj/reviews" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/dj/messages" },
+    { label: "Hồ sơ", icon: User, path: "/dj/profile" },
   ],
 
   dancer: [
@@ -85,6 +88,7 @@ export const sidebarConfig = {
     { label: "Đối tác / Bar", icon: Users, path: "/dancer/partners" },
     { label: "Đánh giá & sao", icon: Star, path: "/dancer/reviews" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/dancer/messages" },
+    { label: "Hồ sơ", icon: User, path: "/dancer/profile" },
   ],
 
   admin: [
@@ -93,6 +97,10 @@ export const sidebarConfig = {
     { label: "Quản lý duyệt", icon: ClipboardCheck, path: "/admin/approvals" },
     { label: "Thư viện nhạc", icon: Music2, path: "/admin/music" },
     { label: "Quản lý quán / Bar", icon: Store, path: "/admin/bars" },
+    { label: "Gói quảng cáo", icon: Package, path: "/admin/ad-packages" },
+    { label: "Duyệt QC Event", icon: CheckCircle2, path: "/admin/event-ad-approvals" },
+    { label: "Yêu cầu tạm dừng QC", icon: Pause, path: "/admin/pause-requests" },
+    { label: "Yêu cầu tiếp tục QC", icon: Play, path: "/admin/resume-requests" },
     { label: "Báo cáo & thống kê", icon: BarChart3, path: "/admin/reports" },
     { label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },
   ],

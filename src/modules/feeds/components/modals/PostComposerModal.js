@@ -157,8 +157,8 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
         entityAccountId: entityAccountId,
         authorEntityId: activeEntity?.id || null,
         authorEntityType: normalizedEntityType,
-        authorEntityName: activeEntity?.name || session?.account?.userName || null,
-        authorEntityAvatar: activeEntity?.avatar || session?.account?.avatar || null
+        authorName: activeEntity?.name || session?.account?.userName || null,
+        authorAvatar: activeEntity?.avatar || session?.account?.avatar || null
       };
       
       

@@ -11,7 +11,13 @@ export default function SelectSong({ value, onChange }) {
   const [playingId, setPlayingId] = useState(null);
   const [search, setSearch] = useState("");
   const audioRef = useRef(null);
-  const __URL__ = "http://localhost:9999";
+  
+  // Get API base URL from environment
+  const getBaseUrl = () => {
+    const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:9999/api";
+    return apiUrl.replace(/\/api\/?$/, "");
+  };
+  const __URL__ = getBaseUrl();
 
   const fetchSongs = async () => {
     setLoading(true);

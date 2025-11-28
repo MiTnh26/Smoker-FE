@@ -3,12 +3,14 @@ import { createContext, useState, useRef } from "react";
 export const SongContext = createContext();
 
 export const SongContextState = ({ children }) => {
-  let __URL__;
-  if(document.domain === "localhost"){
-    __URL__ = "http://localhost:9999"
-  }else{
-    __URL__ = "https://music-player-app-backend-yq0c.onrender.com"
-  }
+  // Use environment variable or fallback to localhost
+  const getBaseUrl = () => {
+    const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:9999/api";
+    // Remove /api suffix if present to get base URL
+    return apiUrl.replace(/\/api\/?$/, "");
+  };
+
+  const __URL__ = getBaseUrl();
   const audio = new Audio();
   const song = {
     songUrl: "",
@@ -27,11 +29,11 @@ export const SongContextState = ({ children }) => {
       song.songArtist = name;
     },
     setAlbumName: (name) => song.songAlbum = name,
-    setIsPlaying : ( val )=>{
+    setIsPlaying: (val) => {
       song.isPlaying = val
     },
-    
+
   };
 
-  return <SongContext.Provider value={{audio,song,__URL__}}>{children}</SongContext.Provider>;
+  return <SongContext.Provider value={{ audio, song, __URL__ }}>{children}</SongContext.Provider>;
 };

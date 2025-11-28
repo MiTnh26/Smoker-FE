@@ -18,7 +18,10 @@
     "email": "Email",
     "phone": "Điện thoại",
     "address": "Địa chỉ",
-    "back": "Quay lại"
+    "back": "Quay lại",
+    "cancel": "Hủy",
+    "saving": "Đang lưu...",
+    "saveChanges": "Lưu thay đổi"
   },
   "sidebar": {
     "home": "Trang chủ",
@@ -65,7 +68,12 @@
     "goLive": "Phát trực tiếp",
     "photoVideo": "Ảnh/Video",
     "music": "Âm nhạc",
-    "feeling": "Cảm xúc"
+    "feeling": "Cảm xúc",
+    "reposted": "đã đăng lại",
+    "repostedPost": "Bài viết đã được đăng lại",
+    "repostedMedia": "Ảnh/Video đã được đăng lại",
+    "loadingMore": "Đang tải thêm...",
+    "noMorePosts": "Không còn bài viết nào"
   },
   "menu": {
     "settings": "Cài đặt & quyền riêng tư",
@@ -608,7 +616,16 @@
     "bannedTitle": "Tài khoản đã bị cấm",
     "bannedDescriptionBar": "Trang Bar này đã bị khóa. Mọi truy cập đều bị chặn cho đến khi được mở lại. Liên hệ smokerteam@gmail.com để được hỗ trợ.",
     "bannedDescriptionBusiness": "Tài khoản {{role}} này đã bị khóa. Mọi truy cập đều bị chặn cho đến khi được mở lại. Liên hệ smokerteam@gmail.com để được hỗ trợ.",
-    "bannedDescriptionCustomer": "Tài khoản của bạn đã bị khóa. Mọi truy cập đều bị chặn cho đến khi được mở lại. Liên hệ smokerteam@gmail.com để được hỗ trợ."
+    "bannedDescriptionCustomer": "Tài khoản của bạn đã bị khóa. Mọi truy cập đều bị chặn cho đến khi được mở lại. Liên hệ smokerteam@gmail.com để được hỗ trợ.",
+    "avatar": "Ảnh đại diện",
+    "background": "Ảnh nền",
+    "name": "Tên",
+    "namePlaceholder": "Nhập tên của bạn",
+    "nameRequired": "Tên là bắt buộc",
+    "bioPlaceholder": "Giới thiệu về bản thân...",
+    "phonePlaceholder": "Nhập số điện thoại của bạn",
+    "addressPlaceholder": "Nhập địa chỉ của bạn",
+    "updateFailed": "Cập nhật thất bại"
   }
   ,
   "publicProfile": {
@@ -630,6 +647,17 @@
     "blockError": "Tạm thời không thể chặn hồ sơ. Vui lòng thử lại sau.",
     "reportSubmitted": "Cảm ơn bạn. Báo cáo đã được gửi.",
     "thisUser": "người dùng này"
+  },
+  "notifications": {
+    "likedYourPost": "{{name}} đã thích bài viết của bạn",
+    "likedYourStory": "{{name}} đã thích story của bạn",
+    "commentedOnYourPost": "{{name}} đã bình luận bài viết của bạn",
+    "repliedToYourComment": "{{name}} đã trả lời bình luận của bạn",
+    "startedFollowingYou": "{{name}} đã bắt đầu theo dõi bạn",
+    "sentYouAMessage": "{{name}} đã gửi tin nhắn cho bạn",
+    "sentYouAMessageWithPreview": "{{name}}: {{preview}}",
+    "postDetail": "Chi tiết bài viết",
+    "default": "Bạn có thông báo mới"
   }
 }
 

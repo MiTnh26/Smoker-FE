@@ -8,6 +8,17 @@ import "../../styles/components/notificationDropdown.css";
 const NotificationDropdown = ({ onToggle }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Get entityAccountId from session
+  const getEntityAccountId = () => {
+    try {
+      const activeEntity = getActiveEntity();
+      return activeEntity?.EntityAccountId || activeEntity?.entityAccountId || null;
+    } catch (error) {
+      console.warn("[NotificationDropdown] Error getting entityAccountId:", error);
+      return null;
+    }
+  };
+
   // Fetch unread count on mount and periodically
   useEffect(() => {
     const fetchUnreadCount = async () => {

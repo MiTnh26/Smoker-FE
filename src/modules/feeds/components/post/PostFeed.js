@@ -1,19 +1,43 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { getPosts, trashPost } from "../../../../api/postApi";
+import livestreamApi from "../../../../api/livestreamApi";
 import PostCard from "./PostCard";
+import LivestreamCardInline from "../livestream/LivestreamCardInline";
+import ReviveAdCard from "./ReviveAdCard";
 import PostComposerModal from "../modals/PostComposerModal";
 import MusicPostModal from "../music/MusicPostModal";
 import CreatePostBox from "../shared/CreatePostBox";
-import LivestreamCard from "../livestream/LivestreamCard";
 import AudioPlayerBar from "../audio/AudioPlayerBar";
 import PostEditModal from "../modals/PostEditModal";
 import ReportPostModal from "../modals/ReportPostModal";
 import ImageDetailModal from "../media/mediasOfPost/ImageDetailModal";
 
-export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClick }) {
+const LIVESTREAM_POLL_INTERVAL = Number(process.env.REACT_APP_LIVESTREAM_POLL_INTERVAL || 30000);
+
+const normalizeGuid = (value) => {
+  if (!value) return null;
+  return String(value).trim().toLowerCase();
+};
+
+const extractLikeEntityAccountId = (like) => {
+  if (!like) return null;
+  if (typeof like === "string") return normalizeGuid(like);
+  if (typeof like === "object") {
+    return normalizeGuid(like.entityAccountId || like.EntityAccountId);
+  }
+  return null;
+};
+
+const extractLikeAccountId = (like) => {
+  if (!like || typeof like !== "object") return null;
+  return normalizeGuid(like.accountId || like.AccountId);
+};
+
+export default function PostFeed({ onGoLive, onLivestreamClick }) {
   const { t } = useTranslation();
   const [posts, setPosts] = useState([]);
+  const [livestreams, setLivestreams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [playingPost, setPlayingPost] = useState(null);
@@ -30,6 +54,9 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadMoreTriggerRef = useRef(null); // Ref for IntersectionObserver target
+  
+  // Current bar page ID for ads
+  const [currentBarPageId, setCurrentBarPageId] = useState(null);
 
   // Lấy entityAccountId của user hiện tại (cần cho trash post)
   const getCurrentEntityAccountId = () => {
@@ -168,6 +195,64 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
     }
   };
 
+  // Load livestreams
+  const loadLivestreams = async () => {
+    try {
+      const data = await livestreamApi.getActiveLivestreams();
+      setLivestreams(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("[PostFeed] Failed to load livestreams:", err);
+      setLivestreams([]);
+    }
+  };
+
+  // Poll livestreams periodically
+  useEffect(() => {
+    loadLivestreams();
+    const interval = setInterval(loadLivestreams, LIVESTREAM_POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Merge and sort posts and livestreams by time
+  const mergedFeed = useMemo(() => {
+    const feedItems = [];
+    
+    // Add posts with type marker
+    posts.forEach(post => {
+      feedItems.push({
+        type: 'post',
+        data: post,
+        timestamp: new Date(post.createdAt || post.updatedAt || Date.now()).getTime(),
+      });
+    });
+    
+    // Add livestreams with type marker
+    livestreams.forEach(livestream => {
+      feedItems.push({
+        type: 'livestream',
+        data: livestream,
+        timestamp: new Date(livestream.startTime || Date.now()).getTime(),
+      });
+    });
+    
+    // Sort by timestamp (newest first)
+    // Livestreams should appear higher (they're "live" so more recent)
+    feedItems.sort((a, b) => {
+      // Prioritize livestreams if timestamps are close (within 1 hour)
+      const timeDiff = Math.abs(a.timestamp - b.timestamp);
+      const oneHour = 60 * 60 * 1000;
+      
+      if (timeDiff < oneHour) {
+        if (a.type === 'livestream' && b.type === 'post') return -1;
+        if (a.type === 'post' && b.type === 'livestream') return 1;
+      }
+      
+      return b.timestamp - a.timestamp;
+    });
+    
+    return feedItems;
+  }, [posts, livestreams]);
+
   // Load posts automatically on component mount
   useEffect(() => {
     let isMounted = true;
@@ -213,6 +298,38 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       }
     };
   }, [hasMore, loadingMore, cursor]);
+
+  // Get current bar page ID from session
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      if (!session) {
+        setCurrentBarPageId(null);
+        return;
+      }
+      
+      const activeEntity = session?.activeEntity || session?.account;
+      let barPageId = null;
+      
+      if (activeEntity?.barPageId) {
+        barPageId = activeEntity.barPageId;
+      } else if (activeEntity?.id) {
+        // Could implement API call here to get barPage by entityAccountId if needed
+        barPageId = null;
+      }
+      
+      setCurrentBarPageId(barPageId);
+    } catch (error) {
+      console.warn('[PostFeed] Failed to get barPageId:', error);
+      setCurrentBarPageId(null);
+    }
+  }, []);
+
+  // Load initial posts when component mounts
+  useEffect(() => {
+    loadPosts(false);
+  }, []); // Empty dependency array - only run once on mount
 
   const loadPosts = async (isRefresh = false) => {
     try {
@@ -269,7 +386,6 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         const firstPost = postsData[0];
         console.log('[PostFeed] First post author info:', {
           authorName: firstPost.authorName,
-          authorEntityName: firstPost.authorEntityName,
           entityAccountId: firstPost.entityAccountId,
           accountId: firstPost.accountId
         });
@@ -277,14 +393,12 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       
       // If we got posts (even if empty), set them; otherwise show error
       if (postsData.length >= 0 || response?.success) {
-        // Always replace posts in loadPosts (initial load or refresh)
-        // loadMorePosts is used for appending
         setPosts(postsData);
-        
+
         // Update cursor and hasMore
         setCursor(nextCursor);
         setHasMore(responseHasMore);
-        
+
         // Fallback to page-based if no cursor in response
         if (!nextCursor && responseHasMore) {
           console.warn('[PostFeed] No cursor in response but hasMore is true, falling back to page-based pagination');
@@ -338,7 +452,6 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       }
 
       if (postsData.length > 0) {
-        // Append new posts to existing posts
         setPosts(prevPosts => [...prevPosts, ...postsData]);
         setCursor(nextCursor);
         setHasMore(responseHasMore);
@@ -364,6 +477,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
       _id: postObj._id || postObj.id || postObj.postId,
       createdAt: postObj.createdAt || new Date().toISOString(),
       content: postObj.content || postObj.caption || "",
+      caption: postObj.caption || "",
       title: postObj.title || "",
       likes: postObj.likes || {},
       comments: postObj.comments || {},
@@ -582,28 +696,80 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
     }
     const currentUser = session?.account
     const activeEntity = session?.activeEntity || currentUser
+    const entities = Array.isArray(session?.entities) ? session.entities : []
+
+    const resolveViewerEntityAccountId = () => {
+      const tryNormalize = (value) => normalizeGuid(
+        value?.EntityAccountId ||
+        value?.entityAccountId ||
+        value?.entity_account_id ||
+        value
+      )
+
+      // 1. Direct fields on active entity
+      let resolved =
+        tryNormalize(activeEntity) ||
+        tryNormalize(currentUser)
+
+      // 2. Lookup from entities array if not found
+      if (!resolved && activeEntity?.id && entities.length > 0) {
+        const match = entities.find((entity) => {
+          if (!entity?.id) return false;
+          return String(entity.id).toLowerCase() === String(activeEntity.id).toLowerCase();
+        });
+        resolved = tryNormalize(match);
+      }
+
+      return resolved || null;
+    };
+
+    const viewerEntityAccountId = resolveViewerEntityAccountId();
+
+    const viewerAccountId = normalizeGuid(
+      currentUser?.id ||
+      currentUser?.AccountId ||
+      currentUser?.accountId
+    );
 
     // Determine if current user liked this post (simplified)
     const isLikedByCurrentUser = (() => {
-      const viewerId = activeEntity?.id || currentUser?.id;
-      if (!viewerId || !post?.likes) return false;
+      if (!post?.likes) return false;
+
+      const matchesLike = (likeObj) => {
+        if (!likeObj) return false;
+        const likeEntityId = extractLikeEntityAccountId(likeObj);
+        if (viewerEntityAccountId && likeEntityId) {
+          return likeEntityId === viewerEntityAccountId;
+        }
+
+        const likeAccountId = extractLikeAccountId(likeObj);
+        // Legacy fallback: khi like chưa lưu entityAccountId
+        if (!viewerEntityAccountId && viewerAccountId && likeAccountId) {
+          return likeAccountId === viewerAccountId;
+        }
+        if (viewerEntityAccountId && !likeEntityId && viewerAccountId && likeAccountId) {
+          return likeAccountId === viewerAccountId;
+        }
+        return false;
+      };
+
       const likes = post.likes;
-      const isMatch = (likeObj) => likeObj && String(likeObj.accountId) === String(viewerId);
       if (likes instanceof Map) {
-        for (const [, likeObj] of likes.entries()) if (isMatch(likeObj)) return true;
+        for (const [, likeObj] of likes.entries()) {
+          if (matchesLike(likeObj)) return true;
+        }
         return false;
       }
-      if (Array.isArray(likes)) return likes.some(isMatch);
-      if (typeof likes === 'object') return Object.values(likes).some(isMatch);
+      if (Array.isArray(likes)) return likes.some(matchesLike);
+      if (typeof likes === 'object') return Object.values(likes).some(matchesLike);
       return false;
     })();
 
     // So sánh ownership dựa trên entityAccountId
-    const ownerEntityAccountId = post.entityAccountId ? String(post.entityAccountId).trim() : null;
-    // Lấy EntityAccountId từ activeEntity (ưu tiên EntityAccountId, sau đó entityAccountId, cuối cùng mới là id nếu không có)
-    const viewerEntityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id 
-      ? String(activeEntity.EntityAccountId || activeEntity.entityAccountId || activeEntity.id).trim() 
-      : null;
+    const ownerEntityAccountId = normalizeGuid(
+      post.entityAccountId ||
+      post.authorEntityAccountId
+    );
     
     // Debug log để kiểm tra
     if (!ownerEntityAccountId || !viewerEntityAccountId) {
@@ -618,30 +784,34 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
     }
     
     // Chỉ so sánh entityAccountId - phải có cả 2 và phải khác rỗng
-    const canManage = ownerEntityAccountId && 
-                      viewerEntityAccountId && 
+    const canManage = ownerEntityAccountId &&
+                      viewerEntityAccountId &&
                       ownerEntityAccountId.length > 0 &&
                       viewerEntityAccountId.length > 0 &&
-                      ownerEntityAccountId.toLowerCase() === viewerEntityAccountId.toLowerCase();
+                      ownerEntityAccountId === viewerEntityAccountId;
 
     // Prefer populated objects if available
     const populatedSong = (post.song && typeof post.song === 'object') ? post.song : null;
     const populatedMusic = (post.music && typeof post.music === 'object') ? post.music : null;
 
-    return {
-      id: post._id || post.postId,
-      user:
-        post.authorName ||
-        post.authorEntityName ||
+    // Get author name and avatar from post data (backend đã populate đầy đủ)
+    const authorName = post.authorName ||
         post.author?.userName ||
         post.account?.userName ||
         post.accountName ||
-        "Người dùng", // Không fallback về activeEntity/currentUser để tránh hiển thị sai tên
-      avatar:
-        post.authorAvatar || post.authorEntityAvatar ||
+      post.BarName ||
+      post.barName ||
+      "Người dùng";
+    
+    const authorAvatar = post.authorAvatar ||
         post.author?.avatar ||
         post.account?.avatar ||
-        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxNC4yMDkxIDEyIDE2IDEwLjIwOTEgMTYgOEMxNiA1Ljc5MDg2IDE0LjIwOTEgNCAxMiA0QzkuNzkwODYgNCA4IDUuNzkwODYgOCA4QzggMTAuMjA5MSA5Ljc5MDg2IDEyIDEyIDEyWiIgZmlsbD0iIzljYTNhZiIvPgo8cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cjwvc3ZnPgo=", // Không fallback về currentUser avatar
+      null;
+
+    return {
+      id: post._id || post.postId,
+      user: authorName,
+      avatar: authorAvatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxNC4yMDkxIDEyIDE2IDEwLjIwOTEgMTYgOEMxNiA1Ljc5MDg2IDE0LjIwOTEgNCAxMiA0QzkuNzkwODYgNCA4IDUuNzkwODYgOCA4QzggMTAuMjA5MSA5Ljc5MDg2IDEyIDEyIDEyWiIgZmlsbD0iIzljYTNhZiIvPgo8cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cjwvc3ZnPgo=",
       time: formatTimeDisplay(post.createdAt || post.updatedAt),
       content: post.content || post.caption || post["Tiêu Đề"],
       // Extract medias from post.medias Map/Object
@@ -694,7 +864,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
 
         // Prefer music fields for display if available
         const displayTitle = (populatedMusic?.title) || (populatedSong?.title) || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null;
-        const displayArtist = (populatedMusic?.artist) || (populatedSong?.artist) || post.artistName || post["Tên Nghệ Sĩ"] || post.authorEntityName || post.user || null;
+        const displayArtist = (populatedMusic?.artist) || (populatedSong?.artist) || post.artistName || post["Tên Nghệ Sĩ"] || post.authorName || post.user || null;
         const displayThumb = (populatedMusic?.coverUrl) || (populatedSong?.coverUrl) || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null;
         const displayPurchaseLink = (populatedMusic?.purchaseLink) || (populatedSong?.purchaseLink) || post.purchaseLink || post.musicPurchaseLink || null;
 
@@ -765,14 +935,16 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         post.author?.id ||
         post.account?.AccountId ||
         post.account?.id ||
-        null
+        null,
+      // Repost fields - chỉ lưu ID, query lại khi hiển thị
+      repostedFromId: post.repostedFromId || null
     };
   };
 
   // Minimal loader/error using existing layout classes
   if (loading) {
     return (
-      <div className="feed-posts">
+      <div className="feed-posts gap-2">
         <p className="text-gray-400">{t('feed.loadingPosts')}</p>
       </div>
     );
@@ -780,7 +952,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
 
   if (error) {
     return (
-      <div className="feed-posts">
+      <div className="feed-posts gap-2">
         <div>
           <p className="text-red-500">❌ {t('feed.loadFail')}</p>
           <button onClick={() => loadPosts(true)} className="btn btn-primary mt-2">{t('common.retry')}</button>
@@ -805,79 +977,103 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         onGoLive={onGoLive}
       />
 
-      <div className="feed-posts">
-        {/* Active Livestreams */}
-        {activeLivestreams && activeLivestreams.length > 0 && (
-          <div className="livestreams-section">
-            {activeLivestreams.map((livestream) => (
-              <LivestreamCard
-                key={livestream.livestreamId}
-                livestream={livestream}
-                onClick={() => onLivestreamClick?.(livestream)}
-              />
-            ))}
-          </div>
-        )}
-
-        {posts.length === 0 ? (
-          <p key="empty-posts" className="text-gray-400">{t('feed.noPosts')}</p>
+      <div className="feed-posts gap-2">
+        {mergedFeed.length === 0 ? (
+          <p key="empty-feed" className="text-gray-400">{t('feed.noPosts')}</p>
         ) : (
-          posts.map((post, index) => {
+          mergedFeed.map((item, index) => {
+            // Handle livestream
+            if (item.type === 'livestream') {
+              const livestream = item.data;
+              return (
+                <React.Fragment key={`livestream-${livestream.livestreamId}`}>
+                  <LivestreamCardInline
+                    livestream={livestream}
+                    onClick={() => {
+                      if (onLivestreamClick) {
+                        onLivestreamClick(livestream);
+                      }
+                    }}
+                  />
+                  {/* Hiển thị Revive ad sau mỗi 3 items (posts hoặc livestreams) */}
+                  {(index + 1) % 3 === 0 && (
+                    <ReviveAdCard 
+                      key={`revive-ad-${index}`}
+                      zoneId={process.env.REACT_APP_REVIVE_NEWSFEED_ZONE_ID || "1"}
+                      barPageId={currentBarPageId}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            }
+            
+            // Handle post
+            const post = item.data;
             const postId = post._id || post.postId || post.id || `post-${index}`;
             const transformedPost = transformPost(post);
             return (
-              <PostCard
-                key={postId}
-                post={transformedPost}
-                playingPost={playingPost}
-                setPlayingPost={(playingPostId) => {
-                  setPlayingPost(playingPostId);
-                  // Set active player when starting playback
-                  if (playingPostId === postId) {
-                    setActivePlayer(transformedPost);
-                  } else if (!playingPostId) {
-                    setActivePlayer(null);
-                  }
-                }}
-                sharedAudioRef={sharedAudioRef}
-                sharedCurrentTime={sharedCurrentTime}
-                sharedDuration={sharedDuration}
-                sharedIsPlaying={sharedIsPlaying && playingPost === postId}
-                onSeek={handleSeek}
-                onEdit={(p) => setEditingPost(p)}
-                onImageClick={(imageData) => {
-                  console.log('[PostFeed] Image clicked:', imageData);
-                  setSelectedImage(imageData);
-                }}
-                onDelete={async (p) => {
-                  if (!window.confirm(t('feed.confirmTrash'))) return;
-                  
-                  try {
-                    const currentEntityAccountId = getCurrentEntityAccountId();
-                    if (!currentEntityAccountId) {
-                      alert(t('feed.errorTrash') || 'Cannot trash post: No entityAccountId');
-                      return;
+              <React.Fragment key={postId}>
+                <PostCard
+                  post={transformedPost}
+                  playingPost={playingPost}
+                  setPlayingPost={(playingPostId) => {
+                    setPlayingPost(playingPostId);
+                    // Set active player when starting playback
+                    if (playingPostId === postId) {
+                      setActivePlayer(transformedPost);
+                    } else if (!playingPostId) {
+                      setActivePlayer(null);
                     }
+                  }}
+                  sharedAudioRef={sharedAudioRef}
+                  sharedCurrentTime={sharedCurrentTime}
+                  sharedDuration={sharedDuration}
+                  sharedIsPlaying={sharedIsPlaying && playingPost === postId}
+                  onSeek={handleSeek}
+                  onEdit={(p) => setEditingPost(p)}
+                  onImageClick={(imageData) => {
+                    console.log('[PostFeed] Image clicked:', imageData);
+                    setSelectedImage(imageData);
+                  }}
+                  onDelete={async (p) => {
+                    if (!window.confirm(t('feed.confirmTrash'))) return;
 
-                    // Gọi API trash post
-                    const response = await trashPost(p.id || p._id, {
-                      entityAccountId: currentEntityAccountId
-                    });
+                    try {
+                      const currentEntityAccountId = getCurrentEntityAccountId();
+                      if (!currentEntityAccountId) {
+                        alert(t('feed.errorTrash') || 'Cannot trash post: No entityAccountId');
+                        return;
+                      }
 
-                    // axiosClient interceptor đã unwrap response.data, nên response chính là response.data
-                    if (response?.success) {
-                      // Refresh posts để cập nhật danh sách
-                      loadPosts(true);
-                    } else {
-                      alert(response?.message || t('feed.errorTrash') || 'Failed to trash post');
+                      // Gọi API trash post
+                      const response = await trashPost(p.id || p._id, {
+                        entityAccountId: currentEntityAccountId
+                      });
+
+                      // axiosClient interceptor đã unwrap response.data, nên response chính là response.data
+                      if (response?.success) {
+                        // Refresh feed để cập nhật danh sách
+                        loadPosts(true);
+                      } else {
+                        alert(response?.message || t('feed.errorTrash') || 'Failed to trash post');
+                      }
+                    } catch (error) {
+                      console.error('[PostFeed] Error trashing post:', error);
+                      alert(t('feed.errorTrash') || 'Failed to trash post');
                     }
-                  } catch (error) {
-                    console.error('[PostFeed] Error trashing post:', error);
-                    alert(t('feed.errorTrash') || 'Failed to trash post');
-                  }
-                }}
-                onReport={(p) => setReportingPost(p)}
-              />
+                  }}
+                  onReport={(p) => setReportingPost(p)}
+                />
+                
+                {/* Hiển thị Revive ad sau mỗi 3 items (posts hoặc livestreams) */}
+                {(index + 1) % 3 === 0 && (
+                  <ReviveAdCard 
+                    key={`revive-ad-${index}`}
+                    zoneId={process.env.REACT_APP_REVIVE_NEWSFEED_ZONE_ID || "1"}
+                    barPageId={currentBarPageId}
+                  />
+                )}
+              </React.Fragment>
             );
           })
         )}
@@ -899,7 +1095,7 @@ export default function PostFeed({ onGoLive, activeLivestreams, onLivestreamClic
         )}
 
         {/* No more posts indicator */}
-        {!hasMore && posts.length > 0 && (
+        {!hasMore && mergedFeed.length > 0 && (
           <div className="flex items-center justify-center py-4">
             <p className="text-muted-foreground text-sm">{t('feed.noMorePosts') || 'Không còn bài viết nào'}</p>
           </div>

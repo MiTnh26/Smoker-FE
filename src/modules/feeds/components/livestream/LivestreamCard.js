@@ -1,28 +1,17 @@
-import { useState, useEffect } from "react";
 import { Video, Users, Play } from "lucide-react";
-import livestreamApi from "../../../../api/livestreamApi";
 import { cn } from "../../../../utils/cn";
 
 export default function LivestreamCard({ livestream, onClick }) {
-  const [viewerCount, setViewerCount] = useState(livestream.viewCount || 0);
-  const [hostInfo, setHostInfo] = useState(null);
-
-  useEffect(() => {
-    // Fetch host info (you might want to get this from a user API)
-    const session = JSON.parse(localStorage.getItem("session") || "{}");
-    // For now, we'll just display the host ID
-    setHostInfo({ name: "Host" });
-  }, []);
+  const viewerCount = livestream.viewCount ?? 0;
 
   return (
     <div 
       className={cn(
-        "livestream-card",
-        "p-4 rounded-lg border-[0.5px] border-border/20",
+        "p-4 rounded-2xl border border-border/30",
         "bg-card text-card-foreground",
-        "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
-        "cursor-pointer transition-all duration-200",
-        "hover:shadow-[0_2px_4px_rgba(0,0,0,0.08)] hover:border-border/30"
+        "shadow-[0_10px_30px_rgba(15,23,42,0.05)]",
+        "cursor-pointer transition-all duration-300",
+        "hover:-translate-y-1 hover:shadow-[0_18px_35px_rgba(15,23,42,0.08)] hover:border-border/60"
       )}
       onClick={onClick}
     >

@@ -169,7 +169,7 @@ export function Login() {
           <section
             className={cn(
               borderStyles.card,
-              "bg-card p-4 shadow-[0_12px_32px_rgba(15,23,42,0.08)] sm:p-5",
+              "bg-card px-4 pt-2 pb-4 shadow-[0_12px_32px_rgba(15,23,42,0.08)] sm:px-5 sm:pt-3 sm:pb-5",
               "rounded-2xl md:rounded-3xl"
             )}
           >
@@ -253,10 +253,10 @@ export function Login() {
                 <div className="text-muted-foreground">
                   {t("auth.notHaveAccount", "Chưa có tài khoản?")}{" "}
                   <Link
-                    to="/signup"
+                    to="/register"
                     className="font-semibold text-primary hover:text-primary/90"
                   >
-                    {t("auth.createAccount")}
+                    {t("auth.createAccount", "Create new account")}
                   </Link>
                 </div>
                 <Link
@@ -288,20 +288,12 @@ export function Login() {
                 {t("auth.loginWithGoogle")}
               </button>
 
-                <FacebookLoginButton />
+                {/* <FacebookLoginButton /> */}
 
-              <div className="rounded-xl bg-primary/5 px-3 py-2 text-xs text-muted-foreground sm:text-sm">
-                <span className="font-medium text-foreground">{t("auth.tipsTitle", "Mẹo:")}</span>{" "}
-                {t("auth.tipsContent", "Bật xác thực hai lớp để bảo vệ tài khoản của bạn tốt hơn.")}
-              </div>
+             
             </form>
 
-            <div className="mt-3 text-center text-sm text-muted-foreground">
-              {t("auth.createPageFor")}{" "}
-              <Link to="/create-page" className="font-semibold text-primary hover:text-primary/90">
-                {t("auth.createPage")}
-              </Link>
-            </div>
+          
           </section>
         </div>
       </div>

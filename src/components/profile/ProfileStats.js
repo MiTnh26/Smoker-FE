@@ -5,10 +5,15 @@ import { cn } from "../../utils/cn";
 /**
  * Shared Profile Stats Component
  * Displays followers and following counts
+ * Accepts counts (numbers) or arrays for backward compatibility
  * Keep exact same styling as original
  */
-export const ProfileStats = ({ followers = [], following = [], posts = null }) => {
+export const ProfileStats = ({ followers = 0, following = 0, posts = null }) => {
   const { t } = useTranslation();
+
+  // Handle backward compatibility: if followers/following are arrays, use length
+  const followersCount = Array.isArray(followers) ? followers.length : (followers || 0);
+  const followingCount = Array.isArray(following) ? following.length : (following || 0);
 
   return (
     <section className={cn(
@@ -56,7 +61,7 @@ export const ProfileStats = ({ followers = [], following = [], posts = null }) =
           "tracking-tight leading-none",
           "group-hover:text-primary transition-colors duration-200"
         )}>
-          {followers.length}
+          {followersCount}
         </span>
         <span className={cn(
           "text-[11px] md:text-xs text-muted-foreground",
@@ -82,7 +87,7 @@ export const ProfileStats = ({ followers = [], following = [], posts = null }) =
           "tracking-tight leading-none",
           "group-hover:text-primary transition-colors duration-200"
         )}>
-          {following.length}
+          {followingCount}
         </span>
         <span className={cn(
           "text-[11px] md:text-xs text-muted-foreground",

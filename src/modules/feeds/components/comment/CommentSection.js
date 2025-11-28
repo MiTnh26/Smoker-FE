@@ -2,7 +2,20 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
-import { getPostById, addComment, addReply, addReplyToReply, likeComment, unlikeComment, likeReply, unlikeReply } from "../../../../api/postApi";
+import {
+  getPostById,
+  addComment,
+  updateComment,
+  deleteComment,
+  addReply,
+  addReplyToReply,
+  updateReply,
+  deleteReply,
+  likeComment,
+  unlikeComment,
+  likeReply,
+  unlikeReply
+} from "../../../../api/postApi";
 import { cn } from "../../../../utils/cn";
 import "../../../../styles/modules/feeds/components/comment/comment-section.css";
 
@@ -20,6 +33,45 @@ export default function CommentSection({ postId, onClose, inline = false, always
   const [message, setMessage] = useState(null);
   const [sortOrder, setSortOrder] = useState("newest"); // "newest" or "oldest"
   const commentRefs = useRef({}); // Refs for scrolling to specific comments
+  const [viewerAccountId, setViewerAccountId] = useState(null);
+  const [viewerEntityAccountId, setViewerEntityAccountId] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editCommentText, setEditCommentText] = useState("");
+  const [editingReplyTarget, setEditingReplyTarget] = useState(null); // { commentId, replyId }
+  const [editReplyText, setEditReplyText] = useState("");
+  const [commentActionLoadingId, setCommentActionLoadingId] = useState(null);
+  const [replyActionLoadingKey, setReplyActionLoadingKey] = useState(null);
+
+  const normalizeId = (value) => (value ? String(value).trim().toLowerCase() : null);
+
+  const resolveViewerIdentity = () => {
+    try {
+      const raw = localStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      const currentUser = session?.account;
+      const activeEntity = session?.activeEntity || currentUser;
+
+      const accountId =
+        currentUser?.id ||
+        currentUser?.AccountId ||
+        currentUser?.accountId ||
+        activeEntity?.id ||
+        null;
+
+      const entityAccountId =
+        activeEntity?.EntityAccountId ||
+        activeEntity?.entityAccountId ||
+        activeEntity?.entity_account_id ||
+        null;
+
+      return {
+        accountId: normalizeId(accountId),
+        entityAccountId: normalizeId(entityAccountId)
+      };
+    } catch (error) {
+      return { accountId: null, entityAccountId: null };
+    }
+  };
 
   // Format time display helper
   const formatTimeDisplay = (value) => {
@@ -57,6 +109,64 @@ export default function CommentSection({ postId, onClose, inline = false, always
     }
   };
 
+  const canManageComment = (comment) => {
+    if (typeof comment?.canManage === "boolean") {
+      return comment.canManage;
+    }
+    const commentEntityAccountId = normalizeId(
+      comment.authorEntityAccountId ||
+      comment.entityAccountId
+    );
+    const commentAccountId = normalizeId(comment.accountId || comment.authorAccountId);
+
+    if (
+      viewerEntityAccountId &&
+      commentEntityAccountId &&
+      viewerEntityAccountId === commentEntityAccountId
+    ) {
+      return true;
+    }
+
+    if (
+      viewerAccountId &&
+      commentAccountId &&
+      viewerAccountId === commentAccountId
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const canManageReply = (reply) => {
+    if (typeof reply?.canManage === "boolean") {
+      return reply.canManage;
+    }
+    const replyEntityAccountId = normalizeId(
+      reply.authorEntityAccountId ||
+      reply.entityAccountId
+    );
+    const replyAccountId = normalizeId(reply.accountId || reply.authorAccountId);
+
+    if (
+      viewerEntityAccountId &&
+      replyEntityAccountId &&
+      viewerEntityAccountId === replyEntityAccountId
+    ) {
+      return true;
+    }
+
+    if (
+      viewerAccountId &&
+      replyAccountId &&
+      viewerAccountId === replyAccountId
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
   // Helper function to sort comments array
   const sortComments = (commentsArray, order) => {
     const sorted = [...commentsArray].sort((a, b) => {
@@ -89,6 +199,19 @@ export default function CommentSection({ postId, onClose, inline = false, always
 
   useEffect(() => {
     loadComments();
+  }, [postId]);
+
+  useEffect(() => {
+    const identity = resolveViewerIdentity();
+    setViewerAccountId(identity.accountId);
+    setViewerEntityAccountId(identity.entityAccountId);
+  }, []);
+
+  useEffect(() => {
+    setEditingCommentId(null);
+    setEditCommentText("");
+    setEditingReplyTarget(null);
+    setEditReplyText("");
   }, [postId]);
 
   // Sort comments when sortOrder changes (only if comments already loaded)
@@ -147,6 +270,231 @@ export default function CommentSection({ postId, onClose, inline = false, always
   const getNameForAccount = (accountId, entityAccountId) => {
     // Always return generic name - backend must provide authorName from database
     return "Người dùng";
+  };
+
+  const startEditingComment = (comment) => {
+    setEditingReplyTarget(null);
+    setReplyingTo(null);
+    setEditingCommentId(comment.id);
+    setEditCommentText(comment.content || "");
+  };
+
+  const cancelEditingComment = () => {
+    setEditingCommentId(null);
+    setEditCommentText("");
+  };
+
+  const handleUpdateExistingComment = async () => {
+    if (!editingCommentId) return;
+    const trimmed = editCommentText.trim();
+    if (!trimmed) {
+      setMessage({
+        type: "error",
+        text: t('comment.editEmptyError', { defaultValue: "Vui lòng nhập nội dung bình luận" })
+      });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    setCommentActionLoadingId(editingCommentId);
+    try {
+      await updateComment(postId, editingCommentId, { content: trimmed });
+      setComments((prev) => prev.map((comment) => (
+        comment.id === editingCommentId
+          ? { ...comment, content: trimmed, updatedAt: new Date().toISOString() }
+          : comment
+      )));
+      setMessage({
+        type: "success",
+        text: t('comment.updateSuccess', { defaultValue: "Đã cập nhật bình luận" })
+      });
+      cancelEditingComment();
+    } catch (error) {
+      console.error("Error updating comment:", error);
+      setMessage({
+        type: "error",
+        text: t('comment.updateError', { defaultValue: "Không thể cập nhật bình luận. Vui lòng thử lại." })
+      });
+    } finally {
+      setCommentActionLoadingId(null);
+      setTimeout(() => setMessage(null), 3000);
+    }
+  };
+
+  const handleDeleteCommentClick = async (commentId) => {
+    if (!viewerEntityAccountId) {
+      setMessage({
+        type: "error",
+        text: t('comment.entityRequired', { defaultValue: "Vui lòng chọn thực thể hoạt động trước khi xóa bình luận." })
+      });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+    const confirmDelete = window.confirm(
+      t('comment.deleteConfirm', { defaultValue: "Bạn có chắc chắn muốn xóa bình luận này?" })
+    );
+    if (!confirmDelete) return;
+
+    setCommentActionLoadingId(commentId);
+    try {
+      await deleteComment(postId, commentId, { entityAccountId: viewerEntityAccountId });
+      setComments((prev) => prev.filter((comment) => comment.id !== commentId));
+      setLikedComments((prev) => {
+        const next = new Set(prev);
+        next.delete(commentId);
+        return next;
+      });
+      setLikedReplies((prev) => {
+        const next = new Set(
+          Array.from(prev).filter((key) => !key.startsWith(`${commentId}-`))
+        );
+        return next;
+      });
+      if (replyingTo?.commentId === commentId) {
+        setReplyingTo(null);
+      }
+      if (editingCommentId === commentId) {
+        cancelEditingComment();
+      }
+      setMessage({
+        type: "success",
+        text: t('comment.deleteSuccess', { defaultValue: "Đã xóa bình luận" })
+      });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      setMessage({
+        type: "error",
+        text: t('comment.deleteError', { defaultValue: "Không thể xóa bình luận. Vui lòng thử lại." })
+      });
+    } finally {
+      setCommentActionLoadingId(null);
+      setTimeout(() => setMessage(null), 3000);
+    }
+  };
+
+  const startEditingReply = (commentId, reply) => {
+    setEditingCommentId(null);
+    setReplyingTo(null);
+    setEditingReplyTarget({ commentId, replyId: reply.id });
+    setEditReplyText(reply.content || "");
+  };
+
+  const cancelEditingReply = () => {
+    setEditingReplyTarget(null);
+    setEditReplyText("");
+  };
+
+  const handleUpdateExistingReply = async () => {
+    if (!editingReplyTarget) return;
+    const trimmed = editReplyText.trim();
+    if (!trimmed) {
+      setMessage({
+        type: "error",
+        text: t('comment.editEmptyError', { defaultValue: "Vui lòng nhập nội dung bình luận" })
+      });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+
+    const actionKey = `${editingReplyTarget.commentId}-${editingReplyTarget.replyId}`;
+    setReplyActionLoadingKey(actionKey);
+    try {
+      await updateReply(
+        postId,
+        editingReplyTarget.commentId,
+        editingReplyTarget.replyId,
+        { content: trimmed }
+      );
+      setComments((prev) => prev.map((comment) => {
+        if (comment.id !== editingReplyTarget.commentId) return comment;
+        const replies = (comment.replies || []).map((reply) =>
+          reply.id === editingReplyTarget.replyId
+            ? { ...reply, content: trimmed, updatedAt: new Date().toISOString() }
+            : reply
+        );
+        return { ...comment, replies };
+      }));
+      setMessage({
+        type: "success",
+        text: t('comment.updateSuccess', { defaultValue: "Đã cập nhật bình luận" })
+      });
+      cancelEditingReply();
+    } catch (error) {
+      console.error("Error updating reply:", error);
+      setMessage({
+        type: "error",
+        text: t('comment.updateError', { defaultValue: "Không thể cập nhật bình luận. Vui lòng thử lại." })
+      });
+    } finally {
+      setReplyActionLoadingKey(null);
+      setTimeout(() => setMessage(null), 3000);
+    }
+  };
+
+  const handleDeleteReplyClick = async (commentId, replyId) => {
+    if (!viewerEntityAccountId) {
+      setMessage({
+        type: "error",
+        text: t('comment.entityRequired', { defaultValue: "Vui lòng chọn thực thể hoạt động trước khi xóa bình luận." })
+      });
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+    const confirmDelete = window.confirm(
+      t('comment.deleteConfirm', { defaultValue: "Bạn có chắc chắn muốn xóa bình luận này?" })
+    );
+    if (!confirmDelete) return;
+
+    const actionKey = `${commentId}-${replyId}`;
+    setReplyActionLoadingKey(actionKey);
+    try {
+      await deleteReply(postId, commentId, replyId, { entityAccountId: viewerEntityAccountId });
+      setComments((prev) => prev.map((comment) => {
+        if (comment.id !== commentId) return comment;
+        const replies = (comment.replies || []).filter((reply) => reply.id !== replyId);
+        return { ...comment, replies };
+      }));
+      setLikedReplies((prev) => {
+        const next = new Set(prev);
+        next.delete(actionKey);
+        return next;
+      });
+      if (
+        editingReplyTarget &&
+        editingReplyTarget.commentId === commentId &&
+        editingReplyTarget.replyId === replyId
+      ) {
+        cancelEditingReply();
+      }
+      if (
+        replyingTo?.commentId === commentId &&
+        replyingTo?.replyId === replyId
+      ) {
+        setReplyingTo(null);
+      }
+      setMessage({
+        type: "success",
+        text: t('comment.deleteSuccess', { defaultValue: "Đã xóa bình luận" })
+      });
+    } catch (error) {
+      console.error("Error deleting reply:", error);
+      setMessage({
+        type: "error",
+        text: t('comment.deleteError', { defaultValue: "Không thể xóa bình luận. Vui lòng thử lại." })
+      });
+    } finally {
+      setReplyActionLoadingKey(null);
+      setTimeout(() => setMessage(null), 3000);
+    }
+  };
+
+  const countCollectionItems = (value) => {
+    if (!value) return 0;
+    if (Array.isArray(value)) return value.length;
+    if (value instanceof Map) return value.size;
+    if (typeof value === "object") return Object.keys(value).length;
+    if (typeof value === "number") return value;
+    return 0;
   };
 
   const loadComments = async () => {
@@ -242,12 +590,15 @@ export default function CommentSection({ postId, onClose, inline = false, always
 
               for (const [replyId, reply] of repliesData) {
                 if (!reply || typeof reply !== 'object') continue;
+                // Preserve original likes object for checking liked status
+                const likesCount = reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0;
                 repliesArray.push({
                   id: extractId(replyId) || extractId(reply._id) || String(replyId),
                   accountId: reply.accountId,
                   content: reply.content || "",
                   images: reply.images || "",
-                  likes: reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0,
+                  likes: likesCount,
+                  likesObject: reply.likes, // Preserve original likes object
                   replyToId: reply.replyToId ? extractId(reply.replyToId) : null,
                   typeRole: reply.typeRole,
                   createdAt: reply.createdAt,
@@ -263,12 +614,19 @@ export default function CommentSection({ postId, onClose, inline = false, always
             }
 
             const extractedCommentId = extractId(commentId) || extractId(comment._id) || String(commentId);
+            const likesCount =
+              typeof comment.likesCount === "number"
+                ? Number(comment.likesCount)
+                : countCollectionItems(comment.likes);
             commentsArray.push({
               id: extractedCommentId,
               accountId: comment.accountId,
               content: comment.content || "",
               images: comment.images || "",
-              likes: comment.likes ? (typeof comment.likes === 'object' ? Object.keys(comment.likes).length : comment.likes) : 0,
+              likes: likesCount,
+              likesObject: comment.likes, // Preserve original likes object
+              likedByViewer: typeof comment.likedByViewer === "boolean" ? comment.likedByViewer : undefined,
+              canManage: typeof comment.canManage === "boolean" ? comment.canManage : undefined,
               typeRole: comment.typeRole,
               replies: repliesArray,
               createdAt: comment.createdAt,
@@ -286,6 +644,104 @@ export default function CommentSection({ postId, onClose, inline = false, always
         // Sort comments with current sortOrder
         const sortedComments = sortComments(commentsArray, sortOrder);
         setComments(sortedComments);
+
+        // Initialize likedComments and likedReplies from backend data
+        const resolvedIdentity = viewerEntityAccountId || viewerAccountId
+          ? { entityAccountId: viewerEntityAccountId, accountId: viewerAccountId }
+          : resolveViewerIdentity();
+
+        if (!viewerEntityAccountId && resolvedIdentity.entityAccountId) {
+          setViewerEntityAccountId(resolvedIdentity.entityAccountId);
+        }
+        if (!viewerAccountId && resolvedIdentity.accountId) {
+          setViewerAccountId(resolvedIdentity.accountId);
+        }
+
+        const currentEntityAccountId = resolvedIdentity.entityAccountId;
+        const currentUserId = resolvedIdentity.accountId;
+
+        if (currentEntityAccountId || currentUserId) {
+          const likedCommentsSet = new Set();
+          const likedRepliesSet = new Set();
+
+          // Check each comment's likes
+          for (const comment of sortedComments) {
+            if (comment.likedByViewer) {
+              likedCommentsSet.add(comment.id);
+            } else {
+              const likesObj = comment.likesObject || (typeof comment.likes === 'object' ? comment.likes : null);
+              if (likesObj) {
+                if (likesObj instanceof Map) {
+                  for (const [accountId, likeData] of likesObj.entries()) {
+                    const accountIdToCheck = likeData?.accountId || accountId;
+                    if (String(accountIdToCheck) === String(currentEntityAccountId) || 
+                        String(accountIdToCheck) === String(currentUserId) ||
+                        String(accountId) === String(currentEntityAccountId) || 
+                        String(accountId) === String(currentUserId)) {
+                      likedCommentsSet.add(comment.id);
+                      break;
+                    }
+                  }
+                } else if (typeof likesObj === 'object') {
+                  const accountIds = Object.keys(likesObj);
+                  const hasLiked = accountIds.some(id => {
+                    const likeData = likesObj[id];
+                    const accountIdToCheck = likeData?.accountId || id;
+                    return String(accountIdToCheck) === String(currentEntityAccountId) || 
+                           String(accountIdToCheck) === String(currentUserId) ||
+                           String(id) === String(currentEntityAccountId) || 
+                           String(id) === String(currentUserId);
+                  });
+                  if (hasLiked) {
+                    likedCommentsSet.add(comment.id);
+                  }
+                }
+              }
+            }
+
+            // Check each reply's likes
+            if (comment.replies && Array.isArray(comment.replies)) {
+              for (const reply of comment.replies) {
+                const replyKey = `${comment.id}-${reply.id}`;
+                if (reply.likedByViewer) {
+                  likedRepliesSet.add(replyKey);
+                  continue;
+                }
+                const replyLikesObj = reply.likesObject || (typeof reply.likes === 'object' ? reply.likes : null);
+                if (replyLikesObj) {
+                  if (replyLikesObj instanceof Map) {
+                    for (const [accountId, likeData] of replyLikesObj.entries()) {
+                      const accountIdToCheck = likeData?.accountId || accountId;
+                      if (String(accountIdToCheck) === String(currentEntityAccountId) || 
+                          String(accountIdToCheck) === String(currentUserId) ||
+                          String(accountId) === String(currentEntityAccountId) || 
+                          String(accountId) === String(currentUserId)) {
+                        likedRepliesSet.add(replyKey);
+                        break;
+                      }
+                    }
+                  } else if (typeof replyLikesObj === 'object') {
+                    const accountIds = Object.keys(replyLikesObj);
+                    const hasLiked = accountIds.some(id => {
+                      const likeData = replyLikesObj[id];
+                      const accountIdToCheck = likeData?.accountId || id;
+                      return String(accountIdToCheck) === String(currentEntityAccountId) || 
+                             String(accountIdToCheck) === String(currentUserId) ||
+                             String(id) === String(currentEntityAccountId) || 
+                             String(id) === String(currentUserId);
+                    });
+                    if (hasLiked) {
+                      likedRepliesSet.add(replyKey);
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          setLikedComments(likedCommentsSet);
+          setLikedReplies(likedRepliesSet);
+        }
       } else {
         setComments([]);
       }
@@ -795,13 +1251,61 @@ export default function CommentSection({ postId, onClose, inline = false, always
                         </span>
                       )}
                     </div>
-                    <div className={cn(
-                      "text-foreground text-sm leading-6 break-words",
-                      "max-w-full overflow-hidden",
-                      "sm:text-xs sm:leading-5 md:text-sm md:leading-6"
-                    )}>
-                      {comment.content}
-                    </div>
+                    {editingCommentId === comment.id ? (
+                      <>
+                        <textarea
+                          value={editCommentText}
+                          onChange={(e) => setEditCommentText(e.target.value)}
+                          className={cn(
+                            "w-full px-3 py-2 border-[0.5px] border-border/30 rounded-lg",
+                            "bg-background text-foreground text-sm outline-none",
+                            "transition-all duration-200 resize-vertical min-h-[80px]",
+                            "focus:border-primary/40 focus:ring-1 focus:ring-primary/10",
+                            "sm:text-xs sm:py-1.5 md:text-sm md:py-2"
+                          )}
+                          disabled={commentActionLoadingId === comment.id}
+                        />
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <button
+                            onClick={handleUpdateExistingComment}
+                            className={cn(
+                              "px-4 py-2 bg-primary text-primary-foreground border-none rounded-lg",
+                              "font-semibold text-sm cursor-pointer transition-all duration-200",
+                              "hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed",
+                              "sm:px-3 sm:py-1.5 sm:text-xs md:px-4 md:py-2 md:text-sm"
+                            )}
+                            disabled={
+                              commentActionLoadingId === comment.id ||
+                              !editCommentText.trim()
+                            }
+                          >
+                            {commentActionLoadingId === comment.id
+                              ? t('action.saving', { defaultValue: "Đang lưu..." })
+                              : t('action.save', { defaultValue: "Lưu" })}
+                          </button>
+                          <button
+                            onClick={cancelEditingComment}
+                            className={cn(
+                              "px-4 py-2 bg-muted/30 text-foreground border-none rounded-lg",
+                              "font-semibold text-sm cursor-pointer transition-all duration-200",
+                              "hover:bg-muted/50",
+                              "sm:px-3 sm:py-1.5 sm:text-xs md:px-4 md:py-2 md:text-sm"
+                            )}
+                            disabled={commentActionLoadingId === comment.id}
+                          >
+                            {t('action.cancel')}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className={cn(
+                        "text-foreground text-sm leading-6 break-words",
+                        "max-w-full overflow-hidden",
+                        "sm:text-xs sm:leading-5 md:text-sm md:leading-6"
+                      )}>
+                        {comment.content}
+                      </div>
+                    )}
                     {comment.images && (
                       <img 
                         src={comment.images} 
@@ -815,7 +1319,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-2 sm:gap-2 sm:mt-1.5">
+                <div className="flex flex-wrap gap-3 mt-2 sm:gap-2 sm:mt-1.5">
                   <button
                     onClick={() => handleLikeComment(comment.id)}
                     className={cn(
@@ -844,6 +1348,35 @@ export default function CommentSection({ postId, onClose, inline = false, always
                   >
                     {t('comment.reply')}
                   </button>
+                  {canManageComment(comment) && editingCommentId !== comment.id && (
+                    <>
+                      <button
+                        onClick={() => startEditingComment(comment)}
+                        className={cn(
+                          "bg-transparent border-none text-muted-foreground text-sm",
+                          "px-1 py-1 rounded cursor-pointer transition-all duration-200",
+                          "hover:bg-muted/30 hover:text-foreground",
+                          "sm:text-xs md:text-sm"
+                        )}
+                      >
+                        {t('action.edit', { defaultValue: "Chỉnh sửa" })}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCommentClick(comment.id)}
+                        className={cn(
+                          "bg-transparent border-none text-danger/90 text-sm",
+                          "px-1 py-1 rounded cursor-pointer transition-all duration-200",
+                          "hover:bg-danger/10",
+                          "sm:text-xs md:text-sm"
+                        )}
+                        disabled={commentActionLoadingId === comment.id}
+                      >
+                        {commentActionLoadingId === comment.id
+                          ? t('action.deleting', { defaultValue: "Đang xóa..." })
+                          : t('action.delete', { defaultValue: "Xóa" })}
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {/* Reply Input */}
@@ -938,13 +1471,63 @@ export default function CommentSection({ postId, onClose, inline = false, always
                                 </span>
                               )}
                             </div>
-                            <div className={cn(
-                              "text-foreground text-[0.85rem] leading-6 break-words",
-                              "max-w-full overflow-hidden",
-                              "sm:text-[0.75rem] sm:leading-5 md:text-[0.85rem] md:leading-6"
-                            )}>
-                              {reply.content}
-                            </div>
+                            {editingReplyTarget &&
+                             editingReplyTarget.commentId === comment.id &&
+                             editingReplyTarget.replyId === reply.id ? (
+                              <>
+                                <textarea
+                                  value={editReplyText}
+                                  onChange={(e) => setEditReplyText(e.target.value)}
+                                  className={cn(
+                                    "w-full px-3 py-2 border-[0.5px] border-border/30 rounded-lg",
+                                    "bg-background text-foreground text-sm outline-none",
+                                    "transition-all duration-200 resize-vertical min-h-[70px]",
+                                    "focus:border-primary/40 focus:ring-1 focus:ring-primary/10",
+                                    "sm:text-xs sm:py-1.5 md:text-sm md:py-2"
+                                  )}
+                                  disabled={replyActionLoadingKey === `${comment.id}-${reply.id}`}
+                                />
+                                <div className="flex flex-wrap gap-2 mt-2">
+                                  <button
+                                    onClick={handleUpdateExistingReply}
+                                    className={cn(
+                                      "px-4 py-2 bg-primary text-primary-foreground border-none rounded-lg",
+                                      "font-semibold text-sm cursor-pointer transition-all duration-200",
+                                      "hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed",
+                                      "sm:px-3 sm:py-1.5 sm:text-xs md:px-4 md:py-2 md:text-sm"
+                                    )}
+                                    disabled={
+                                      replyActionLoadingKey === `${comment.id}-${reply.id}` ||
+                                      !editReplyText.trim()
+                                    }
+                                  >
+                                    {replyActionLoadingKey === `${comment.id}-${reply.id}`
+                                      ? t('action.saving', { defaultValue: "Đang lưu..." })
+                                      : t('action.save', { defaultValue: "Lưu" })}
+                                  </button>
+                                  <button
+                                    onClick={cancelEditingReply}
+                                    className={cn(
+                                      "px-4 py-2 bg-muted/30 text-foreground border-none rounded-lg",
+                                      "font-semibold text-sm cursor-pointer transition-all duration-200",
+                                      "hover:bg-muted/50",
+                                      "sm:px-3 sm:py-1.5 sm:text-xs md:px-4 md:py-2 md:text-sm"
+                                    )}
+                                    disabled={replyActionLoadingKey === `${comment.id}-${reply.id}`}
+                                  >
+                                    {t('action.cancel')}
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <div className={cn(
+                                "text-foreground text-[0.85rem] leading-6 break-words",
+                                "max-w-full overflow-hidden",
+                                "sm:text-[0.75rem] sm:leading-5 md:text-[0.85rem] md:leading-6"
+                              )}>
+                                {reply.content}
+                              </div>
+                            )}
                             {reply.images && (
                               <img 
                                 src={reply.images} 
@@ -957,7 +1540,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
                             )}
                           </div>
                         </div>
-                        <div className="flex gap-3 mt-1 sm:gap-2">
+                        <div className="flex flex-wrap gap-3 mt-1 sm:gap-2">
                           <button
                             onClick={() => handleLikeReply(comment.id, reply.id)}
                             className={cn(
@@ -986,6 +1569,38 @@ export default function CommentSection({ postId, onClose, inline = false, always
                           >
                             {t('comment.reply')}
                           </button>
+                          {canManageReply(reply) &&
+                            (!editingReplyTarget ||
+                             editingReplyTarget.replyId !== reply.id ||
+                             editingReplyTarget.commentId !== comment.id) && (
+                              <>
+                                <button
+                                  onClick={() => startEditingReply(comment.id, reply)}
+                                  className={cn(
+                                    "bg-transparent border-none text-muted-foreground text-sm",
+                                    "px-1 py-1 rounded cursor-pointer transition-all duration-200",
+                                    "hover:bg-muted/30 hover:text-foreground",
+                                    "sm:text-xs md:text-sm"
+                                  )}
+                                >
+                                  {t('action.edit', { defaultValue: "Chỉnh sửa" })}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteReplyClick(comment.id, reply.id)}
+                                  className={cn(
+                                    "bg-transparent border-none text-danger/90 text-sm",
+                                    "px-1 py-1 rounded cursor-pointer transition-all duration-200",
+                                    "hover:bg-danger/10",
+                                    "sm:text-xs md:text-sm"
+                                  )}
+                                  disabled={replyActionLoadingKey === `${comment.id}-${reply.id}`}
+                                >
+                                  {replyActionLoadingKey === `${comment.id}-${reply.id}`
+                                    ? t('action.deleting', { defaultValue: "Đang xóa..." })
+                                    : t('action.delete', { defaultValue: "Xóa" })}
+                                </button>
+                              </>
+                            )}
                         </div>
 
                         {/* Reply to Reply Input */}
