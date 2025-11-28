@@ -27,10 +27,7 @@ import BarReview from "../../bar/components/BarReview";
 import BarTables from "../../bar/components/BarTables";
 import BarTablesPage from "../../customer/pages/BarTablesPage";
 import PerformerReviews from "../../business/components/PerformerReviews";
-import { CustomerTabs } from "../../../components/profile/ProfileTabs/CustomerTabs";
-import { BarTabs } from "../../../components/profile/ProfileTabs/BarTabs";
-import { DJTabs } from "../../../components/profile/ProfileTabs/DJTabs";
-import { DancerTabs } from "../../../components/profile/ProfileTabs/DancerTabs";
+import { ProfileInfoSection } from "../../../components/profile/ProfileInfoSection";
 
 const getWindow = () => (typeof globalThis !== "undefined" ? globalThis : undefined);
 
@@ -261,6 +258,7 @@ export default function ProfilePage() {
       case "info":
         return (
           <div className={cn("flex flex-col gap-6")}>
+            <ProfileInfoSection profile={profile} />
             <BarEvent barPageId={barPageId} />
             <div className={cn("bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]")}>
               <BarMenu barPageId={barPageId} />
@@ -387,7 +385,7 @@ export default function ProfilePage() {
   const renderDJTabContent = () => {
     switch (activeTab) {
       case "info":
-  return (
+        return (
           <div className={cn("flex flex-col gap-6")}>
             {/* Price Highlight Section */}
             {(profile.pricePerHours || profile.pricePerSession) && (
@@ -428,34 +426,7 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
-            
-            {/* Info Card */}
-            <div className={cn(
-              "bg-card rounded-lg p-6 border-[0.5px] border-border/20",
-              "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-            )}>
-              <h3 className={cn("text-lg font-semibold text-foreground mb-4")}>
-                {t('profile.about')}
-              </h3>
-              <div className={cn("space-y-3 text-sm")}>
-                {profile.bio && (
-                  <p className={cn("text-foreground whitespace-pre-wrap leading-relaxed")}>
-                    {profile.bio}
-                  </p>
-                )}
-                <div className={cn("space-y-2 text-muted-foreground")}>
-                  {profile.gender && (
-                    <p><strong className={cn("text-foreground")}>{t('profile.gender')}:</strong> {displayGender(profile.gender)}</p>
-                  )}
-                  {profile.address && (
-                    <p><strong className={cn("text-foreground")}>{t('profile.address')}:</strong> {profile.address}</p>
-                  )}
-                  {profile.phone && (
-                    <p><strong className={cn("text-foreground")}>{t('profile.phone')}:</strong> {profile.phone}</p>
-                  )}
-                </div>
-              </div>
-            </div>
+            <ProfileInfoSection profile={profile} />
           </div>
         );
       case "posts":
@@ -585,34 +556,7 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
-            
-            {/* Info Card */}
-            <div className={cn(
-              "bg-card rounded-lg p-6 border-[0.5px] border-border/20",
-              "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-            )}>
-              <h3 className={cn("text-lg font-semibold text-foreground mb-4")}>
-                {t('profile.about')}
-              </h3>
-              <div className={cn("space-y-3 text-sm")}>
-                {profile.bio && (
-                  <p className={cn("text-foreground whitespace-pre-wrap leading-relaxed")}>
-                    {profile.bio}
-                  </p>
-                )}
-                <div className={cn("space-y-2 text-muted-foreground")}>
-                  {profile.gender && (
-                    <p><strong className={cn("text-foreground")}>{t('profile.gender')}:</strong> {displayGender(profile.gender)}</p>
-                  )}
-                  {profile.address && (
-                    <p><strong className={cn("text-foreground")}>{t('profile.address')}:</strong> {profile.address}</p>
-                  )}
-                  {profile.phone && (
-                    <p><strong className={cn("text-foreground")}>{t('profile.phone')}:</strong> {profile.phone}</p>
-                  )}
-                </div>
-              </div>
-            </div>
+            <ProfileInfoSection profile={profile} />
           </div>
         );
       case "posts":
@@ -672,53 +616,7 @@ export default function ProfilePage() {
       case "info":
         return (
           <div className={cn("flex flex-col gap-6")}>
-            {/* Bio & Info Section */}
-            {(profile.bio || (profile.contact && (profile.contact.email || profile.contact.phone || profile.contact.address))) && (
-              <section className={cn(
-                "py-6 border-b border-border/30",
-                "bg-card rounded-lg p-6 mb-6",
-                "border-[0.5px] border-border/20",
-                "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-              )}>
-                {profile.bio && (
-                  <div className={cn("mb-4")}>
-                    <h3 className={cn("text-lg font-semibold text-foreground mb-2")}>
-                      {t("publicProfile.about")}
-                    </h3>
-                    <p className={cn("text-foreground whitespace-pre-wrap leading-relaxed")}>
-                      {profile.bio}
-                    </p>
-                  </div>
-                )}
-                {profile.contact && (profile.contact.email || profile.contact.phone || profile.contact.address) && (
-                  <div className={cn("mt-4 pt-4 border-t border-border/30")}>
-                    <h4 className={cn("text-base font-semibold text-foreground mb-3")}>
-                      {t("publicProfile.contact")}
-                    </h4>
-                    <div className={cn("space-y-2 text-sm text-muted-foreground")}>
-                      {profile.contact.email && (
-                        <div className={cn("flex items-center gap-2")}>
-                          <i className="bx bx-envelope text-base"></i>
-                          <span>{t("common.email")}: {profile.contact.email}</span>
-                        </div>
-                      )}
-                      {profile.contact.phone && (
-                        <div className={cn("flex items-center gap-2")}>
-                          <i className="bx bx-phone text-base"></i>
-                          <span>{t("common.phone") || "Phone"}: {profile.contact.phone}</span>
-                        </div>
-                      )}
-                      {profile.contact.address && (
-                        <div className={cn("flex items-center gap-2")}>
-                          <i className="bx bx-map text-base"></i>
-                          <span>{t("common.address") || "Address"}: {profile.contact.address}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </section>
-            )}
+            <ProfileInfoSection profile={profile} />
           </div>
         );
       case "posts":
@@ -763,13 +661,13 @@ export default function ProfilePage() {
     const props = { profile, posts, postsLoading, activeTab, isOwnProfile };
 
     if (isBarProfile) {
-      return <BarTabs {...props} barPageId={barPageId} currentUserRole={getCurrentUserRole()} />;
+      return renderBarTabContent();
     } else if (isDJProfile) {
-      return <DJTabs {...props} performerTargetId={performerTargetId} />;
+      return renderDJTabContent();
     } else if (isDancerProfile) {
-      return <DancerTabs {...props} performerTargetId={performerTargetId} entityId={entityId} />;
+      return renderDancerTabContent();
     } else if (isCustomerProfile) {
-      return <CustomerTabs {...props} entityId={entityId} />;
+      return renderCustomerTabContent();
     } else {
       return null;
     }
