@@ -332,7 +332,6 @@
     "cannotLoadTableTypes": "Cannot load table types list.",
     "noChangesToSave": "No changes to save.",
     "saved": "Saved!",
-   
     "errorSaving": "Error saving table types.",
     "statusEditing": "Editing",
     "statusSaved": "Saved",

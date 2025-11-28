@@ -342,6 +342,13 @@ export default function PublicProfile() {
   const isDJProfile = isPerformerProfile && profileRole === "DJ";
   const isDancerProfile = isPerformerProfile && profileRole === "DANCER";
   const isCustomerProfile = !isBarProfile && !isPerformerProfile;
+  const canRequestBooking = !isOwnProfile && isPerformerProfile;
+
+  useEffect(() => {
+    if (!canRequestBooking && bookingOpen) {
+      setBookingOpen(false);
+    }
+  }, [canRequestBooking, bookingOpen]);
 
   // Helper to display gender in Vietnamese
   const displayGender = (gender) => {
@@ -835,7 +842,7 @@ export default function PublicProfile() {
         {!isOwnProfile && (
           <>
             {/* Request booking button - chỉ hiển thị cho DJ/Dancer */}
-            {isPerformerProfile && (
+            {canRequestBooking && (
               <button
                 onClick={() => setBookingOpen(true)}
                 className={cn(
@@ -1103,7 +1110,7 @@ export default function PublicProfile() {
           </section>
       </div>
 
-      {bookingOpen && isPerformerProfile && (
+      {canRequestBooking && bookingOpen && (
         <RequestBookingModal
           open={bookingOpen}
           onClose={() => setBookingOpen(false)}

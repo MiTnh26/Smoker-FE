@@ -163,19 +163,10 @@ export default function BarHeader() {
         return;
       }
       
-      const res = await messageApi.getConversations(currentUserEntityId);
-      const conversationsData = res.data?.data || res.data || [];
-      
-      // Calculate total unread messages from new structure (English fields)
-      let totalUnread = 0;
-      conversationsData.forEach((conv) => {
-        // Use unreadCount from new structure if available
-        if (typeof conv.unreadCount === 'number') {
-          totalUnread += conv.unreadCount;
-        }
-      });
-      
-      setUnreadMessageCount(totalUnread);
+      const res = await messageApi.getUnreadCount(currentUserEntityId);
+      if (res.success && res.data) {
+        setUnreadMessageCount(res.data.totalUnreadCount || 0);
+      }
     } catch (error) {
       console.error("[BarHeader] Error fetching unread message count:", error);
     }

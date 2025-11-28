@@ -161,6 +161,7 @@ function mapType(t) {
 
 function onOpenItem(navigate, item) {
 <<<<<<< HEAD
+<<<<<<< HEAD
   // Validate item.id before navigating
   if (!item.id) {
     console.error("[SearchResults] Item missing id:", item);
@@ -171,18 +172,38 @@ function onOpenItem(navigate, item) {
   navigate(`/profile/${item.id}`);
 =======
       const itemType = String(item.type || "").toUpperCase();
-
-  // Navigate to post detail page for posts
-  if (itemType === 'POST') {
-    navigate(`/post/${item.id}`);
-          return;
-        }
-
-  // For other types, navigate to profile page
-  const itemEntityAccountId = item.raw?.EntityAccountId || item.raw?.entityAccountId || item.id || "";
-  if (itemEntityAccountId) {
-  navigate(`/profile/${itemEntityAccountId}`);
+=======
+  if (!item) {
+    console.error("[SearchResults] Missing item payload");
+    return;
   }
+>>>>>>> origin/main
+
+  const itemType = String(item.type || "").toUpperCase();
+
+  // Posts have a dedicated detail page
+  if (itemType === "POST") {
+    if (!item.id) {
+      console.error("[SearchResults] Post item missing id:", item);
+      return;
+    }
+    navigate(`/post/${item.id}`);
+    return;
+  }
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
+
+  // For other types, prefer the entity account id when available
+  const itemEntityAccountId =
+    item.raw?.EntityAccountId || item.raw?.entityAccountId || item.id || "";
+
+  if (!itemEntityAccountId) {
+    console.error("[SearchResults] Item missing entityAccountId/id:", item);
+    return;
+  }
+
+  navigate(`/profile/${itemEntityAccountId}`);
 >>>>>>> origin/main
 }
 
