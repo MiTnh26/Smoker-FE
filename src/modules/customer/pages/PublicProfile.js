@@ -225,6 +225,22 @@ export default function PublicProfile() {
     checkBannedStatus();
   }, []);
 
+  // Calculate isOwnProfile before early returns (needed for useEffect)
+  const isOwnProfile = currentUserEntityId && String(currentUserEntityId).toLowerCase() === String(entityId).toLowerCase();
+  
+  // Calculate canRequestBooking before early returns (needed for useEffect)
+  // Safe calculation: if profile exists, check if it's a performer profile
+  const profileRoleUpper = profile ? (profile?.role || profile?.Role || profile?.type || profile?.Type || "").toString().toUpperCase() : "";
+  const isPerformerProfile = profile ? ["DJ", "DANCER"].includes(profileRoleUpper) : false;
+  const canRequestBooking = !isOwnProfile && isPerformerProfile;
+
+  // useEffect for booking modal - must be before early returns
+  useEffect(() => {
+    if (!canRequestBooking && bookingOpen) {
+      setBookingOpen(false);
+    }
+  }, [canRequestBooking, bookingOpen]);
+
   if (loading) {
     return (
       <div className={cn("min-h-screen bg-background flex items-center justify-center")}>
@@ -246,8 +262,6 @@ export default function PublicProfile() {
       </div>
     );
   }
-
-  const isOwnProfile = currentUserEntityId && String(currentUserEntityId).toLowerCase() === String(entityId).toLowerCase();
 
   // Helper to get current user role from session
   const getCurrentUserRole = () => {
@@ -308,10 +322,10 @@ export default function PublicProfile() {
 
   const targetType = resolveTargetType();
   const isBarProfile = targetType === "BarPage";
-  // Check if profile is DJ or Dancer - check role directly
-  const profileRoleUpper = (profile?.role || profile?.Role || profile?.type || profile?.Type || "").toString().toUpperCase();
-  const isPerformerProfile = ["DJ", "DANCER"].includes(profileRoleUpper);
-  const performerTargetId = isPerformerProfile
+  // Check if profile is DJ or Dancer - check role directly (recalculate with actual profile data)
+  const profileRoleUpperRecalc = (profile?.role || profile?.Role || profile?.type || profile?.Type || "").toString().toUpperCase();
+  const isPerformerProfileRecalc = ["DJ", "DANCER"].includes(profileRoleUpperRecalc);
+  const performerTargetId = isPerformerProfileRecalc
     ? profile?.targetId || profile?.targetID || null
     : null;
   
@@ -337,18 +351,11 @@ export default function PublicProfile() {
     });
   }
 
-  // Determine profile role for tabs
+  // Determine profile role for tabs (recalculate with actual profile data)
   const profileRole = (profile?.role || "").toString().toUpperCase();
-  const isDJProfile = isPerformerProfile && profileRole === "DJ";
-  const isDancerProfile = isPerformerProfile && profileRole === "DANCER";
-  const isCustomerProfile = !isBarProfile && !isPerformerProfile;
-  const canRequestBooking = !isOwnProfile && isPerformerProfile;
-
-  useEffect(() => {
-    if (!canRequestBooking && bookingOpen) {
-      setBookingOpen(false);
-    }
-  }, [canRequestBooking, bookingOpen]);
+  const isDJProfile = isPerformerProfileRecalc && profileRole === "DJ";
+  const isDancerProfile = isPerformerProfileRecalc && profileRole === "DANCER";
+  const isCustomerProfile = !isBarProfile && !isPerformerProfileRecalc;
 
   // Helper to display gender in Vietnamese
   const displayGender = (gender) => {
