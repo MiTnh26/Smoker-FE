@@ -807,8 +807,8 @@ export default function ProfilePage() {
           </button>
         ) : (
           <>
-            {/* Request booking button - chỉ hiển thị cho DJ/Dancer */}
-            {isPerformerProfile && (
+            {/* Request booking button - chỉ hiển thị cho DJ/Dancer (không phải own profile) */}
+            {canRequestBooking && (
               <button
                 onClick={() => setBookingOpen(true)}
                 className={cn(
