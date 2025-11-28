@@ -108,7 +108,8 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
   const paymentStatus = booking.paymentStatus || booking.PaymentStatus;
   const detailSchedule = booking.detailSchedule || booking.DetailSchedule;
   const bookingType = booking.type || booking.Type;
-  const isDJBooking = bookingType === "DJ" || bookingType === "Performer";
+  const bookingTypeUpper = (bookingType || "").toString().toUpperCase();
+  const isDJBooking = bookingTypeUpper === "DJ" || bookingTypeUpper === "DANCER" || bookingTypeUpper === "PERFORMER";
   const modalTitle = isDJBooking ? "Chi tiết đặt DJ" : "Chi tiết đặt bàn";
   const bookingCodeLabel = isDJBooking ? "Mã đặt DJ" : "Mã đặt bàn";
 
@@ -444,7 +445,8 @@ export default function MyBookings() {
     setLoading(true);
     setError("");
     try {
-      // Sử dụng getBookingsByBooker với EntityAccountId (booking tables)
+      // Chỉ cần gọi 1 API vì cả booking tables và DJ/Dancer bookings đều nằm trong cùng bảng BookedSchedules
+      // API getBookingsByBooker đã trả về tất cả bookings của booker
       const res = await bookingApi.getBookingsByBooker(currentUserEntityId, { limit: 100 });
       const bookingsData = res.data?.data || res.data || [];
 
@@ -470,9 +472,9 @@ export default function MyBookings() {
 
   const handleCancelBooking = async (booking) => {
     const bookingType = booking.type || booking.Type;
-    const isDJBooking = bookingType === "DJ" || bookingType === "Performer";
+    const isDJBooking = bookingType === "DJ" || bookingType === "DANCER" || bookingType === "Performer";
     const confirmMessage = isDJBooking 
-      ? "Bạn có chắc chắn muốn hủy booking DJ này không?"
+      ? "Bạn có chắc chắn muốn hủy booking này không?"
       : "Bạn có chắc chắn muốn hủy đặt bàn này không?";
     
     if (!window.confirm(confirmMessage)) {
@@ -486,7 +488,12 @@ export default function MyBookings() {
         return;
       }
 
-      await bookingApi.cancelBooking(bookingId);
+      // Sử dụng cancelDJBooking cho DJ/Dancer bookings, cancelBooking cho table bookings
+      if (isDJBooking) {
+        await bookingApi.cancelDJBooking(bookingId);
+      } else {
+        await bookingApi.cancelBooking(bookingId);
+      }
       const successMessage = isDJBooking 
         ? "Hủy booking DJ thành công"
         : "Hủy đặt bàn thành công";
@@ -592,10 +599,13 @@ export default function MyBookings() {
   // Group bookings by status (after filtering and sorting)
   const filteredBookings = getFilteredAndSortedBookings();
   
-  // Separate Pending bookings by Type (BarTable vs DJ/Performer)
+  // Separate Pending bookings by Type (BarTable vs DJ/Dancer)
   const pendingBookings = filteredBookings.filter(b => (b.scheduleStatus || b.ScheduleStatus) === "Pending");
   const pendingBarTable = pendingBookings.filter(b => (b.type || b.Type) === "BarTable");
-  const pendingDJ = pendingBookings.filter(b => (b.type || b.Type) === "DJ" || (b.type || b.Type) === "Performer");
+  const pendingDJ = pendingBookings.filter(b => {
+    const bookingType = (b.type || b.Type || "").toString().toUpperCase();
+    return bookingType === "DJ" || bookingType === "DANCER" || bookingType === "PERFORMER";
+  });
   
   const groupedBookings = {
     PendingBarTable: pendingBarTable,
@@ -907,13 +917,13 @@ export default function MyBookings() {
           {groupedBookings.PendingDJ.length > 0 && (
             <div>
               <h2 className={cn("text-xl font-bold text-foreground mb-4 flex items-center gap-2")}>
-                <span className="px-2 py-1 rounded text-sm font-semibold" style={{ backgroundColor: "rgba(var(--warning), 0.1)", color: "rgb(var(--warning))" }}>
-                  DJ
+                <span className="px-2 py-1 rounded text-sm font-semibold" style={{ backgroundColor: "rgba(var(--primary), 0.1)", color: "rgb(var(--primary))" }}>
+                  DJ/Dancer
                 </span>
                 Chờ xác nhận ({groupedBookings.PendingDJ.length})
               </h2>
               <p className="text-sm text-muted-foreground mb-4">
-                Đang chờ DJ xác nhận yêu cầu booking của bạn
+                Đang chờ DJ/Dancer xác nhận yêu cầu booking của bạn
               </p>
               <div className="flex flex-col gap-4">
                 {groupedBookings.PendingDJ.map((booking) => {
