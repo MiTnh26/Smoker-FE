@@ -342,6 +342,13 @@ export default function PublicProfile() {
   const isDJProfile = isPerformerProfile && profileRole === "DJ";
   const isDancerProfile = isPerformerProfile && profileRole === "DANCER";
   const isCustomerProfile = !isBarProfile && !isPerformerProfile;
+  const canRequestBooking = !isOwnProfile && isPerformerProfile;
+
+  useEffect(() => {
+    if (!canRequestBooking && bookingOpen) {
+      setBookingOpen(false);
+    }
+  }, [canRequestBooking, bookingOpen]);
 
   // Helper to display gender in Vietnamese
   const displayGender = (gender) => {
@@ -835,19 +842,21 @@ export default function PublicProfile() {
       >
         {!isOwnProfile && (
           <>
-            <button
-              onClick={() => setBookingOpen(true)}
-              className={cn(
-                "px-4 py-2 rounded-lg font-semibold text-sm",
-                "bg-primary text-primary-foreground border-none",
-                "hover:bg-primary/90 transition-all duration-200",
-                "active:scale-95",
-                "flex items-center gap-2"
-              )}
-            >
-              <i className="bx bxs-calendar-check text-base" />
-              <span>Request booking</span>
-            </button>
+            {canRequestBooking && (
+              <button
+                onClick={() => setBookingOpen(true)}
+                className={cn(
+                  "px-4 py-2 rounded-lg font-semibold text-sm",
+                  "bg-primary text-primary-foreground border-none",
+                  "hover:bg-primary/90 transition-all duration-200",
+                  "active:scale-95",
+                  "flex items-center gap-2"
+                )}
+              >
+                <i className="bx bxs-calendar-check text-base" />
+                <span>Request booking</span>
+              </button>
+            )}
             <button
               onClick={async () => {
                 try {
@@ -1099,7 +1108,7 @@ export default function PublicProfile() {
           </section>
       </div>
 
-      {bookingOpen && (
+      {canRequestBooking && bookingOpen && (
         <RequestBookingModal
           open={bookingOpen}
           onClose={() => setBookingOpen(false)}
