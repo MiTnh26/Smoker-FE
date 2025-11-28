@@ -14,6 +14,8 @@ import { ProfileStats } from '../../../components/profile/ProfileStats';
 import { CustomerTabs, BarTabs, DJTabs, DancerTabs } from '../../../components/profile/ProfileTabs';
 import ProfileEditModal from '../../../components/profile/ProfileEditModal';
 import { normalizeProfileData } from '../../../utils/profileDataMapper';
+import bookingApi from '../../../api/bookingApi';
+import DJBookingRequests from '../../dj/components/DJBookingRequests';
 
 // A new hook to fetch profile data based on type
 const unwrapProfileResponse = (response) => {
@@ -171,6 +173,7 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
 
   const [activeTab, setActiveTab] = useState('info');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [pendingBookingsCount, setPendingBookingsCount] = useState(0);
 
   useEffect(() => {
     if (currentUserEntityId) {
@@ -205,10 +208,52 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
     null
   ) : null;
 
+  useEffect(() => {
+    if (!isDJProfile || !profileEntityAccountId) {
+      setPendingBookingsCount(0);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const fetchPendingCount = async () => {
+      try {
+        const res = await bookingApi.getBookingsByReceiver(profileEntityAccountId, { limit: 100 });
+        const bookings = res.data?.data || res.data || [];
+        if (!cancelled) {
+          const pendingCount = bookings.filter(
+            (booking) => (booking.scheduleStatus || booking.ScheduleStatus) === 'Pending'
+          ).length;
+          setPendingBookingsCount(pendingCount);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('[OwnProfilePage] Failed to fetch pending bookings count:', err);
+        }
+      }
+    };
+
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isDJProfile, profileEntityAccountId]);
+
   const renderTabContent = () => {
     const props = { profile, posts, postsLoading, activeTab, isOwnProfile: true, entityId: currentUserEntityId };
     if (isBarProfile) return <BarTabs {...props} barPageId={barPageId} currentUserRole={profile?.role || profile?.Role} />;
-    if (isDJProfile) return <DJTabs {...props} performerTargetId={performerTargetId} />;
+    if (isDJProfile) {
+      if (activeTab === 'bookings') {
+        return (
+          <div className={cn('flex flex-col gap-6')}>
+            <DJBookingRequests performerEntityAccountId={profileEntityAccountId} />
+          </div>
+        );
+      }
+      return <DJTabs {...props} performerTargetId={performerTargetId} />;
+    }
     if (isDancerProfile) return <DancerTabs {...props} performerTargetId={performerTargetId} entityId={currentUserEntityId} />;
     if (isCustomerProfile) return <CustomerTabs {...props} entityId={currentUserEntityId} />;
     return null;
@@ -354,6 +399,43 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
               >
                 {t('profile.reviewsTab')}
                 {activeTab === "reviews" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+            )}
+            
+            {/* Booking Tab - DJ only */}
+            {isDJProfile && (
+              <button
+                onClick={() => setActiveTab("bookings")}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  "flex items-center gap-2",
+                  activeTab === "bookings"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t('profile.bookingsTab') || "Yêu cầu booking"}
+                {pendingBookingsCount > 0 && (
+                  <span
+                    className={cn(
+                      "px-2 py-0.5 rounded-full text-xs font-bold",
+                      "flex items-center justify-center min-w-[20px]"
+                    )}
+                    style={{
+                      backgroundColor: "rgb(var(--danger))",
+                      color: "white"
+                    }}
+                  >
+                    {pendingBookingsCount > 99 ? "99+" : pendingBookingsCount}
+                  </span>
+                )}
+                {activeTab === "bookings" && (
                   <span className={cn(
                     "absolute bottom-0 left-0 right-0 h-0.5",
                     "bg-primary"
