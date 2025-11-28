@@ -160,10 +160,24 @@ function mapType(t) {
 }
 
 function onOpenItem(navigate, item) {
+<<<<<<< HEAD
+<<<<<<< HEAD
+  // Validate item.id before navigating
+  if (!item.id) {
+    console.error("[SearchResults] Item missing id:", item);
+    return;
+  }
+  
+  // All items (BAR, DJ, DANCER, USER) should navigate to /profile/:id
+  navigate(`/profile/${item.id}`);
+=======
+      const itemType = String(item.type || "").toUpperCase();
+=======
   if (!item) {
     console.error("[SearchResults] Missing item payload");
     return;
   }
+>>>>>>> origin/main
 
   const itemType = String(item.type || "").toUpperCase();
 
@@ -176,6 +190,9 @@ function onOpenItem(navigate, item) {
     navigate(`/post/${item.id}`);
     return;
   }
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
 
   // For other types, prefer the entity account id when available
   const itemEntityAccountId =
@@ -187,6 +204,7 @@ function onOpenItem(navigate, item) {
   }
 
   navigate(`/profile/${itemEntityAccountId}`);
+>>>>>>> origin/main
 }
 
 
