@@ -264,6 +264,7 @@ export default function Sidebar() {
       "Newsfeed": "newsfeed",
       "Sự kiện": "events",
       "Tin nhắn": "messages",
+      "Đặt bàn của tôi": "myBookings",
       "Hồ sơ": "profile",
       "Bank info": "bankInfo",
       "Dashboard": "dashboard",

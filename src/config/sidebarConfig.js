@@ -11,7 +11,12 @@ import {
   MessageCircle,
   Store,
   CreditCard,
-  ClipboardCheck
+  ClipboardCheck,
+  BookOpen,
+  Package,
+  CheckCircle2,
+  Pause,
+  Play
 } from "lucide-react";
 
 /**
@@ -29,6 +34,7 @@ export const sidebarConfig = {
     { label: "Trang chủ", icon: Home, path: "/customer/newsfeed" },
     { label: "Sự kiện", icon: Calendar, path: "/customer/events" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/customer/messages" },
+    { label: "Đặt bàn của tôi", icon: BookOpen, path: "/customer/my-bookings" },
     { label: "Hồ sơ", icon: User, path: "/customer/profile" },
     { label: "Bank info", icon: CreditCard, path: "/customer/bank-info" },
     { label: "Đăng ký tài khoản kinh doanh", icon: Store, path: "/register/select-account-type" },
@@ -91,6 +97,10 @@ export const sidebarConfig = {
     { label: "Quản lý duyệt", icon: ClipboardCheck, path: "/admin/approvals" },
     { label: "Thư viện nhạc", icon: Music2, path: "/admin/music" },
     { label: "Quản lý quán / Bar", icon: Store, path: "/admin/bars" },
+    { label: "Gói quảng cáo", icon: Package, path: "/admin/ad-packages" },
+    { label: "Duyệt QC Event", icon: CheckCircle2, path: "/admin/event-ad-approvals" },
+    { label: "Yêu cầu tạm dừng QC", icon: Pause, path: "/admin/pause-requests" },
+    { label: "Yêu cầu tiếp tục QC", icon: Play, path: "/admin/resume-requests" },
     { label: "Báo cáo & thống kê", icon: BarChart3, path: "/admin/reports" },
     { label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },
   ],
