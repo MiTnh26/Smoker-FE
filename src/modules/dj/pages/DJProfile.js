@@ -21,6 +21,7 @@ import { ProfileStats } from "../../../components/profile/ProfileStats";
 import { ImageUploadField } from "../../../components/profile/ImageUploadField";
 import BannedAccountOverlay from "../../../components/common/BannedAccountOverlay";
 import DJBookingRequests from "../components/DJBookingRequests";
+import PerformerSchedule from "../components/PerformerSchedule";
 
 export default function DJProfile() {
     const { t } = useTranslation();
@@ -450,6 +451,18 @@ export default function DJProfile() {
                     </div>
                 );
 
+            case "schedule":
+                return (
+                    <div className={cn("flex flex-col gap-6")}>
+                        {(businessEntityId || currentUserEntityId) && (
+                            <PerformerSchedule 
+                                performerEntityAccountId={businessEntityId || currentUserEntityId}
+                                isOwnProfile={isOwnProfile}
+                            />
+                        )}
+                    </div>
+                );
+
             case "bookings":
                 return (
                     <div className={cn("flex flex-col gap-6")}>
@@ -564,6 +577,26 @@ export default function DJProfile() {
                     >
                         {t('profile.reviewsTab')}
                         {activeTab === "reviews" && (
+                            <span className={cn(
+                                "absolute bottom-0 left-0 right-0 h-0.5",
+                                "bg-primary"
+                            )} />
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("schedule")}
+                        className={cn(
+                            "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                            "transition-all duration-200 relative whitespace-nowrap",
+                            "flex items-center gap-2",
+                            activeTab === "schedule"
+                                ? "text-foreground"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        <Calendar size={16} />
+                        <span>Lịch diễn</span>
+                        {activeTab === "schedule" && (
                             <span className={cn(
                                 "absolute bottom-0 left-0 right-0 h-0.5",
                                 "bg-primary"

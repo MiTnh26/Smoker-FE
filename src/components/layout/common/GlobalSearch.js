@@ -378,6 +378,12 @@ function onOpenItem(navigate, item, setIsMobileExpanded, setQ) {
     console.error("[GlobalSearch] Error checking own profile:", error);
   }
   
+  // Validate item.id before navigating
+  if (!item.id) {
+    console.error("[GlobalSearch] Item missing id:", item);
+    return;
+  }
+  
   // All items (BAR, DJ, DANCER, USER) should navigate to /profile/:id
   // Use EntityAccountId from raw if available, otherwise use id
   const itemEntityAccountId = item.raw?.EntityAccountId || item.raw?.entityAccountId || item.id || "";

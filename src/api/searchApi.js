@@ -9,7 +9,7 @@ const normalize = (arr) =>
     // Giữ nguyên `type` từ backend ('Account', 'DJ', 'DANCER', 'BarPage')
     type: item.type,
     raw: item
-  }));
+  })).filter(item => item.id); // Filter out items without id
 
 const searchApi = {
   async searchAll(q, limit = 5) {
