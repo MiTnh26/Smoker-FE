@@ -1,573 +1,589 @@
-import React, { useState, useEffect } from "react";
+// src/pages/bar/EventsPage.jsx
+// ĐÃ THÊM NÚT QUẢNG CÁO
+
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, Pagination } from "swiper/modules";
 import { cn } from "../../../utils/cn";
-import "swiper/css";
-import "swiper/css/pagination";
 import barEventApi from "../../../api/barEventApi";
+import notificationApi from "../../../api/notificationApi"; // Thêm import notification API
 import AddEventModal from "../components/AddEventModal";
 import EditEventModal from "../components/EditEventModal";
+import EventAdPackageModal from "../components/EventAdPackageModal";
 import { Button } from "../../../components/common/Button";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { ToastContainer } from "../../../components/common/Toast";
+import { 
+  Pencil, 
+  Trash2, 
+  Plus, 
+  Eye, 
+  EyeOff, 
+  Search, 
+  Loader2,
+  Calendar,
+  Clock,
+  Image as ImageIcon,
+  Megaphone // Icon cho quảng cáo
+} from "lucide-react";
 
 export default function EventsPage() {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState(0); // 0: Other bars, 1: Manage
-  const [otherBarsEvents, setOtherBarsEvents] = useState([]);
+
   const [myEvents, setMyEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [barPageId, setBarPageId] = useState(null);
+  const [barInfo, setBarInfo] = useState(null); // Thêm state lưu thông tin bar
+  
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAdPackageModal, setShowAdPackageModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
-  const [deletingEventId, setDeletingEventId] = useState(null);
+  const [advertisingEvent, setAdvertisingEvent] = useState(null); // Event được chọn để quảng cáo
+  
+  const [deletingId, setDeletingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
+  const [advertisingId, setAdvertisingId] = useState(null); // State cho loading nút quảng cáo
+  const [searchQuery, setSearchQuery] = useState("");
+  const [toasts, setToasts] = useState([]); // State cho toast notifications
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6; // 6 events mỗi trang
 
-  // Get barPageId from session
+  // Lấy barPageId và thông tin bar từ session
   useEffect(() => {
     try {
-      const session = JSON.parse(localStorage.getItem("session")) || {};
+      const session = JSON.parse(localStorage.getItem("session") || "{}");
       const activeEntity = session.activeEntity || {};
       const entities = session.entities || [];
       
-      const currentBar = entities.find(
-        (e) => String(e.id) === String(activeEntity.id)
+      const current = entities.find(e => 
+        String(e.id) === String(activeEntity.id) && e.type === "BarPage"
       ) || activeEntity;
       
-      if (currentBar?.id) {
-        setBarPageId(currentBar.id);
+      if (current?.id) {
+        setBarPageId(current.id);
+        setBarInfo(current); // Lưu thông tin bar
       }
     } catch (err) {
-      console.error("Error loading session:", err);
+      console.error("Lỗi khi lấy session:", err);
     }
   }, []);
 
-  // Fetch events
-  useEffect(() => {
-    if (barPageId) {
-      fetchAllEvents();
-    }
-  }, [barPageId]);
+  const ensureArray = (data) => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (data.data && Array.isArray(data.data)) return data.data;
+    if (data.items && Array.isArray(data.items)) return data.items;
+    if (data.result && Array.isArray(data.result)) return data.result;
+    if (typeof data === 'object' && data !== null && !Array.isArray(data)) return [data];
+    return [];
+  };
 
+  const isValidImageUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    return /^https?:\/\/.+/i.test(url);
+  };
+
+  // Fetch events
   const fetchAllEvents = async () => {
+    if (!barPageId) return;
+
     try {
       setLoading(true);
-      
-      // Fetch my events
-      const myRes = await barEventApi.getEventsByBarId(barPageId);
-      const myEventsData = myRes.status === "success" 
-        ? (myRes.data || [])
-        : (Array.isArray(myRes.data) ? myRes.data : []);
-      setMyEvents(myEventsData);
 
-      // Try to fetch all events, then filter out mine
-      // If API doesn't exist, we'll use a fallback
-      try {
-        const allRes = await barEventApi.getAllEvents();
-        const allEvents = allRes.status === "success"
-          ? (allRes.data || [])
-          : (Array.isArray(allRes.data) ? allRes.data : []);
-        
-        // Filter out events from current bar
-        const otherEvents = allEvents.filter(
-          (ev) => String(ev.BarPageId) !== String(barPageId)
-        );
-        setOtherBarsEvents(otherEvents);
-      } catch (err) {
-        // If getAllEvents doesn't exist, try excluding endpoint
-        try {
-          const excludeRes = await barEventApi.getEventsExcludingBar(barPageId);
-          const excludeEvents = excludeRes.status === "success"
-            ? (excludeRes.data || [])
-            : (Array.isArray(excludeRes.data) ? excludeRes.data : []);
-          setOtherBarsEvents(excludeEvents);
-        } catch (excludeErr) {
-          // If both fail, just show empty for now
-          console.warn("Could not fetch other bars events:", excludeErr);
-          setOtherBarsEvents([]);
-        }
-      }
+      const myResponse = await barEventApi.getEventsByBarId(barPageId).catch(() => ({ data: { items: [] } }));
+      const myData = ensureArray(myResponse.data);
+      setMyEvents(myData);
+
     } catch (err) {
-      console.error("Error fetching events:", err);
+      console.error("Lỗi tải events:", err);
       setMyEvents([]);
-      setOtherBarsEvents([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "—";
-    const date = new Date(dateStr);
-    return date.toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  useEffect(() => {
+    if (barPageId) fetchAllEvents();
+  }, [barPageId]);
+
+  const refresh = () => fetchAllEvents();
+
+  // Toast management
+  const addToast = useCallback((message, type = "info", duration = 3000) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { id, message, type, duration }]);
+  }, []);
+
+  const removeToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+  }, []);
+
+  // Xóa event
+  const handleDelete = async (id) => {
+    if (!window.confirm("Xóa sự kiện này?")) return;
+    
+    try {
+      setDeletingId(id);
+      const res = await barEventApi.deleteEvent(id);
+      
+      if (res?.ok || res?.success) {
+        addToast("Xóa sự kiện thành công", "success");
+        refresh();
+      } else {
+        addToast("Xóa sự kiện thất bại", "error");
+      }
+    } catch (err) {
+      addToast("Lỗi kết nối server", "error");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
-  const getStatus = (start, end) => {
+  // Ẩn / Hiện event - với optimistic update và toast notification
+  const handleToggle = async (id) => {
+    if (togglingId === id) return;
+
+    // Tìm event hiện tại để lấy trạng thái
+    const currentEvent = myEvents.find(ev => ev.EventId === id);
+    if (!currentEvent) return;
+
+    // So sánh case-insensitive để tránh lỗi
+    const currentStatus = (currentEvent.Status || "").toLowerCase();
+    const isCurrentlyActive = currentStatus === "active";
+    const newStatus = isCurrentlyActive ? "hidden" : "active";
+    const isHiding = isCurrentlyActive;
+
+    // Optimistic update: cập nhật UI ngay lập tức
+    setMyEvents(prevEvents => 
+      prevEvents.map(ev => 
+        ev.EventId === id 
+          ? { ...ev, Status: newStatus }
+          : ev
+      )
+    );
+
+    setTogglingId(id);
+    try {
+      const res = await barEventApi.toggleEventStatus(id);
+      
+      // Kiểm tra response - có thể là res.data hoặc res trực tiếp
+      const responseData = res?.data || res;
+      const isSuccess = responseData?.success !== false && 
+                       !responseData?.message?.includes("không thể") &&
+                       !responseData?.message?.includes("lỗi");
+      
+      if (isSuccess) {
+        // Thành công - hiển thị toast
+        addToast(
+          isHiding ? "Đã ẩn sự kiện" : "Đã hiển thị sự kiện",
+          "success"
+        );
+        
+        // Cập nhật Status từ response nếu có, nếu không thì dùng newStatus đã set
+        if (responseData?.data?.Status) {
+          setMyEvents(prevEvents => 
+            prevEvents.map(ev => 
+              ev.EventId === id 
+                ? { ...ev, Status: responseData.data.Status }
+                : ev
+            )
+          );
+        }
+      } else {
+        // Thất bại - revert lại trạng thái cũ
+        setMyEvents(prevEvents => 
+          prevEvents.map(ev => 
+            ev.EventId === id 
+              ? { ...ev, Status: currentEvent.Status }
+              : ev
+          )
+        );
+        addToast(
+          responseData?.message || "Không thể thay đổi trạng thái sự kiện",
+          "error"
+        );
+      }
+    } catch (err) {
+      // Lỗi - revert lại trạng thái cũ
+      setMyEvents(prevEvents => 
+        prevEvents.map(ev => 
+          ev.EventId === id 
+            ? { ...ev, Status: currentEvent.Status }
+            : ev
+        )
+      );
+      addToast("Lỗi kết nối server", "error");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  // MỞ MODAL CHỌN GÓI QUẢNG CÁO - FUNCTION MỚI
+  const handleAdvertise = (event) => {
+    if (!event) return;
+    setAdvertisingEvent(event);
+    setShowAdPackageModal(true);
+  };
+
+  // Xử lý sau khi mua gói thành công
+  const handlePurchaseSuccess = () => {
+    addToast("✅ Đã mua gói quảng cáo thành công! Admin sẽ set lên Revive và thông báo lại cho bạn.", "success");
+    // Có thể refresh events list nếu cần
+    // refresh();
+  };
+
+  // Format date
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "—";
+    try {
+      return new Date(dateStr).toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit", 
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch {
+      return "—";
+    }
+  };
+
+  const getEventStatus = (start, end, status) => {
+    if (status === "Ended") return { label: "Đã kết thúc", color: "bg-gray-500" };
+    if (status === "hidden") return { label: "Đang ẩn", color: "bg-orange-500" };
+    
     const now = new Date();
     const startDate = new Date(start);
     const endDate = new Date(end);
 
-    if (now < startDate) return { label: t("bar.upcoming"), color: "bg-blue-500" };
-    if (now >= startDate && now <= endDate)
-      return { label: t("bar.ongoing"), color: "bg-green-500" };
-    return { label: t("bar.ended"), color: "bg-gray-500" };
+    if (now < startDate) return { label: "Sắp diễn ra", color: "bg-blue-500" };
+    if (now <= endDate) return { label: "Đang diễn ra", color: "bg-green-500" };
+    return { label: "Đã kết thúc", color: "bg-gray-500" };
   };
 
-  const handleAddSuccess = () => {
-    setShowAddModal(false);
-    fetchAllEvents();
-  };
+  const filteredEvents = myEvents.filter(ev =>
+    (ev.EventName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (ev.Description || "").toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const handleEditClick = (event) => {
-    setEditingEvent(event);
-    setShowEditModal(true);
-  };
+  // Tính toán phân trang
+  const totalPages = Math.ceil(filteredEvents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedEvents = filteredEvents.slice(startIndex, endIndex);
 
-  const handleEditSuccess = () => {
-    setShowEditModal(false);
-    setEditingEvent(null);
-    fetchAllEvents();
-  };
+  // Reset về trang 1 khi search thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
-  const handleDeleteClick = async (eventId) => {
-    if (!window.confirm(t("bar.eventsPage.confirmDelete"))) {
-      return;
+  const getEventImage = (event) => {
+    if (isValidImageUrl(event.Picture)) {
+      return event.Picture;
     }
-
-    try {
-      setDeletingEventId(eventId);
-      const res = await barEventApi.deleteEvent(eventId);
-      if (res.status === "success") {
-        alert(t("bar.eventsPage.eventDeleted"));
-        fetchAllEvents();
-      } else {
-        alert(res.message || t("bar.eventsPage.errorDelete"));
-      }
-    } catch (err) {
-      console.error("Error deleting event:", err);
-      alert(t("bar.eventsPage.errorDelete"));
-    } finally {
-      setDeletingEventId(null);
-    }
+    return `https://placehold.co/600x400/f3f4f6/6b7280?text=📷`;
   };
 
-  // Render event card for management tab
+  // CARD DESIGN TỐI GIẢN - ĐẸP - ĐÃ THÊM NÚT QUẢNG CÁO
   const renderEventCard = (ev) => {
-    const status = getStatus(ev.StartTime, ev.EndTime);
+    const status = getEventStatus(ev.StartTime, ev.EndTime, ev.Status);
+    // So sánh case-insensitive để đảm bảo đúng
+    // active = hiển thị, hidden = ẩn
+    const eventStatus = (ev.Status || "").toLowerCase().trim();
+    const isVisible = eventStatus === "active";
+    const isEnded = eventStatus === "ended";
+    const eventImage = getEventImage(ev);
+    
     return (
-      <div
-        key={ev.EventId}
-        className={cn(
-          "relative rounded-lg overflow-hidden",
-          "bg-card border-[0.5px] border-border/20",
-          "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
-          "hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]",
-          "transition-shadow duration-200"
-        )}
-      >
-        <div className={cn("relative h-48 overflow-hidden")}>
-          <img
-            src={ev.Picture || "https://placehold.co/600x400?text=No+Image"}
+      <div key={ev.EventId} className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
+        {/* Image Section */}
+        <div className="relative h-48 bg-gray-100">
+          <img 
+            src={eventImage}
             alt={ev.EventName}
-            className={cn("w-full h-full object-cover")}
-            loading="lazy"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.src = "https://placehold.co/600x400/f3f4f6/6b7280?text=📷";
+            }}
           />
-          <div className={cn(
-            "absolute inset-0",
-            "bg-gradient-to-t from-black/80 via-black/40 to-transparent"
-          )} />
           
-          {/* Status Badge */}
-          <div className={cn(
-            "absolute top-3 right-3",
-            "backdrop-blur-md bg-black/60 rounded-lg",
-            "px-3 py-1.5 border border-white/20"
-          )}>
+          {/* Status Badges */}
+          <div className="absolute top-3 left-3 right-3 flex justify-between">
             <span className={cn(
-              "inline-flex items-center gap-1.5",
-              "text-xs font-semibold text-white"
+              "px-2 py-1 rounded text-xs font-medium text-white",
+              status.color
             )}>
-              <span className={cn(
-                "w-1.5 h-1.5 rounded-full",
-                status.color === "bg-blue-500" && "bg-blue-400",
-                status.color === "bg-green-500" && "bg-green-400",
-                status.color === "bg-gray-500" && "bg-gray-400",
-                "animate-pulse"
-              )} />
               {status.label}
+            </span>
+            
+            <span className={cn(
+              "px-2 py-1 rounded text-xs font-medium text-white",
+              isVisible ? "bg-green-600" : "bg-red-600"
+            )}>
+              {isVisible ? "Hiển thị" : "Ẩn"}
             </span>
           </div>
 
           {/* Action Buttons */}
-          <div className={cn(
-            "absolute bottom-3 right-3 flex gap-2"
-          )}>
-            <button
-              onClick={() => handleEditClick(ev)}
-              className={cn(
-                "p-2 rounded-lg",
-                "bg-primary/90 hover:bg-primary",
-                "text-primary-foreground",
-                "backdrop-blur-sm",
-                "transition-colors"
-              )}
-              title={t("bar.eventsPage.editEvent")}
+          <div className="absolute bottom-3 right-3 flex gap-1">
+            <button 
+              onClick={() => { setEditingEvent(ev); setShowEditModal(true); }}
+              className="p-1.5 bg-black/80 hover:bg-black rounded text-white transition-colors"
+              title="Sửa sự kiện"
             >
-              <Pencil size={16} />
+              <Pencil size={14} />
             </button>
-            <button
-              onClick={() => handleDeleteClick(ev.EventId)}
-              disabled={deletingEventId === ev.EventId}
+            
+            <button 
+              onClick={() => handleToggle(ev.EventId)}
+              disabled={togglingId === ev.EventId || isEnded}
               className={cn(
-                "p-2 rounded-lg",
-                "bg-danger/90 hover:bg-danger",
-                "text-white",
-                "backdrop-blur-sm",
-                "transition-colors",
-                "disabled:opacity-50 disabled:cursor-not-allowed"
+                "p-1.5 rounded text-white transition-colors",
+                isVisible ? "bg-orange-600 hover:bg-orange-700" : "bg-gray-600 hover:bg-gray-700",
+                "disabled:opacity-50"
               )}
-              title={t("bar.eventsPage.deleteEvent")}
+              title={isVisible ? "Ẩn sự kiện" : "Hiện sự kiện"}
             >
-              <Trash2 size={16} />
+              {togglingId === ev.EventId ? 
+                <Loader2 size={14} className="animate-spin" /> : 
+                (isVisible ? <EyeOff size={14} /> : <Eye size={14} />)
+              }
+            </button>
+            
+            <button 
+              onClick={() => handleDelete(ev.EventId)} 
+              disabled={deletingId === ev.EventId}
+              className="p-1.5 bg-red-600 hover:bg-red-700 rounded text-white transition-colors disabled:opacity-50"
+              title="Xóa sự kiện"
+            >
+              {deletingId === ev.EventId ? 
+                <Loader2 size={14} className="animate-spin" /> : 
+                <Trash2 size={14} />
+              }
             </button>
           </div>
         </div>
 
-        <div className={cn("p-4 space-y-2")}>
-          <h4 className={cn(
-            "text-lg font-bold text-foreground",
-            "line-clamp-1"
-          )}>
+        {/* Content Section */}
+        <div className="p-4">
+          <h4 className="font-semibold text-gray-900 line-clamp-1 mb-2">
             {ev.EventName}
           </h4>
+          
           {ev.Description && (
-            <p className={cn(
-              "text-sm text-muted-foreground",
-              "line-clamp-2"
-            )}>
+            <p className="text-sm text-gray-600 line-clamp-2 mb-3">
               {ev.Description}
             </p>
           )}
-          <div className={cn("flex flex-col gap-1 text-xs text-muted-foreground")}>
-            <div className={cn("flex items-center gap-1")}>
-              <span>{t("bar.startTime")}</span>
-              <span className={cn("font-medium")}>{formatDate(ev.StartTime)}</span>
+          
+          <div className="text-xs text-gray-500 space-y-1 mb-3">
+            <div className="flex items-center gap-2">
+              <Calendar size={12} className="text-gray-400" />
+              <span>Bắt đầu: {formatDate(ev.StartTime)}</span>
             </div>
-            <div className={cn("flex items-center gap-1")}>
-              <span>{t("bar.endTime")}</span>
-              <span className={cn("font-medium")}>{formatDate(ev.EndTime)}</span>
+            <div className="flex items-center gap-2">
+              <Clock size={12} className="text-gray-400" />
+              <span>Kết thúc: {formatDate(ev.EndTime)}</span>
             </div>
           </div>
+
+          {/* NÚT QUẢNG CÁO - MỞ MODAL CHỌN GÓI */}
+          <button
+            onClick={() => handleAdvertise(ev)}
+            className={cn(
+              "w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-300",
+              "bg-purple-600 hover:bg-purple-700 text-white"
+            )}
+          >
+            <Megaphone size={14} />
+            Quảng Cáo
+          </button>
         </div>
       </div>
     );
   };
 
-  // Render other bars events (similar to BarEvent component)
-  const renderOtherBarsEvents = () => {
-    if (loading) {
-      return (
-        <div className={cn("w-full py-12 flex items-center justify-center")}>
-          <p className={cn("text-muted-foreground")}>{t("bar.loadingEvents")}</p>
-        </div>
-      );
-    }
-
-    if (otherBarsEvents.length === 0) {
-      return (
-        <div className={cn(
-          "w-full py-12 flex items-center justify-center",
-          "bg-card rounded-lg border-[0.5px] border-border/20"
-        )}>
-          <p className={cn("text-muted-foreground")}>{t("bar.eventsPage.noOtherEvents")}</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className={cn(
-        "relative w-full h-[400px] md:h-[500px] lg:h-[600px]",
-        "overflow-hidden rounded-lg",
-        "bg-card border-[0.5px] border-border/20",
-        "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-      )}>
-        <Swiper
-          spaceBetween={0}
-          autoplay={otherBarsEvents.length > 1 ? { delay: 4000 } : false}
-          pagination={{ clickable: true }}
-          loop={otherBarsEvents.length > 1}
-          modules={[Autoplay, Pagination]}
-          className={cn("w-full h-full")}
-        >
-          {otherBarsEvents.map((ev) => {
-            const status = getStatus(ev.StartTime, ev.EndTime);
-            return (
-              <SwiperSlide key={ev.EventId}>
-                <div className={cn("relative w-full h-full overflow-hidden")}>
-                  <img
-                    src={ev.Picture || "https://placehold.co/1200x600?text=No+Image"}
-                    alt={ev.EventName}
-                    className={cn("w-full h-full object-cover bg-muted")}
-                    loading="lazy"
-                  />
-
-                  <div className={cn(
-                    "absolute inset-0",
-                    "bg-gradient-to-t from-black via-black/60 via-black/30 to-transparent"
-                  )} />
-                  <div className={cn(
-                    "absolute inset-0",
-                    "bg-gradient-to-b from-black/20 via-transparent to-black/80"
-                  )} />
-
-                  <div className={cn(
-                    "absolute inset-0 flex flex-col justify-between",
-                    "p-5 md:p-6 lg:p-7 text-white z-10"
-                  )}>
-                    <div className={cn("flex items-center justify-between gap-3")}>
-                      <div className={cn("flex-1")}>
-                        <h4 className={cn(
-                          "text-3xl md:text-4xl lg:text-5xl font-extrabold",
-                          "leading-tight tracking-tight",
-                          "text-white",
-                          "drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]"
-                        )}>
-                          {ev.EventName}
-                        </h4>
-                      </div>
-                      
-                      <div className={cn(
-                        "flex-shrink-0",
-                        "backdrop-blur-md bg-black/40 rounded-lg",
-                        "px-3 py-1.5 border border-white/20",
-                        "shadow-[0_2px_8px_rgba(0,0,0,0.3)]",
-                        "self-start mt-1"
-                      )}>
-                        <span className={cn(
-                          "inline-flex items-center justify-center gap-1.5",
-                          "text-xs md:text-sm font-semibold",
-                          "text-white whitespace-nowrap"
-                        )}>
-                          <span className={cn(
-                            "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                            status.color === "bg-blue-500" && "bg-blue-400",
-                            status.color === "bg-green-500" && "bg-green-400",
-                            status.color === "bg-gray-500" && "bg-gray-400",
-                            "animate-pulse"
-                          )} />
-                          {status.label}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className={cn("space-y-3")}>
-                      {ev.Description && (
-                        <div className={cn(
-                          "max-w-xl",
-                          "backdrop-blur-sm bg-black/25 rounded-lg",
-                          "px-4 py-3 border border-white/10",
-                          "shadow-[0_1px_4px_rgba(0,0,0,0.2)]"
-                        )}>
-                          <p className={cn(
-                            "text-sm md:text-base",
-                            "leading-relaxed",
-                            "text-white/90",
-                            "line-clamp-2",
-                            "drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]"
-                          )}>
-                            {ev.Description}
-                          </p>
-                        </div>
-                      )}
-
-                      <div className={cn(
-                        "flex flex-col md:flex-row gap-2.5 md:gap-3",
-                        "backdrop-blur-md bg-black/45 rounded-lg",
-                        "px-4 py-3 border border-white/15",
-                        "shadow-[0_2px_8px_rgba(0,0,0,0.3)]"
-                      )}>
-                        <div className={cn("flex items-center gap-2.5 flex-1")}>
-                          <div className={cn(
-                            "w-8 h-8 rounded-lg",
-                            "bg-white/10 backdrop-blur-sm",
-                            "flex items-center justify-center",
-                            "border border-white/20"
-                          )}>
-                            <i className="bx bx-calendar text-base text-white"></i>
-                          </div>
-                          <div className={cn("flex-1 min-w-0")}>
-                            <p className={cn(
-                              "text-[10px] md:text-xs font-medium",
-                              "text-white/60 mb-0.5",
-                              "uppercase tracking-wider"
-                            )}>
-                              {t("bar.startTime")}
-                            </p>
-                            <p className={cn(
-                              "text-xs md:text-sm font-semibold",
-                              "text-white",
-                              "drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]",
-                              "truncate"
-                            )}>
-                              {formatDate(ev.StartTime)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className={cn("hidden md:block w-px bg-white/15")} />
-
-                        <div className={cn("flex items-center gap-2.5 flex-1")}>
-                          <div className={cn(
-                            "w-8 h-8 rounded-lg",
-                            "bg-white/10 backdrop-blur-sm",
-                            "flex items-center justify-center",
-                            "border border-white/20"
-                          )}>
-                            <i className="bx bx-time-five text-base text-white"></i>
-                          </div>
-                          <div className={cn("flex-1 min-w-0")}>
-                            <p className={cn(
-                              "text-[10px] md:text-xs font-medium",
-                              "text-white/60 mb-0.5",
-                              "uppercase tracking-wider"
-                            )}>
-                              {t("bar.endTime")}
-                            </p>
-                            <p className={cn(
-                              "text-xs md:text-sm font-semibold",
-                              "text-white",
-                              "drop-shadow-[0_1px_2px_rgba(0,0,0,0.4)]",
-                              "truncate"
-                            )}>
-                              {formatDate(ev.EndTime)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </SwiperSlide>
-            );
-          })}
-        </Swiper>
-      </div>
-    );
-  };
 
   return (
-    <div className={cn("w-full max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6")}>
-      {/* Page Header */}
-      <div className={cn("mb-6")}>
-        <h1 className={cn(
-          "text-2xl md:text-3xl font-bold text-foreground"
-        )}>
-          {t("bar.eventsPage.title")}
-        </h1>
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">Quản lý sự kiện</h1>
+        <p className="text-gray-600 mt-1">Quản lý và xem các sự kiện của bar</p>
       </div>
 
-      {/* Tabs */}
-      <div className={cn(
-        "flex gap-2 mb-6",
-        "border-b border-border/20"
-      )}>
-        <button
-          onClick={() => setActiveTab(0)}
-          className={cn(
-            "px-4 py-2 text-sm font-medium transition-colors",
-            "border-b-2",
-            activeTab === 0
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {t("bar.eventsPage.tabOtherBars")}
-        </button>
-        <button
-          onClick={() => setActiveTab(1)}
-          className={cn(
-            "px-4 py-2 text-sm font-medium transition-colors",
-            "border-b-2",
-            activeTab === 1
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {t("bar.eventsPage.tabManage")}
-        </button>
-      </div>
-
-      {/* Tab Content */}
-      <div className={cn("mt-6")}>
-        {activeTab === 0 ? (
-          renderOtherBarsEvents()
-        ) : (
-          <div className={cn("space-y-4")}>
-            {/* Create Button */}
-            <div className={cn("flex justify-end")}>
-              <Button
-                onClick={() => setShowAddModal(true)}
-                className={cn(
-                  "flex items-center gap-2",
-                  "bg-primary text-primary-foreground",
-                  "hover:bg-primary/90"
-                )}
-              >
-                <Plus size={18} />
-                {t("bar.eventsPage.createEvent")}
-              </Button>
+      {/* Events Management Section */}
+      <div className="space-y-6">
+          {/* Search and Create */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm sự kiện..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm"
+              />
             </div>
-
-            {/* Events Grid */}
-            {loading ? (
-              <div className={cn("w-full py-12 flex items-center justify-center")}>
-                <p className={cn("text-muted-foreground")}>{t("bar.loadingEvents")}</p>
-              </div>
-            ) : myEvents.length === 0 ? (
-              <div className={cn(
-                "w-full py-12 flex items-center justify-center",
-                "bg-card rounded-lg border-[0.5px] border-border/20"
-              )}>
-                <p className={cn("text-muted-foreground")}>{t("bar.noEvents")}</p>
-              </div>
-            ) : (
-              <div className={cn(
-                "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-              )}>
-                {myEvents.map((ev) => renderEventCard(ev))}
-              </div>
-            )}
+            
+            <Button 
+              onClick={() => setShowAddModal(true)} 
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm"
+            >
+              <Plus size={16} />
+              Tạo sự kiện
+            </Button>
           </div>
-        )}
-      </div>
+
+          {/* Events Grid - 3 CARDS PER ROW */}
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-6 h-6 text-gray-600 animate-spin" />
+            </div>
+          ) : filteredEvents.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+              <p className="text-gray-600">
+                {searchQuery ? "Không tìm thấy sự kiện phù hợp" : "Chưa có sự kiện nào"}
+              </p>
+              {!searchQuery && (
+                <Button 
+                  onClick={() => setShowAddModal(true)}
+                  className="mt-3 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2"
+                >
+                  <Plus size={16} className="mr-1" />
+                  Tạo sự kiện đầu tiên
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {paginatedEvents.map(renderEventCard)}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-8">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className={cn(
+                      "px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700",
+                      "hover:bg-gray-50 transition-colors",
+                      "disabled:opacity-50 disabled:cursor-not-allowed"
+                    )}
+                  >
+                    Trước
+                  </button>
+                  
+                  <div className="flex gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                      // Hiển thị tối đa 5 số trang
+                      if (totalPages <= 7) {
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={cn(
+                              "w-10 h-10 rounded-lg border transition-colors",
+                              currentPage === page
+                                ? "bg-blue-600 text-white border-blue-600"
+                                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                            )}
+                          >
+                            {page}
+                          </button>
+                        );
+                      } else {
+                        // Logic hiển thị trang với ellipsis
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={cn(
+                                "w-10 h-10 rounded-lg border transition-colors",
+                                currentPage === page
+                                  ? "bg-blue-600 text-white border-blue-600"
+                                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                              )}
+                            >
+                              {page}
+                            </button>
+                          );
+                        } else if (page === currentPage - 2 || page === currentPage + 2) {
+                          return (
+                            <span key={page} className="w-10 h-10 flex items-center justify-center text-gray-500">
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      }
+                    })}
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className={cn(
+                      "px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700",
+                      "hover:bg-gray-50 transition-colors",
+                      "disabled:opacity-50 disabled:cursor-not-allowed"
+                    )}
+                  >
+                    Sau
+                  </button>
+                  
+                  <span className="text-sm text-gray-600 ml-4">
+                    Trang {currentPage} / {totalPages} ({filteredEvents.length} sự kiện)
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
       {/* Modals */}
       {showAddModal && barPageId && (
-        <AddEventModal
-          barPageId={barPageId}
-          onClose={() => setShowAddModal(false)}
-          onSuccess={handleAddSuccess}
+        <AddEventModal 
+          barPageId={barPageId} 
+          onClose={() => setShowAddModal(false)} 
+          onSuccess={refresh} 
         />
       )}
-
+      
       {showEditModal && editingEvent && barPageId && (
         <EditEventModal
           event={editingEvent}
           barPageId={barPageId}
-          onClose={() => {
-            setShowEditModal(false);
-            setEditingEvent(null);
+          onClose={() => { 
+            setShowEditModal(false); 
+            setEditingEvent(null); 
           }}
-          onSuccess={handleEditSuccess}
+          onSuccess={refresh}
+        />
+      )}
+
+      {/* Modal chọn gói quảng cáo */}
+      {showAdPackageModal && advertisingEvent && barPageId && (
+        <EventAdPackageModal
+          event={advertisingEvent}
+          barPageId={barPageId}
+          onClose={() => {
+            setShowAdPackageModal(false);
+            setAdvertisingEvent(null);
+          }}
+          onSuccess={handlePurchaseSuccess}
         />
       )}
     </div>
   );
 }
-

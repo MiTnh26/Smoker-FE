@@ -7,12 +7,8 @@ import FeedHeader from "./components/FeedHeader"
 import { StoryBar, StoryViewer, StoryEditor } from "../../components/story"
 import PostFeed from "../../components/post/PostFeed"
 import "../../../../styles/modules/feeds/pages/Newsfeed/Newsfeed.css"
-import VideoShortBar from "../../components/video/VideoShortBar";
-import VideoShortViewer from "../../components/video/VideoShortViewer";
-import { shorts as initialShorts } from "../../data/mockShorts"
 import LiveBroadcaster from "../../components/livestream/LiveBroadcaster";
 import LiveViewer from "../../components/livestream/LiveViewer";
-import LivestreamSection from "../../components/livestream/LivestreamSection";
 import useLivestreamManager from "../../components/livestream/useLivestreamManager";
 
 import { useStoryManager } from "../../components/story";
@@ -20,8 +16,6 @@ import { useStoryManager } from "../../components/story";
 export default function NewsfeedPage() {
   const { t } = useTranslation();
   const [activeStory, setActiveStory] = useState(null)
-  const [shortVideos] = useState(initialShorts)
-  const [activeShortVideo, setActiveShortVideo] = useState(null)
   const {
     activeLivestream,
     openViewer,
@@ -29,7 +23,6 @@ export default function NewsfeedPage() {
     isBroadcasterOpen,
     openBroadcaster,
     closeBroadcaster,
-    refreshKey: livestreamRefreshKey,
   } = useLivestreamManager()
   const [showStoryEditor, setShowStoryEditor] = useState(false)
   const {
@@ -109,21 +102,12 @@ export default function NewsfeedPage() {
 
 
       <main className="newsfeed-main">
-        <LivestreamSection
-          onGoLive={handleGoLive}
-          onSelectStream={handleLivestreamClick}
-          refreshKey={livestreamRefreshKey}
+        {/* PostFeed now includes livestreams merged with posts */}
+        <PostFeed 
+          onGoLive={handleGoLive} 
+          onLivestreamClick={handleLivestreamClick}
         />
-        {/* Use PostFeed component for automatic loading */}
-        <PostFeed onGoLive={handleGoLive} />
       </main>
-      {/* Video Shorts */}
-      <div className="shorts-section">
-        <VideoShortBar
-          videos={shortVideos}
-          onVideoClick={setActiveShortVideo}
-        />
-      </div>
       {activeStory && (
         <StoryViewer
           stories={stories}
@@ -131,15 +115,6 @@ export default function NewsfeedPage() {
           entityAccountId={entityAccountId}
           onClose={() => setActiveStory(null)}
           onStoryDeleted={fetchStories}
-        />
-      )}
-      {/* Short Video Viewer */}
-      {activeShortVideo && (
-        <VideoShortViewer
-          videos={shortVideos}
-          activeVideo={activeShortVideo}
-          onClose={() => setActiveShortVideo(null)}
-          visible={!!activeShortVideo} 
         />
       )}
 

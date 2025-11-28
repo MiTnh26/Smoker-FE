@@ -49,15 +49,31 @@ export default function CustomerHeader() {
   // Fetch unread notification count (exclude Messages type)
   const fetchUnreadNotificationCount = async () => {
     try {
-      const entityAccountId = getEntityAccountId();
-      if (!entityAccountId) {
-        console.warn("[CustomerHeader] No entityAccountId available, skipping unread count fetch");
+      // Get entityAccountId from session
+      const session = getSession();
+      if (!session) {
+        setUnreadNotificationCount(0);
         return;
       }
-      const resp = await notificationApi.getUnreadCount(entityAccountId);
-      if (resp?.success) {
-        const count = resp.data?.count || 0;
-        setUnreadNotificationCount(count);
+
+      const active = getActiveEntity() || {};
+      const entities = getEntities();
+      
+      const entityAccountId =
+        active.EntityAccountId ||
+        active.entityAccountId ||
+        entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
+        entities[0]?.EntityAccountId ||
+        null;
+
+      if (!entityAccountId) {
+        setUnreadNotificationCount(0);
+        return;
+      }
+
+      const response = await notificationApi.getUnreadCount(entityAccountId);
+      if (response.success && response.data) {
+        setUnreadNotificationCount(response.data.count || 0);
       }
     } catch (error) {
       console.error("[CustomerHeader] Error fetching unread notification count:", error);

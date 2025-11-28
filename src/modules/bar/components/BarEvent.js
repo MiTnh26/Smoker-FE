@@ -11,46 +11,81 @@ export default function BarEvent({ barPageId }) {
   const { t } = useTranslation();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!barPageId) return;
     fetchEvents();
   }, [barPageId]);
 
+  // Hàm đảm bảo data luôn là array
+  const ensureArray = (data) => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (data.data && Array.isArray(data.data)) return data.data;
+    if (data.items && Array.isArray(data.items)) return data.items;
+    if (data.result && Array.isArray(data.result)) return data.result;
+    return [];
+  };
+
   const fetchEvents = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       const res = await barEventApi.getEventsByBarId(barPageId);
+      console.log("📦 API Response:", res); // Debug log
+
+      let eventsData = [];
+      
+      // Xử lý nhiều định dạng response khác nhau
       if (res.status === "success") {
-        setEvents(res.data || []);
-      } else if (res.data) {
-        // Handle case where data is directly in res.data
-        setEvents(Array.isArray(res.data) ? res.data : []);
+        eventsData = ensureArray(res.data);
+      } else if (res.data && res.data.items) {
+        eventsData = ensureArray(res.data.items);
+      } else if (Array.isArray(res)) {
+        eventsData = res;
+      } else if (res.data && Array.isArray(res.data)) {
+        eventsData = res.data;
+      } else {
+        console.warn("⚠️ Unexpected API response format:", res);
       }
+
+      console.log("🎯 Processed events:", eventsData);
+      setEvents(eventsData);
+
     } catch (err) {
       console.error("❌ Lỗi khi tải sự kiện:", err);
+      setError("Không thể tải sự kiện");
       setEvents([]);
     } finally {
       setLoading(false);
     }
   };
 
-
   // 🕓 Hàm định dạng thời gian hiển thị đẹp
   const formatDate = (dateStr) => {
     if (!dateStr) return "—";
-    const date = new Date(dateStr);
-    return date.toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "—";
+    }
   };
 
   // 🟢 Xác định trạng thái sự kiện (status)
-  const getStatus = (start, end) => {
+  const getStatus = (start, end, status) => {
+    // Ưu tiên status từ backend
+    if (status === "ended") return { label: t("bar.ended"), color: "bg-gray-500" };
+    if (status === "invisible") return { label: t("bar.invisible"), color: "bg-orange-500" };
+    
     const now = new Date();
     const startDate = new Date(start);
     const endDate = new Date(end);
@@ -61,13 +96,37 @@ export default function BarEvent({ barPageId }) {
     return { label: t("bar.ended"), color: "bg-gray-500" };
   };
 
+  // Hiển thị loading
   if (loading) {
     return (
       <div className={cn("w-full py-8 flex items-center justify-center")}>
-        <p className={cn("text-muted-foreground")}>{t("bar.loadingEvents")}</p>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className={cn("text-muted-foreground")}>{t("bar.loadingEvents")}</p>
+        </div>
       </div>
     );
   }
+
+  // Hiển thị lỗi
+  if (error) {
+    return (
+      <div className={cn("w-full py-8 flex items-center justify-center")}>
+        <div className="text-center">
+          <p className={cn("text-red-500 mb-2")}>❌ {error}</p>
+          <button 
+            onClick={fetchEvents}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Đảm bảo events là array trước khi render
+  const safeEvents = Array.isArray(events) ? events : [];
 
   return (
     <div className={cn("w-full")}>
@@ -83,7 +142,7 @@ export default function BarEvent({ barPageId }) {
         </h3>
       </div>
 
-      {events.length === 0 ? (
+      {safeEvents.length === 0 ? (
         <div className={cn(
           "w-full py-12 flex items-center justify-center",
           "bg-card rounded-lg border-[0.5px] border-border/20",
@@ -100,22 +159,27 @@ export default function BarEvent({ barPageId }) {
         )}>
           <Swiper
             spaceBetween={0}
-            autoplay={events.length > 1 ? { delay: 4000 } : false}
+            autoplay={safeEvents.length > 1 ? { delay: 4000 } : false}
             pagination={{ clickable: true }}
-            loop={events.length > 1}
+            loop={safeEvents.length > 1}
             modules={[Autoplay, Pagination]}
             className={cn("w-full h-full")}
           >
-            {events.map((ev) => {
-              const status = getStatus(ev.StartTime, ev.EndTime);
+            {safeEvents.map((ev) => {
+              if (!ev) return null; // Bảo vệ trường hợp event null
+              
+              const status = getStatus(ev.StartTime, ev.EndTime, ev.Status);
               return (
-                <SwiperSlide key={ev.EventId}>
+                <SwiperSlide key={ev.EventId || Math.random()}>
                   <div className={cn("relative w-full h-full overflow-hidden")}>
                     <img
                       src={ev.Picture || "https://placehold.co/1200x600?text=No+Image"}
-                      alt={ev.EventName}
+                      alt={ev.EventName || "Event"}
                       className={cn("w-full h-full object-cover bg-muted")}
                       loading="lazy"
+                      onError={(e) => {
+                        e.target.src = "https://placehold.co/1200x600?text=No+Image";
+                      }}
                     />
 
                     {/* Overlay gradient - Multi-layer for better text readability */}
@@ -142,7 +206,7 @@ export default function BarEvent({ barPageId }) {
                             "text-white",
                             "drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]"
                           )}>
-                            {ev.EventName}
+                            {ev.EventName || "Unnamed Event"}
                           </h4>
                         </div>
                         
@@ -164,6 +228,7 @@ export default function BarEvent({ barPageId }) {
                               status.color === "bg-blue-500" && "bg-blue-400",
                               status.color === "bg-green-500" && "bg-green-400",
                               status.color === "bg-gray-500" && "bg-gray-400",
+                              status.color === "bg-orange-500" && "bg-orange-400",
                               "animate-pulse"
                             )} />
                             {status.label}
@@ -278,7 +343,6 @@ export default function BarEvent({ barPageId }) {
           </Swiper>
         </div>
       )}
-
     </div>
   );
 }

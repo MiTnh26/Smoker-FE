@@ -309,17 +309,17 @@ export default function BarTables({ barPageId, readOnly = false }) {
     <div className="bar-tables-container">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
-      {/* Header Section */}
-      <div className="bar-tables-header">
-        <div className="bar-tables-header-content">
-          <h1 className="bar-tables-title">
-            {t("bar.tableManagementTitle")}
-          </h1>
-          <p className="bar-tables-description">
-            {t("bar.totalTables")} {totalTables}
-          </p>
-        </div>
-        {!readOnly && (
+      {/* Header Section - Chỉ hiển thị khi không phải readOnly (bar owner) */}
+      {!readOnly && (
+        <div className="bar-tables-header">
+          <div className="bar-tables-header-content">
+            <h1 className="bar-tables-title">
+              {t("bar.tableManagementTitle")}
+            </h1>
+            <p className="bar-tables-description">
+              {t("bar.totalTables")} {totalTables}
+            </p>
+          </div>
           <div className="bar-tables-actions">
             <button
               onClick={addTable}
@@ -335,11 +335,11 @@ export default function BarTables({ barPageId, readOnly = false }) {
               {saving ? t("bar.saving") : ` ${t("bar.saveAll")}`}
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Table Layout Preview Section */}
-      {tables.length > 0 && (
+      {/* Table Layout Preview Section - Chỉ hiển thị khi không phải readOnly (bar owner) */}
+      {!readOnly && tables.length > 0 && (
         <div className="bar-tables-layout-preview">
           <div className="bar-tables-layout-header">
             <h2 className="bar-tables-layout-title">

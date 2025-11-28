@@ -1,18 +1,22 @@
 import axiosClient from "./axiosClient";
 
+// Get API base URL from environment or default
+const getApiBaseUrl = () => {
+  const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:9999/api";
+  // Remove /api if it's already there (some env might have it)
+  return apiUrl.replace(/\/api\/?$/, "");
+};
+
 const songApi = {
   // Lấy tất cả bài hát
   getSongs: () => {
     console.log("Fetching songs...", axiosClient.get("/song/"));
     return axiosClient.get("/song/");
   },
-  // Stream nhạc theo filename (legacy)
+  // Stream nhạc (trả về url, FE dùng <audio src=...>)
   getSongStreamUrl: (filename) => {
-    return `${process.env.REACT_APP_API_URL || "http://localhost:9999/api"}/song/stream/${filename}`;
-  },
-  // Stream nhạc theo GridFS file id (ưu tiên)
-  getSongStreamUrlById: (fileId) => {
-    return `${process.env.REACT_APP_API_URL || "http://localhost:9999/api"}/song/stream-id/${fileId}`;
+    const baseUrl = getApiBaseUrl();
+    return `${baseUrl}/api/song/stream/${filename}`;
   },
   // Upload nhạc (formData: {file, ...})
   uploadSong: (formData) => {

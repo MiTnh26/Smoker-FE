@@ -179,7 +179,6 @@ export default function Sidebar() {
     // Map Vietnamese labels to stable i18n keys without changing config structure
     const labelKeyMap = {
       "Trang chủ": "home",
-      "Hội nhóm": "groups",
       "Sự kiện": "events",
       "Tin nhắn": "messages",
       "Hồ sơ": "profile",
@@ -263,9 +262,9 @@ export default function Sidebar() {
     const labelKeyMap = {
       "Trang chủ": "home",
       "Newsfeed": "newsfeed",
-      "Hội nhóm": "groups",
       "Sự kiện": "events",
       "Tin nhắn": "messages",
+      "Đặt bàn của tôi": "myBookings",
       "Hồ sơ": "profile",
       "Bank info": "bankInfo",
       "Dashboard": "dashboard",

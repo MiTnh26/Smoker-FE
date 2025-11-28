@@ -28,6 +28,7 @@
     "groups": "Groups",
     "events": "Events",
     "messages": "Messages",
+    "myBookings": "My Bookings",
     "profile": "Profile",
     "bankInfo": "Bank info",
     "dashboard": "Dashboard",
@@ -69,7 +70,9 @@
     "feeling": "Feeling",
     "reposted": "reposted",
     "repostedPost": "Post has been reposted",
-    "repostedMedia": "Media has been reposted"
+    "repostedMedia": "Media has been reposted",
+    "loadingMore": "Loading more...",
+    "noMorePosts": "No more posts"
   },
   "menu": {
     "settings": "Settings & Privacy",
@@ -329,7 +332,7 @@
     "cannotLoadTableTypes": "Cannot load table types list.",
     "noChangesToSave": "No changes to save.",
     "saved": "Saved!",
-    "saving": "Saving...",
+
     "errorSaving": "Error saving table types.",
     "statusEditing": "Editing",
     "statusSaved": "Saved",

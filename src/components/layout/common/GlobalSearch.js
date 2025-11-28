@@ -4,6 +4,7 @@ import searchApi from "../../../api/searchApi";
 import FollowButton from "../../common/FollowButton";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../../utils/cn";
+import { getAvatarUrl } from "../../../utils/defaultAvatar";
 
 const TABS = [
   { key: "all", label: "Tất cả" },
@@ -18,7 +19,7 @@ export default function GlobalSearch() {
   const [q, setQ] = useState("");
   const [active, setActive] = useState("all");
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState({ users: [], bars: [], djs: [], dancers: [] });
+  const [data, setData] = useState({ users: [], bars: [], djs: [], dancers: [], posts: [] });
   const [refreshTick, setRefreshTick] = useState(0);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
 
@@ -27,14 +28,55 @@ export default function GlobalSearch() {
   useEffect(() => {
     let alive = true;
     const run = async () => {
-      if (!debouncedQ) {
-        setData({ users: [], bars: [], djs: [], dancers: [] });
+        if (!debouncedQ || !String(debouncedQ).trim()) {
+        console.log('[GlobalSearch] Empty debounced query, clearing data');
+        setData({ users: [], bars: [], djs: [], dancers: [], posts: [] });
         return;
       }
+      console.log('[GlobalSearch] Starting search with debounced query:', debouncedQ);
       setLoading(true);
       try {
         const res = await searchApi.searchAll(debouncedQ);
-        if (alive) setData(res);
+        console.log('[GlobalSearch] Search result received:', {
+          resType: typeof res,
+          resKeys: res ? Object.keys(res) : [],
+          usersCount: res?.users?.length || 0,
+          barsCount: res?.bars?.length || 0,
+          djsCount: res?.djs?.length || 0,
+          dancersCount: res?.dancers?.length || 0,
+          fullRes: res
+        });
+        if (alive) {
+          // Ensure all properties exist, default to empty arrays if undefined
+          // Đảm bảo posts là array, không phải object
+          let postsArray = [];
+          if (Array.isArray(res?.posts)) {
+            postsArray = res.posts;
+          } else if (res?.posts && typeof res.posts === 'object') {
+            postsArray = Object.values(res.posts);
+            console.warn('[GlobalSearch] Posts was an object, converted to array');
+          }
+          
+          const newData = {
+            users: Array.isArray(res?.users) ? res.users : [],
+            bars: Array.isArray(res?.bars) ? res.bars : [],
+            djs: Array.isArray(res?.djs) ? res.djs : [],
+            dancers: Array.isArray(res?.dancers) ? res.dancers : [],
+            posts: postsArray, // Đảm bảo luôn là array
+          };
+          console.log('[GlobalSearch] Setting data:', {
+            usersCount: newData.users.length,
+            barsCount: newData.bars.length,
+            djsCount: newData.djs.length,
+            dancersCount: newData.dancers.length
+          });
+          setData(newData);
+        }
+      } catch (error) {
+        console.error('[GlobalSearch] Error in search:', error);
+        if (alive) {
+          setData({ users: [], bars: [], djs: [], dancers: [], posts: [] });
+        }
       } finally {
         if (alive) setLoading(false);
       }
@@ -45,14 +87,26 @@ export default function GlobalSearch() {
 
   const all = useMemo(() => {
     return [
-      ...data.users.map(x => ({ ...x, _group: "users" })),
-      ...data.bars.map(x => ({ ...x, _group: "bars" })),
-      ...data.djs.map(x => ({ ...x, _group: "djs" })),
-      ...data.dancers.map(x => ({ ...x, _group: "dancers" })),
+      ...(data.users || []).map(x => ({ ...x, _group: "users" })),
+      ...(data.bars || []).map(x => ({ ...x, _group: "bars" })),
+      ...(data.djs || []).map(x => ({ ...x, _group: "djs" })),
+      ...(data.dancers || []).map(x => ({ ...x, _group: "dancers" })),
     ];
   }, [data]);
 
-  const list = active === "all" ? all : (data[active] || []);
+  const list = useMemo(() => {
+    if (active === "all") return all;
+    // Khi ở tab "Người dùng", gộp cả users, djs, và dancers
+    if (active === "users") {
+      return [
+        ...(data.users || []),
+        ...(data.djs || []),
+        ...(data.dancers || []),
+      ];
+    }
+    // Đối với các tab khác (bars, djs, dancers), chỉ hiển thị dữ liệu tương ứng
+    return data[active] || [];
+  }, [active, data, all]);
 
   return (
     <>
@@ -186,9 +240,13 @@ export default function GlobalSearch() {
                     onClick={() => onOpenItem(navigate, item, setIsMobileExpanded, setQ)}
                   >
                     <img
-                      src={item.avatar || "https://via.placeholder.com/36"}
+                      src={getAvatarUrl(item.avatar, 36)}
                       alt={item.name}
                       className={cn("w-9 h-9 rounded-full object-cover", "sm:w-8 sm:h-8")}
+                      onError={(e) => {
+                        // Fallback to default avatar if image fails to load
+                        e.target.src = getAvatarUrl(null, 36);
+                      }}
                     />
                     <div>
                       <div className={cn("font-semibold text-foreground text-sm", "sm:text-xs")}>
@@ -318,6 +376,12 @@ function onOpenItem(navigate, item, setIsMobileExpanded, setQ) {
     }
   } catch (error) {
     console.error("[GlobalSearch] Error checking own profile:", error);
+  }
+  
+  // Validate item.id before navigating
+  if (!item.id) {
+    console.error("[GlobalSearch] Item missing id:", item);
+    return;
   }
   
   // All items (BAR, DJ, DANCER, USER) should navigate to /profile/:id

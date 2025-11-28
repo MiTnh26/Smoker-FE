@@ -12,6 +12,7 @@ import ShareModal from "../modals/ShareModal"
 import NotificationToPostModal from "../modals/NotificationToPostModal"
 import ReadMoreText from "../comment/ReadMoreText"
 import { cn } from "../../../../utils/cn"
+import { getAvatarUrl } from "../../../../utils/defaultAvatar"
 import "../../../../styles/modules/feeds/components/post/post-card.css"
 
 export default function PostCard({
@@ -177,6 +178,31 @@ export default function PostCard({
       }
       const currentUser = session?.account
       const activeEntity = session?.activeEntity || currentUser
+      const entities = Array.isArray(session?.entities) ? session.entities : []
+
+      const tryNormalizeEntityId = (entity) => (
+        entity?.EntityAccountId ||
+        entity?.entityAccountId ||
+        entity?.entity_account_id ||
+        null
+      )
+
+      const resolveViewerEntityAccountId = () => {
+        let resolved =
+          tryNormalizeEntityId(activeEntity) ||
+          tryNormalizeEntityId(currentUser)
+
+        if (!resolved && activeEntity?.id && entities.length > 0) {
+          const match = entities.find((entity) => {
+            if (!entity?.id) return false
+            return String(entity.id).toLowerCase() === String(activeEntity.id).toLowerCase()
+          })
+          resolved = tryNormalizeEntityId(match)
+        }
+        return resolved || null
+      }
+
+      const viewerEntityAccountId = resolveViewerEntityAccountId()
       const normalizeTypeRole = (ae) => {
         const raw = (ae?.role || "").toString().toLowerCase()
         if (raw === "bar") return "BarPage"
@@ -191,9 +217,9 @@ export default function PostCard({
       setLikeCount((c) => c + (nextLiked ? 1 : -1))
 
       if (nextLiked) {
-        await likePost(post.id, { typeRole })
+        await likePost(post.id, { typeRole, entityAccountId: viewerEntityAccountId })
       } else {
-        await unlikePost(post.id)
+        await unlikePost(post.id, { entityAccountId: viewerEntityAccountId })
       }
     } catch (error) {
       // Revert optimistic update on error
@@ -301,7 +327,7 @@ export default function PostCard({
       "post-card",
       /* Base Styles - Instagram-inspired Minimalist Design */
       "bg-card text-card-foreground rounded-lg",
-      "shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 mb-4",
+      "shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 mb-0",
       "border-[0.5px] border-border/20 relative overflow-hidden",
       /* Transitions */
       "transition-all duration-200 ease-out",
@@ -310,13 +336,16 @@ export default function PostCard({
       "hover:border-border/30"
     )}>
       {/* Header */}
-      <div className="flex justify-between items-start mb-2 relative">
+      <div className="flex justify-between items-start mb-1.5 relative">
         <div className="flex items-center gap-3.5 flex-1 min-w-0">
           <div className="relative flex-shrink-0">
             <img
-              src={post.avatar || "https://via.placeholder.com/40"}
+              src={getAvatarUrl(post.avatar, 40)}
               alt={post.user}
               onClick={handleProfileClick}
+              onError={(e) => {
+                e.target.src = getAvatarUrl(null, 40);
+              }}
               className={cn(
                 "w-14 h-14 rounded-2xl object-cover",
                 "border-2 border-primary/20 ring-2 ring-primary/5",
@@ -608,9 +637,12 @@ export default function PostCard({
                 {originalPost.user && (
                   <div className="flex items-center gap-2 mb-2">
                     <img
-                      src={originalPost.avatar || "https://via.placeholder.com/32"}
+                      src={getAvatarUrl(originalPost.avatar, 32)}
                       alt={originalPost.user}
                       className="w-8 h-8 rounded-full object-cover"
+                      onError={(e) => {
+                        e.target.src = getAvatarUrl(null, 32);
+                      }}
                     />
                     <span className="font-semibold text-[0.9rem] text-foreground">
                       {originalPost.user}

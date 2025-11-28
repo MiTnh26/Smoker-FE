@@ -96,17 +96,14 @@ export default function FollowButton({ followingId, followingType, onChange, com
           const followerAvatar = active.avatar || active.Avatar || null;
           
           // Create notification for the followed user
-          // recipientEntityAccountId: followingId (should be EntityAccountId from parent)
-          // senderEntityAccountId: senderEntityAccountId (EntityAccountId of current active role)
+          // receiverEntityAccountId: followingId (EntityAccountId của người được follow)
+          // senderEntityAccountId: senderEntityAccountId (EntityAccountId của người follow)
           await notificationApi.createNotification({
-            recipientEntityAccountId: followingId,
-            senderEntityAccountId: senderEntityAccountId,
             type: "Follow",
-            title: "Người dùng mới theo dõi bạn",
-            message: `${followerName} đã theo dõi bạn`,
-            link: `/profile/${senderEntityAccountId}`,
-            senderName: followerName,
-            senderAvatar: followerAvatar,
+            receiverEntityAccountId: followingId, // EntityAccountId của người nhận notification
+            senderEntityAccountId: senderEntityAccountId, // EntityAccountId của người gửi
+            content: `${followerName} đã theo dõi bạn`, // Nội dung notification
+            link: `/profile/${senderEntityAccountId}`, // Link đến profile của người follow
           });
           console.log("✅ FollowButton - Notification created with senderEntityAccountId:", senderEntityAccountId);
         } catch (notifError) {

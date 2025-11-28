@@ -6,39 +6,16 @@ import { useTranslation } from "react-i18next";
 import { useSocket } from "../../../contexts/SocketContext";
 import { getSession, getActiveEntity, getEntities } from "../../../utils/sessionManager";
 import notificationApi from "../../../api/notificationApi";
-import publicProfileApi from "../../../api/publicProfileApi";
+
 import "../../../styles/components/notificationDropdown.css";
 
 export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountChange }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [senderAvatars, setSenderAvatars] = useState({}); // Cache avatars by senderEntityAccountId
   const navigate = useNavigate();
   const { socket, isConnected } = useSocket();
   const { t } = useTranslation();
-
-  // Fetch avatar for a sender
-  const fetchSenderAvatar = async (senderEntityAccountId) => {
-    if (!senderEntityAccountId || senderAvatars[senderEntityAccountId]) {
-      return; // Already cached or no entityAccountId
-    }
-    
-    try {
-      const response = await publicProfileApi.getByEntityId(senderEntityAccountId);
-      if (response?.success && response.data) {
-        const avatar = response.data.avatar || response.data.Avatar || null;
-        if (avatar) {
-          setSenderAvatars(prev => ({
-            ...prev,
-            [senderEntityAccountId]: avatar
-          }));
-        }
-      }
-    } catch (error) {
-      console.warn(`[NotificationPanel] Failed to fetch avatar for ${senderEntityAccountId}:`, error);
-    }
-  };
 
   // Get entityAccountId from session
   const getEntityAccountId = () => {
@@ -61,21 +38,11 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
         ...(entityAccountId && { entityAccountId })
       });
       if (response.success) {
-        const raw = response.data || [];
-        // Exclude message-type notifications from the general list
-        const notifs = raw.filter(n => n.type !== "Messages");
+        const notifs = response.data || [];
         setNotifications(notifs);
         
-        // Fetch avatars for all unique senders
-        const uniqueSenders = [...new Set(notifs.map(n => n.senderEntityAccountId).filter(Boolean))];
-        uniqueSenders.forEach(senderId => {
-          fetchSenderAvatar(senderId);
-        });
-        
-        // Update unread count from filtered notifications
         const unread = notifs.filter((notif) => notif.status === "Unread").length || 0;
         setUnreadCount(unread);
-        // Notify parent of unread count change
         if (onUnreadCountChange) {
           onUnreadCountChange(unread);
         }
@@ -90,11 +57,31 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   // Fetch unread count separately
   const fetchUnreadCount = async () => {
     try {
-      const entityAccountId = getEntityAccountId();
-      // Use dedicated unread count endpoint
-      const resp = await notificationApi.getUnreadCount(entityAccountId);
-      if (resp.success) {
-        const count = resp.data?.count || 0;
+      // Get entityAccountId from session
+      const session = getSession();
+      if (!session) {
+        setUnreadCount(0);
+        return;
+      }
+
+      const active = getActiveEntity() || {};
+      const entities = getEntities();
+      
+      const entityAccountId =
+        active.EntityAccountId ||
+        active.entityAccountId ||
+        entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
+        entities[0]?.EntityAccountId ||
+        null;
+
+      if (!entityAccountId) {
+        setUnreadCount(0);
+        return;
+      }
+
+      const response = await notificationApi.getUnreadCount(entityAccountId);
+      if (response.success && response.data) {
+        const count = response.data.count || 0;
         setUnreadCount(count);
         if (onUnreadCountChange) onUnreadCountChange(count);
       }
@@ -252,20 +239,13 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
     }
   };
 
-  // Get avatar for notification sender
-  const getSenderAvatar = (notification) => {
-    const senderId = notification.senderEntityAccountId;
-    if (senderId && senderAvatars[senderId]) {
-      return senderAvatars[senderId];
-    }
-    return null;
-  };
+
 
   // Format notification content with translation
   // Backend now stores raw data (sender name only), Frontend translates based on type
   const getNotificationText = (notification) => {
-    const { type, content, link } = notification;
-    const senderName = content || "Someone";
+    const { type, content, link, sender } = notification;
+    const senderName = sender?.name || "Someone";
     
     // Check if content contains ":" (old format with message preview)
     const hasPreview = content && content.includes(":");
@@ -400,10 +380,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
         // Add new notification to the list (only non-Messages)
         setNotifications((prev) => [data.notification, ...prev]);
         
-        // Fetch avatar for sender
-        if (data.notification.senderEntityAccountId) {
-          fetchSenderAvatar(data.notification.senderEntityAccountId);
-        }
+        // Sender info is now included in the notification object from the socket
       }
       
       // Update unread count (backend already excludes Messages)
@@ -494,7 +471,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
         {!loading && notifications.length > 0 && (
           notifications.map((notification) => {
             const isUnread = notification.status === "Unread";
-            const senderAvatar = getSenderAvatar(notification);
+                        const senderAvatar = notification.sender?.avatar;
             return (
               <button
                 key={notification._id}

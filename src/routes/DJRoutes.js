@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { Route } from "react-router-dom";
 import { DJDashboard } from "../modules/dj";
+import DJProfile from "../modules/dj/pages/DJProfile";
 import ProtectedRoute from "./ProtectedRoute";
 import DJLayout from "../layouts/DJLayout";
 import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed";
@@ -29,6 +30,14 @@ export default function DJRoutes() {
         element={
           <ProtectedRoute role="dj">
             <DJDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dj/profile"
+        element={
+          <ProtectedRoute role="dj">
+            <DJLayout><DJProfile /></DJLayout>
           </ProtectedRoute>
         }
       />
