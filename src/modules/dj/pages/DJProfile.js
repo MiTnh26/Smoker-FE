@@ -22,8 +22,6 @@ import { ImageUploadField } from "../../../components/profile/ImageUploadField";
 import BannedAccountOverlay from "../../../components/common/BannedAccountOverlay";
 import DJBookingRequests from "../components/DJBookingRequests";
 import PerformerSchedule from "../components/PerformerSchedule";
-import React from "react";
-import OwnProfilePage from "../../customer/pages/OwnProfilePage";
 
 export default function DJProfile() {
     const { t } = useTranslation();
@@ -80,14 +78,16 @@ export default function DJProfile() {
         } catch {}
     }, []);
     
+    const resolvedBusinessId = businessId || activeBusinessId;
+
     // Use EntityAccountId for followers/following (similar to BarProfile)
     // Calculate from businessEntityId or businessId (fallback for API compatibility)
-    const followEntityId = businessEntityId || businessId;
+    const followEntityId = businessEntityId || resolvedBusinessId;
     const { followers, fetchFollowers } = useFollowers(followEntityId);
     const { following, fetchFollowing } = useFollowing(followEntityId);
     
     // Use shared hook for posts - prioritize EntityAccountId
-    const entityIdForPosts = businessEntityId || businessId;
+    const entityIdForPosts = businessEntityId || resolvedBusinessId;
     const { posts: businessPosts, loading: postsLoading } = useProfilePosts(entityIdForPosts);
     
     useEffect(() => {
@@ -100,9 +100,10 @@ export default function DJProfile() {
 
     useEffect(() => {
         const fetchDJ = async () => {
-            console.log("🎧 useParams businessId:", businessId);
+            if (!resolvedBusinessId) return;
+            console.log("🎧 resolved businessId:", resolvedBusinessId);
             try {
-                const res = await businessApi.getBusinessById(businessId);
+                const res = await businessApi.getBusinessById(resolvedBusinessId);
                 console.log("✅ API getBusinessById:", res);
 
                 if (res.status === "success" && res.data) {
@@ -222,7 +223,7 @@ export default function DJProfile() {
         };
 
         fetchDJ();
-    }, [businessId]);
+    }, [resolvedBusinessId]);
 
 
     // Helper to display gender in Vietnamese
@@ -237,13 +238,19 @@ export default function DJProfile() {
     };
 
     // Calculate isOwnProfile early (before early returns)
-    const isOwnProfile = activeBusinessId && businessId && String(activeBusinessId).toLowerCase() === String(businessId).toLowerCase();
+    const isOwnProfile =
+        activeBusinessId &&
+        resolvedBusinessId &&
+        String(activeBusinessId).toLowerCase() === String(resolvedBusinessId).toLowerCase();
 
     // Fetch pending bookings count for badge (must be before early returns)
     useEffect(() => {
         const fetchPendingCount = async () => {
             // Calculate isOwnProfile inside useEffect to ensure it's up to date
-            const currentIsOwnProfile = activeBusinessId && businessId && String(activeBusinessId).toLowerCase() === String(businessId).toLowerCase();
+            const currentIsOwnProfile =
+                activeBusinessId &&
+                resolvedBusinessId &&
+                String(activeBusinessId).toLowerCase() === String(resolvedBusinessId).toLowerCase();
             
             if (!currentIsOwnProfile) {
                 setPendingBookingsCount(0);
@@ -265,14 +272,17 @@ export default function DJProfile() {
             }
         };
         
-        const currentIsOwnProfile = activeBusinessId && businessId && String(activeBusinessId).toLowerCase() === String(businessId).toLowerCase();
+        const currentIsOwnProfile =
+            activeBusinessId &&
+            resolvedBusinessId &&
+            String(activeBusinessId).toLowerCase() === String(resolvedBusinessId).toLowerCase();
         if (currentIsOwnProfile && (businessEntityId || currentUserEntityId)) {
             fetchPendingCount();
             // Refresh count every 30 seconds
             const interval = setInterval(fetchPendingCount, 30000);
             return () => clearInterval(interval);
         }
-    }, [activeBusinessId, businessId, businessEntityId, currentUserEntityId]);
+    }, [activeBusinessId, resolvedBusinessId, businessEntityId, currentUserEntityId]);
 
     if (loading) return <div className="pp-container">{t('profile.loadingProfile')}</div>;
     if (error) return <div className="pp-container">{error}</div>;
@@ -836,12 +846,16 @@ export default function DJProfile() {
                                 </button>
                                 <button
                                     onClick={async () => {
+                                        if (!resolvedBusinessId) {
+                                            alert("Không tìm thấy ID DJ để lưu thay đổi.");
+                                            return;
+                                        }
                                         try {
                                             setSaving(true);
                                             
                                             const formData = new FormData();
-                                            // Use EntityAccountId if available, fallback to businessId for API compatibility
-                                            formData.append('entityId', businessEntityId || businessId);
+                                            // Use EntityAccountId if available, fallback to resolvedBusinessId for API compatibility
+                                            formData.append('entityId', businessEntityId || resolvedBusinessId);
                                             formData.append('userName', profile.userName || '');
                                             formData.append('phone', profile.phone || '');
                                             formData.append('bio', profile.bio || '');
@@ -914,7 +928,7 @@ export default function DJProfile() {
                                             
                                             if (res.status === "success") {
                                                 // Reload profile
-                                                const reloadRes = await businessApi.getBusinessById(businessId);
+                                                const reloadRes = await businessApi.getBusinessById(resolvedBusinessId);
                                                 if (reloadRes.status === "success" && reloadRes.data) {
                                                     const data = reloadRes.data;
                                                     
@@ -1021,7 +1035,3 @@ export default function DJProfile() {
         </>
     );
 }
-  return <OwnProfilePage profileType="BusinessAccount" />;
-}
-
- 
