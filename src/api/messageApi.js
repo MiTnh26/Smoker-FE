@@ -35,7 +35,7 @@ const messageApi = {
     axiosClient.post("/messages/conversation", { participant1Id, participant2Id }),
   getUnreadCount: (entityAccountId) => {
     const params = entityAccountId ? { entityAccountId } : {};
-    return axiosClient.get("/messages/unread-count", { params });
+    return axiosClient.get("/messages/messages/unread-count", { params });
   },
 };
 
