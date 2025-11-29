@@ -18,10 +18,16 @@ import { getSession } from "../../../utils/sessionManager";
 import { userApi } from "../../../api/userApi";
 import { normalizeProfileData } from "../../../utils/profileDataMapper";
 import { mapPostForCard } from "../../../utils/postTransformers";
-import { CustomerTabs } from "../../../components/profile/ProfileTabs/CustomerTabs";
-import { BarTabs } from "../../../components/profile/ProfileTabs/BarTabs";
-import { DJTabs } from "../../../components/profile/ProfileTabs/DJTabs";
-import { DancerTabs } from "../../../components/profile/ProfileTabs/DancerTabs";
+import PostCard from "../../feeds/components/post/PostCard";
+import { DollarSign } from "lucide-react";
+import BarEvent from "../../bar/components/BarEvent";
+import BarMenu from "../../bar/components/BarMenuCombo";
+import BarVideo from "../../bar/components/BarVideo";
+import BarReview from "../../bar/components/BarReview";
+import BarTables from "../../bar/components/BarTables";
+import BarTablesPage from "../../customer/pages/BarTablesPage";
+import PerformerReviews from "../../business/components/PerformerReviews";
+import { ProfileInfoSection } from "../../../components/profile/ProfileInfoSection";
 
 const getWindow = () => (typeof globalThis !== "undefined" ? globalThis : undefined);
 
@@ -52,6 +58,7 @@ export default function ProfilePage() {
   const menuRef = useRef(null);
   const [activeTab, setActiveTab] = useState("info");
   const [isBanned, setIsBanned] = useState(false);
+  const [showBookingView, setShowBookingView] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -234,17 +241,433 @@ export default function ProfilePage() {
     profile?.id
   ) : null;
 
+  // Helper to display gender in Vietnamese
+  const displayGender = (gender) => {
+    if (!gender) return "Chưa cập nhật";
+    const genderLower = gender.toLowerCase();
+    if (genderLower === 'male') return 'Nam';
+    if (genderLower === 'female') return 'Nữ';
+    if (genderLower === 'other') return 'Khác';
+    // If already in Vietnamese, return as-is
+    return gender;
+  };
+
+  // Render tab content for bar profile
+  const renderBarTabContent = () => {
+    switch (activeTab) {
+      case "info":
+        return (
+          <div className={cn("flex flex-col gap-6")}>
+            <ProfileInfoSection profile={profile} />
+            <BarEvent barPageId={barPageId} />
+            <div className={cn("bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]")}>
+              <BarMenu barPageId={barPageId} />
+            </div>
+          </div>
+        );
+      case "posts":
+        return (
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : posts && posts.length > 0 ? (
+              <div className={cn("space-y-4")}>
+                {posts.map(post => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noPosts")}
+              </div>
+            )}
+          </div>
+        );
+      case "videos":
+        return (
+          <div className="profile-section">
+            <BarVideo barPageId={barPageId} />
+          </div>
+        );
+      case "reviews":
+        return (
+          <div className="profile-section">
+            <BarReview barPageId={barPageId} />
+          </div>
+        );
+      case "tables":
+        // Only bar owners can create tables, others can only view
+        const currentUserRole = getCurrentUserRole();
+        const canCreateTables = isOwnProfile && currentUserRole === "BAR";
+        return (
+          <div className="profile-section">
+            {!canCreateTables ? (
+              // Customer view: chỉ hiển thị nút "Đặt bàn ngay"
+              <div className="flex flex-col items-center justify-center py-12">
+                <button
+                  onClick={() => setShowBookingView(!showBookingView)}
+                  className={cn(
+                    "px-8 py-4 rounded-xl font-bold text-lg",
+                    "border-none",
+                    "transition-all duration-300",
+                    "active:scale-95",
+                    "flex items-center gap-2",
+                    "shadow-lg hover:shadow-xl",
+                    showBookingView 
+                      ? "bg-gray-500 text-white hover:bg-gray-600" 
+                      : "bg-gradient-to-r from-[rgb(var(--success))] to-[rgb(var(--primary))] text-white hover:from-[rgb(var(--success))] hover:to-[rgb(var(--primary-hover))]",
+                    "transform hover:scale-105"
+                  )}
+                  style={{
+                    boxShadow: showBookingView 
+                      ? '0 4px 12px rgba(0, 0, 0, 0.15)' 
+                      : '0 4px 16px rgba(var(--success), 0.4)'
+                  }}
+                >
+                  <span>{showBookingView ? "Hủy đặt bàn" : "🍽️ Đặt bàn ngay"}</span>
+                </button>
+                {showBookingView && <BarTablesPage barId={barPageId} />}
+              </div>
+            ) : (
+              // Bar owner view: hiển thị danh sách bàn để quản lý
+              <BarTables barPageId={barPageId} readOnly={!canCreateTables} />
+            )}
+          </div>
+        );
+        case "booking":
+  // Bất kỳ user đã đăng nhập nào cũng có thể đặt bàn
+  // (Không cần kiểm tra role BAR hay chủ quán nữa)
+  return (
+    <div className="profile-section">
+      <div className="flex flex-col items-center justify-center py-12">
+        <button
+          onClick={() => setShowBookingView(!showBookingView)}
+          className={cn(
+            "px-8 py-4 rounded-xl font-bold text-lg",
+            "border-none",
+            "transition-all duration-300",
+            "active:scale-95",
+            "flex items-center gap-2",
+            "shadow-lg hover:shadow-xl",
+            showBookingView
+              ? "bg-gray-500 text-white hover:bg-gray-600"
+              : "bg-gradient-to-r from-[rgb(var(--success))] to-[rgb(var(--primary))] text-white hover:from-[rgb(var(--success))] hover:to-[rgb(var(--primary-hover))]",
+            "transform hover:scale-105"
+          )}
+          style={{
+            boxShadow: showBookingView
+              ? "0 4px 12px rgba(0, 0, 0, 0.15)"
+              : "0 4px 16px rgba(var(--success), 0.4)",
+          }}
+        >
+          <span>{showBookingView ? "Hủy đặt bàn" : "Đặt bàn ngay"}</span>
+        </button>
+
+        {/* Hiển thị form/component đặt bàn khi người dùng bấm nút */}
+        {showBookingView && <BarTablesPage barId={barPageId} />}
+      </div>
+    </div>
+  );
+      default:
+        return null;
+    }
+  };
+
+  // Render tab content for DJ profile
+  const renderDJTabContent = () => {
+    switch (activeTab) {
+      case "info":
+        return (
+          <div className={cn("flex flex-col gap-6")}>
+            {/* Price Highlight Section */}
+            {(profile.pricePerHours || profile.pricePerSession) && (
+              <div className={cn(
+                "bg-gradient-to-br from-primary/20 to-primary/5",
+                "rounded-lg p-6 border-[0.5px] border-primary/30",
+                "shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+              )}>
+                <h3 className={cn("text-xl font-bold text-foreground mb-4 flex items-center gap-2")}>
+                  <DollarSign className="w-5 h-5" />
+                  {t('profile.priceTable')}
+                </h3>
+                <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4")}>
+                  {profile.pricePerHours && (
+                    <div className={cn(
+                      "bg-card rounded-lg p-4 border border-border/20"
+                    )}>
+                      <p className={cn("text-sm text-muted-foreground mb-1")}>
+                        {t('profile.pricePerHour')}
+                      </p>
+                      <p className={cn("text-2xl font-bold text-primary")}>
+                        {Number.parseInt(profile.pricePerHours || 0, 10).toLocaleString('vi-VN')} đ
+                      </p>
+                    </div>
+                  )}
+                  {profile.pricePerSession && (
+                    <div className={cn(
+                      "bg-card rounded-lg p-4 border border-border/20"
+                    )}>
+                      <p className={cn("text-sm text-muted-foreground mb-1")}>
+                        {t('profile.pricePerSession')}
+                      </p>
+                      <p className={cn("text-2xl font-bold text-primary")}>
+                        {Number.parseInt(profile.pricePerSession || 0, 10).toLocaleString('vi-VN')} đ
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <ProfileInfoSection profile={profile} />
+          </div>
+        );
+      case "posts":
+        return (
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : posts && posts.length > 0 ? (
+              <div className={cn("space-y-4")}>
+                {posts.map(post => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noPosts")}
+              </div>
+            )}
+          </div>
+        );
+      case "music": {
+        // Filter posts that have music
+        const musicPosts = posts.filter(post => {
+          return post.audioSrc || 
+                 post.audioTitle || 
+                 post.purchaseLink ||
+                 post.targetType === "music" ||
+                 (post.medias?.audios && post.medias.audios.length > 0);
+        });
+        
+        return (
+          <div className={cn("flex flex-col gap-6")}>
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : musicPosts && musicPosts.length > 0 ? (
+              <div className={cn("space-y-4")}>
+                {musicPosts.map(post => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                <p>{t('profile.musicTab')}</p>
+                <p className={cn("text-sm mt-2")}>Chưa có bài nhạc nào</p>
+              </div>
+            )}
+          </div>
+        );
+      }
+      case "reviews":
+        return (
+          <div className={cn("flex flex-col gap-6")}>
+            {performerTargetId && (
+              <PerformerReviews
+                businessAccountId={performerTargetId}
+                performerName={profile.name}
+                performerRole={profile.role || "DJ"}
+                isOwnProfile={isOwnProfile}
+                allowSubmission={!isOwnProfile}
+              />
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Render tab content for Dancer profile
+  const renderDancerTabContent = () => {
+    switch (activeTab) {
+      case "info":
+        return (
+          <div className={cn("flex flex-col gap-6")}>
+            {/* Price Highlight Section */}
+            {(profile.pricePerHours || profile.pricePerSession) && (
+              <div className={cn(
+                "bg-gradient-to-br from-primary/20 to-primary/5",
+                "rounded-lg p-6 border-[0.5px] border-primary/30",
+                "shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
+              )}>
+                <h3 className={cn("text-xl font-bold text-foreground mb-4 flex items-center gap-2")}>
+                  <DollarSign className="w-5 h-5" />
+                  {t('profile.priceTable')}
+                </h3>
+                <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4")}>
+                  {profile.pricePerHours && (
+                    <div className={cn(
+                      "bg-card rounded-lg p-4 border border-border/20"
+                    )}>
+                      <p className={cn("text-sm text-muted-foreground mb-1")}>
+                        {t('profile.pricePerHour')}
+                      </p>
+                      <p className={cn("text-2xl font-bold text-primary")}>
+                        {Number.parseInt(profile.pricePerHours || 0, 10).toLocaleString('vi-VN')} đ
+                      </p>
+                    </div>
+                  )}
+                  {profile.pricePerSession && (
+                    <div className={cn(
+                      "bg-card rounded-lg p-4 border border-border/20"
+                    )}>
+                      <p className={cn("text-sm text-muted-foreground mb-1")}>
+                        {t('profile.pricePerSession')}
+                      </p>
+                      <p className={cn("text-2xl font-bold text-primary")}>
+                        {Number.parseInt(profile.pricePerSession || 0, 10).toLocaleString('vi-VN')} đ
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <ProfileInfoSection profile={profile} />
+          </div>
+        );
+      case "posts":
+        return (
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : posts && posts.length > 0 ? (
+              <div className={cn("space-y-4")}>
+                {posts.map(post => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noPosts")}
+              </div>
+            )}
+          </div>
+        );
+      case "videos":
+        return (
+          <div className="profile-section">
+            <BarVideo barPageId={entityId} />
+          </div>
+        );
+      case "reviews":
+        return (
+          <div className={cn("flex flex-col gap-6")}>
+            {performerTargetId && (
+              <PerformerReviews
+                businessAccountId={performerTargetId}
+                performerName={profile.name}
+                performerRole={profile.role || "Dancer"}
+                isOwnProfile={isOwnProfile}
+                allowSubmission={!isOwnProfile}
+              />
+            )}
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Render tab content for Customer/Account profile
+  const renderCustomerTabContent = () => {
+    switch (activeTab) {
+      case "info":
+        return (
+          <div className={cn("flex flex-col gap-6")}>
+            <ProfileInfoSection profile={profile} />
+          </div>
+        );
+      case "posts":
+        return (
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : posts && posts.length > 0 ? (
+              <div className={cn("space-y-4")}>
+                {posts.map(post => (
+                  <PostCard
+                    key={post._id || post.id}
+                    post={post}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noPosts")}
+              </div>
+            )}
+          </div>
+        );
+      case "videos":
+        return (
+          <div className="profile-section">
+            <BarVideo barPageId={entityId} />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   const renderTabContent = () => {
+    // Dùng các component tabs cũ cho cả own profile và profile của người khác
     const props = { profile, posts, postsLoading, activeTab, isOwnProfile };
 
     if (isBarProfile) {
-      return <BarTabs {...props} barPageId={barPageId} currentUserRole={getCurrentUserRole()} />;
+      return renderBarTabContent();
     } else if (isDJProfile) {
-      return <DJTabs {...props} performerTargetId={performerTargetId} />;
+      return renderDJTabContent();
     } else if (isDancerProfile) {
-      return <DancerTabs {...props} performerTargetId={performerTargetId} entityId={entityId} />;
+      return renderDancerTabContent();
     } else if (isCustomerProfile) {
-      return <CustomerTabs {...props} entityId={entityId} />;
+      return renderCustomerTabContent();
     } else {
       return null;
     }
@@ -282,6 +705,7 @@ export default function ProfilePage() {
           </button>
         ) : (
           <>
+            {/* Request booking button - chỉ hiển thị cho DJ/Dancer (không phải own profile) */}
             {canRequestBooking && (
               <button
                 onClick={() => setBookingOpen(true)}
@@ -297,6 +721,7 @@ export default function ProfilePage() {
                 <span>Request booking</span>
               </button>
             )}
+            {/* Chat button - hiển thị cho tất cả */}
             <button
               onClick={async () => {
                 try {
