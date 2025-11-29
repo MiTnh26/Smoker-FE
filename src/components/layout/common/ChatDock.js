@@ -109,7 +109,7 @@ function ChatWindow(props) {
         // If still not found, try to fetch from API
         if (!resolvedId && active.id && active.type && session?.account?.id) {
           try {
-            console.log("[ChatDock] EntityAccountId missing, fetching from API for", active.type, active.id);
+            //console.log("[ChatDock] EntityAccountId missing, fetching from API for", active.type, active.id);
             
             // For Account type, use getEntityAccountId
             if (active.type === "Account") {
@@ -118,7 +118,7 @@ function ChatWindow(props) {
               
               if (resolvedId) {
                 updateSession({ activeEntity: { ...active, EntityAccountId: resolvedId } });
-                console.log("[ChatDock] Updated session with EntityAccountId:", resolvedId);
+                //console.log("[ChatDock] Updated session with EntityAccountId:", resolvedId);
               }
             } 
             // For BarPage or Business, refresh entities to get EntityAccountId
@@ -143,7 +143,7 @@ function ChatWindow(props) {
                       EntityAccountId: resolvedId
                     }
                   });
-                  console.log("[ChatDock] Updated session with EntityAccountId:", resolvedId);
+                  //console.log("[ChatDock] Updated session with EntityAccountId:", resolvedId);
                 } else {
                   console.warn("[ChatDock] EntityAccountId not found in refreshed entities for", active.type, active.id);
                 }
@@ -165,7 +165,7 @@ function ChatWindow(props) {
           }
         }
         
-        console.log("[ChatDock] Resolved currentUserId:", resolvedId, "from activeEntity:", active.type, active.id);
+        //console.log("[ChatDock] Resolved currentUserId:", resolvedId, "from activeEntity:", active.type, active.id);
         setCurrentUserId(resolvedId || null);
         setCurrentEntityType(active.type || null);
         setCurrentEntityId(active.id || null);
@@ -189,7 +189,7 @@ function ChatWindow(props) {
       
       // If avatar and name are already provided in chat object (from MessagesPanel), use them directly
       if (chat.avatar && chat.name && chat.entityId) {
-        console.log("[ChatDock] Using avatar and name from chat object:", chat.name);
+        //console.log("[ChatDock] Using avatar and name from chat object:", chat.name);
         // Store otherUserId for read status check
         setOtherUserId(chat.entityId);
         setOtherUserInfo({
@@ -218,7 +218,7 @@ function ChatWindow(props) {
           
           if (ownEntity) {
             // Use data from session (own entity)
-            console.log("[ChatDock] Found entity in session, using session data:", ownEntity.name);
+            //console.log("[ChatDock] Found entity in session, using session data:", ownEntity.name);
             setOtherUserInfo({
               name: ownEntity.name || chat.name || "User",
               avatar: ownEntity.avatar || chat.avatar || null,
@@ -234,10 +234,10 @@ function ChatWindow(props) {
         
         // If not found in session, try API call
         try {
-          console.log("[ChatDock] Fetching entity profile from API for:", chat.entityId);
+          //console.log("[ChatDock] Fetching entity profile from API for:", chat.entityId);
           const profileRes = await publicProfileApi.getByEntityId(chat.entityId);
           const profile = profileRes?.data?.data || profileRes?.data || {};
-          console.log("[ChatDock] Successfully fetched entity profile:", profile.name || profile.BarName || profile.BusinessName);
+          //console.log("[ChatDock] Successfully fetched entity profile:", profile.name || profile.BarName || profile.BusinessName);
           setOtherUserInfo({
             name: profile.name || profile.BarName || profile.BusinessName || chat.name || "User",
             avatar: profile.avatar || profile.Avatar || chat.avatar || null,
@@ -302,7 +302,7 @@ function ChatWindow(props) {
               
               if (ownEntity) {
                 // Use data from session (own entity)
-                console.log("[ChatDock] Found entity in session, using session data:", ownEntity.name);
+                //console.log("[ChatDock] Found entity in session, using session data:", ownEntity.name);
                 setOtherUserInfo({
                   name: ownEntity.name || chat.name || "User",
                   avatar: ownEntity.avatar || null,
@@ -460,7 +460,7 @@ function ChatWindow(props) {
         const messages = res?.data?.data || res?.data || [];
         setMessages(Array.isArray(messages) ? messages : []);
         // Update last read message ID
-        setLastReadMessageId(res?.data?.last_read_message_id || null);
+        setLastReadMessageId(res?.last_read_message_id || null);
         setTimeout(scrollToBottom, 100);
         
         // Show notifications if message is from other user
@@ -523,7 +523,7 @@ function ChatWindow(props) {
       const messages = res?.data?.data || res?.data || [];
       setMessages(Array.isArray(messages) ? messages : []);
       // Store last read message ID
-      setLastReadMessageId(res?.data?.last_read_message_id || null);
+      setLastReadMessageId(res?.last_read_message_id || null);
       setLoading(false);
       setTimeout(scrollToBottom, 100);
     }).catch(err => {
@@ -574,7 +574,16 @@ function ChatWindow(props) {
           messageApi.getMessages(chat.id).then(res => {
             const messages = res?.data?.data || res?.data || [];
             setMessages(Array.isArray(messages) ? messages : []);
-            setLastReadMessageId(res?.data?.last_read_message_id || null);
+            setLastReadMessageId(res?.last_read_message_id || null);
+            // If the last message is from current user, update lastReadMessageId
+            if (messages.length > 0) {
+              const lastMsg = messages[messages.length - 1];
+              const lastSender = getSenderKey(lastMsg);
+              if (lastSender === String(currentUserId).toLowerCase().trim()) {
+                setLastReadMessageId(lastMsg._id || lastMsg.id || lastMsg.messageId);
+                //console.log('Updated lastReadMessageId after send:', lastMsg._id || lastMsg.id || lastMsg.messageId);
+              }
+            }
           }).catch(err => console.warn("Error refreshing messages:", err));
         }, 500);
       })
@@ -634,20 +643,6 @@ function ChatWindow(props) {
     }
     return map;
   }, [messages]);
-
-  // Find the last message sent by current user
-  const lastUserMessageId = useMemo(() => {
-    if (!currentUserId || !messages.length) return null;
-    const currentUserIdNormalized = String(currentUserId).toLowerCase().trim();
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i];
-      const sender = getSenderKey(msg);
-      if (sender === currentUserIdNormalized) {
-        return msg._id || msg.id || msg.messageId;
-      }
-    }
-    return null;
-  }, [messages, currentUserId]);
 
   const handleHeaderClick = () => {
     if (otherUserInfo?.entityId) {
@@ -906,7 +901,10 @@ function ChatWindow(props) {
             const bubbleTextColor = isMine ? "#ffffff" : "rgb(var(--foreground))";
 
             // Check if this message should show "Đã xem"
-            const showReadStatus = isMine && lastUserMessageId === (msg._id || msg.id || msg.messageId) && lastReadMessageId === (msg._id || msg.id || msg.messageId);
+            const isLastMessage = idx === displayMessages.length - 1;
+            const showReadStatus = isLastMessage && lastReadMessageId === (msg._id || msg.id || msg.messageId);
+
+            //console.log('Message:', msg._id || msg.id || msg.messageId, 'isLast:', isLastMessage, 'lastReadId:', lastReadMessageId, 'showRead:', showReadStatus, 'isMy:', isMine);
 
             // Create contentNode with link detection
             let contentNode;
