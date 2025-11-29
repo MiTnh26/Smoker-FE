@@ -32,7 +32,10 @@ export const getStreamByChannel = async (channelName) => {
 // Get all active livestreams
 export const getActiveLivestreams = async () => {
   const response = await axiosClient.get("/livestream/active");
-  return unwrap(response);
+  const unwrapped = unwrap(response);
+  // Response structure: { status: "success", message: "...", data: [...] }
+  // Return the data array directly
+  return unwrapped?.data || unwrapped || [];
 };
 
 // Increment view count

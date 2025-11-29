@@ -56,6 +56,27 @@ export default function LivestreamCard({ livestream, onClick }) {
           <h4 className={cn("font-semibold text-lg text-foreground mb-1")}>
             {livestream.title}
           </h4>
+          {/* Broadcaster info */}
+          {livestream.broadcasterName && (
+            <div className="flex items-center gap-2 mb-2">
+              {livestream.broadcasterAvatar ? (
+                <img
+                  src={livestream.broadcasterAvatar}
+                  alt={livestream.broadcasterName}
+                  className="h-6 w-6 rounded-full object-cover border border-border/30"
+                />
+              ) : (
+                <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center">
+                  <span className="text-[10px] font-semibold text-primary">
+                    {livestream.broadcasterName[0]?.toUpperCase() || "U"}
+                  </span>
+                </div>
+              )}
+              <span className={cn("text-sm text-muted-foreground font-medium")}>
+                {livestream.broadcasterName}
+              </span>
+            </div>
+          )}
           {livestream.description && (
             <p className={cn("text-sm text-muted-foreground line-clamp-2")}>
               {livestream.description}

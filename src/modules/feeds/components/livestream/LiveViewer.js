@@ -7,8 +7,6 @@ import useAgoraClient from "./hooks/useAgoraClient";
 import useLivestreamChat from "./hooks/useLivestreamChat";
 import { getSessionUser } from "./utils";
 
-const reactionOptions = ["❤️", "👍", "🔥", "😍"];
-
 export default function LiveViewer({ livestream, onClose }) {
   const videoRef = useRef(null);
   const remoteTracksRef = useRef({ video: null, audio: null });
@@ -18,7 +16,7 @@ export default function LiveViewer({ livestream, onClose }) {
   const [error, setError] = useState(null);
 
   const sessionUser = useMemo(() => getSessionUser(), []);
-  const { messages, viewerCount, sendMessage, sendReaction } = useLivestreamChat({
+  const { messages, viewerCount, sendMessage } = useLivestreamChat({
     channelName: livestream.agoraChannelName,
     user: sessionUser,
   });
@@ -135,12 +133,23 @@ export default function LiveViewer({ livestream, onClose }) {
       <div className="relative flex w-full max-w-6xl flex-col gap-4 rounded-3xl border border-border/40 bg-card/95 p-4 shadow-2xl md:flex-row">
         <button
           onClick={handleClose}
-          className="absolute right-4 top-4 rounded-full border border-border/40 bg-card/70 p-2 text-foreground/80 transition hover:text-foreground"
+          className={cn(
+            "absolute right-4 top-4 z-50",
+            "rounded-full bg-card/90 backdrop-blur-sm",
+            "border-2 border-border/60",
+            "p-2.5 text-foreground",
+            "shadow-lg shadow-black/20",
+            "transition-all duration-200",
+            "hover:bg-card hover:border-border",
+            "hover:scale-110 hover:shadow-xl",
+            "active:scale-95"
+          )}
+          aria-label="Đóng livestream"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <div className="relative flex-1 rounded-2xl bg-black/80">
+        <div className="relative flex-1 rounded-2xl bg-black/80 self-start">
           <div ref={videoRef} className="aspect-video w-full rounded-2xl bg-black/80" />
           {isConnecting && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-black/70 text-primary-foreground">
@@ -167,27 +176,20 @@ export default function LiveViewer({ livestream, onClose }) {
           </div>
 
           <div className="absolute right-4 bottom-4 flex gap-2">
-            {reactionOptions.map((reaction) => (
-              <button
-                key={reaction}
-                className="rounded-full bg-white/20 p-2 text-xl text-white backdrop-blur transition hover:bg-white/40"
-                onClick={() => sendReaction(reaction)}
-              >
-                {reaction}
-              </button>
-            ))}
             <button
               className={cn(
                 "rounded-full bg-white/20 p-2 text-white backdrop-blur transition hover:bg-white/40",
                 showChat && "bg-white/40"
               )}
               onClick={() => setShowChat((prev) => !prev)}
+              aria-label="Toggle chat"
             >
               <MessageCircle className="h-5 w-5" />
             </button>
             <button
               className="rounded-full bg-white/20 p-2 text-white backdrop-blur transition hover:bg-white/40"
               onClick={handleShare}
+              aria-label="Chia sẻ"
             >
               <Share2 className="h-5 w-5" />
             </button>
@@ -195,31 +197,48 @@ export default function LiveViewer({ livestream, onClose }) {
         </div>
 
         {showChat && (
-          <div className="flex w-full max-w-sm flex-col rounded-2xl border border-border/60 bg-card/80 p-4 backdrop-blur md:w-80">
-            <div className="mb-3 flex items-center justify-between">
+          <div className="flex w-full max-w-sm flex-col rounded-2xl border border-border/60 bg-card/80 p-4 backdrop-blur md:w-80 self-start md:h-[calc((100vw-8rem-2rem)*9/16)] md:max-h-[600px]">
+            <div className="mb-3 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2 text-foreground">
                 <MessageCircle className="h-4 w-4" />
                 <span className="text-sm font-semibold uppercase tracking-wide">Bình luận</span>
               </div>
               <span className="text-xs text-muted-foreground">{viewerCount} người xem</span>
             </div>
-            <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
               {messages.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground">Hãy là người đầu tiên bình luận!</p>
               )}
               {messages.map((msg, idx) => (
                 <div key={`${msg.userId}-${idx}`} className="flex items-start gap-3 rounded-xl bg-muted/30 p-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">
+                  {msg.userAvatar ? (
+                    <img
+                      src={msg.userAvatar}
+                      alt={msg.userName || "User"}
+                      className="h-8 w-8 rounded-full object-cover border border-border/30"
+                      onError={(e) => {
+                        // Fallback to initial if image fails to load
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary",
+                      msg.userAvatar && "hidden"
+                    )}
+                  >
                     {msg.userName?.[0] || "U"}
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{msg.userName}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{msg.userName || "User"}</p>
                     <p className="text-sm text-muted-foreground">{msg.message}</p>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-3 flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-2">
+            <div className="mt-3 flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-2 flex-shrink-0">
               <input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}

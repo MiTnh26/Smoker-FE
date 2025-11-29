@@ -199,7 +199,9 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
   const loadLivestreams = async () => {
     try {
       const data = await livestreamApi.getActiveLivestreams();
-      setLivestreams(Array.isArray(data) ? data : []);
+      const streams = Array.isArray(data) ? data : [];
+      console.log("[PostFeed] Loaded livestreams:", streams.length, streams[0]?.broadcasterName);
+      setLivestreams(streams);
     } catch (err) {
       console.error("[PostFeed] Failed to load livestreams:", err);
       setLivestreams([]);

@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 import { MessageCircle, Mic, MicOff, Users, Video, VideoOff, X } from "lucide-react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import livestreamApi from "../../../../api/livestreamApi";
+import { cn } from "../../../../utils/cn";
 import useAgoraClient from "./hooks/useAgoraClient";
 import useLivestreamChat from "./hooks/useLivestreamChat";
 import { getSessionUser } from "./utils";
@@ -26,6 +27,7 @@ export default function LiveBroadcaster({ onClose, onEnded }) {
   const { messages, viewerCount, sendMessage } = useLivestreamChat({
     channelName: livestreamMeta?.channelName,
     user: sessionUser,
+    isBroadcaster: true, // Broadcaster không được đếm vào viewer count
   });
 
   const cleanupTracks = useCallback(() => {
@@ -252,23 +254,47 @@ export default function LiveBroadcaster({ onClose, onEnded }) {
               </div>
             </div>
 
-            <div className="flex w-full flex-col rounded-3xl border border-border/40 bg-card/90 p-4 md:w-80">
-              <div className="mb-3 flex items-center gap-2 text-foreground">
+            <div className="flex w-full flex-col rounded-3xl border border-border/40 bg-card/90 p-4 md:w-80 h-[500px] md:h-[600px]">
+              <div className="mb-3 flex items-center gap-2 text-foreground flex-shrink-0">
                 <MessageCircle className="h-5 w-5" />
                 <span className="text-sm font-semibold uppercase tracking-wide">Bình luận</span>
               </div>
-              <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
                 {messages.length === 0 && (
                   <p className="text-center text-sm text-muted-foreground">Chưa có bình luận nào.</p>
                 )}
                 {messages.map((msg, index) => (
-                  <div key={`${msg.userId}-${index}`} className="rounded-2xl bg-muted/40 px-3 py-2">
-                    <p className="text-sm font-semibold text-foreground">{msg.userName}</p>
-                    <p className="text-sm text-muted-foreground">{msg.message}</p>
+                  <div key={`${msg.userId}-${index}`} className="flex items-start gap-3 rounded-2xl bg-muted/40 px-3 py-2">
+                    {msg.userAvatar ? (
+                      <img
+                        src={msg.userAvatar}
+                        alt={msg.userName || "User"}
+                        className="h-8 w-8 rounded-full object-cover border border-border/30 flex-shrink-0"
+                        onError={(e) => {
+                          // Fallback to initial if image fails to load
+                          e.target.style.display = "none";
+                          if (e.target.nextSibling) {
+                            e.target.nextSibling.style.display = "flex";
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary flex-shrink-0",
+                        msg.userAvatar && "hidden"
+                      )}
+                    >
+                      {msg.userName?.[0] || "U"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">{msg.userName || "User"}</p>
+                      <p className="text-sm text-muted-foreground">{msg.message}</p>
+                    </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 flex items-center gap-2 rounded-2xl border border-border/60 bg-card/70 px-3 py-2">
+              <div className="mt-4 flex items-center gap-2 rounded-2xl border border-border/60 bg-card/70 px-3 py-2 flex-shrink-0">
                 <input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}

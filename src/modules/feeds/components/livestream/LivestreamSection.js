@@ -19,7 +19,9 @@ export default function LivestreamSection({ onGoLive, onSelectStream, refreshKey
       setIsLoading(true);
       setError(null);
       const data = await livestreamApi.getActiveLivestreams();
-      setLivestreams(Array.isArray(data) ? data : []);
+      const streams = Array.isArray(data) ? data : [];
+      console.log("[LivestreamSection] Loaded streams:", streams.length, streams[0]?.broadcasterName);
+      setLivestreams(streams);
     } catch (err) {
       console.error("[LivestreamSection] Failed to load streams:", err);
       setError("Không thể tải livestream. Vui lòng thử lại.");

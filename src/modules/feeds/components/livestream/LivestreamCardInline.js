@@ -8,6 +8,16 @@ import PropTypes from "prop-types";
  */
 export default function LivestreamCardInline({ livestream, onClick }) {
   const viewerCount = livestream.viewCount ?? 0;
+  
+  // Debug: Log broadcaster info
+  if (livestream && !livestream.broadcasterName) {
+    console.log("[LivestreamCardInline] Missing broadcaster info:", {
+      livestreamId: livestream.livestreamId,
+      hostEntityAccountId: livestream.hostEntityAccountId,
+      hasBroadcasterName: !!livestream.broadcasterName,
+      hasBroadcasterAvatar: !!livestream.broadcasterAvatar,
+    });
+  }
 
   return (
     <article
@@ -77,6 +87,27 @@ export default function LivestreamCardInline({ livestream, onClick }) {
               <span>{livestream.title || "Livestream đang phát"}</span>
             </h4>
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Broadcaster info */}
+              {livestream.broadcasterName && (
+                <div className="flex items-center gap-1.5">
+                  {livestream.broadcasterAvatar ? (
+                    <img
+                      src={livestream.broadcasterAvatar}
+                      alt={livestream.broadcasterName}
+                      className="h-4 w-4 rounded-full object-cover border border-border/30"
+                    />
+                  ) : (
+                    <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center">
+                      <span className="text-[8px] font-semibold text-primary">
+                        {livestream.broadcasterName[0]?.toUpperCase() || "U"}
+                      </span>
+                    </div>
+                  )}
+                  <span className="text-[0.75rem] text-muted-foreground font-medium">
+                    {livestream.broadcasterName}
+                  </span>
+                </div>
+              )}
               <div
                 className={cn(
                   "flex items-center gap-1 px-2 py-0.5 rounded-lg",
@@ -125,22 +156,6 @@ export default function LivestreamCardInline({ livestream, onClick }) {
             <Play size={20} />
             Xem livestream
           </div>
-        </div>
-        {/* LIVE indicator on preview */}
-        <div
-          className={cn(
-            "absolute top-2 left-2",
-            "flex items-center gap-1 px-2 py-1 rounded-full",
-            "bg-danger text-primary-foreground text-[10px] font-bold shadow-lg"
-          )}
-        >
-          <span
-            className={cn(
-              "w-1.5 h-1.5 rounded-full bg-primary-foreground",
-              "animate-pulse"
-            )}
-          />
-          LIVE
         </div>
       </div>
 
