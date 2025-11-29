@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Bell, Heart, MessageCircle, UserPlus, Mail, CheckCircle } from "lucide-react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { useSocket } from "../../../contexts/SocketContext";
 import { getSession, getActiveEntity, getEntities } from "../../../utils/sessionManager";
 import notificationApi from "../../../api/notificationApi";
-
-import "../../../styles/components/notificationDropdown.css";
+import { cn } from "../../../utils/cn";
 
 export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountChange }) {
   const [notifications, setNotifications] = useState([]);
@@ -221,21 +220,21 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   };
 
 
-  // Get notification icon based on type (fallback if no avatar)
-  const getNotificationIcon = (type) => {
+  // Get notification icon component based on type
+  const getNotificationIcon = (type, size = 20) => {
     switch (type) {
       case "Like":
-        return "❤️";
+        return <Heart size={size} className="text-red-500 fill-red-500" />;
       case "Comment":
-        return "💬";
+        return <MessageCircle size={size} className="text-blue-500" />;
       case "Follow":
-        return "👤";
+        return <UserPlus size={size} className="text-primary" />;
       case "Messages":
-        return "💌";
+        return <Mail size={size} className="text-primary" />;
       case "Confirm":
-        return "✅";
+        return <CheckCircle size={size} className="text-success" />;
       default:
-        return "🔔";
+        return <Bell size={size} className="text-muted-foreground" />;
     }
   };
 
@@ -305,21 +304,6 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
     return notificationDate.toLocaleDateString();
-  };
-
-  // Test notification handler
-  const handleTestNotification = async (type) => {
-    try {
-      const response = await notificationApi.createTestNotification(type);
-      if (response.success) {
-        // Refresh notifications after creating test notification
-        await fetchNotifications();
-        await fetchUnreadCount();
-        console.log(`✅ Test ${type} notification created!`);
-      }
-    } catch (error) {
-      console.error("Error creating test notification:", error);
-    }
   };
 
   // Fetch notifications on mount
@@ -441,73 +425,80 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   }, []);
 
   return (
-    <>
-      {/* Header - Notifications List Header */}
-      <div className="notification-header">
-      
-        {unreadCount > 0 && (
-          <button
-            className="mark-all-read-btn"
-            onClick={handleMarkAllAsRead}
-          >
-            Mark all as read
-          </button>
-        )}
-      </div>
-
+    <div className={cn("flex flex-col h-full")}>
       {/* Notifications List */}
-      <div className="notification-list">
+      <div className={cn(
+        "max-h-[500px] overflow-y-auto py-2",
+        "scrollbar-thin scrollbar-thumb-muted-foreground/50 scrollbar-track-muted",
+        "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-muted",
+        "[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50 [&::-webkit-scrollbar-thumb]:rounded-full",
+        "[&::-webkit-scrollbar-thumb]:hover:bg-muted-foreground/70"
+      )}>
         {loading && (
-          <div className="notification-loading">
-            <p>Loading...</p>
+          <div className={cn("py-10 px-5 text-center text-muted-foreground")}>
+            <p className="m-0">Loading...</p>
           </div>
         )}
         {!loading && notifications.length === 0 && (
-          <div className="notification-empty">
-            <Bell size={48} style={{ opacity: 0.3 }} />
-            <p>No notifications</p>
+          <div className={cn("py-10 px-5 text-center text-muted-foreground")}>
+            <Bell size={48} className="opacity-30 mb-3 mx-auto" />
+            <p className="m-0 text-[15px]">No notifications</p>
           </div>
         )}
         {!loading && notifications.length > 0 && (
           notifications.map((notification) => {
             const isUnread = notification.status === "Unread";
-                        const senderAvatar = notification.sender?.avatar;
+            const senderAvatar = notification.sender?.avatar;
             return (
               <button
                 key={notification._id}
                 type="button"
-                className={`notification-item ${isUnread ? "unread" : ""}`}
+                className={cn(
+                  "flex items-start gap-3 px-4 py-3 w-full text-left cursor-pointer transition-colors",
+                  "hover:bg-muted relative",
+                  isUnread && "bg-primary/5 hover:bg-primary/10"
+                )}
                 onClick={() => handleNotificationClick(notification)}
               >
-                <div className="notification-avatar">
+                {/* Avatar */}
+                <div className={cn("relative flex-shrink-0 w-10 h-10 rounded-full overflow-hidden")}>
                   {senderAvatar ? (
-                    <img 
-                      src={senderAvatar} 
-                      alt="avatar" 
-                      className="notification-avatar-img"
-                      onError={(e) => {
-                        // Fallback to icon if image fails to load
-                        e.target.style.display = 'none';
-                        e.target.nextSibling.style.display = 'block';
-                      }}
-                    />
-                  ) : null}
-                  {!senderAvatar && (
-                    <span className="notification-avatar-icon">
-                      {getNotificationIcon(notification.type)}
-                    </span>
+                    <>
+                      <img 
+                        src={senderAvatar} 
+                        alt="avatar" 
+                        className={cn("w-full h-full object-cover rounded-full")}
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          if (e.target.nextSibling) {
+                            e.target.nextSibling.style.display = 'flex';
+                          }
+                        }}
+                      />
+                      <div className={cn("hidden items-center justify-center w-10 h-10 rounded-full bg-muted")}>
+                        {getNotificationIcon(notification.type, 20)}
+                      </div>
+                    </>
+                  ) : (
+                    <div className={cn("flex items-center justify-center w-10 h-10 rounded-full bg-muted")}>
+                      {getNotificationIcon(notification.type, 20)}
+                    </div>
                   )}
                 </div>
-                <div className="notification-content">
-                  <p className="notification-text">
+
+                {/* Content */}
+                <div className={cn("flex-1 min-w-0")}>
+                  <p className={cn("m-0 text-foreground text-[15px] leading-[1.33] break-words")}>
                     {getNotificationText(notification)}
                   </p>
-                  <span className="notification-time">
+                  <span className={cn("text-muted-foreground text-[13px] mt-1 block")}>
                     {getTimeAgo(notification.createdAt)}
                   </span>
                 </div>
+
+                {/* Unread dot */}
                 {isUnread && (
-                  <div className="notification-dot"></div>
+                  <div className={cn("absolute right-4 top-4 w-2 h-2 bg-primary rounded-full")}></div>
                 )}
               </button>
             );
@@ -516,101 +507,32 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
       </div>
 
       {/* Footer */}
-      <div className="notification-footer">
+      <div className={cn("px-3 py-3 border-t border-border")}>
+        {unreadCount > 0 && (
+          <button
+            className={cn(
+              "w-full bg-transparent border-none text-primary font-semibold cursor-pointer",
+              "text-[14px] px-2 py-1 rounded transition-colors hover:bg-muted mb-2"
+            )}
+            onClick={handleMarkAllAsRead}
+          >
+            {t("notifications.markAllAsRead", "Đánh dấu tất cả đã đọc")}
+          </button>
+        )}
         <button
-          className="view-all-btn"
+          className={cn(
+            "w-full bg-transparent border-none text-primary font-semibold cursor-pointer",
+            "text-[15px] px-3 py-3 rounded transition-colors hover:bg-muted"
+          )}
           onClick={() => {
             navigate("/notifications");
             onClose?.();
           }}
         >
-          View all notifications
+          {t("notifications.viewAll", "Xem tất cả thông báo")}
         </button>
-        
-        {/* Test Buttons - Only for development/testing */}
-        {process.env.NODE_ENV === 'development' && (
-          <div style={{ 
-            marginTop: '10px', 
-            paddingTop: '10px', 
-            borderTop: '1px solid rgba(255,255,255,0.1)',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '5px'
-          }}>
-            <button
-              onClick={() => handleTestNotification('Like')}
-              style={{
-                padding: '5px 10px',
-                fontSize: '11px',
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              Test Like
-            </button>
-            <button
-              onClick={() => handleTestNotification('Comment')}
-              style={{
-                padding: '5px 10px',
-                fontSize: '11px',
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              Test Comment
-            </button>
-            <button
-              onClick={() => handleTestNotification('Follow')}
-              style={{
-                padding: '5px 10px',
-                fontSize: '11px',
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              Test Follow
-            </button>
-            <button
-              onClick={() => handleTestNotification('Messages')}
-              style={{
-                padding: '5px 10px',
-                fontSize: '11px',
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              Test Message
-            </button>
-            <button
-              onClick={() => handleTestNotification('Confirm')}
-              style={{
-                padding: '5px 10px',
-                fontSize: '11px',
-                backgroundColor: 'rgba(255,255,255,0.1)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                borderRadius: '4px',
-                color: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              Test Confirm
-            </button>
-          </div>
-        )}
       </div>
-    </>
+    </div>
   );
 }
 

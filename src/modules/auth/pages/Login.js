@@ -31,10 +31,7 @@ export function Login() {
       if (res && res.token) {
         await login({ token: res.token, user: res.user });
         
-        // Fetch all entities (bars, businesses)
-        const entities = await fetchAllEntities(res.user.id, res.user);
-        
-        // Fetch EntityAccountId for Account entity
+        // Fetch EntityAccountId FIRST before creating entities
         // Retry logic: Backend will create EntityAccount if it doesn't exist
         let accountEntityAccountId = null;
         const maxRetries = 3;
@@ -46,64 +43,73 @@ export function Login() {
             const entityAccountRes = await userApi.getEntityAccountId(res.user.id);
             
             // Parse response - handle both success and error formats
+            // Backend returns: { status: "success", data: { EntityAccountId: "..." } }
+            // Axios wraps it: { data: { status: "success", data: { EntityAccountId: "..." } } }
             if (entityAccountRes?.data?.status === 'success' && entityAccountRes?.data?.data?.EntityAccountId) {
               accountEntityAccountId = entityAccountRes.data.data.EntityAccountId;
-              console.log("[Login] Fetched EntityAccountId:", accountEntityAccountId);
+              console.log("[Login] ✅ Fetched EntityAccountId:", accountEntityAccountId);
               break; // Success, exit retry loop
             } else if (entityAccountRes?.data?.data?.EntityAccountId) {
-              // Alternative response format
+              // Alternative response format (without status check)
               accountEntityAccountId = entityAccountRes.data.data.EntityAccountId;
-              console.log("[Login] Fetched EntityAccountId (alt format):", accountEntityAccountId);
+              console.log("[Login] ✅ Fetched EntityAccountId (alt format):", accountEntityAccountId);
               break;
             } else if (entityAccountRes?.data?.EntityAccountId) {
-              // Direct EntityAccountId in data
+              // Direct EntityAccountId in data (unlikely but handle it)
               accountEntityAccountId = entityAccountRes.data.EntityAccountId;
-              console.log("[Login] Fetched EntityAccountId (direct):", accountEntityAccountId);
+              console.log("[Login] ✅ Fetched EntityAccountId (direct):", accountEntityAccountId);
               break;
-            } else if (entityAccountRes?.response?.status === 404) {
-              // EntityAccount doesn't exist yet - backend should create it
-              console.log(`[Login] EntityAccount not found (404), attempt ${attempt}/${maxRetries}. Backend should create it.`);
-              if (attempt < maxRetries) {
-                // Wait before retrying to allow backend to create EntityAccount
-                await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
-                continue; // Retry
-              } else {
-                console.warn("[Login] EntityAccountId still null after retries. Backend may need to create EntityAccount.");
-              }
             } else {
-              console.warn(`[Login] Unexpected response format, attempt ${attempt}/${maxRetries}:`, entityAccountRes);
+              // Log the full response for debugging
+              console.warn(`[Login] ⚠️ Unexpected response format, attempt ${attempt}/${maxRetries}:`, {
+                status: entityAccountRes?.status,
+                data: entityAccountRes?.data,
+                response: entityAccountRes?.response?.data
+              });
               if (attempt < maxRetries) {
                 await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
                 continue;
               }
             }
           } catch (err) {
-            console.error(`[Login] Failed to fetch EntityAccountId (attempt ${attempt}/${maxRetries}):`, err);
+            console.error(`[Login] ❌ Failed to fetch EntityAccountId (attempt ${attempt}/${maxRetries}):`, {
+              status: err?.response?.status,
+              data: err?.response?.data,
+              message: err?.message
+            });
             if (err?.response?.status === 404) {
               // 404 means EntityAccount doesn't exist - backend should create it
               if (attempt < maxRetries) {
-                console.log(`[Login] Retrying after ${retryDelay * attempt}ms...`);
+                console.log(`[Login] 🔄 Retrying after ${retryDelay * attempt}ms...`);
                 await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
                 continue; // Retry
               } else {
-                console.error("[Login] EntityAccountId still null after all retries");
+                console.error("[Login] ❌ EntityAccountId still null after all retries");
               }
             } else {
               // Other errors - don't retry
-              console.error("[Login] Error details:", err?.response?.data || err?.message);
+              console.error("[Login] ❌ Non-retryable error:", err?.response?.data || err?.message);
               break;
             }
           }
         }
         
         if (!accountEntityAccountId) {
-          console.warn("[Login] EntityAccountId is null after all attempts. Session will be saved with null EntityAccountId.");
+          console.warn("[Login] ⚠️ EntityAccountId is null after all attempts. Session will be saved with null EntityAccountId.");
         }
         
-        // Find Account entity in entities array and update it with EntityAccountId
+        // Fetch all entities (bars, businesses) - NOW with EntityAccountId available
+        const entities = await fetchAllEntities(res.user.id, res.user, accountEntityAccountId);
+        
+        // Ensure Account entity has EntityAccountId (double-check)
         const accountEntity = entities.find(e => e.type === "Account");
-        if (accountEntity && accountEntityAccountId) {
-          accountEntity.EntityAccountId = accountEntityAccountId;
+        if (accountEntity) {
+          if (accountEntityAccountId && !accountEntity.EntityAccountId) {
+            accountEntity.EntityAccountId = accountEntityAccountId;
+            console.log("[Login] ✅ Updated Account entity with EntityAccountId:", accountEntityAccountId);
+          } else if (!accountEntityAccountId) {
+            console.warn("[Login] ⚠️ Account entity EntityAccountId is still null:", accountEntity);
+          }
         }
         
         // ✅ Initialize session using sessionManager

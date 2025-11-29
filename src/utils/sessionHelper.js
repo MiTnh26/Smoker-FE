@@ -11,13 +11,14 @@ import { normalizeEntity, createAccountEntity } from "./menuDataNormalizer";
  * Fetch all entities (bars, businesses, account) for a user
  * @param {string} accountId - The account ID
  * @param {Object} user - The user account object
+ * @param {string|null} entityAccountId - Optional EntityAccountId for the Account entity
  * @returns {Array} Array of normalized entities
  */
-export async function fetchAllEntities(accountId, user) {
+export async function fetchAllEntities(accountId, user, entityAccountId = null) {
   const entities = [];
 
-  // Add account entity
-  const accountEntity = createAccountEntity(user);
+  // Add account entity with EntityAccountId if available
+  const accountEntity = createAccountEntity(user, entityAccountId);
   if (accountEntity) {
     entities.push(accountEntity);
   }
