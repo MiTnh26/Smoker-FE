@@ -1,20 +1,64 @@
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { getSession, getActiveEntity } from "../../../../utils/sessionManager";
 
 export default function CreateStory({ onOpenEditor }) {
   const { t } = useTranslation();
-  
-  // Lấy thông tin user từ session
-  let session;
-  try {
-    const raw = localStorage.getItem("session");
-    session = raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    session = null;
-  }
+  const [userAvatar, setUserAvatar] = useState('/default-avatar.png');
+  const [userName, setUserName] = useState('User');
 
-  const user = session?.account || session?.activeEntity;
-  const userAvatar = user?.avatar || user?.Avatar || '/default-avatar.png';
-  const userName = user?.userName || user?.UserName || user?.name || user?.email || 'User';
+  // Lấy thông tin user từ activeEntity (để đồng bộ khi đổi role)
+  useEffect(() => {
+    const updateUserInfo = () => {
+      try {
+        const activeEntity = getActiveEntity();
+        const session = getSession();
+        
+        // Ưu tiên activeEntity (role hiện tại), fallback về account
+        const user = activeEntity || session?.account;
+        
+        const avatar = user?.avatar || user?.Avatar || '/default-avatar.png';
+        const name = user?.userName || user?.UserName || user?.name || user?.email || 'User';
+        
+        setUserAvatar(avatar);
+        setUserName(name);
+      } catch (e) {
+        console.error("[CreateStory] Error getting user info:", e);
+      }
+    };
+
+    // Cập nhật ngay lập tức
+    updateUserInfo();
+
+    // Listen to storage changes để cập nhật khi đổi role (cross-tab)
+    const handleStorageChange = (e) => {
+      if (e.key === 'session') {
+        updateUserInfo();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Listen to custom events khi session thay đổi trong cùng tab
+    const handleSessionChange = () => {
+      updateUserInfo();
+    };
+    
+    window.addEventListener('sessionUpdated', handleSessionChange);
+    window.addEventListener('profileUpdated', handleSessionChange); // UnifiedMenu dispatch event này
+    
+    // Polling để check session mỗi 5 giây (fallback nếu events không hoạt động)
+    const interval = setInterval(() => {
+      updateUserInfo();
+    }, 5000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sessionUpdated', handleSessionChange);
+      window.removeEventListener('profileUpdated', handleSessionChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <button

@@ -136,8 +136,9 @@ export default function UnifiedMenu({
       currentSession.activeEntity = normalized;
       localStorage.setItem("session", JSON.stringify(currentSession));
       
-      // Dispatch event to notify other components (MessagesPanel, RightSidebar, etc.)
+      // Dispatch events to notify other components (MessagesPanel, RightSidebar, CreateStory, etc.)
       window.dispatchEvent(new Event('profileUpdated'));
+      window.dispatchEvent(new Event('sessionUpdated'));
     } catch (error) {
       console.error("[UnifiedMenu] Error updating session:", error);
     }

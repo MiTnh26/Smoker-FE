@@ -11,6 +11,7 @@ import MessagesPage from "../modules/messages/pages/MessagesPage";
 import MessagesLayout from "../layouts/MessagesLayout";
 import BarTablesPage from "../modules/customer/pages/BarTablesPage";
 import MyBookings from "../modules/customer/pages/MyBookings";
+import NotificationsPage from "../modules/customer/pages/NotificationsPage";
 export default function CustomerRoutes() {
   return (
     <Fragment>
@@ -79,6 +80,17 @@ export default function CustomerRoutes() {
             <ProtectedRoute roles={["customer"]}>
               <CustomerLayout>
                 <MyBookings />
+              </CustomerLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* ✅ Route: Notifications Page */}
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute roles={["customer"]}>
+              <CustomerLayout>
+                <NotificationsPage />
               </CustomerLayout>
             </ProtectedRoute>
           }

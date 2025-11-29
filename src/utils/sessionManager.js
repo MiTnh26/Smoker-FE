@@ -71,9 +71,39 @@ export function saveSession(session) {
 export function updateSession(updates) {
   try {
     const currentSession = getSession() || {};
+    
+    // Preserve EntityAccountId when updating - don't overwrite with null
+    const preservedUpdates = { ...updates };
+    
+    // If updating account and new EntityAccountId is null but current has one, preserve it
+    if (updates.account && updates.account.EntityAccountId === null && currentSession.account?.EntityAccountId) {
+      preservedUpdates.account = {
+        ...updates.account,
+        EntityAccountId: currentSession.account.EntityAccountId
+      };
+    }
+    
+    // If updating activeEntity and new EntityAccountId is null but current has one, preserve it
+    if (updates.activeEntity && updates.activeEntity.EntityAccountId === null && currentSession.activeEntity?.EntityAccountId) {
+      preservedUpdates.activeEntity = {
+        ...updates.activeEntity,
+        EntityAccountId: currentSession.activeEntity.EntityAccountId
+      };
+    }
+    
+    // If updating entities array, preserve EntityAccountId for Account entity
+    if (updates.entities && Array.isArray(updates.entities)) {
+      const currentAccountEntity = currentSession.entities?.find(e => e.type === "Account");
+      const updatedAccountEntity = updates.entities.find(e => e.type === "Account");
+      
+      if (currentAccountEntity?.EntityAccountId && updatedAccountEntity && !updatedAccountEntity.EntityAccountId) {
+        updatedAccountEntity.EntityAccountId = currentAccountEntity.EntityAccountId;
+      }
+    }
+    
     const updatedSession = {
       ...currentSession,
-      ...updates,
+      ...preservedUpdates,
       _version: SESSION_VERSION,
       _updatedAt: new Date().toISOString(),
     };
@@ -253,13 +283,23 @@ export function initializeSession(loginData) {
   const accountEntity = entities.find(e => e.type === "Account");
   if (accountEntity && entityAccountId) {
     accountEntity.EntityAccountId = entityAccountId;
+  } else if (accountEntity && !accountEntity.EntityAccountId) {
+    // Try to preserve EntityAccountId from user object if entityAccountId param is null
+    accountEntity.EntityAccountId = user.EntityAccountId || user.entityAccountId || null;
   }
   
-  // Add EntityAccountId to account object
+  // Add EntityAccountId to account object - prioritize provided entityAccountId
   const accountWithEntityId = {
     ...user,
     EntityAccountId: entityAccountId || user.EntityAccountId || user.entityAccountId || null,
   };
+  
+  // Use entityAccountId from parameter, or from accountEntity, or from user object
+  const finalEntityAccountId = entityAccountId || accountEntity?.EntityAccountId || user.EntityAccountId || user.entityAccountId || null;
+  
+  if (!finalEntityAccountId) {
+    console.warn("[sessionManager] EntityAccountId is null when initializing session. This may cause issues.");
+  }
   
   const session = {
     token,
@@ -271,7 +311,7 @@ export function initializeSession(loginData) {
       name: user.userName,
       avatar: user.avatar,
       role: user.role || "Customer",
-      EntityAccountId: entityAccountId || null,
+      EntityAccountId: finalEntityAccountId,
     },
     _createdAt: new Date().toISOString(),
   };
