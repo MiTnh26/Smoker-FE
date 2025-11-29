@@ -27,8 +27,12 @@ axiosClient.interceptors.request.use((config) => {
       }
     }
   } catch (e) {
-    // Bỏ qua lỗi parse JSON, coi như không có token
     console.warn('[axiosClient] Không thể đọc session từ localStorage', e);
+  }
+  
+  // ✅ FALLBACK: Nếu không có trong session, đọc từ "token" key (từ AuthContext)
+  if (!token) {
+    token = localStorage.getItem("token");
   }
   
   // Thêm token vào header nếu có

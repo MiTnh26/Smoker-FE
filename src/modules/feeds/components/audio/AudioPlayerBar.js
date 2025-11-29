@@ -432,51 +432,6 @@ export default function AudioPlayerBar({
           )}
         </div>
 
-        <button 
-          className="player-btn player-btn-action"
-          onClick={() => {
-            // Favorite toggle - placeholder
-          }}
-          aria-label="Add to favorites"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-          </svg>
-        </button>
-
-        <button 
-          className="player-btn player-btn-action player-btn-profile"
-          onClick={() => {
-            // Profile/User - placeholder
-          }}
-          aria-label="Profile"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <svg className="profile-checkmark" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FF6B00" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-        </button>
-
-        <button 
-          className="player-btn player-btn-action"
-          onClick={() => {
-            // Playlist/Queue - placeholder
-          }}
-          aria-label="Playlist"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="8" y1="6" x2="21" y2="6"></line>
-            <line x1="8" y1="12" x2="21" y2="12"></line>
-            <line x1="8" y1="18" x2="21" y2="18"></line>
-            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-            <line x1="3" y1="18" x2="3.01" y2="18"></line>
-            <polygon points="19 16 19 18 23 17 19 16"></polygon>
-          </svg>
-        </button>
       </div>
     </div>
   );

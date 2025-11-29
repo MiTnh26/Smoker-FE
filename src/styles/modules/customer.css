@@ -7,6 +7,28 @@
   @apply flex flex-1 bg-[rgb(var(--background))] gap-6 px-6;
 }
 
+/* Override padding ngang trên mobile để feed tràn viền */
+@media (max-width: 768px) {
+  .customer-body {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .customer-body {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .customer-body {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
 .customer-body > aside {
   @apply w-[300px] flex-shrink-0;
 }
@@ -18,14 +40,30 @@
   @apply hidden xl:block w-[300px] flex-shrink-0; /* Right sidebar */
 }
 .customer-body > main {
-  @apply p-5 flex-none w-full max-w-[680px] mx-auto;
-}
-
-.customer-body > main {
-  @apply p-5 flex-none;
+  @apply flex-none;
   max-width: 680px; /* Cột nội dung trung tâm giống FB */
   width: 100%;
   margin: 0 auto; /* center the main column */
+  padding: 0 !important; /* Xóa tất cả padding */
+}
+
+/* Override padding của main trên mobile */
+@media (max-width: 768px) {
+  .customer-body > main {
+    padding: 0 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .customer-body > main {
+    padding: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .customer-body > main {
+    padding: 0 !important;
+  }
 }
 /* src/styles/modules/customer.css */
 .customer-tables-page {

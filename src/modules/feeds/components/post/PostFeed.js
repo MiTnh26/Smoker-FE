@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getPosts, trashPost } from "../../../../api/postApi";
-import livestreamApi from "../../../../api/livestreamApi";
+import { getFeed, trashPost } from "../../../../api/postApi";
 import PostCard from "./PostCard";
 import LivestreamCardInline from "../livestream/LivestreamCardInline";
 import ReviveAdCard from "./ReviveAdCard";
@@ -12,8 +11,6 @@ import AudioPlayerBar from "../audio/AudioPlayerBar";
 import PostEditModal from "../modals/PostEditModal";
 import ReportPostModal from "../modals/ReportPostModal";
 import ImageDetailModal from "../media/mediasOfPost/ImageDetailModal";
-
-const LIVESTREAM_POLL_INTERVAL = Number(process.env.REACT_APP_LIVESTREAM_POLL_INTERVAL || 30000);
 
 const normalizeGuid = (value) => {
   if (!value) return null;
@@ -36,8 +33,7 @@ const extractLikeAccountId = (like) => {
 
 export default function PostFeed({ onGoLive, onLivestreamClick }) {
   const { t } = useTranslation();
-  const [posts, setPosts] = useState([]);
-  const [livestreams, setLivestreams] = useState([]);
+  const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [playingPost, setPlayingPost] = useState(null);
@@ -195,65 +191,6 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
     }
   };
 
-  // Load livestreams
-  const loadLivestreams = async () => {
-    try {
-      const data = await livestreamApi.getActiveLivestreams();
-      const streams = Array.isArray(data) ? data : [];
-      console.log("[PostFeed] Loaded livestreams:", streams.length, streams[0]?.broadcasterName);
-      setLivestreams(streams);
-    } catch (err) {
-      console.error("[PostFeed] Failed to load livestreams:", err);
-      setLivestreams([]);
-    }
-  };
-
-  // Poll livestreams periodically
-  useEffect(() => {
-    loadLivestreams();
-    const interval = setInterval(loadLivestreams, LIVESTREAM_POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Merge and sort posts and livestreams by time
-  const mergedFeed = useMemo(() => {
-    const feedItems = [];
-    
-    // Add posts with type marker
-    posts.forEach(post => {
-      feedItems.push({
-        type: 'post',
-        data: post,
-        timestamp: new Date(post.createdAt || post.updatedAt || Date.now()).getTime(),
-      });
-    });
-    
-    // Add livestreams with type marker
-    livestreams.forEach(livestream => {
-      feedItems.push({
-        type: 'livestream',
-        data: livestream,
-        timestamp: new Date(livestream.startTime || Date.now()).getTime(),
-      });
-    });
-    
-    // Sort by timestamp (newest first)
-    // Livestreams should appear higher (they're "live" so more recent)
-    feedItems.sort((a, b) => {
-      // Prioritize livestreams if timestamps are close (within 1 hour)
-      const timeDiff = Math.abs(a.timestamp - b.timestamp);
-      const oneHour = 60 * 60 * 1000;
-      
-      if (timeDiff < oneHour) {
-        if (a.type === 'livestream' && b.type === 'post') return -1;
-        if (a.type === 'post' && b.type === 'livestream') return 1;
-      }
-      
-      return b.timestamp - a.timestamp;
-    });
-    
-    return feedItems;
-  }, [posts, livestreams]);
 
   // Load posts automatically on component mount
   useEffect(() => {
@@ -345,10 +282,8 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
       }
       setError(null);
 
-      // Use cursor-based pagination if cursor exists, otherwise use page-based (backward compatibility)
+      // Use cursor-based pagination if cursor exists
       const params = {
-        includeMusic: true,
-        includeMedias: true,
         limit: 10,
         // Add timestamp to prevent caching
         _t: Date.now()
@@ -360,42 +295,42 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
         params.cursor = cursor;
       }
 
-      const response = await getPosts(params);
+      const response = await getFeed(params);
       
-      // Backend returns: { success: true, data: [...], nextCursor, hasMore, pagination: {...} }
+      // Backend returns: { feed: [...], nextCursor, hasMore }
       // Axios wraps it, so response is already response.data
-      let postsData = [];
+      let feedData = [];
       let nextCursor = null;
       let responseHasMore = false;
       
-      // Handle various shapes: array directly or { success, data }
+      // Handle various shapes: array directly or { feed, nextCursor, hasMore }
       if (response) {
         if (Array.isArray(response)) {
-          postsData = response;
-        } else if (response.data && Array.isArray(response.data)) {
-          postsData = response.data;
+          feedData = response;
+        } else if (response.feed && Array.isArray(response.feed)) {
+          feedData = response.feed;
           nextCursor = response.nextCursor || null;
           responseHasMore = response.hasMore !== undefined ? response.hasMore : true;
-        } else if (response.success && Array.isArray(response.data)) {
-          postsData = response.data;
-          nextCursor = response.nextCursor || null;
-          responseHasMore = response.hasMore !== undefined ? response.hasMore : true;
+        } else if (response.data && response.data.feed && Array.isArray(response.data.feed)) {
+          feedData = response.data.feed;
+          nextCursor = response.data.nextCursor || null;
+          responseHasMore = response.data.hasMore !== undefined ? response.data.hasMore : true;
         }
       }
       
-      // Debug: Log first post to check author info
-      if (postsData.length > 0) {
-        const firstPost = postsData[0];
-        console.log('[PostFeed] First post author info:', {
-          authorName: firstPost.authorName,
-          entityAccountId: firstPost.entityAccountId,
-          accountId: firstPost.accountId
+      // Debug: Log first item to check structure
+      if (feedData.length > 0) {
+        const firstItem = feedData[0];
+        console.log('[PostFeed] First feed item:', {
+          type: firstItem.type,
+          hasData: !!firstItem.data,
+          authorName: firstItem.data?.authorName,
         });
       }
       
-      // If we got posts (even if empty), set them; otherwise show error
-      if (postsData.length >= 0 || response?.success) {
-        setPosts(postsData);
+      // If we got feed items (even if empty), set them; otherwise show error
+      if (feedData.length >= 0 || response?.feed) {
+        setFeed(feedData);
 
         // Update cursor and hasMore
         setCursor(nextCursor);
@@ -406,11 +341,11 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
           console.warn('[PostFeed] No cursor in response but hasMore is true, falling back to page-based pagination');
         }
       } else {
-        console.error("[FEED] Failed to load posts:", response?.message);
+        console.error("[FEED] Failed to load feed:", response?.message);
         setError(response?.message || t('feed.loadFail'));
       }
     } catch (err) {
-      console.error("[FEED] Error loading posts:", err);
+      console.error("[FEED] Error loading feed:", err);
       setError(t('feed.loadFail'));
     } finally {
       setLoading(false);
@@ -428,37 +363,35 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
       setLoadingMore(true);
       setError(null);
 
-      const response = await getPosts({
-        includeMusic: true,
-        includeMedias: true,
+      const response = await getFeed({
         cursor: cursor,
         limit: 10
       });
 
-      let postsData = [];
+      let feedData = [];
       let nextCursor = null;
       let responseHasMore = false;
 
       if (response) {
         if (Array.isArray(response)) {
-          postsData = response;
-        } else if (response.data && Array.isArray(response.data)) {
-          postsData = response.data;
+          feedData = response;
+        } else if (response.feed && Array.isArray(response.feed)) {
+          feedData = response.feed;
           nextCursor = response.nextCursor || null;
           responseHasMore = response.hasMore !== undefined ? response.hasMore : false;
-        } else if (response.success && Array.isArray(response.data)) {
-          postsData = response.data;
-          nextCursor = response.nextCursor || null;
-          responseHasMore = response.hasMore !== undefined ? response.hasMore : false;
+        } else if (response.data && response.data.feed && Array.isArray(response.data.feed)) {
+          feedData = response.data.feed;
+          nextCursor = response.data.nextCursor || null;
+          responseHasMore = response.data.hasMore !== undefined ? response.data.hasMore : false;
         }
       }
 
-      if (postsData.length > 0) {
-        setPosts(prevPosts => [...prevPosts, ...postsData]);
+      if (feedData.length > 0) {
+        setFeed(prevFeed => [...prevFeed, ...feedData]);
         setCursor(nextCursor);
         setHasMore(responseHasMore);
       } else {
-        // No more posts
+        // No more items
         setHasMore(false);
       }
     } catch (err) {
@@ -491,7 +424,13 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
       ...postObj
     };
     // Thêm post mới vào đầu danh sách (optimistic update)
-    setPosts(prevPosts => [ensured, ...prevPosts]);
+    // Wrap in feed item structure
+    const newFeedItem = {
+      type: 'post',
+      timestamp: new Date(ensured.createdAt || Date.now()).getTime(),
+      data: ensured
+    };
+    setFeed(prevFeed => [newFeedItem, ...prevFeed]);
     setShowMediaComposer(false);
     setShowMusicComposer(false);
     
@@ -980,10 +919,10 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
       />
 
       <div className="feed-posts gap-2">
-        {mergedFeed.length === 0 ? (
+        {feed.length === 0 ? (
           <p key="empty-feed" className="text-gray-400">{t('feed.noPosts')}</p>
         ) : (
-          mergedFeed.map((item, index) => {
+          feed.map((item, index) => {
             // Handle livestream
             if (item.type === 'livestream') {
               const livestream = item.data;
@@ -1097,7 +1036,7 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
         )}
 
         {/* No more posts indicator */}
-        {!hasMore && mergedFeed.length > 0 && (
+        {!hasMore && feed.length > 0 && (
           <div className="flex items-center justify-center py-4">
             <p className="text-muted-foreground text-sm">{t('feed.noMorePosts') || 'Không còn bài viết nào'}</p>
           </div>
@@ -1130,11 +1069,13 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
         post={editingPost}
         onClose={() => setEditingPost(null)}
         onUpdated={(updated) => {
-          setPosts((prev) => prev.map((orig) => {
-            const origId = orig._id || orig.postId || orig.id;
+          setFeed((prev) => prev.map((item) => {
+            // Only update post items, not livestreams
+            if (item.type !== 'post') return item;
+            const origId = item.data?._id || item.data?.postId || item.data?.id;
             const newId = updated?._id || updated?.postId || updated?.id;
-            if (String(origId) !== String(newId)) return orig;
-            return { ...orig, ...updated };
+            if (String(origId) !== String(newId)) return item;
+            return { ...item, data: { ...item.data, ...updated } };
           }));
           setEditingPost(null);
         }}

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 import {
   getPostById,
+  getPostDetail,
   addComment,
   updateComment,
   deleteComment,
@@ -206,6 +207,29 @@ export default function CommentSection({ postId, onClose, inline = false, always
     setViewerAccountId(identity.accountId);
     setViewerEntityAccountId(identity.entityAccountId);
   }, []);
+
+  // Reload comments when activeEntity changes (role switch)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      // Reload comments when session/activeEntity changes
+      if (postId) {
+        console.log('[CommentSection] Session changed, reloading comments...');
+        loadComments();
+      }
+    };
+
+    // Listen for storage changes (role switch)
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom events
+    window.addEventListener('sessionUpdated', handleStorageChange);
+    window.addEventListener('profileUpdated', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sessionUpdated', handleStorageChange);
+      window.removeEventListener('profileUpdated', handleStorageChange);
+    };
+  }, [postId]);
 
   useEffect(() => {
     setEditingCommentId(null);
@@ -500,7 +524,11 @@ export default function CommentSection({ postId, onClose, inline = false, always
   const loadComments = async () => {
     try {
       setLoading(true);
-      const response = await getPostById(postId);
+      // Sử dụng getPostDetail để lấy đầy đủ thông tin comments với author info
+      const response = await getPostDetail(postId, {
+        includeMedias: true,
+        includeMusic: true
+      });
 
       // Axios interceptor already unwraps response.data, so response IS the API response
       // Response structure should be: { success: true, data: { ...post... } }
@@ -518,6 +546,17 @@ export default function CommentSection({ postId, onClose, inline = false, always
       }
 
       if (post && post.comments) {
+        // Debug: Log raw comments from backend
+        console.log('[CommentSection] Raw comments from backend:', {
+          commentsType: typeof post.comments,
+          isMap: post.comments instanceof Map,
+          isArray: Array.isArray(post.comments),
+          keysCount: typeof post.comments === 'object' ? Object.keys(post.comments).length : 0,
+          sampleComment: typeof post.comments === 'object' && !Array.isArray(post.comments) 
+            ? Object.values(post.comments)[0] 
+            : null
+        });
+        
         // Transform comments from Map/Object to array
         const commentsArray = [];
 
@@ -577,6 +616,17 @@ export default function CommentSection({ postId, onClose, inline = false, always
               console.warn("Invalid comment:", comment);
               continue;
             }
+            
+            // Debug: Log author info from backend
+            if (comment.entityAccountId && (!comment.authorName || comment.authorName === 'Người dùng')) {
+              console.warn(`[CommentSection] Comment ${commentId} missing authorName:`, {
+                entityAccountId: comment.entityAccountId,
+                authorName: comment.authorName,
+                authorAvatar: comment.authorAvatar,
+                authorEntityAccountId: comment.authorEntityAccountId,
+                entityType: comment.entityType
+              });
+            }
 
             // Transform replies from Map/Object to array
             const repliesArray = [];
@@ -590,6 +640,18 @@ export default function CommentSection({ postId, onClose, inline = false, always
 
               for (const [replyId, reply] of repliesData) {
                 if (!reply || typeof reply !== 'object') continue;
+                
+                // Debug: Log author info from backend
+                if (reply.entityAccountId && (!reply.authorName || reply.authorName === 'Người dùng')) {
+                  console.warn(`[CommentSection] Reply ${replyId} missing authorName:`, {
+                    entityAccountId: reply.entityAccountId,
+                    authorName: reply.authorName,
+                    authorAvatar: reply.authorAvatar,
+                    authorEntityAccountId: reply.authorEntityAccountId,
+                    entityType: reply.entityType
+                  });
+                }
+                
                 // Preserve original likes object for checking liked status
                 const likesCount = reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0;
                 repliesArray.push({

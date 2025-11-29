@@ -9,8 +9,18 @@ import axiosClient from "./axiosClient";
 // Returns: { success, data, nextCursor, hasMore, pagination }
 export const getPosts = (params) => axiosClient.get("/posts", { params });
 
-// Lấy post theo id (supports includeMedias/includeMusic)
+// Lấy feed tổng hợp (posts + livestreams đã được merge ngẫu nhiên)
+// params can include:
+//   - limit: số lượng items (default: 10)
+//   - cursor: base64 encoded cursor string for cursor-based pagination
+// Returns: { feed: Array, nextCursor: string | null, hasMore: boolean }
+export const getFeed = (params) => axiosClient.get("/feed", { params });
+
+// Lấy post theo id (supports includeMedias/includeMusic) - backward compatibility
 export const getPostById = (id, params) => axiosClient.get(`/posts/${id}`, { params });
+
+// Lấy chi tiết post (enrich đầy đủ comments với author info) - dùng cho post detail view
+export const getPostDetail = (id, params) => axiosClient.get(`/posts/${id}/detail`, { params });
 
 // Tạo post mới
 export const createPost = (data) => axiosClient.post("/posts", data);
@@ -85,11 +95,21 @@ export const uploadPostMedia = (formData) => axiosClient.post("/posts/upload", f
 // Get media details by ID
 export const getMediaById = (mediaId) => axiosClient.get(`/medias/${mediaId}`);
 
-// Get media details by postId and URL
+// Get media details by postId and URL - backward compatibility
 export const getMediaByUrl = (postId, url) => {
   const params = { url };
   if (postId) params.postId = postId;
   return axiosClient.get("/medias/by-url", { params });
+};
+
+// Get media detail by ID (enrich đầy đủ comments với author info) - dùng cho media detail view
+export const getMediaDetail = (mediaId) => axiosClient.get(`/medias/${mediaId}/detail`);
+
+// Get media detail by URL (enrich đầy đủ comments với author info) - dùng cho media detail view
+export const getMediaDetailByUrl = (postId, url) => {
+  const params = { url };
+  if (postId) params.postId = postId;
+  return axiosClient.get("/medias/by-url/detail", { params });
 };
 
 // Track post view (tăng số lượt xem)

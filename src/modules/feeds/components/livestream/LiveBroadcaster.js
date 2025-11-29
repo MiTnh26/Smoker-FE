@@ -22,6 +22,7 @@ export default function LiveBroadcaster({ onClose, onEnded }) {
 
   const localTracksRef = useRef({ videoTrack: null, audioTrack: null });
   const videoContainerRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   const { client, joinChannel, leaveChannel } = useAgoraClient({ mode: "host" });
   const { messages, viewerCount, sendMessage } = useLivestreamChat({
@@ -65,6 +66,13 @@ export default function LiveBroadcaster({ onClose, onEnded }) {
       }
     };
   }, [isLive, stopBroadcast]);
+
+  // Auto-scroll xuống comment mới nhất
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   const playLocalVideo = useCallback(() => {
     const track = localTracksRef.current.videoTrack;
@@ -289,10 +297,12 @@ export default function LiveBroadcaster({ onClose, onEnded }) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-foreground">{msg.userName || "User"}</p>
-                      <p className="text-sm text-muted-foreground">{msg.message}</p>
+                    <p className="text-sm text-muted-foreground">{msg.message}</p>
                     </div>
                   </div>
                 ))}
+                {/* Invisible element để scroll xuống */}
+                <div ref={messagesEndRef} />
               </div>
               <div className="mt-4 flex items-center gap-2 rounded-2xl border border-border/60 bg-card/70 px-3 py-2 flex-shrink-0">
                 <input
