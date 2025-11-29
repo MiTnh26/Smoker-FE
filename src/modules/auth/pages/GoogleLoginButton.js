@@ -26,19 +26,69 @@ export default function GoogleLoginButton() {
         const entities = await fetchAllEntities(data.user.id, data.user);
       
         // Fetch EntityAccountId for Account entity
+        // Retry logic: Backend will create EntityAccount if it doesn't exist
         let accountEntityAccountId = null;
-        try {
-          console.log("[GoogleLogin] Fetching EntityAccountId for AccountId:", data.user.id);
-          const entityAccountRes = await userApi.getEntityAccountId(data.user.id);
-          accountEntityAccountId = entityAccountRes?.data?.data?.EntityAccountId || entityAccountRes?.data?.EntityAccountId || null;
-          console.log("[GoogleLogin] Fetched EntityAccountId:", accountEntityAccountId);
-          
-          if (!accountEntityAccountId) {
-            console.warn("[GoogleLogin] EntityAccountId is null, response:", entityAccountRes);
+        const maxRetries = 3;
+        const retryDelay = 500; // 500ms delay between retries
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(`[GoogleLogin] Fetching EntityAccountId for AccountId: ${data.user.id} (attempt ${attempt}/${maxRetries})`);
+            const entityAccountRes = await userApi.getEntityAccountId(data.user.id);
+            
+            // Parse response - handle both success and error formats
+            if (entityAccountRes?.data?.status === 'success' && entityAccountRes?.data?.data?.EntityAccountId) {
+              accountEntityAccountId = entityAccountRes.data.data.EntityAccountId;
+              console.log("[GoogleLogin] Fetched EntityAccountId:", accountEntityAccountId);
+              break; // Success, exit retry loop
+            } else if (entityAccountRes?.data?.data?.EntityAccountId) {
+              // Alternative response format
+              accountEntityAccountId = entityAccountRes.data.data.EntityAccountId;
+              console.log("[GoogleLogin] Fetched EntityAccountId (alt format):", accountEntityAccountId);
+              break;
+            } else if (entityAccountRes?.data?.EntityAccountId) {
+              // Direct EntityAccountId in data
+              accountEntityAccountId = entityAccountRes.data.EntityAccountId;
+              console.log("[GoogleLogin] Fetched EntityAccountId (direct):", accountEntityAccountId);
+              break;
+            } else if (entityAccountRes?.response?.status === 404) {
+              // EntityAccount doesn't exist yet - backend should create it
+              console.log(`[GoogleLogin] EntityAccount not found (404), attempt ${attempt}/${maxRetries}. Backend should create it.`);
+              if (attempt < maxRetries) {
+                // Wait before retrying to allow backend to create EntityAccount
+                await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+                continue; // Retry
+              } else {
+                console.warn("[GoogleLogin] EntityAccountId still null after retries. Backend may need to create EntityAccount.");
+              }
+            } else {
+              console.warn(`[GoogleLogin] Unexpected response format, attempt ${attempt}/${maxRetries}:`, entityAccountRes);
+              if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+                continue;
+              }
+            }
+          } catch (err) {
+            console.error(`[GoogleLogin] Failed to fetch EntityAccountId (attempt ${attempt}/${maxRetries}):`, err);
+            if (err?.response?.status === 404) {
+              // 404 means EntityAccount doesn't exist - backend should create it
+              if (attempt < maxRetries) {
+                console.log(`[GoogleLogin] Retrying after ${retryDelay * attempt}ms...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+                continue; // Retry
+              } else {
+                console.error("[GoogleLogin] EntityAccountId still null after all retries");
+              }
+            } else {
+              // Other errors - don't retry
+              console.error("[GoogleLogin] Error details:", err?.response?.data || err?.message);
+              break;
+            }
           }
-        } catch (err) {
-          console.error("[GoogleLogin] Failed to fetch EntityAccountId for Account:", err);
-          console.error("[GoogleLogin] Error details:", err?.response?.data || err?.message);
+        }
+        
+        if (!accountEntityAccountId) {
+          console.warn("[GoogleLogin] EntityAccountId is null after all attempts. Session will be saved with null EntityAccountId.");
         }
         
         // Find Account entity in entities array and update it with EntityAccountId
