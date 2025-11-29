@@ -30,6 +30,7 @@ function ChatWindow(props) {
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [selectedCommentId, setSelectedCommentId] = useState(null);
   const [postPreviews, setPostPreviews] = useState(new Map()); // Store post previews by postId
+  const [lastReadMessageId, setLastReadMessageId] = useState(null);
 
   // Listen for session changes (when switching entities)
   useEffect(() => {
@@ -458,6 +459,8 @@ function ChatWindow(props) {
         // Handle response format: { success: true, data: messages } or direct array
         const messages = res?.data?.data || res?.data || [];
         setMessages(Array.isArray(messages) ? messages : []);
+        // Update last read message ID
+        setLastReadMessageId(res?.data?.last_read_message_id || null);
         setTimeout(scrollToBottom, 100);
         
         // Show notifications if message is from other user
@@ -519,11 +522,14 @@ function ChatWindow(props) {
       // Handle response format: { success: true, data: messages } or direct array
       const messages = res?.data?.data || res?.data || [];
       setMessages(Array.isArray(messages) ? messages : []);
+      // Store last read message ID
+      setLastReadMessageId(res?.data?.last_read_message_id || null);
       setLoading(false);
       setTimeout(scrollToBottom, 100);
     }).catch(err => {
       console.error("❌ Error loading messages:", err);
       setMessages([]);
+      setLastReadMessageId(null);
       setLoading(false);
     });
   // Đánh dấu đã đọc (gửi conversationId qua body)
@@ -563,12 +569,21 @@ function ChatWindow(props) {
           },
         ]);
         setTimeout(scrollToBottom, 100);
+        // Refresh messages to get updated read status
+        setTimeout(() => {
+          messageApi.getMessages(chat.id).then(res => {
+            const messages = res?.data?.data || res?.data || [];
+            setMessages(Array.isArray(messages) ? messages : []);
+            setLastReadMessageId(res?.data?.last_read_message_id || null);
+          }).catch(err => console.warn("Error refreshing messages:", err));
+        }, 500);
       })
       .catch((err) => {
         console.error("❌ Error sending message:", err);
         messageApi.getMessages(chat.id).then((res) => {
           const messages = res?.data?.data || res?.data || [];
           setMessages(Array.isArray(messages) ? messages : []);
+          setLastReadMessageId(res?.data?.last_read_message_id || null);
         });
       });
   };
@@ -619,6 +634,20 @@ function ChatWindow(props) {
     }
     return map;
   }, [messages]);
+
+  // Find the last message sent by current user
+  const lastUserMessageId = useMemo(() => {
+    if (!currentUserId || !messages.length) return null;
+    const currentUserIdNormalized = String(currentUserId).toLowerCase().trim();
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      const sender = getSenderKey(msg);
+      if (sender === currentUserIdNormalized) {
+        return msg._id || msg.id || msg.messageId;
+      }
+    }
+    return null;
+  }, [messages, currentUserId]);
 
   const handleHeaderClick = () => {
     if (otherUserInfo?.entityId) {
@@ -876,6 +905,9 @@ function ChatWindow(props) {
 
             const bubbleTextColor = isMine ? "#ffffff" : "rgb(var(--foreground))";
 
+            // Check if this message should show "Đã xem"
+            const showReadStatus = isMine && lastUserMessageId === (msg._id || msg.id || msg.messageId) && lastReadMessageId === (msg._id || msg.id || msg.messageId);
+
             // Create contentNode with link detection
             let contentNode;
             const postUrlRegex = /(?:https?:\/\/[^\s]+\/)?posts\/([a-fA-F0-9]{24}|[a-zA-Z0-9_-]+)/g;
@@ -1029,6 +1061,13 @@ function ChatWindow(props) {
                       ))}
                       <span className="ml-2 text-[11px] whitespace-nowrap text-muted-foreground">
                         {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                  )}
+                  {showReadStatus && (
+                    <div className="flex justify-end mt-1">
+                      <span className="text-[11px] text-muted-foreground px-2">
+                        Đã xem
                       </span>
                     </div>
                   )}
