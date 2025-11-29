@@ -22,29 +22,85 @@ export default function GoogleLoginButton() {
       if (data?.token) {
         await login({ token: data.token, user: data.user });
       
-        // Fetch all entities (bars, businesses)
-        const entities = await fetchAllEntities(data.user.id, data.user);
-      
-        // Fetch EntityAccountId for Account entity
+        // Fetch EntityAccountId FIRST before creating entities
+        // Retry logic: Backend will create EntityAccount if it doesn't exist
         let accountEntityAccountId = null;
-        try {
-          console.log("[GoogleLogin] Fetching EntityAccountId for AccountId:", data.user.id);
-          const entityAccountRes = await userApi.getEntityAccountId(data.user.id);
-          accountEntityAccountId = entityAccountRes?.data?.data?.EntityAccountId || entityAccountRes?.data?.EntityAccountId || null;
-          console.log("[GoogleLogin] Fetched EntityAccountId:", accountEntityAccountId);
-          
-          if (!accountEntityAccountId) {
-            console.warn("[GoogleLogin] EntityAccountId is null, response:", entityAccountRes);
+        const maxRetries = 3;
+        const retryDelay = 500; // 500ms delay between retries
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            console.log(`[GoogleLogin] Fetching EntityAccountId for AccountId: ${data.user.id} (attempt ${attempt}/${maxRetries})`);
+            const entityAccountRes = await userApi.getEntityAccountId(data.user.id);
+            
+            // Parse response - handle both success and error formats
+            // Backend returns: { status: "success", data: { EntityAccountId: "..." } }
+            // Axios wraps it: { data: { status: "success", data: { EntityAccountId: "..." } } }
+            if (entityAccountRes?.data?.status === 'success' && entityAccountRes?.data?.data?.EntityAccountId) {
+              accountEntityAccountId = entityAccountRes.data.data.EntityAccountId;
+              console.log("[GoogleLogin] ✅ Fetched EntityAccountId:", accountEntityAccountId);
+              break; // Success, exit retry loop
+            } else if (entityAccountRes?.data?.data?.EntityAccountId) {
+              // Alternative response format (without status check)
+              accountEntityAccountId = entityAccountRes.data.data.EntityAccountId;
+              console.log("[GoogleLogin] ✅ Fetched EntityAccountId (alt format):", accountEntityAccountId);
+              break;
+            } else if (entityAccountRes?.data?.EntityAccountId) {
+              // Direct EntityAccountId in data (unlikely but handle it)
+              accountEntityAccountId = entityAccountRes.data.EntityAccountId;
+              console.log("[GoogleLogin] ✅ Fetched EntityAccountId (direct):", accountEntityAccountId);
+              break;
+            } else {
+              // Log the full response for debugging
+              console.warn(`[GoogleLogin] ⚠️ Unexpected response format, attempt ${attempt}/${maxRetries}:`, {
+                status: entityAccountRes?.status,
+                data: entityAccountRes?.data,
+                response: entityAccountRes?.response?.data
+              });
+              if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+                continue;
+              }
+            }
+          } catch (err) {
+            console.error(`[GoogleLogin] ❌ Failed to fetch EntityAccountId (attempt ${attempt}/${maxRetries}):`, {
+              status: err?.response?.status,
+              data: err?.response?.data,
+              message: err?.message
+            });
+            if (err?.response?.status === 404) {
+              // 404 means EntityAccount doesn't exist - backend should create it
+              if (attempt < maxRetries) {
+                console.log(`[GoogleLogin] 🔄 Retrying after ${retryDelay * attempt}ms...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+                continue; // Retry
+              } else {
+                console.error("[GoogleLogin] ❌ EntityAccountId still null after all retries");
+              }
+            } else {
+              // Other errors - don't retry
+              console.error("[GoogleLogin] ❌ Non-retryable error:", err?.response?.data || err?.message);
+              break;
+            }
           }
-        } catch (err) {
-          console.error("[GoogleLogin] Failed to fetch EntityAccountId for Account:", err);
-          console.error("[GoogleLogin] Error details:", err?.response?.data || err?.message);
         }
         
-        // Find Account entity in entities array and update it with EntityAccountId
+        if (!accountEntityAccountId) {
+          console.warn("[GoogleLogin] ⚠️ EntityAccountId is null after all attempts. Session will be saved with null EntityAccountId.");
+        }
+        
+        // Fetch all entities (bars, businesses) - NOW with EntityAccountId available
+        const entities = await fetchAllEntities(data.user.id, data.user, accountEntityAccountId);
+        
+        // Ensure Account entity has EntityAccountId (double-check)
         const accountEntity = entities.find(e => e.type === "Account");
-        if (accountEntity && accountEntityAccountId) {
-          accountEntity.EntityAccountId = accountEntityAccountId;
+        if (accountEntity) {
+          if (accountEntityAccountId && !accountEntity.EntityAccountId) {
+            accountEntity.EntityAccountId = accountEntityAccountId;
+            console.log("[GoogleLogin] ✅ Updated Account entity with EntityAccountId:", accountEntityAccountId);
+          } else if (!accountEntityAccountId) {
+            console.warn("[GoogleLogin] ⚠️ Account entity EntityAccountId is still null:", accountEntity);
+          }
         }
       
         // ✅ Initialize session using sessionManager

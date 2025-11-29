@@ -225,6 +225,20 @@ export default function PublicProfile() {
     checkBannedStatus();
   }, []);
 
+  // Close booking modal if booking is no longer allowed
+  // This must be before early returns to follow React Hooks rules
+  useEffect(() => {
+    if (!profile) return;
+    const isOwnProfile = currentUserEntityId && String(currentUserEntityId).toLowerCase() === String(entityId).toLowerCase();
+    const profileRoleUpper = (profile?.role || profile?.Role || profile?.type || profile?.Type || "").toString().toUpperCase();
+    const isPerformerProfile = ["DJ", "DANCER"].includes(profileRoleUpper);
+    const canRequestBooking = !isOwnProfile && isPerformerProfile;
+    
+    if (!canRequestBooking && bookingOpen) {
+      setBookingOpen(false);
+    }
+  }, [profile, currentUserEntityId, entityId, bookingOpen]);
+
   if (loading) {
     return (
       <div className={cn("min-h-screen bg-background flex items-center justify-center")}>
@@ -343,12 +357,6 @@ export default function PublicProfile() {
   const isDancerProfile = isPerformerProfile && profileRole === "DANCER";
   const isCustomerProfile = !isBarProfile && !isPerformerProfile;
   const canRequestBooking = !isOwnProfile && isPerformerProfile;
-
-  useEffect(() => {
-    if (!canRequestBooking && bookingOpen) {
-      setBookingOpen(false);
-    }
-  }, [canRequestBooking, bookingOpen]);
 
   // Helper to display gender in Vietnamese
   const displayGender = (gender) => {
