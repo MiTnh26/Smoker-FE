@@ -5,10 +5,12 @@ export default function useLivestreamChat({ channelName, user, isBroadcaster = f
   const { socket } = useSocket();
   const [messages, setMessages] = useState([]);
   const [viewerCount, setViewerCount] = useState(0);
+  const [isEnded, setIsEnded] = useState(false);
 
   useEffect(() => {
     setMessages([]);
     setViewerCount(0);
+    setIsEnded(false);
   }, [channelName]);
 
   useEffect(() => {
@@ -35,6 +37,12 @@ export default function useLivestreamChat({ channelName, user, isBroadcaster = f
         setViewerCount(data.count);
       }
     };
+    const handleLivestreamEnded = (data) => {
+      if (data.channelName && data.channelName === channelName) {
+        console.log("[useLivestreamChat] Livestream ended:", data);
+        setIsEnded(true);
+      }
+    };
     // Bỏ logic tăng/giảm ở FE - chỉ dùng count từ BE để đảm bảo chính xác
     // const handleUserJoined = () => setViewerCount((prev) => prev + 1);
     // const handleUserLeft = () => setViewerCount((prev) => Math.max(0, prev - 1));
@@ -42,6 +50,7 @@ export default function useLivestreamChat({ channelName, user, isBroadcaster = f
     socket.on("new-chat-message", handleNewMessage);
     socket.on("new-reaction", handleReaction);
     socket.on("viewer-count-updated", handleViewerCount);
+    socket.on("livestream-ended", handleLivestreamEnded);
     // Bỏ các event user-joined/user-left - chỉ dùng viewer-count-updated từ BE
     // socket.on("user-joined", handleUserJoined);
     // socket.on("user-left", handleUserLeft);
@@ -50,6 +59,7 @@ export default function useLivestreamChat({ channelName, user, isBroadcaster = f
       socket.off("new-chat-message", handleNewMessage);
       socket.off("new-reaction", handleReaction);
       socket.off("viewer-count-updated", handleViewerCount);
+      socket.off("livestream-ended", handleLivestreamEnded);
       // socket.off("user-joined", handleUserJoined);
       // socket.off("user-left", handleUserLeft);
     };
@@ -62,11 +72,12 @@ export default function useLivestreamChat({ channelName, user, isBroadcaster = f
         channelName,
         message,
         userId: user?.id,
+        entityAccountId: user?.entityAccountId || null, // Gửi entityAccountId để BE lấy đúng activeEntity
         userName: user?.name || "User",
         userAvatar: user?.avatar || "",
       });
     },
-    [socket, channelName, user?.id, user?.name, user?.avatar]
+    [socket, channelName, user?.id, user?.entityAccountId, user?.name, user?.avatar]
   );
 
   const sendReaction = useCallback(
@@ -87,5 +98,6 @@ export default function useLivestreamChat({ channelName, user, isBroadcaster = f
     viewerCount,
     sendMessage,
     sendReaction,
+    isEnded,
   };
 }

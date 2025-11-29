@@ -31,6 +31,20 @@ export function Login() {
       if (res && res.token) {
         await login({ token: res.token, user: res.user });
         
+        // ✅ LƯU SESSION TRƯỚC KHI GỌI API
+        // Đảm bảo token có trong session để axiosClient đọc được
+        const { saveSession } = await import("../../../utils/sessionManager");
+        saveSession({
+          token: res.token,
+          account: res.user,
+          entities: [],
+          activeEntity: null,
+          _createdAt: new Date().toISOString(),
+        });
+        
+        // Đợi một chút để đảm bảo localStorage đã được cập nhật
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Fetch EntityAccountId FIRST before creating entities
         // Retry logic: Backend will create EntityAccount if it doesn't exist
         let accountEntityAccountId = null;

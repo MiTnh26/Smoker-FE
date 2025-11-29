@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { 
   getMediaById, 
   getMediaByUrl,
+  getMediaDetail,
+  getMediaDetailByUrl,
   likeMedia,
   unlikeMedia,
   addMediaComment,
@@ -17,7 +19,6 @@ import {
   deleteMediaReply,
   likeMediaReply,
   unlikeMediaReply,
-  trackMediaShare
 } from "../../../../../api/postApi";
 import ReadMoreText from "../../comment/ReadMoreText";
 import {
@@ -34,7 +35,6 @@ import {
 import MediaStatsBar from "./MediaStatsBar";
 import MediaImageViewer from "./MediaImageViewer";
 import MediaCommentSection from "./MediaCommentSection";
-import ShareModal from "../../modals/ShareModal";
 
 export default function ImageDetailModal({ 
   open, 
@@ -67,11 +67,8 @@ export default function ImageDetailModal({
   // UI state
   const [viewingImage, setViewingImage] = useState(null); // Image URL for lightbox
   const [imageError, setImageError] = useState(false); // Image load error state
-  const [shareModalOpen, setShareModalOpen] = useState(false);
-  
   const hasLoadedRef = useRef(false);
   const replyInputRef = useRef(null);
-  const shareButtonRef = useRef(null);
   const navigate = useNavigate();
   const handleNavigateToProfile = createNavigateToProfile(navigate);
 
@@ -126,30 +123,43 @@ export default function ImageDetailModal({
     setImageError(false);
     try {
       let response;
-      const tryByUrl = async () => {
-        if (!imageUrl) return null;
-        try {
-          return await getMediaByUrl(isValidObjectId(postId) ? postId : undefined, imageUrl);
-        } catch (err) {
-          return null;
-        }
-      };
-
-      // Prefer fetch by URL first, then try by ID
+      // Sử dụng detail API để enrich comments với author info
       if (imageUrl) {
-        response = await tryByUrl();
+        try {
+          // Ưu tiên dùng getMediaDetailByUrl để lấy đầy đủ thông tin comments với author info
+          response = await getMediaDetailByUrl(isValidObjectId(postId) ? postId : undefined, imageUrl);
+        } catch (err) {
+          // Fallback to old API nếu detail API fail
+          try {
+            response = await getMediaByUrl(isValidObjectId(postId) ? postId : undefined, imageUrl);
+          } catch {
+            response = null;
+          }
+        }
+        // Nếu không tìm được bằng URL, thử bằng mediaId
         if (!response && mediaId && isValidObjectId(mediaId)) {
+          try {
+            response = await getMediaDetail(mediaId);
+          } catch {
+            // Fallback to old API
+            try {
+              response = await getMediaById(mediaId);
+            } catch {
+              // ignore
+            }
+          }
+        }
+      } else if (mediaId && isValidObjectId(mediaId)) {
+        try {
+          // Ưu tiên dùng getMediaDetail để lấy đầy đủ thông tin comments với author info
+          response = await getMediaDetail(mediaId);
+        } catch {
+          // Fallback to old API
           try {
             response = await getMediaById(mediaId);
           } catch {
             // ignore
           }
-        }
-      } else if (mediaId && isValidObjectId(mediaId)) {
-        try {
-          response = await getMediaById(mediaId);
-        } catch {
-          // ignore
         }
       } else {
         throw new Error("Missing mediaId or postId+url");
@@ -483,44 +493,6 @@ export default function ImageDetailModal({
     }
   };
 
-  // Handle Share - Open ShareModal
-  const handleShare = () => {
-    setShareModalOpen(true);
-  };
-
-  // Handle Shared callback from ShareModal
-  const handleShared = async ({ type }) => {
-    console.log(`[ImageDetailModal] Media shared to ${type}`);
-    
-    // Track share after successful share
-    const mediaIdForApi = getMediaIdForApi();
-    if (mediaIdForApi) {
-      try {
-        await trackMediaShare(mediaIdForApi);
-        // Reload media để cập nhật số lượt share (without showing loading)
-        await loadMediaDetails(false);
-      } catch (err) {
-        console.warn('[IMAGE_MODAL] Failed to track share:', err);
-      }
-    }
-  };
-
-  // Create a post-like object from media for ShareModal
-  const getMediaAsPost = () => {
-    const mediaIdForApi = getMediaIdForApi();
-    if (!mediaIdForApi) return null;
-
-    return {
-      id: mediaIdForApi,
-      _id: mediaIdForApi,
-      title: media?.caption || "Xem ảnh",
-      content: media?.caption || "",
-      url: imageUrl, // This field indicates it's a media
-      isMedia: true, // Flag to indicate this is a media, not a post
-      // Add other fields that ShareModal might need
-      mediaIds: media?._id ? [media._id] : [],
-    };
-  };
 
   // Handle close
   const handleClose = () => {
@@ -669,9 +641,9 @@ export default function ImageDetailModal({
                   commentsCount={commentsCount}
                   sharesCount={media?.shares || 0}
                   onLikeClick={handleToggleMediaLike}
-                  onShareClick={handleShare}
+                  onShareClick={null}
                   disabled={!getMediaIdForApi()}
-                  shareButtonRef={shareButtonRef}
+                  shareButtonRef={null}
                 />
 
                 {/* Comments Section */}
@@ -708,17 +680,6 @@ export default function ImageDetailModal({
           </div>
         </div>
       </div>
-
-      {/* Share Modal */}
-      {getMediaAsPost() && (
-        <ShareModal
-          open={shareModalOpen}
-          post={getMediaAsPost()}
-          onClose={() => setShareModalOpen(false)}
-          onShared={handleShared}
-          triggerRef={shareButtonRef}
-        />
-      )}
 
       {/* Image Lightbox */}
       {viewingImage && (

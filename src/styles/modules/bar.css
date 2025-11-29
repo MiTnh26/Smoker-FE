@@ -11,6 +11,28 @@
   justify-content: center; /* căn giữa main content khi sidebar ẩn */
 }
 
+/* Override padding ngang trên mobile để đồng bộ với customer */
+@media (max-width: 768px) {
+  .bar-body {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .bar-body {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .bar-body {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+}
+
 /* Sidebar trái */
 .bar-body > aside:first-child {
   @apply hidden lg:block flex-shrink-0 ml-10 w-[350px];
@@ -24,7 +46,27 @@
 
 /* Main content */
 .bar-body > main {
-  @apply flex-none p-5 w-full max-w-[680px] mx-auto;
+  @apply flex-none w-full max-w-[680px] mx-auto;
+  padding: 0 !important; /* Xóa tất cả padding để đồng bộ với customer */
+}
+
+/* Override padding của main trên mobile */
+@media (max-width: 768px) {
+  .bar-body > main {
+    padding: 0 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .bar-body > main {
+    padding: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .bar-body > main {
+    padding: 0 !important;
+  }
 }
 
 /* Dashboard page - full width exception */

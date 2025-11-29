@@ -222,7 +222,18 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
       const entityId = activeEntity?.entityId || activeEntity?.id;
 
       // Get post ID - use original post ID if it's a repost
-      const originalPostId = post.repostedFromId || post.id || post._id;
+      // Normalize to string (handle ObjectId objects)
+      let originalPostId = post.repostedFromId || post.id || post._id;
+      if (originalPostId) {
+        // Convert to string if it's an object with toString method
+        originalPostId = originalPostId.toString ? originalPostId.toString() : String(originalPostId);
+      }
+      
+      if (!originalPostId) {
+        console.error("[ShareModal] Missing originalPostId:", post);
+        alert("Không thể xác định ID bài viết. Vui lòng thử lại.");
+        return;
+      }
       
       // Create post URL that can be detected and opened in modal
       const postUrl = typeof window !== "undefined" 
@@ -240,7 +251,7 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
         entityAccountId,
         entityType,
         entityId,
-        { postId: originalPostId } // Pass postId to backend for post summary
+        { postId: originalPostId } // Pass postId to backend
       );
 
       // Track share (for both post and media)

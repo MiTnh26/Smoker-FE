@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import { MessageCircle, Send, Share2, X } from "lucide-react";
+import { MessageCircle, Send, X } from "lucide-react";
 import livestreamApi from "../../../../api/livestreamApi";
 import { cn } from "../../../../utils/cn";
 import useAgoraClient from "./hooks/useAgoraClient";
@@ -10,13 +10,15 @@ import { getSessionUser } from "./utils";
 export default function LiveViewer({ livestream, onClose }) {
   const videoRef = useRef(null);
   const remoteTracksRef = useRef({ video: null, audio: null });
+  const messagesEndRef = useRef(null);
   const [newMessage, setNewMessage] = useState("");
   const [showChat, setShowChat] = useState(true);
   const [isConnecting, setIsConnecting] = useState(true);
   const [error, setError] = useState(null);
+  const [countdown, setCountdown] = useState(10);
 
   const sessionUser = useMemo(() => getSessionUser(), []);
-  const { messages, viewerCount, sendMessage } = useLivestreamChat({
+  const { messages, viewerCount, sendMessage, isEnded } = useLivestreamChat({
     channelName: livestream.agoraChannelName,
     user: sessionUser,
   });
@@ -111,16 +113,50 @@ export default function LiveViewer({ livestream, onClose }) {
     };
   }, [joinStream, leaveStream]);
 
+  // Tự động dừng video và cleanup khi livestream kết thúc
+  useEffect(() => {
+    if (isEnded) {
+      cleanupTracks();
+      leaveChannel();
+    }
+  }, [isEnded, cleanupTracks, leaveChannel]);
+
+  // Đếm ngược và tự động đóng modal sau 10 giây khi livestream kết thúc
+  useEffect(() => {
+    if (!isEnded) {
+      setCountdown(10);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          // Tự động đóng modal sau 10 giây
+          setTimeout(async () => {
+            await leaveStream();
+            onClose?.();
+          }, 100);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isEnded, leaveStream, onClose]);
+
+  // Auto-scroll xuống comment mới nhất
+  useEffect(() => {
+    if (messagesEndRef.current && showChat) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, showChat]);
+
   const handleSendMessage = () => {
     if (!newMessage.trim()) return;
     sendMessage(newMessage.trim());
     setNewMessage("");
-  };
-
-  const handleShare = () => {
-    if (typeof window === "undefined") return;
-    const url = window.location?.href || "";
-    window.navigator?.clipboard?.writeText?.(url);
   };
 
   const handleClose = async () => {
@@ -162,11 +198,27 @@ export default function LiveViewer({ livestream, onClose }) {
               <p>{error}</p>
             </div>
           )}
+          {isEnded && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-black/80 backdrop-blur-sm">
+              <div className="rounded-full bg-muted/90 p-4 mb-2">
+                <X className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <p className="text-xl font-semibold text-primary-foreground">Phiên live đã kết thúc</p>
+              <p className="text-sm text-muted-foreground">Người phát đã kết thúc livestream này</p>
+              {countdown > 0 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Tự động đóng sau <span className="font-semibold text-primary-foreground">{countdown}</span> giây
+                </p>
+              )}
+            </div>
+          )}
 
+          {!isEnded && (
           <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-danger px-3 py-1 text-xs font-semibold text-primary-foreground shadow-lg shadow-danger/40">
             <span className="h-2 w-2 animate-pulse rounded-full bg-primary-foreground" />
             <span>LIVE</span>
           </div>
+          )}
 
           <div className="absolute left-4 bottom-4 rounded-xl bg-black/60 px-4 py-2 text-sm text-white backdrop-blur">
             <p className="text-base font-semibold">{livestream.title}</p>
@@ -185,13 +237,6 @@ export default function LiveViewer({ livestream, onClose }) {
               aria-label="Toggle chat"
             >
               <MessageCircle className="h-5 w-5" />
-            </button>
-            <button
-              className="rounded-full bg-white/20 p-2 text-white backdrop-blur transition hover:bg-white/40"
-              onClick={handleShare}
-              aria-label="Chia sẻ"
-            >
-              <Share2 className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -237,6 +282,8 @@ export default function LiveViewer({ livestream, onClose }) {
                   </div>
                 </div>
               ))}
+              {/* Invisible element để scroll xuống */}
+              <div ref={messagesEndRef} />
             </div>
             <div className="mt-3 flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-2 flex-shrink-0">
               <input

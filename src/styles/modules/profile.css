@@ -13,12 +13,57 @@
     margin: 0 auto;
   }
 
+  @media (max-width: 768px) {
+    .profile-container {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .profile-container {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .profile-container {
+      padding-left: 0;
+      padding-right: 0;
+    }
+  }
+
   /* --- Cover & Avatar --- */
   .profile-cover {
     @apply relative bg-center bg-cover px-6 py-10 overflow-hidden;
     border-radius: var(--radius);
     border: 1px solid rgb(var(--border));
     min-height: 200px;
+  }
+
+  @media (max-width: 768px) {
+    .profile-cover {
+      padding-left: 0;
+      padding-right: 0;
+      border-radius: 0;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .profile-cover {
+      padding-left: 0;
+      padding-right: 0;
+      border-radius: 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .profile-cover {
+      padding-left: 0;
+      padding-right: 0;
+      border-radius: 0;
+    }
   }
 
   .profile-info-header {
@@ -147,6 +192,30 @@
     background: rgb(var(--card));
     border-color: rgb(var(--border));
     box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+  }
+
+  @media (max-width: 768px) {
+    .profile-section {
+      padding-left: 1rem;
+      padding-right: 1rem;
+      border-radius: 0;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .profile-section {
+      padding-left: 0;
+      padding-right: 0;
+      border-radius: 0;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .profile-section {
+      padding-left: 0;
+      padding-right: 0;
+      border-radius: 0;
+    }
   }
 
   .profile-section-header {
