@@ -43,6 +43,8 @@ function ConversationView({ chat, onBack }) {
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [selectedCommentId, setSelectedCommentId] = useState(null);
   const [postPreviews, setPostPreviews] = useState(new Map()); // Store post previews by postId
+  const [lastReadMessageId, setLastReadMessageId] = useState(null); // Của current user
+  const [otherParticipantLastReadMessageId, setOtherParticipantLastReadMessageId] = useState(null); // Của đối phương (để hiển thị "đã xem")
 
   // Reset header info and paging when switching chats
   useEffect(() => {
@@ -78,6 +80,13 @@ function ConversationView({ chat, onBack }) {
 
   const PAGE_SIZE = 50;
 
+  // Helper function để đọc response từ API getMessages
+  const extractReadStatusFromResponse = (res) => {
+    const lastReadId = res?.data?.last_read_message_id || res?.last_read_message_id || null;
+    const otherLastReadId = res?.data?.other_participant_last_read_message_id || res?.other_participant_last_read_message_id || null;
+    return { lastReadId, otherLastReadId };
+  };
+
   const loadMessages = useCallback(async () => {
     if (!chat?.id) return;
     const res = await messageApi.getMessages(chat.id, { limit: PAGE_SIZE, offset: 0 });
@@ -102,6 +111,12 @@ function ConversationView({ chat, onBack }) {
     normalizedMessages.sort((a, b) => getTimestamp(a) - getTimestamp(b));
     setMessages(normalizedMessages);
     setHasMore(res?.data?.pagination?.hasMore || normalizedMessages.length >= PAGE_SIZE);
+    
+    // Store last read message ID
+    const { lastReadId, otherLastReadId } = extractReadStatusFromResponse(res);
+    setLastReadMessageId(lastReadId);
+    setOtherParticipantLastReadMessageId(otherLastReadId);
+    
     setTimeout(() => {
       if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
     }, 50);
@@ -110,7 +125,7 @@ function ConversationView({ chat, onBack }) {
       if (currentUserId) await messageApi.markMessagesRead(chat.id, currentUserId);
       if (typeof window !== "undefined") window.dispatchEvent(new Event("messageRefresh"));
     } catch {}
-  }, [chat?.id]);
+  }, [chat?.id, currentUserId]);
 
   const loadMore = useCallback(async () => {
     if (!chat?.id || !hasMore || messages.length === 0) return;
@@ -198,10 +213,25 @@ function ConversationView({ chat, onBack }) {
         })
       );
     };
+    // Listen for messages_read event để cập nhật "đã xem" tự động
+    const handleMessagesRead = (data) => {
+      // Chỉ cập nhật nếu là conversation hiện tại
+      if (data.conversationId === chat.id) {
+        // Nếu người đọc là đối phương (không phải mình) → cập nhật otherParticipantLastReadMessageId
+        const readerId = String(data.readerEntityAccountId).trim().toLowerCase();
+        const currentUserIdLower = currentUserId ? String(currentUserId).trim().toLowerCase() : null;
+        
+        if (currentUserIdLower && readerId !== currentUserIdLower) {
+          // Đối phương đã đọc → cập nhật để hiển thị "đã xem"
+          setOtherParticipantLastReadMessageId(data.last_read_message_id);
+        }
+      }
+    };
     socket.on("message:ack", onAck);
     socket.on("typing:start", onTypingStart);
     socket.on("typing:stop", onTypingStop);
     socket.on("presence:update", onPresence);
+    socket.on("messages_read", handleMessagesRead);
     // reaction updates from other devices/users
     const onReaction = (p) => {
       const mid = p?.messageId || p?.id;
@@ -223,10 +253,11 @@ function ConversationView({ chat, onBack }) {
       socket.off("typing:start", onTypingStart);
       socket.off("typing:stop", onTypingStop);
       socket.off("presence:update", onPresence);
+      socket.off("messages_read", handleMessagesRead);
       socket.off("message:reaction", onReaction);
       if (socket.connected) socket.emit("leave_conversation", chat.id);
     };
-  }, [socket, chat?.id]);
+  }, [socket, chat?.id, currentUserId]);
 
   const handleSend = async () => {
     if (!message.trim() || !currentUserId || !chat?.id) return;
@@ -289,7 +320,8 @@ function ConversationView({ chat, onBack }) {
         { clientId, replyToId: opts?.replyToId }
       );
     } finally {
-      // refresh from server (ack + persisted ids)
+      // refresh from server (ack + persisted ids + read status)
+      // loadMessages đã tự động cập nhật read status rồi
       loadMessages();
     }
     setReplyTarget(null);
@@ -1059,6 +1091,33 @@ function ConversationView({ chat, onBack }) {
             );
           }}
         />
+        
+        {/* Hiển thị "Đã xem" dưới cùng của cuộc trò chuyện */}
+        {(() => {
+          // Kiểm tra message cuối cùng có phải của mình không
+          const lastMessage = displayMessages.length > 0 ? displayMessages[displayMessages.length - 1] : null;
+          if (!lastMessage) return null;
+          
+          const isLastMessageFromMe = getSenderKey(lastMessage) === String(currentUserId).toLowerCase().trim();
+          const lastMessageId = String(lastMessage.id || lastMessage._id || lastMessage.messageId).trim();
+          const otherReadId = otherParticipantLastReadMessageId ? String(otherParticipantLastReadMessageId).trim() : null;
+          
+          // Chỉ hiển thị khi: message cuối cùng là của mình + đối phương đã đọc (otherReadId >= lastMessageId)
+          const showReadStatus = isLastMessageFromMe && 
+            otherReadId && 
+            lastMessageId && 
+            otherReadId >= lastMessageId;
+          
+          if (!showReadStatus) return null;
+          
+          return (
+            <div className="flex justify-end mt-2 mb-2 px-4">
+              <span className="text-[11px] text-muted-foreground">
+                Đã xem
+              </span>
+            </div>
+          );
+        })()}
       </div>
       {/* Input */}
       <div
