@@ -497,10 +497,12 @@
     "header": "Comments",
     "loading": "Loading comments...",
     "sort": "Sort:",
+    "mostLiked": "Most liked",
     "newest": "Newest",
     "oldest": "Oldest",
     "none": "No comments yet.",
-    "reply": "Reply"
+    "reply": "Reply",
+    "commentAs": "Comment as"
   },
   "music": {
     "postMusic": "Post music"

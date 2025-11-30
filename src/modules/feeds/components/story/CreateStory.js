@@ -71,8 +71,16 @@ export default function CreateStory({ onOpenEditor }) {
         }
       }}
     >
-      <div className="relative h-[200px] w-full overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-muted shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10" />
+      <div 
+        className="relative h-[200px] w-full overflow-hidden rounded-lg border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+        style={{
+          backgroundImage: 'url(https://static.vecteezy.com/system/resources/previews/011/786/385/non_2x/ape-monkey-smoking-mascot-logo-design-illustration-vector.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20" />
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-3">
           <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border-[0.5px] border-primary/40 bg-card p-[1px] shadow-[0_2px_8px_rgba(0,0,0,0.2)] transition-colors duration-200">
             <img

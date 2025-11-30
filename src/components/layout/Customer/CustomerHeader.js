@@ -398,7 +398,6 @@ export default function CustomerHeader() {
         )}
       </DropdownPanel>
 
-      {/* Notification to Post Modal - rendered at header level to persist */}
       <PostDetailModal
         open={modalOpen}
         postId={modalPostId}
@@ -408,8 +407,6 @@ export default function CustomerHeader() {
           setModalPostId(null);
           setModalCommentId(null);
         }}
-        alwaysShowComments={false}
-        showInputForm={false}
       />
     </>
   );
