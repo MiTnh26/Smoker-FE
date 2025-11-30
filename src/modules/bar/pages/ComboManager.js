@@ -1,78 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Save, Trash2, Check, AlertCircle, Package } from "lucide-react";
 import comboApi from "../../../api/comboApi";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
 import "../../../styles/modules/barTables.css";
 import { useParams } from "react-router-dom";
-
-// Combo Icon SVG Component
-const ComboIcon = ({ className = "", color = null }) => {
-  const iconColor = color || "rgb(var(--primary))";
-  return (
-    <svg
-      className={className}
-      width="60"
-      height="60"
-      viewBox="0 0 60 60"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ color: iconColor }}
-    >
-      {/* Combo box shape */}
-      <rect
-        x="12"
-        y="18"
-        width="36"
-        height="24"
-        rx="2"
-        fill="currentColor"
-        fillOpacity="0.2"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      {/* Plus symbol */}
-      <line
-        x1="30"
-        y1="24"
-        x2="30"
-        y2="36"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      <line
-        x1="24"
-        y1="30"
-        x2="36"
-        y2="30"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-      {/* Decorative lines */}
-      <line
-        x1="15"
-        y1="15"
-        x2="15"
-        y2="18"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <line
-        x1="45"
-        y1="15"
-        x2="45"
-        y2="18"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-};
 
 export default function ComboManager() {
   const { t } = useTranslation();
@@ -248,14 +182,14 @@ export default function ComboManager() {
         </div>
         <div className="bar-tables-actions">
           <button onClick={addCombo} className="btn-add-table">
-            ➕ {t("bar.addCombo")}
+            <Plus size={18} /> {t("bar.addCombo")}
           </button>
           <button
             onClick={saveAll}
             disabled={saving || !combos.some((c) => c.dirty)}
             className={`btn-save-all-tables ${saving ? "loading" : ""}`}
           >
-            {saving ? t("bar.saving") : `💾 ${t("bar.saveAll")}`}
+            {saving ? t("bar.saving") : <><Save size={18} /> {t("bar.saveAll")}</>}
           </button>
         </div>
       </div>
@@ -264,7 +198,7 @@ export default function ComboManager() {
       {combos.length === 0 && !loading && (
         <div className="bar-tables-empty">
           <div className="bar-tables-empty-icon">
-            <ComboIcon />
+            <Package size={60} style={{ color: "rgb(var(--primary))", opacity: 0.5 }} />
           </div>
           <p className="bar-tables-empty-text">
             {t("bar.noCombos")}
@@ -301,7 +235,7 @@ export default function ComboManager() {
                 {/* Combo Icon */}
                 <div className="bar-table-icon-wrapper">
                   <div className="bar-table-icon">
-                    <ComboIcon color="rgb(var(--primary))" />
+                    <Package size={60} style={{ color: "rgb(var(--primary))" }} />
                   </div>
                 </div>
 
@@ -354,9 +288,9 @@ export default function ComboManager() {
                     }`}
                   >
                     {c.dirty ? (
-                      <>🟡 {t("bar.statusEditing")}</>
+                      <><AlertCircle size={16} /> {t("bar.statusEditing")}</>
                     ) : (
-                      <>✅ {t("bar.statusSaved")}</>
+                      <><Check size={16} /> {t("bar.statusSaved")}</>
                     )}
                   </div>
                   {c.ComboId && (
@@ -364,7 +298,7 @@ export default function ComboManager() {
                       onClick={() => deleteComboHandler(c.ComboId, i)}
                       className="bar-table-delete-btn"
                     >
-                      {t("bar.delete")}
+                      <Trash2 size={16} /> {t("bar.delete")}
                     </button>
                   )}
                 </div>
@@ -379,7 +313,7 @@ export default function ComboManager() {
             onClick={addCombo}
             className="bar-table-add-card-btn"
           >
-            {t("bar.addCombo")}
+            <Plus size={18} /> {t("bar.addCombo")}
           </button>
         </div>
       </div>

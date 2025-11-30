@@ -66,28 +66,44 @@
 .btn-add-table {
   background-color: rgb(var(--primary));
   color: rgb(var(--primary-foreground));
-  border-color: rgba(var(--primary), 0.3);
+  border: 2px solid rgb(var(--primary));
 }
 
 .btn-add-table:hover {
-  background-color: rgba(var(--primary), 0.9);
-  box-shadow: 0 4px 12px rgba(var(--primary), 0.3);
+  background-color: rgb(var(--primary));
+  border-color: rgb(var(--primary));
+  box-shadow: 0 4px 12px rgba(var(--primary), 0.4), 0 0 0 1px rgba(var(--primary-foreground), 0.1);
   transform: translateY(-1px);
+  filter: brightness(1.1);
 }
 
 .btn-add-table:active {
   transform: scale(0.98);
+  background-color: rgb(var(--primary));
+  filter: brightness(0.95);
+}
+
+.btn-add-table:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--primary), 0.2);
 }
 
 .btn-save-all-tables {
   background-color: rgb(var(--card));
   color: rgb(var(--foreground));
-  border-color: rgba(var(--border), 0.5);
+  border: 2px solid rgba(var(--border), 0.5);
 }
 
-.btn-save-all-tables:hover {
-  background-color: rgba(var(--muted), 0.3);
-  border-color: rgba(var(--primary), 0.5);
+.btn-save-all-tables:hover:not(:disabled) {
+  background-color: rgb(var(--card));
+  border-color: rgb(var(--primary));
+  color: rgb(var(--primary));
+  box-shadow: 0 0 0 3px rgba(var(--primary), 0.1);
+}
+
+.btn-save-all-tables:focus:not(:disabled) {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--primary), 0.2);
 }
 
 .btn-save-all-tables:disabled {
@@ -158,17 +174,22 @@
   font-size: 0.875rem;
   font-weight: 500;
   background-color: rgba(var(--primary), 0.1);
-  color: rgba(var(--foreground), 0.6);
-  border: 1px solid rgba(var(--border), 0.2);
+  color: rgb(var(--foreground));
+  border: 2px solid rgba(var(--border), 0.4);
   border-radius: calc(var(--radius) * 1.5);
   cursor: pointer;
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .bar-table-add-card-btn:hover {
-  background-color: rgba(var(--primary), 0.2);
-  color: rgb(var(--foreground));
-  border-color: rgba(var(--primary), 0.4);
+  background-color: rgba(var(--primary), 0.15);
+  color: rgb(var(--primary));
+  border-color: rgb(var(--primary));
+  box-shadow: 0 0 0 3px rgba(var(--primary), 0.1);
 }
 
 /* Table Card */
@@ -281,8 +302,8 @@
   width: 100%;
   padding: 0.75rem 1rem;
   font-size: 0.875rem;
-  background-color: rgba(var(--input), 0.2);
-  border: 1px solid rgba(var(--border), 0.2);
+  background-color: rgb(var(--input));
+  border: 2px solid rgba(var(--border), 0.5);
   border-radius: calc(var(--radius) * 1.5);
   color: rgb(var(--foreground));
   transition: all 0.2s ease;
@@ -290,12 +311,13 @@
 
 .bar-table-name-input::placeholder {
   color: rgb(var(--muted-foreground));
+  opacity: 0.7;
 }
 
 .bar-table-name-input:focus {
   outline: none;
   border-color: rgb(var(--primary));
-  box-shadow: 0 0 0 3px rgba(var(--primary), 0.1);
+  box-shadow: 0 0 0 3px rgba(var(--primary), 0.15);
   background-color: rgb(var(--input));
 }
 
@@ -348,7 +370,7 @@
 }
 
 .bar-table-status {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.75rem;
@@ -364,6 +386,9 @@
 }
 
 .bar-table-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   background: transparent;
@@ -698,3 +723,4 @@
     max-width: 60px;
   }
 }
+

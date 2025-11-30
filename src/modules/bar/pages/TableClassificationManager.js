@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Plus, Save, Trash2, Check, AlertCircle } from "lucide-react";
 import barPageApi from "../../../api/barPageApi";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
@@ -208,14 +209,14 @@ export default function TableClassificationManager({ onTableTypesChange }) {
             className="btn-add-classification"
             onClick={addClassification}
           >
-            ➕ {t("bar.addTableType")}
+            <Plus size={18} /> {t("bar.addTableType")}
           </button>
           <button
             className={`btn-save-all ${saving ? "loading" : ""}`}
             onClick={saveAll}
             disabled={saving || !classifications.some((c) => c.dirty)}
           >
-            {saving ? t("bar.saving") : `💾 ${t("bar.saveAll")}`}
+            {saving ? t("bar.saving") : <><Save size={18} /> {t("bar.saveAll")}</>}
           </button>
         </div>
       </div>
@@ -231,24 +232,6 @@ export default function TableClassificationManager({ onTableTypesChange }) {
               key={cardId}
               className={`classification-card ${isExiting ? "exiting" : ""}`}
             >
-              {/* Color Preview */}
-              <div className="classification-color-preview">
-                <input
-                  type="color"
-                  value={c.Color || "#eeeeee"}
-                  onChange={(e) => updateClassification(i, "Color", e.target.value)}
-                  className="classification-color-input"
-                />
-                <div
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    backgroundColor: c.Color || "#eeeeee",
-                    borderRadius: "inherit",
-                  }}
-                />
-              </div>
-
               {/* Name Input */}
               <input
                 type="text"
@@ -294,11 +277,11 @@ export default function TableClassificationManager({ onTableTypesChange }) {
                 >
                   {c.dirty ? (
                     <>
-                      🟡 {t("bar.statusEditing")}
+                      <AlertCircle size={16} /> {t("bar.statusEditing")}
                     </>
                   ) : (
                     <>
-                      ✅ {t("bar.statusSaved")}
+                      <Check size={16} /> {t("bar.statusSaved")}
                     </>
                   )}
                 </div>
@@ -309,7 +292,7 @@ export default function TableClassificationManager({ onTableTypesChange }) {
                       deleteClassification(c.TableClassificationId, i)
                     }
                   >
-                    {t("bar.delete")}
+                    <Trash2 size={16} /> {t("bar.delete")}
                   </button>
                 )}
               </div>
@@ -323,7 +306,7 @@ export default function TableClassificationManager({ onTableTypesChange }) {
             onClick={addClassification}
             className="bar-table-add-card-btn"
           >
-            {t("bar.addTableType")}
+            <Plus size={18} /> {t("bar.addTableType")}
           </button>
         </div>
       </div>

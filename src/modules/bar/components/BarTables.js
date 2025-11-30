@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Save, Trash2, X } from "lucide-react";
+import { Modal } from "../../../components/common/Modal";
 import barPageApi from "../../../api/barPageApi";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
@@ -70,9 +71,9 @@ export default function BarTables({ barPageId, readOnly = false }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toasts, setToasts] = useState([]);
-  const [exitingCards, setExitingCards] = useState(new Set());
-  const inputRefs = useRef({});
-  const tableCardRefs = useRef({});
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [editingTable, setEditingTable] = useState(null);
 
   // Toast management
   const addToast = useCallback((message, type = "info", duration = 3000) => {
@@ -152,67 +153,90 @@ export default function BarTables({ barPageId, readOnly = false }) {
   const addTable = () => {
     if (readOnly) return; // Prevent adding tables in read-only mode
     const newId = `new-${Date.now()}-${Math.random()}`;
-    setTables((prev) => [
-      ...prev,
-      {
-        BarTableId: null,
-        TableName: "",
-        tableName: "",
-        TableClassificationId: "",
-        Color: "#eee",
-        TableTypeName: "",
-        dirty: true,
-        _tempId: newId,
-      },
-    ]);
-
-    // Auto-focus the new input after a short delay
-    setTimeout(() => {
-      const input = inputRefs.current[newId];
-      if (input) input.focus();
-    }, 100);
+    const newTable = {
+      BarTableId: null,
+      TableName: "",
+      tableName: "",
+      TableClassificationId: "",
+      Color: "#eee",
+      TableTypeName: "",
+      dirty: true,
+      _tempId: newId,
+    };
+    setTables((prev) => [...prev, newTable]);
+    
+    // Mở modal ngay để chỉnh sửa bàn mới
+    setSelectedTable(newTable);
+    setEditingTable({
+      tableName: "",
+      tableClassificationId: "",
+    });
+    setIsEditModalOpen(true);
   };
 
-  // Lưu tất cả bàn
-  const saveAllTables = async () => {
-    const dirtyTables = tables.filter((t) => t.dirty);
-    if (!dirtyTables.length) {
-      addToast(t("bar.noTablesToSave"), "warning");
-      return;
+  const deleteTable = async (tableId) => {
+    try {
+      if (tableId) {
+        await barPageApi.deleteBarTable(tableId);
+      }
+      addToast(t("bar.tableDeleted"), "success");
+    } catch (err) {
+      console.error("❌ Lỗi khi xóa bàn:", err);
+      addToast(t("bar.errorDeletingTable"), "error");
     }
+  };
+
+  // Handle save table from modal
+  const handleSaveTableFromModal = async () => {
+    if (!selectedTable || !editingTable) return;
+
+    const tableIndex = tables.findIndex(
+      (t) => (t.BarTableId && t.BarTableId === selectedTable.BarTableId) ||
+             (t._tempId && t._tempId === selectedTable._tempId)
+    );
+
+    if (tableIndex === -1) return;
 
     try {
       setSaving(true);
-      const newTables = [...tables];
-      for (let i = 0; i < dirtyTables.length; i++) {
-        const t = dirtyTables[i];
-        const payload = {
-          barPageId,
-          tableName: t.tableName,
-          tableClassificationId: t.TableClassificationId,
-        };
+      const table = tables[tableIndex];
+      const payload = {
+        barPageId,
+        tableName: editingTable.tableName,
+        tableClassificationId: editingTable.tableClassificationId,
+      };
 
-        if (t.BarTableId) {
-          await barPageApi.updateBarTable(t.BarTableId, payload);
-        } else {
-          const res = await barPageApi.createTables([payload]);
-          t.BarTableId = res.data[0]?.BarTableId;
-        }
+      // Update color and type name from selected type
+      const type = tableTypes.find(
+        (tt) => String(tt.TableClassificationId) === String(editingTable.tableClassificationId)
+      );
 
-        // Cập nhật màu và tên loại bàn ngay sau khi chọn
-        const type = tableTypes.find(
-          (tt) => String(tt.TableClassificationId) === String(t.TableClassificationId)
-        );
-        t.Color = type?.Color || "#eee";
-        t.TableTypeName = type?.TableTypeName || "";
-        t.dirty = false;
-
-        // Cập nhật luôn mảng mới để render lại
-        newTables[newTables.findIndex((x) => x === t)] = t;
+      if (table.BarTableId) {
+        await barPageApi.updateBarTable(table.BarTableId, payload);
+      } else {
+        const res = await barPageApi.createTables([payload]);
+        table.BarTableId = res.data[0]?.BarTableId;
       }
 
-      setTables(newTables);
-      addToast(t("bar.allTablesSaved"), "success");
+      // Update local state
+      setTables((prev) => {
+        const updated = [...prev];
+        updated[tableIndex] = {
+          ...updated[tableIndex],
+          tableName: editingTable.tableName,
+          TableName: editingTable.tableName,
+          TableClassificationId: editingTable.tableClassificationId,
+          Color: type?.Color || "#eee",
+          TableTypeName: type?.TableTypeName || "",
+          dirty: false,
+        };
+        return updated;
+      });
+
+      addToast(t("bar.tableUpdated"), "success");
+      setIsEditModalOpen(false);
+      setSelectedTable(null);
+      setEditingTable(null);
     } catch (err) {
       console.error("❌ Lỗi khi lưu bàn:", err);
       addToast(t("bar.errorSavingTables"), "error");
@@ -221,73 +245,33 @@ export default function BarTables({ barPageId, readOnly = false }) {
     }
   };
 
-  const updateTable = (index, field, value) => {
-    setTables((prev) => {
-      const newTables = [...prev];
-      const table = newTables[index];
-
-      if (field === "tableClassificationId") {
-        const type = tableTypes.find(
-          (tt) => String(tt.TableClassificationId) === String(value)
-        );
-        newTables[index] = {
-          ...table,
-          TableClassificationId: value,
-          Color: type?.Color || "#eee",
-          TableTypeName: type?.TableTypeName || "",
-          dirty: true,
-        };
-      } else if (field === "tableName") {
-        newTables[index] = {
-          ...table,
-          tableName: value,
-          TableName: value, // đồng bộ luôn với DB
-          dirty: true,
-        };
-      }
-
-      return newTables;
-    });
-  };
-
-  const deleteTable = async (tableId, index) => {
+  // Handle delete table from modal
+  const handleDeleteTableFromModal = async () => {
+    if (!selectedTable) return;
     if (!window.confirm(t("bar.confirmDeleteTable"))) return;
 
-    const cardId = tableId || tables[index]?._tempId || `temp-${index}`;
-    // Mark card as exiting for animation
-    setExitingCards((prev) => new Set(prev).add(cardId));
+    const tableIndex = tables.findIndex(
+      (t) => (t.BarTableId && t.BarTableId === selectedTable.BarTableId) ||
+             (t._tempId && t._tempId === selectedTable._tempId)
+    );
 
-    const removeCard = () => {
-      setTables((prev) => prev.filter((_, i) => i !== index));
-      setExitingCards((prev) => {
-        const next = new Set(prev);
-        next.delete(cardId);
-        return next;
-      });
-    };
+    if (tableIndex === -1) return;
 
-    const clearExitingState = () => {
-      setExitingCards((prev) => {
-        const next = new Set(prev);
-        next.delete(cardId);
-        return next;
-      });
-    };
+    await deleteTable(selectedTable.BarTableId);
+    
+    // Remove from local state
+    setTables((prev) => prev.filter((_, i) => i !== tableIndex));
+    
+    setIsEditModalOpen(false);
+    setSelectedTable(null);
+    setEditingTable(null);
+  };
 
-    try {
-      if (tableId) {
-        await barPageApi.deleteBarTable(tableId);
-      }
-
-      // Wait for animation to complete
-      setTimeout(removeCard, 300);
-
-      addToast(t("bar.tableDeleted"), "success");
-    } catch (err) {
-      console.error("❌ Lỗi khi xóa bàn:", err);
-      clearExitingState();
-      addToast(t("bar.errorDeletingTable"), "error");
-    }
+  // Handle close modal
+  const handleCloseModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedTable(null);
+    setEditingTable(null);
   };
 
   // Loading state with skeleton
@@ -325,14 +309,7 @@ export default function BarTables({ barPageId, readOnly = false }) {
               onClick={addTable}
               className="btn-add-table"
             >
-               {t("bar.addTable")}
-            </button>
-            <button
-              onClick={saveAllTables}
-              disabled={saving || !tables.some((t) => t.dirty)}
-              className={`btn-save-all-tables ${saving ? "loading" : ""}`}
-            >
-              {saving ? t("bar.saving") : ` ${t("bar.saveAll")}`}
+              <Plus size={18} /> {t("bar.addTable")}
             </button>
           </div>
         </div>
@@ -383,15 +360,14 @@ export default function BarTables({ barPageId, readOnly = false }) {
               const fillColor = getDarkerColor(tableColor);
 
               const handleTableClick = () => {
-                const cardRef = tableCardRefs.current[cardId];
-                if (cardRef) {
-                  cardRef.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  // Highlight the card briefly
-                  cardRef.classList.add('highlighted');
-                  setTimeout(() => {
-                    cardRef.classList.remove('highlighted');
-                  }, 2000);
-                }
+                if (readOnly) return;
+                // Mở modal để chỉnh sửa
+                setSelectedTable(table);
+                setEditingTable({
+                  tableName: table.tableName || table.TableName || "",
+                  tableClassificationId: table.TableClassificationId || "",
+                });
+                setIsEditModalOpen(true);
               };
 
               const handleKeyDown = (e) => {
@@ -440,69 +416,86 @@ export default function BarTables({ barPageId, readOnly = false }) {
         </div>
       )}
 
-      {/* Tables Grid */}
-      <div className="bar-tables-grid">
-        <AnimatePresence>
-          {tables.map((table, i) => {
-            const cardId = table.BarTableId || table._tempId || `temp-${i}`;
-            const isExiting = exitingCards.has(cardId);
-            const tableColor = table.Color || "#eee";
-
-            return (
-              <motion.div
-                key={cardId}
-                ref={(el) => {
-                  if (el) tableCardRefs.current[cardId] = el;
-                }}
-                initial={{ opacity: 0, x: -20 }}
-                animate={
-                  isExiting
-                    ? { opacity: 0, scale: 0.8 }
-                    : { opacity: 1, x: 0, scale: 1 }
-                }
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.3 }}
-                className={`bar-table-card ${isExiting ? "exiting" : ""}`}
-                style={{
-                  borderLeftColor: tableColor,
-                }}
-              >
-                {/* Unsaved indicator */}
-                {table.dirty && (
-                  <div className="bar-table-dirty-indicator"></div>
-                )}
-
-                {/* Table Icon */}
-                <div className="bar-table-icon-wrapper">
-                  <div className="bar-table-icon">
-                    <TableIcon
-                      color={tableColor}
-                    />
-                  </div>
+      {/* Edit Table Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseModal}
+        size="md"
+      >
+        {selectedTable && editingTable && (
+          <div className="flex flex-col max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex justify-between items-start p-6 border-b border-[rgba(var(--border),0.2)] bg-[rgb(var(--card))]">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="flex-shrink-0 flex items-center justify-center w-[60px] h-[60px] rounded-[calc(var(--radius)*1.5)] bg-[rgba(var(--primary),0.1)]">
+                  <TableIcon
+                    color={selectedTable.Color || "#eee"}
+                  />
                 </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-[rgb(var(--foreground))] m-0 mb-1 leading-tight">
+                    {t("bar.editTable") || "Chỉnh sửa bàn"}
+                  </h2>
+                  <p className="text-sm text-[rgb(var(--muted-foreground))] m-0 leading-snug">
+                    {t("bar.editTableDescription") || "Cập nhật thông tin bàn"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCloseModal}
+                className="flex items-center justify-center w-8 h-8 rounded-[var(--radius)] bg-transparent border border-[rgba(var(--border),0.3)] text-[rgb(var(--muted-foreground))] cursor-pointer transition-all duration-200 flex-shrink-0 hover:bg-[rgba(var(--muted),0.1)] hover:border-[rgba(var(--border),0.5)] hover:text-[rgb(var(--foreground))]"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-                {/* Table Name Input */}
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-5">
+              {/* Table Name Input */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-[rgb(var(--foreground))]">
+                  {t("bar.tableName") || "Tên bàn"}
+                </label>
                 <input
-                  ref={(el) => {
-                    if (el) inputRefs.current[cardId] = el;
-                  }}
                   type="text"
-                  value={table.tableName || ""}
-                  placeholder={t("bar.tableNamePlaceholder")}
-                  onChange={(e) => updateTable(i, "tableName", e.target.value)}
-                  className="bar-table-name-input"
-                  disabled={readOnly}
-                  readOnly={readOnly}
-                />
-
-                {/* Table Type Select */}
-                <select
-                  value={table.TableClassificationId || ""}
+                  value={editingTable.tableName}
                   onChange={(e) =>
-                    updateTable(i, "tableClassificationId", e.target.value)
+                    setEditingTable({
+                      ...editingTable,
+                      tableName: e.target.value,
+                    })
                   }
-                  className="bar-table-type-select"
-                  disabled={readOnly}
+                  placeholder={t("bar.tableNamePlaceholder")}
+                  className="w-full px-4 py-3 text-sm bg-[rgb(var(--input))] border-2 border-[rgba(var(--border),0.5)] rounded-[calc(var(--radius)*1.5)] text-[rgb(var(--foreground))] transition-all duration-200 placeholder:text-[rgb(var(--muted-foreground))] placeholder:opacity-70 focus:outline-none focus:border-[rgb(var(--primary))] focus:shadow-[0_0_0_3px_rgba(var(--primary),0.15)]"
+                  autoFocus
+                />
+              </div>
+
+              {/* Table Type Select */}
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-[rgb(var(--foreground))]">
+                  {t("bar.tableType") || "Loại bàn"}
+                </label>
+                <select
+                  value={editingTable.tableClassificationId}
+                  onChange={(e) => {
+                    const selectedType = tableTypes.find(
+                      (tt) => String(tt.TableClassificationId) === String(e.target.value)
+                    );
+                    setEditingTable({
+                      ...editingTable,
+                      tableClassificationId: e.target.value,
+                    });
+                    // Update color preview
+                    if (selectedType) {
+                      setSelectedTable({
+                        ...selectedTable,
+                        Color: selectedType.Color || "#eee",
+                      });
+                    }
+                  }}
+                  className="w-full px-4 py-3 text-sm bg-[rgb(var(--input))] border-2 border-[rgba(var(--border),0.5)] rounded-[calc(var(--radius)*1.5)] text-[rgb(var(--foreground))] transition-all duration-200 cursor-pointer focus:outline-none focus:border-[rgb(var(--primary))] focus:shadow-[0_0_0_3px_rgba(var(--primary),0.15)]"
                 >
                   <option value="">{t("bar.selectTableType")}</option>
                   {tableTypes.map((tt) => (
@@ -514,73 +507,78 @@ export default function BarTables({ barPageId, readOnly = false }) {
                     </option>
                   ))}
                 </select>
+              </div>
 
-                {/* Color Preview */}
-                {table.TableClassificationId && (
-                  <div className="bar-table-color-preview">
-                    <span className="bar-table-color-label">
-                      {t("bar.color")}:
-                    </span>
+              {/* Color Preview */}
+              {editingTable.tableClassificationId && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium text-[rgb(var(--foreground))]">
+                    {t("bar.color") || "Màu"}
+                  </label>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-[rgba(var(--muted),0.1)] border border-[rgba(var(--border),0.3)] rounded-[calc(var(--radius)*1.5)]">
                     <div
-                      className="bar-table-color-box"
-                      style={{ backgroundColor: tableColor }}
-                      title={table.TableTypeName}
+                      className="w-10 h-10 rounded-[var(--radius)] border-2 border-[rgba(var(--border),0.3)] shadow-[0_2px_4px_rgba(0,0,0,0.1)] flex-shrink-0"
+                      style={{
+                        backgroundColor:
+                          tableTypes.find(
+                            (tt) =>
+                              String(tt.TableClassificationId) ===
+                              String(editingTable.tableClassificationId)
+                          )?.Color || selectedTable.Color || "#eee",
+                      }}
                     />
+                    <span className="text-sm text-[rgb(var(--foreground))] font-medium">
+                      {tableTypes.find(
+                        (tt) =>
+                          String(tt.TableClassificationId) ===
+                          String(editingTable.tableClassificationId)
+                      )?.TableTypeName || ""}
+                    </span>
                   </div>
-                )}
-
-                {/* Status and Actions */}
-                <div className="bar-table-card-actions">
-                  <div
-                    className={`bar-table-status ${table.dirty ? "dirty" : "saved"
-                      }`}
-                  >
-                    {table.dirty ? (
-                      <>🟡 {t("bar.statusEditing")}</>
-                    ) : (
-                      <>✅ {t("bar.statusSaved")}</>
-                    )}
-                  </div>
-                  {table.BarTableId && !readOnly && (
-                    <button
-                      onClick={() => deleteTable(table.BarTableId, i)}
-                      className="bar-table-delete-btn"
-                    >
-                      {t("bar.delete")}
-                    </button>
-                  )}
                 </div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
-        
-        {/* Add Table Button - Below last table */}
-        {!readOnly && (
-          <div className="bar-table-add-card">
-            <button
-              onClick={addTable}
-              className="bar-table-add-card-btn"
-            >
-               {t("bar.addTable")}
-            </button>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center p-6 border-t border-[rgba(var(--border),0.2)] bg-[rgb(var(--card))] gap-4">
+              {selectedTable.BarTableId && (
+                <button
+                  onClick={handleDeleteTableFromModal}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-[calc(var(--radius)*1.5)] border-2 cursor-pointer transition-all duration-200 whitespace-nowrap bg-transparent text-[rgb(var(--danger))] border-[rgba(var(--danger),0.3)] hover:bg-[rgba(var(--danger),0.1)] hover:border-[rgba(var(--danger),0.5)] disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={saving}
+                >
+                  <Trash2 size={18} /> {t("bar.delete")}
+                </button>
+              )}
+              <div className="flex gap-3 ml-auto">
+                <button
+                  onClick={handleCloseModal}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-[calc(var(--radius)*1.5)] border-2 cursor-pointer transition-all duration-200 whitespace-nowrap bg-[rgb(var(--card))] text-[rgb(var(--foreground))] border-[rgba(var(--border),0.5)] hover:bg-[rgba(var(--muted),0.1)] hover:border-[rgba(var(--border),0.7)] disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={saving}
+                >
+                  {t("bar.cancel") || "Hủy"}
+                </button>
+                <button
+                  onClick={handleSaveTableFromModal}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-[calc(var(--radius)*1.5)] border-2 cursor-pointer transition-all duration-200 whitespace-nowrap bg-[rgb(var(--primary))] text-[rgb(var(--primary-foreground))] border-[rgb(var(--primary))] hover:shadow-[0_4px_12px_rgba(var(--primary),0.4)] hover:-translate-y-[1px] hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
+                  disabled={saving || !editingTable.tableName.trim()}
+                >
+                  {saving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-[rgba(var(--primary-foreground),0.3)] border-t-[rgb(var(--primary-foreground))] rounded-full animate-spin" />
+                      {t("bar.saving")}
+                    </>
+                  ) : (
+                    <>
+                      <Save size={18} /> {t("bar.save") || "Lưu"}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
-      </div>
-
-      {/* Back to Top Button - At bottom of page */}
-      {tables.length > 0 && (
-        <div className="bar-tables-layout-footer">
-          <button
-            onClick={() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="bar-tables-layout-back-btn"
-          >
-            {t("bar.backToTop") || "Trở về đầu trang"}
-          </button>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }
