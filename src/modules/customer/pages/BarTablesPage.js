@@ -122,7 +122,6 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
-  const [isPaid, setIsPaid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   if (!open) return null;
@@ -139,8 +138,7 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
       await onConfirm({
         customerName: customerName.trim(),
         phone: phone.trim(),
-        note: note.trim(),
-        isPaid: isPaid
+        note: note.trim()
       });
       setCustomerName("");
       setPhone("");
@@ -221,7 +219,7 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
             }}>
               <span style={{ fontWeight: '700', color: '#1f2937' }}>Tổng tiền cọc:</span>
               <span style={{ fontWeight: '700', fontSize: '1.1rem', color: 'rgb(var(--success))' }}>
-                {tables.reduce((sum, table) => sum + (table.DepositPrice || 0), 0).toLocaleString('vi-VN')} đ
+                {(tables.length * 100000).toLocaleString('vi-VN')} đ
               </span>
             </div>
           </div>
@@ -303,33 +301,24 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
             />
           </div>
 
-          {tables.length > 0 && tables.reduce((sum, t) => sum + (t.DepositPrice || 0), 0) > 0 && (
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                cursor: 'pointer',
-                padding: '12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                background: isPaid ? '#D1FAE5' : 'white',
-                transition: 'all 0.2s'
+          {tables.length > 0 && (
+            <div style={{ 
+              marginBottom: '20px',
+              padding: '12px',
+              background: '#FEF3C7',
+              borderRadius: '8px',
+              border: '1px solid #FCD34D'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                color: '#92400E',
+                fontWeight: '600'
               }}>
-                <input
-                  type="checkbox"
-                  checked={isPaid}
-                  onChange={(e) => setIsPaid(e.target.checked)}
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    cursor: 'pointer'
-                  }}
-                />
-                <span style={{ fontWeight: '600', color: '#374151' }}>
-                  Đã thanh toán tiền cọc ({tables.reduce((sum, t) => sum + (t.DepositPrice || 0), 0).toLocaleString('vi-VN')} đ)
-                </span>
-              </label>
+                <span>💳</span>
+                <span>Bạn sẽ được chuyển đến trang thanh toán PayOS để đặt cọc sau khi xác nhận</span>
+              </div>
             </div>
           )}
 
@@ -344,11 +333,9 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
               <span style={{ fontWeight: '600' }}>{selectedDate}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280' }}>Tổng tiền cọc:</span>
+              <span style={{ color: '#6b7280' }}>Tổng tiền cọc ({tables.length} bàn × 100k):</span>
               <span style={{ fontWeight: '600', color: 'rgb(var(--success))' }}>
-                {tables.reduce((sum, t) => sum + (t.DepositPrice || 0), 0) > 0 
-                  ? tables.reduce((sum, t) => sum + (t.DepositPrice || 0), 0).toLocaleString('vi-VN') + ' đ'
-                  : 'Miễn phí'}
+                {(tables.length * 100000).toLocaleString('vi-VN')} đ
               </span>
             </div>
           </div>
@@ -384,7 +371,7 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
                 opacity: submitting ? 0.7 : 1
               }}
             >
-              {submitting ? 'Đang xử lý...' : 'Xác nhận đặt bàn'}
+              {submitting ? 'Đang xử lý...' : 'Đặt cọc lịch đặt bàn'}
             </button>
           </div>
         </form>
@@ -691,6 +678,9 @@ const BarTablesPage = ({ barId: propBarId }) => {
         price: table.DepositPrice || 0
       }));
 
+      // Tính tổng tiền cọc: mỗi bàn 100k VND
+      const DEPOSIT_PER_TABLE = 100000; // 100k VND mỗi bàn
+      const totalDepositAmount = selectedTables.length * DEPOSIT_PER_TABLE;
       const totalAmount = selectedTables.reduce((sum, table) => sum + (table.DepositPrice || 0), 0);
 
       // Tính startTime và endTime
@@ -727,22 +717,37 @@ const BarTablesPage = ({ barId: propBarId }) => {
         bookingDate: selectedDate,
         startTime: startTime,
         endTime: endTime,
-        // Nếu đã thanh toán → paymentStatus = "Done", scheduleStatus = "Confirmed"
-        // Nếu chưa thanh toán → paymentStatus = "Pending", scheduleStatus = "Confirmed" (vẫn confirmed vì không cần bar xác nhận)
-        paymentStatus: formData.isPaid ? "Done" : "Pending",
+        // Luôn để Pending vì sẽ thanh toán qua PayOS
+        paymentStatus: "Pending",
         scheduleStatus: "Confirmed" // Luôn confirmed vì không cần bar xác nhận
       };
 
+      // Tạo booking trước
       const result = await bookingApi.createBooking(bookingData);
       
-      if (result.success) {
-        addToast(`Đặt ${selectedTables.length} bàn thành công!`, "success");
-        setBookingModalOpen(false);
-        setSelectedTables([]);
-        // Refresh tables to update status
-        fetchTables();
-      } else {
+      if (!result.success) {
         throw new Error(result.message || "Đặt bàn thất bại");
+      }
+
+      const bookingId = result.data?.BookedScheduleId || result.data?.bookedScheduleId;
+      if (!bookingId) {
+        throw new Error("Không lấy được booking ID");
+      }
+
+      // Tạo payment link PayOS cho tiền cọc (mỗi bàn 100k)
+      console.log("[BarTablesPage] Creating payment link for deposit:", {
+        bookingId,
+        depositAmount: totalDepositAmount,
+        tableCount: selectedTables.length
+      });
+
+      const paymentResult = await bookingApi.createTablePayment(bookingId, totalDepositAmount);
+      
+      if (paymentResult.success && paymentResult.data?.paymentUrl) {
+        // Redirect đến PayOS để thanh toán
+        window.location.href = paymentResult.data.paymentUrl;
+      } else {
+        throw new Error("Không thể tạo link thanh toán");
       }
     } catch (error) {
       console.error("Booking error:", error);

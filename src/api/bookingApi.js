@@ -40,7 +40,23 @@ const bookingApi = {
     axiosClient.get(`/booking/receiver/${receiverId}`, { params }),
   
   getDJBookingsByBooker: (bookerId, params) => 
-    axiosClient.get(`/booking/booker/${bookerId}`, { params })
+    axiosClient.get(`/booking/booker/${bookerId}`, { params }),
+
+  // Tạo payment link cho booking
+  createPayment: (bookingId, depositAmount) => 
+    axiosClient.post(`/booking/${bookingId}/create-payment`, { depositAmount }),
+
+  // Tạo payment link cho table booking (cọc)
+  createTablePayment: (bookingId, depositAmount) => 
+    axiosClient.post(`/bookingtable/${bookingId}/create-payment`, { depositAmount }),
+
+  // Kiểm tra và cập nhật payment status từ PayOS (nếu webhook không được gọi)
+  checkPaymentStatus: (bookingId) => 
+    axiosClient.post(`/booking/${bookingId}/check-payment`),
+
+  // DJ/Dancer xác nhận đã giao dịch xong
+  completeTransaction: (bookingId) => 
+    axiosClient.post(`/booking/${bookingId}/complete-transaction`)
 };
 
 export default bookingApi;

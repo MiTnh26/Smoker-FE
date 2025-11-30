@@ -28,6 +28,9 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
   const [success, setSuccess] = useState(false);
   const [timeConflict, setTimeConflict] = useState(null); // Thông tin conflict nếu có
 
+  // Cọc cố định 100.000 VND
+  const DEPOSIT_AMOUNT = 100000;
+
   // Fetch profile nếu chưa có
   useEffect(() => {
     if (open && performerEntityAccountId) {
@@ -551,26 +554,35 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
         offeredPrice: calculatedPrice, // Tự động tính từ profile
       };
 
-      // Thử gọi API
+      // Thử gọi API tạo booking request
       try {
-        await bookingApi.createRequest(payload);
-        setSuccess(true);
-        // Đóng modal sau 2 giây
-        setTimeout(() => {
-          onClose?.("success");
-          setSuccess(false);
-          // Reset form
-          setBookingType("day");
-          setDate("");
-          setStartTime("");
-          setEndTime("");
-          setSelectedProvinceId("");
-          setSelectedDistrictId("");
-          setSelectedWardId("");
-          setAddressDetail("");
-          setLocation("");
-          setNote("");
-        }, 2000);
+        const bookingResponse = await bookingApi.createRequest(payload);
+        const bookingId = bookingResponse?.data?.data?.BookedScheduleId || bookingResponse?.data?.BookedScheduleId;
+        
+        if (!bookingId) {
+          throw new Error("Không nhận được booking ID từ server");
+        }
+
+        // Luôn yêu cầu thanh toán cọc 100.000 VND
+        try {
+          const paymentResponse = await bookingApi.createPayment(bookingId, DEPOSIT_AMOUNT);
+          const paymentUrl = paymentResponse?.data?.data?.paymentUrl || paymentResponse?.data?.paymentUrl;
+          
+          if (paymentUrl) {
+            // Redirect đến PayOS payment page
+            window.location.href = paymentUrl;
+            return; // Không đóng modal ngay, đợi redirect
+          } else {
+            throw new Error("Không nhận được payment URL từ server");
+          }
+        } catch (paymentError) {
+          console.error("[RequestBookingModal] Payment API error:", paymentError);
+          const paymentErrorMessage = paymentError.response?.data?.message || 
+                                    paymentError.message || 
+                                    "Không thể tạo payment link. Vui lòng thử lại.";
+          setError(paymentErrorMessage);
+          return;
+        }
       } catch (apiError) {
         console.error("[RequestBookingModal] API error:", apiError);
         const errorMessage = apiError.response?.data?.message || 
@@ -831,30 +843,32 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
             />
           </div>
 
-          {/* Calculated Price (Read-only) */}
+          {/* Deposit Amount (Cọc cố định) */}
           <div className="flex flex-col gap-2">
             <span className="text-sm font-semibold text-foreground flex items-center gap-2">
               <DollarSign size={16} />
-              Giá booking (tự động tính)
+              Số tiền cọc (bắt buộc)
             </span>
             <div className={cn(
               "w-full rounded-lg bg-muted/50 border border-border/30",
               "px-4 py-2.5",
-              "text-foreground font-semibold",
-              loadingProfile && "opacity-50"
+              "text-foreground font-semibold"
             )}>
-              {loadingProfile ? (
-                <span className="text-muted-foreground">Đang tải...</span>
-              ) : calculatedPrice === null ? (
-                <span className="text-muted-foreground">
-                  {bookingType === "hour" ? "Vui lòng chọn giờ để tính giá" : "Đang tính giá..."}
-                </span>
-              ) : calculatedPrice > 0 ? (
-                <span>{calculatedPrice.toLocaleString('vi-VN')} đ</span>
-              ) : (
-                <span className="text-warning">Chưa có giá (có thể thỏa thuận sau)</span>
-              )}
+              <span>{DEPOSIT_AMOUNT.toLocaleString('vi-VN')} đ</span>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Số tiền cọc cố định 100.000 VND. Số tiền còn lại sẽ được thanh toán sau khi hoàn thành dịch vụ.
+            </p>
+            {calculatedPrice !== null && calculatedPrice > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Tổng giá booking: {calculatedPrice.toLocaleString('vi-VN')} đ
+                {calculatedPrice > DEPOSIT_AMOUNT && (
+                  <span className="ml-2">
+                    (Còn lại: {(calculatedPrice - DEPOSIT_AMOUNT).toLocaleString('vi-VN')} đ)
+                  </span>
+                )}
+              </p>
+            )}
             {profile && calculatedPrice !== null && (
               <p className="text-xs text-muted-foreground">
                 {bookingType === "day" ? (
@@ -864,11 +878,9 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                     ? `Giá theo giờ: ${Number(profile.pricePerHours).toLocaleString('vi-VN')} đ/giờ × 24 giờ = ${calculatedPrice.toLocaleString('vi-VN')} đ`
                     : "Performer chưa thiết lập giá. Có thể thỏa thuận sau khi booking được xác nhận."
                 ) : (
-                  bookingType === "hour" && calculatedHours > 0 && profile.pricePerHours && Number(profile.pricePerHours) > 0
-                    ? `Giá theo giờ: ${Number(profile.pricePerHours).toLocaleString('vi-VN')} đ/giờ × ${calculatedHours} giờ = ${calculatedPrice.toLocaleString('vi-VN')} đ`
-                    : bookingType === "hour" && (!startTime || !endTime)
-                    ? "Vui lòng chọn giờ bắt đầu và kết thúc"
-                    : "Performer chưa thiết lập giá theo giờ. Có thể thỏa thuận sau khi booking được xác nhận."
+                  bookingType === "hour" && calculatedHours > 0 && profile.pricePerHours && Number(profile.pricePerHours) > 0 ? (
+                    `Giá theo giờ: ${Number(profile.pricePerHours).toLocaleString('vi-VN')} đ/giờ × ${calculatedHours} giờ = ${calculatedPrice.toLocaleString('vi-VN')} đ`
+                  ) : "Performer chưa thiết lập giá. Có thể thỏa thuận sau khi booking được xác nhận."
                 )}
               </p>
             )}
@@ -916,7 +928,7 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
               "disabled:opacity-50 disabled:cursor-not-allowed"
             )}
           >
-            {submitting ? "Submitting..." : "Send request"}
+            {submitting ? "Đang xử lý..." : "Đặt cọc lịch diễn"}
           </button>
         </div>
       </div>

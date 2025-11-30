@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, Loader2, ArrowRight } from 'lucide-react';
 import { cn } from '../utils/cn';
 import axiosClient from '../api/axiosClient';
+import bookingApi from '../api/bookingApi';
 
 export default function PaymentReturn() {
   const [searchParams] = useSearchParams();
@@ -10,10 +11,14 @@ export default function PaymentReturn() {
   const [loading, setLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState(null); // 'success', 'failed', 'pending'
   const [purchaseInfo, setPurchaseInfo] = useState(null);
+  const [bookingInfo, setBookingInfo] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState(null); // Số tiền đã thanh toán từ PayOS
   const [countdown, setCountdown] = useState(5);
   
   const type = searchParams.get('type');
   const purchaseId = searchParams.get('purchaseId');
+  const bookingId = searchParams.get('bookingId');
+  const orderCode = searchParams.get('orderCode');
   const code = searchParams.get('code'); // PayOS code: '00' = success
   const status = searchParams.get('status'); // PayOS status: 'PAID' = success
   const cancel = searchParams.get('cancel'); // 'true' = cancelled
@@ -26,6 +31,25 @@ export default function PaymentReturn() {
       return;
     }
 
+    // Xử lý booking payment (DJ/Dancer hoặc table booking)
+    if ((type === 'booking' || type === 'table-booking') && bookingId) {
+      // Kiểm tra payment status từ URL params trước (PayOS trả về)
+      // Nếu code=00 và status=PAID thì thanh toán thành công
+      if (code === '00' && status === 'PAID') {
+        // Thanh toán thành công theo PayOS, nhưng cần verify với database
+        checkBookingPaymentStatus(true); // true = force success nếu URL params OK
+      } else if (!code && !status) {
+        // Không có URL params (có thể redirect từ app), kiểm tra database trực tiếp
+        // Nếu webhook đã update thì sẽ thấy Paid
+        checkBookingPaymentStatus(false);
+      } else {
+        // Có URL params nhưng không phải success, kiểm tra database
+        checkBookingPaymentStatus(false);
+      }
+      return;
+    }
+
+    // Xử lý ad-purchase payment (giữ nguyên logic cũ)
     if (!purchaseId || type !== 'ad-purchase') {
       setPaymentStatus('failed');
       setLoading(false);
@@ -51,10 +75,181 @@ export default function PaymentReturn() {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (paymentStatus === 'success' && countdown === 0) {
-      // Redirect về trang quản lý sự kiện
-      navigate('/bar/events');
+      // Redirect về trang home hoặc newsfeed tùy vào trạng thái đăng nhập
+      try {
+        const sessionRaw = localStorage.getItem("session");
+        if (sessionRaw) {
+          const session = JSON.parse(sessionRaw);
+          if (session && (session.account || session.activeEntity)) {
+            // User đã đăng nhập, navigate đến newsfeed
+            navigate('/customer/newsfeed', { replace: true });
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('[PaymentReturn] Error checking session:', error);
+      }
+      // User chưa đăng nhập, navigate đến trang home
+      navigate('/', { replace: true });
     }
   }, [paymentStatus, countdown, navigate]);
+
+  // Hàm kiểm tra payment status cho booking
+  const checkBookingPaymentStatus = async (forceSuccess = false) => {
+    try {
+      setLoading(true);
+      
+      console.log('[PaymentReturn] checkBookingPaymentStatus called:', {
+        forceSuccess,
+        code,
+        status,
+        bookingId,
+        orderCode
+      });
+      
+      // Nếu URL params cho thấy thành công (code=00, status=PAID), cập nhật database ngay
+      if (forceSuccess && code === '00' && status === 'PAID') {
+        console.log('[PaymentReturn] Payment appears successful from URL params, updating database...');
+        
+        try {
+          // Gọi API checkPaymentStatus để cập nhật database ngay lập tức (không chờ webhook)
+          console.log('[PaymentReturn] Calling checkPaymentStatus API to update database...');
+          const checkResponse = await bookingApi.checkPaymentStatus(bookingId);
+          console.log('[PaymentReturn] checkPaymentStatus API called successfully');
+          
+          // Lấy payment amount từ response nếu có
+          if (checkResponse?.data?.paymentAmount) {
+            setPaymentAmount(checkResponse.data.paymentAmount);
+          }
+          
+          // Đợi một chút để database update xong, rồi lấy lại booking info
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Lấy thông tin booking đã được cập nhật
+          const response = await bookingApi.getMyBookings({ limit: 1000 });
+          const bookings = response?.data?.data || response?.data || [];
+          const booking = bookings.find(b => {
+            const bId = b.BookedScheduleId || b.bookedScheduleId;
+            return bId && (bId.toString() === bookingId?.toString() || bId === bookingId);
+          });
+          
+          if (booking) {
+            setBookingInfo(booking);
+            const paymentStatusValue = booking.PaymentStatus || booking.paymentStatus;
+            console.log('[PaymentReturn] Updated payment status:', paymentStatusValue);
+            
+            // Hiển thị success
+            setPaymentStatus('success');
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error('[PaymentReturn] Error updating payment status:', err);
+          // Nếu có lỗi nhưng URL params vẫn cho thấy success, vẫn hiển thị success
+          setPaymentStatus('success');
+          setLoading(false);
+          return;
+        }
+        
+        // Fallback: nếu không tìm thấy booking, vẫn hiển thị success dựa trên URL params
+        setPaymentStatus('success');
+        setLoading(false);
+        return;
+      }
+      
+      // Lấy thông tin booking từ backend
+      console.log('[PaymentReturn] Checking payment status for booking:', bookingId);
+      
+      const response = await bookingApi.getMyBookings({ limit: 1000 });
+      const bookings = response?.data?.data || response?.data || [];
+      // So sánh bookingId (có thể là string hoặc UUID)
+      const booking = bookings.find(b => {
+        const bId = b.BookedScheduleId || b.bookedScheduleId;
+        return bId && (bId.toString() === bookingId?.toString() || bId === bookingId);
+      });
+      
+      if (booking) {
+        setBookingInfo(booking);
+        
+        // Kiểm tra payment status - chấp nhận Paid (đã cọc)
+        const paymentStatusValue = booking.PaymentStatus || booking.paymentStatus;
+        if (paymentStatusValue === 'Paid') {
+          setPaymentStatus('success');
+        } else if (paymentStatusValue === 'Failed') {
+          // Nếu database chưa update nhưng URL params cho thấy thành công, vẫn hiển thị success
+          if (code === '00' && status === 'PAID') {
+            setPaymentStatus('success');
+          } else {
+            setPaymentStatus('failed');
+          }
+        } else {
+          // Nếu chưa có status trong database hoặc vẫn là Pending
+          // Kiểm tra URL params từ PayOS
+          if (code === '00' && status === 'PAID') {
+            // PayOS đã confirm thành công, gọi API để cập nhật database ngay (không chờ webhook)
+            console.log('[PaymentReturn] Payment success detected, calling checkPaymentStatus to update database...');
+            try {
+              const checkResponse = await bookingApi.checkPaymentStatus(bookingId);
+              console.log('[PaymentReturn] checkPaymentStatus API called successfully');
+              
+              // Lấy payment amount từ response nếu có
+              if (checkResponse?.data?.paymentAmount) {
+                setPaymentAmount(checkResponse.data.paymentAmount);
+              }
+              
+              // Đợi một chút để database update xong, rồi lấy lại booking info
+              await new Promise(resolve => setTimeout(resolve, 500));
+              
+              const retryResponse = await bookingApi.getMyBookings({ limit: 1000 });
+              const retryBookings = retryResponse?.data?.data || retryResponse?.data || [];
+              const updatedBooking = retryBookings.find(b => {
+                const bId = b.BookedScheduleId || b.bookedScheduleId;
+                return bId && (bId.toString() === bookingId?.toString() || bId === bookingId);
+              });
+              if (updatedBooking) {
+                setBookingInfo(updatedBooking);
+                const updatedPaymentStatus = updatedBooking.PaymentStatus || updatedBooking.paymentStatus;
+                if (updatedPaymentStatus === 'Paid') {
+                  setPaymentStatus('success');
+                  setLoading(false);
+                  return;
+                }
+              }
+            } catch (err) {
+              console.error('[PaymentReturn] Error calling checkPaymentStatus:', err);
+              // Nếu có lỗi nhưng URL params vẫn cho thấy success, vẫn hiển thị success
+            }
+            // Fallback: hiển thị success dựa trên URL params
+            setPaymentStatus('success');
+            setLoading(false);
+            return;
+          } else {
+            // Không có URL params hoặc không phải success
+            // Nếu paymentStatusValue là Pending và không có URL params success, đánh dấu là failed
+            setPaymentStatus('failed');
+            setLoading(false);
+          }
+        }
+      } else {
+        // Nếu không lấy được booking nhưng URL params cho thấy thành công
+        if (code === '00' && status === 'PAID') {
+          setPaymentStatus('success');
+        } else {
+          setPaymentStatus('failed');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking booking payment status:', error);
+      // Nếu có lỗi nhưng URL params cho thấy thành công, vẫn hiển thị success
+      if (code === '00' && status === 'PAID') {
+        setPaymentStatus('success');
+      } else {
+        setPaymentStatus('failed');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const checkPaymentStatus = async (forceSuccess = false) => {
     try {
@@ -190,8 +385,23 @@ export default function PaymentReturn() {
     }
   };
 
-  const handleGoToEvents = () => {
-    navigate('/bar/events');
+  const handleGoToHome = () => {
+    // Kiểm tra xem user có đăng nhập không trước khi navigate
+    try {
+      const sessionRaw = localStorage.getItem("session");
+      if (sessionRaw) {
+        const session = JSON.parse(sessionRaw);
+        if (session && (session.account || session.activeEntity)) {
+          // User đã đăng nhập, navigate đến newsfeed
+          navigate('/customer/newsfeed', { replace: true });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('[PaymentReturn] Error checking session:', error);
+    }
+    // User chưa đăng nhập, navigate đến trang home
+    navigate('/', { replace: true });
   };
 
   if (loading) {
@@ -216,11 +426,48 @@ export default function PaymentReturn() {
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Thanh toán thành công!</h1>
             <p className="text-gray-600 mb-6">
-              Yêu cầu quảng cáo của bạn đã được gửi đến admin. 
-              Admin sẽ set lên Revive và thông báo lại cho bạn.
+              {type === 'booking' 
+                ? 'Booking của bạn đã được thanh toán thành công. Vui lòng chờ performer xác nhận booking.'
+                : type === 'table-booking'
+                ? 'Đặt bàn của bạn đã được thanh toán cọc thành công. Vui lòng đến quán đúng giờ đã đặt.'
+                : 'Yêu cầu quảng cáo của bạn đã được gửi đến admin. Admin sẽ set lên Revive và thông báo lại cho bạn.'}
             </p>
             
-            {purchaseInfo && (
+            {/* Booking Info */}
+            {(type === 'booking' || type === 'table-booking') && bookingInfo && (
+              <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Loại:</span>
+                    <span className="font-medium text-gray-900">{bookingInfo.Type || bookingInfo.type || 'Performer'}</span>
+                  </div>
+                  {(paymentAmount !== null || bookingInfo.TotalAmount !== undefined) && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">
+                        {type === 'table-booking' ? 'Tiền cọc đã thanh toán:' : 'Số tiền cọc:'}
+                      </span>
+                      <span className="font-medium text-gray-900">
+                        {new Intl.NumberFormat('vi-VN', {
+                          style: 'currency',
+                          currency: 'VND'
+                        }).format(paymentAmount || bookingInfo.TotalAmount || bookingInfo.totalAmount || 0)}
+                      </span>
+                    </div>
+                  )}
+                  {bookingInfo.BookingDate && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Ngày:</span>
+                      <span className="font-medium text-gray-900">
+                        {new Date(bookingInfo.BookingDate || bookingInfo.bookingDate).toLocaleDateString('vi-VN')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Purchase Info */}
+            {type === 'ad-purchase' && purchaseInfo && (
               <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -248,13 +495,13 @@ export default function PaymentReturn() {
             
             <div className="space-y-3">
               <button
-                onClick={handleGoToEvents}
+                onClick={handleGoToHome}
                 className={cn(
                   "w-full px-6 py-3 rounded-lg font-medium text-white transition-colors",
                   "bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2"
                 )}
               >
-                <span>Về trang quản lý sự kiện</span>
+                <span>Về trang chủ</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
               <p className="text-xs text-gray-500">
@@ -277,13 +524,13 @@ export default function PaymentReturn() {
             
             <div className="space-y-3">
               <button
-                onClick={handleGoToEvents}
+                onClick={handleGoToHome}
                 className={cn(
                   "w-full px-6 py-3 rounded-lg font-medium text-white transition-colors",
                   "bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2"
                 )}
               >
-                <span>Về trang quản lý sự kiện</span>
+                <span>Về trang chủ</span>
                 <ArrowRight className="w-5 h-5" />
               </button>
             </div>
@@ -302,13 +549,13 @@ export default function PaymentReturn() {
             </p>
             
             <button
-              onClick={handleGoToEvents}
+              onClick={handleGoToHome}
               className={cn(
                 "w-full px-6 py-3 rounded-lg font-medium transition-colors",
                 "border border-gray-300 text-gray-700 hover:bg-gray-50"
               )}
             >
-              Về trang quản lý sự kiện
+              Về trang chủ
             </button>
           </div>
         )}
