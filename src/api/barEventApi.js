@@ -48,6 +48,14 @@ updateEvent: (eventId, formData) => {
   // Gửi yêu cầu quảng cáo event
   createEventAdvertisement: (data) =>
     axiosClient.post("/event-advertisements", data),
+
+  // Lấy bars có events mới, sắp xếp theo rating
+  getBarsWithNewEvents: (params = {}) =>
+    axiosClient.get("/events/bars-with-events", { params }),
+
+  // Lấy events feed với bar rating
+  getEventsWithBarRating: (params = {}) =>
+    axiosClient.get("/events/feed", { params }),
 };
 
 export default barEventApi;

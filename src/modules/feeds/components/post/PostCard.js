@@ -3,13 +3,11 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import YouTubeLinkPreview from "../../../../components/common/YouTubeLinkPreview"
 import { splitTextWithYouTube } from "../../../../utils/youtube"
-import { likePost, unlikePost, trackPostView, trackPostShare, getPostById } from "../../../../api/postApi"
+import { likePost, unlikePost, trackPostView, getPostById } from "../../../../api/postApi"
 import AudioWaveform from "../audio/AudioWaveform"
-import VideoPlayer from "../video/VideoPlayer"
 import PostMediaLayout from "./PostMediaLayout"
-import CommentSection from "../comment/CommentSection"
 import ShareModal from "../modals/ShareModal"
-import NotificationToPostModal from "../modals/NotificationToPostModal"
+import PostDetailModal from "../modals/PostDetailModal"
 import ReadMoreText from "../comment/ReadMoreText"
 import { cn } from "../../../../utils/cn"
 import { getAvatarUrl } from "../../../../utils/defaultAvatar"
@@ -35,7 +33,7 @@ export default function PostCard({
   const isPlaying = playingPost === post.id
   const [liked, setLiked] = useState(Boolean(post.likedByCurrentUser))
   const [likeCount, setLikeCount] = useState(Number(post.likes || 0))
-  const [showComments, setShowComments] = useState(false)
+  const [postDetailModalOpen, setPostDetailModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [originalPost, setOriginalPost] = useState(null)
@@ -328,7 +326,7 @@ export default function PostCard({
       /* Base Styles - Instagram-inspired Minimalist Design */
       "bg-card text-card-foreground rounded-lg",
       "shadow-[0_1px_2px_rgba(0,0,0,0.05)] p-4 mb-0",
-      "border-[0.5px] border-border/20 relative overflow-hidden",
+      "border-[0.5px] border-border/20 relative",
       /* Transitions */
       "transition-all duration-200 ease-out",
       /* Hover States - Subtle, no movement */
@@ -584,29 +582,35 @@ export default function PostCard({
 
         {/* Display medias using PostMediaLayout component */}
         {!post.repostedFromId && !audioMedia && (medias.images.length > 0 || medias.videos.length > 0) && (
+          <div className="-mx-4">
           <PostMediaLayout
             images={medias.images}
             videos={medias.videos}
             onImageClick={handleImageClick}
           />
+          </div>
         )}
 
         {/* Fallback: Display single image for backward compatibility */}
         {!post.repostedFromId && !audioMedia && !post.medias && post.image && (
+          <div className="-mx-4">
           <PostMediaLayout
             images={[{ url: post.image, id: 'fallback-image' }]}
             videos={[]}
             onImageClick={handleImageClick}
           />
+          </div>
         )}
         
         {/* Fallback: Display single video for backward compatibility */}
         {!post.repostedFromId && !audioMedia && !post.medias && post.videoSrc && !post.image && (
+          <div className="-mx-4">
           <PostMediaLayout
             images={[]}
             videos={[{ url: post.videoSrc, id: 'fallback-video', poster: post.poster }]}
             onImageClick={handleImageClick}
           />
+          </div>
         )}
 
         {/* Original Post Preview (for reposts) - Query từ repostedFromId */}
@@ -749,7 +753,7 @@ export default function PostCard({
                   "active:scale-95"
                 )}
             aria-label="Comment"
-            onClick={() => setShowComments(!showComments)}
+            onClick={() => setPostDetailModalOpen(true)}
           >
             <svg
               className="w-5 h-5 flex-shrink-0 transition-transform duration-200 hover:scale-110"
@@ -804,22 +808,76 @@ export default function PostCard({
         )} */}
       </div>
 
-
-      {/* Comment Section - Inline below post */}
-      {showComments && (
-        <div className="border-t border-border/30 pt-2">
-          <CommentSection
-            postId={post.id}
-            onClose={() => setShowComments(false)}
-            inline={true}
-          />
+      {/* Top 2 Comments Preview */}
+      {post.topComments && post.topComments.length > 0 && (
+        <div className="mt-3 border-t border-border/20 pt-3 top-comments-preview">
+          <button
+            onClick={() => setPostDetailModalOpen(true)}
+            className="w-full text-left"
+          >
+            {post.topComments.map((comment, index) => (
+              <div key={comment.id || index} className="mb-2 last:mb-0">
+                <div className="flex gap-2 items-start">
+                  <img
+                    src={getAvatarUrl(comment.authorAvatar, 32)}
+                    alt={comment.authorName || "User"}
+                    className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                    onError={(e) => {
+                      e.target.src = getAvatarUrl(null, 32);
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="bg-muted/30 rounded-2xl px-3 py-2">
+                      <span className="font-semibold text-sm text-foreground mr-2">
+                        {comment.authorName || "Người dùng"}
+                      </span>
+                      <span className="text-sm text-foreground break-words">
+                        {comment.content}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 ml-2">
+                      <span className="text-xs text-muted-foreground">
+                        {comment.likeCount || 0} lượt thích
+                      </span>
+                      {index === post.topComments.length - 1 && post.comments > post.topComments.length && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPostDetailModalOpen(true);
+                          }}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Xem tất cả {post.comments} bình luận
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </button>
         </div>
       )}
+
+      {/* Show "View all comments" if there are more than 2 comments */}
+      {post.comments > 0 && (!post.topComments || post.topComments.length === 0) && (
+        <div className="mt-3 border-t border-border/20 pt-3 view-all-comments-link">
+          <button
+            onClick={() => setPostDetailModalOpen(true)}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Xem tất cả {post.comments} bình luận
+          </button>
+        </div>
+      )}
+
       {post.repostedFromId && (
-        <NotificationToPostModal
+        <PostDetailModal
           open={originalPostModalOpen}
           postId={post.repostedFromId}
           onClose={() => setOriginalPostModalOpen(false)}
+          alwaysShowComments={false}
+          showInputForm={false}
         />
       )}
       <ShareModal
@@ -828,6 +886,14 @@ export default function PostCard({
         onClose={() => setShareModalOpen(false)}
         onShared={handleShared}
         triggerRef={shareButtonRef}
+      />
+      <PostDetailModal
+        open={postDetailModalOpen}
+        post={post}
+        postId={post.id}
+        onClose={() => setPostDetailModalOpen(false)}
+        alwaysShowComments={true}
+        showInputForm={true}
       />
     </article>
   )

@@ -75,6 +75,18 @@ export default function ImageDetailModal({
   // Track previous imageUrl/mediaId to detect changes
   const prevImageRef = useRef({ imageUrl: null, mediaId: null });
   
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+  
   // Load media details when modal opens or image changes
   useEffect(() => {
     if (!open) {

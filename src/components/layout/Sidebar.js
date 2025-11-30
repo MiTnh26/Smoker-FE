@@ -5,8 +5,9 @@ import { sidebarConfig } from "../../config/sidebarConfig.js";
 import barPageApi from "../../api/barPageApi.js";
 import { cn } from "../../utils/cn";
 import { useTranslation } from "react-i18next"; // i18n
+import { X } from "lucide-react";
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const { t } = useTranslation();
   const { barPageId: paramBarPageId } = useParams();
   const location = useLocation();
@@ -338,54 +339,103 @@ export default function Sidebar() {
     );
   };
 
-  return (
-    <aside className={cn(
-      "sticky p-4 rounded-lg",
-      "w-[240px] bg-card",
-      "border-[0.5px] border-border/20",
-      "top-[4.5rem] max-h-[calc(100vh-5.5rem)]",
-      "overflow-y-auto overflow-x-hidden"
-    )}>
-      <div className={cn(
-        "flex items-center gap-2.5 mb-4 pb-4",
-        "border-b border-border/30"
-      )}>
-        <div className={cn(
-          "flex items-center justify-center rounded-full p-1.5",
-          "bg-gradient-to-br from-primary to-secondary",
-          "text-primary-foreground w-10 h-10 flex-shrink-0"
-        )}>
-          {activeEntity.avatar ? (
-            <img
-              src={activeEntity.avatar}
-              alt={activeEntity.name}
-              className="rounded-full w-full h-full object-cover"
-            />
-          ) : (
-            <span className="text-sm">👤</span>
-          )}
-        </div>
-        <div className={cn("min-w-0 flex-1")}>
-          <h3 className={cn(
-            "m-0 text-sm font-semibold text-foreground",
-            "truncate"
-          )}>
-            {activeEntity.name}
-          </h3>
-          {activeEntity.email && (
-            <p className={cn(
-              "m-0 mt-0.5 text-xs text-muted-foreground",
-              "truncate"
-            )}>
-              @{activeEntity.email.split("@")[0]}
-            </p>
-          )}
-        </div>
-      </div>
+  // Close sidebar when clicking on a menu item on mobile
+  const handleMenuItemClick = () => {
+    if (window.innerWidth < 768 && onClose) {
+      onClose();
+    }
+  };
 
-      <nav className={cn("flex flex-col gap-0.5")}>
-        {menus.map((menu) => renderMenuItem(menu))}
-      </nav>
-    </aside>
+  return (
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div
+          className={cn(
+            "fixed inset-0 bg-black/50 z-40",
+            "md:hidden"
+          )}
+          onClick={onClose}
+        />
+      )}
+
+      <aside className={cn(
+        "sticky p-4 rounded-lg",
+        "w-[240px] bg-card",
+        "border-[0.5px] border-border/20",
+        "top-[4.5rem] max-h-[calc(100vh-5.5rem)]",
+        "overflow-y-auto overflow-x-hidden",
+        // Mobile styles
+        "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50",
+        "max-md:w-[280px] max-md:top-0 max-md:max-h-screen",
+        "max-md:shadow-xl max-md:border-r",
+        "max-md:transform max-md:transition-transform max-md:duration-300",
+        isOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"
+      )}>
+        {/* Mobile Close Button */}
+        <div className={cn(
+          "flex items-center justify-between mb-4 pb-4",
+          "border-b border-border/30",
+          "max-md:mb-3"
+        )}>
+          <div className={cn(
+            "flex items-center gap-2.5 flex-1 min-w-0"
+          )}>
+            <div className={cn(
+              "flex items-center justify-center rounded-full p-1.5",
+              "bg-gradient-to-br from-primary to-secondary",
+              "text-primary-foreground w-10 h-10 flex-shrink-0"
+            )}>
+              {activeEntity.avatar ? (
+                <img
+                  src={activeEntity.avatar}
+                  alt={activeEntity.name}
+                  className="rounded-full w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-sm">👤</span>
+              )}
+            </div>
+            <div className={cn("min-w-0 flex-1")}>
+              <h3 className={cn(
+                "m-0 text-sm font-semibold text-foreground",
+                "truncate"
+              )}>
+                {activeEntity.name}
+              </h3>
+              {activeEntity.email && (
+                <p className={cn(
+                  "m-0 mt-0.5 text-xs text-muted-foreground",
+                  "truncate"
+                )}>
+                  @{activeEntity.email.split("@")[0]}
+                </p>
+              )}
+            </div>
+          </div>
+          {/* Close button for mobile */}
+          <button
+            onClick={onClose}
+            className={cn(
+              "md:hidden p-2 rounded-lg",
+              "text-muted-foreground hover:text-foreground",
+              "hover:bg-muted transition-colors",
+              "flex-shrink-0"
+            )}
+            aria-label="Close sidebar"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <nav className={cn("flex flex-col gap-0.5")}>
+          {menus.map((menu) => (
+            <div key={menu.label + menu.path} onClick={handleMenuItemClick}>
+              {renderMenuItem(menu)}
+            </div>
+          ))}
+        </nav>
+      </aside>
+    </>
   );
 }

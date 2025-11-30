@@ -10,7 +10,7 @@ import { userApi } from "../../../api/userApi";
 import useChatSocket from '../../../api/useChatSocket';
 import { Reply, X, FileText } from "lucide-react";
 import Composer from "../../../modules/messages/components/Composer";
-import NotificationToPostModal from "../../../modules/feeds/components/modals/NotificationToPostModal";
+import PostDetailModal from "../../../modules/feeds/components/modals/PostDetailModal";
 import { getPostById } from "../../../api/postApi";
 
 function ChatWindow(props) {
@@ -842,6 +842,8 @@ function ChatWindow(props) {
   return (
     <div className={cn(
       "w-[360px] h-[500px] bg-card rounded-t-lg",
+      "md:w-[360px] md:h-[500px]",
+      "max-md:w-screen max-md:h-screen max-md:rounded-none max-md:fixed max-md:inset-0 max-md:z-50",
       "border-[0.5px] border-border/20",
       "shadow-[0_2px_16px_rgba(0,0,0,0.18),0_0.5px_1.5px_rgba(0,0,0,0.08)]",
       "flex flex-col overflow-hidden",
@@ -892,8 +894,9 @@ function ChatWindow(props) {
 
       </div>
       <div
-        className="flex-1 overflow-y-auto overflow-x-hidden bg-background p-4"
+        className="flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 max-md:pb-6"
         ref={bodyRef}
+        style={{ minHeight: 0 }}
       >
         {/* eslint-disable-next-line complexity */}
         {loading || !currentUserId ? (
@@ -1126,7 +1129,7 @@ function ChatWindow(props) {
           );
         })()}
       </div>
-      <div className="border-t border-border/30 bg-card">
+      <div className="border-t border-border/30 bg-card flex-shrink-0">
         <Composer
           convId={chat.id}
           placeholder={t("input.messagePlaceholder")}
@@ -1135,7 +1138,7 @@ function ChatWindow(props) {
         />
       </div>
 
-      <NotificationToPostModal
+      <PostDetailModal
         open={postModalOpen}
         postId={selectedPostId}
         commentId={selectedCommentId}
@@ -1144,6 +1147,8 @@ function ChatWindow(props) {
           setSelectedPostId(null);
           setSelectedCommentId(null);
         }}
+        alwaysShowComments={false}
+        showInputForm={false}
       />
     </div>
   );
@@ -1169,7 +1174,8 @@ export default function ChatDock() {
   return (
     <div className={cn(
       "fixed right-3 bottom-0 flex gap-2",
-      "flex-row-reverse items-end z-50"
+      "flex-row-reverse items-end z-50",
+      "max-md:right-0 max-md:bottom-0 max-md:left-0 max-md:top-0 max-md:items-stretch max-md:gap-0"
     )}>
       {chats.map((c) => (
         <ChatWindow key={c.id} chat={c} onClose={closeChat} />

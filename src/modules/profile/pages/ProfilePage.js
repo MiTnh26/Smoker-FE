@@ -273,7 +273,7 @@ export default function ProfilePage() {
                 {t('common.loading')}
               </div>
             ) : posts && posts.length > 0 ? (
-              <div className={cn("space-y-4")}>
+              <div className={cn("space-y-4 -mx-4 md:-mx-6")}>
                 {posts.map(post => (
                   <PostCard
                     key={post.id}

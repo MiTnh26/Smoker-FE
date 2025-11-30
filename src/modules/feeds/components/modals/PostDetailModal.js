@@ -2,46 +2,98 @@ import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { X } from "lucide-react";
-import { getPostById } from "../../../../api/postApi";
+import { getPostDetail } from "../../../../api/postApi";
 import PostCard from "../post/PostCard";
 import CommentSection from "../comment/CommentSection";
 import { cn } from "../../../../utils/cn";
 
-export default function NotificationToPostModal({ open, postId, commentId, onClose }) {
+/**
+ * Unified Post Detail Modal
+ * Combines functionality of PostDetailModal and NotificationToPostModal
+ * 
+ * @param {boolean} open - Whether modal is open
+ * @param {object} post - Post data (optional, if provided will skip fetching)
+ * @param {string} postId - Post ID to fetch (required if post not provided)
+ * @param {string} commentId - Comment ID to scroll to (optional)
+ * @param {function} onClose - Close handler
+ * @param {boolean} alwaysShowComments - Always show comments section (default: false)
+ * @param {boolean} showInputForm - Show input form at bottom (default: false)
+ * @param {string} title - Custom modal title (optional)
+ */
+export default function PostDetailModal({ 
+  open, 
+  post: initialPost, 
+  postId, 
+  commentId, 
+  onClose,
+  alwaysShowComments = false,
+  showInputForm = false,
+  title
+}) {
   const { t } = useTranslation();
-  const [post, setPost] = useState(null);
+  const [postData, setPostData] = useState(initialPost || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const modalContentRef = useRef(null);
   const [playingPost, setPlayingPost] = useState(null);
   const sharedAudioRef = useRef(null);
   const [sharedCurrentTime, setSharedCurrentTime] = useState(0);
-  const [sharedDuration, setSharedDuration] = useState(0);
-  const [sharedIsPlaying, setSharedIsPlaying] = useState(false);
-  const [showComments, setShowComments] = useState(false);
+  const [sharedDuration] = useState(0);
+  const [sharedIsPlaying] = useState(false);
+  const [showComments, setShowComments] = useState(alwaysShowComments);
 
-  // Fetch post data
+  // Prevent body scroll when modal is open
   useEffect(() => {
-    if (open && postId) {
-      fetchPost();
-      setShowComments(false); // Reset comment state when opening modal
-    } else {
-      setPost(null);
-      setError(null);
-      setShowComments(false);
+    if (open) {
+      // Save current scroll position
+      const scrollY = window.scrollY;
+      
+      // Disable body scroll
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      
+      return () => {
+        // Restore body scroll
+        document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        
+        // Restore scroll position
+        window.scrollTo(0, scrollY);
+      };
     }
-  }, [open, postId]);
+  }, [open]);
+
+  // Fetch post data if postId is provided and post is not provided
+  useEffect(() => {
+    if (open) {
+      if (initialPost) {
+        setPostData(initialPost);
+        setShowComments(alwaysShowComments);
+      } else if (postId) {
+        fetchPost();
+        setShowComments(alwaysShowComments);
+      }
+    } else {
+      setPostData(null);
+      setError(null);
+      setShowComments(alwaysShowComments);
+    }
+  }, [open, postId, initialPost, alwaysShowComments]);
 
   // Auto-open comments if commentId is provided
   useEffect(() => {
-    if (open && commentId && post) {
+    if (open && commentId && postData && !alwaysShowComments) {
       setShowComments(true);
     }
-  }, [open, commentId, post]);
+  }, [open, commentId, postData, alwaysShowComments]);
 
-  // Listen for comment button clicks in PostCard
+  // Listen for comment button clicks in PostCard (only if not alwaysShowComments)
   useEffect(() => {
-    if (!open || !modalContentRef.current) return;
+    if (!open || !modalContentRef.current || alwaysShowComments) return;
 
     const handleCommentClick = (e) => {
       // Check if click is on comment button (icon or text)
@@ -57,31 +109,29 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
     return () => {
       modalElement.removeEventListener('click', handleCommentClick);
     };
-  }, [open]);
+  }, [open, alwaysShowComments]);
 
   const fetchPost = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getPostById(postId, { includeMedias: true, includeMusic: true });
+      const response = await getPostDetail(postId, { includeMedias: true, includeMusic: true });
       
-      let postData = null;
+      let post = null;
       if (response?.success && response.data) {
-        postData = response.data;
-      } else if (response && response._id) {
-        postData = response;
+        post = response.data;
+      } else if (response?._id) {
+        post = response;
       } else {
         setError("Post not found");
         return;
       }
 
-      // Use PostFeed's transformPost logic
-      // We'll need to access the transformPost function from PostFeed
-      // For now, let's create a simplified transform
-      const transformedPost = transformPostData(postData);
-      setPost(transformedPost);
+      // Transform post data using the same logic as PostFeed
+      const transformedPost = transformPostData(post);
+      setPostData(transformedPost);
     } catch (err) {
-      console.error("[NotificationToPostModal] Error fetching post:", err);
+      console.error("[PostDetailModal] Error fetching post:", err);
       setError(err.message || "Failed to load post");
     } finally {
       setLoading(false);
@@ -121,8 +171,8 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
 
     // Check ownership
     const ownerEntityAccountId = post.entityAccountId ? String(post.entityAccountId).trim() : null;
-    const viewerEntityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id 
-      ? String(activeEntity.EntityAccountId || activeEntity.entityAccountId || activeEntity.id).trim() 
+    const viewerEntityAccountId = (activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id)
+      ? String(activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id).trim() 
       : null;
     const canManage = ownerEntityAccountId && 
                       viewerEntityAccountId && 
@@ -196,7 +246,7 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
     const formatTimeDisplay = (value) => {
       try {
         const d = value ? new Date(value) : new Date();
-        if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
+        if (Number.isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
         const now = new Date();
         const diffMs = now.getTime() - d.getTime();
         if (diffMs < 0) return d.toLocaleString('vi-VN');
@@ -279,8 +329,8 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
       user: post.authorName || post.author?.userName || post.account?.userName || post.accountName || "Người dùng",
       avatar: post.authorAvatar || post.author?.avatar || post.account?.avatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPC9zdmc+",
       time: formatTimeDisplay(post.createdAt || post.updatedAt),
-        content: post.content || post.caption || post["Tiêu Đề"] || "",
-        caption: post.caption || "",
+      content: post.content || post.caption || post["Tiêu Đề"] || "",
+      caption: post.caption || "",
       medias: {
         images: extractedMedias.images,
         videos: extractedMedias.videos
@@ -306,7 +356,6 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
       title: post.title || null,
       canManage,
       ownerEntityAccountId: ownerEntityAccountId || null,
-      // Pass through only safe fields from original post
       _id: post._id || post.id,
       accountId: post.accountId,
       entityAccountId: post.entityAccountId,
@@ -318,7 +367,6 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
       type: post.type,
-      // Don't spread post directly as it may contain Maps/Objects that can't be rendered
     };
   };
 
@@ -354,15 +402,21 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
     return null;
   }
 
+  // Determine layout based on alwaysShowComments and showInputForm
+  const useScrollTogetherLayout = alwaysShowComments && showInputForm;
+
   return (
     <div 
       className={cn(
         "fixed inset-0 bg-black/75 backdrop-blur-xl z-[9999]",
-        "flex items-center justify-center p-4 overflow-y-auto"
+        "flex items-center justify-center p-4",
+        useScrollTogetherLayout ? "overflow-hidden" : "overflow-y-auto"
       )}
       onClick={handleBackdropClick}
       role="dialog"
       aria-modal="true"
+      onWheel={useScrollTogetherLayout ? (e) => e.stopPropagation() : undefined}
+      onTouchMove={useScrollTogetherLayout ? (e) => e.stopPropagation() : undefined}
     >
       <div 
         className={cn(
@@ -370,7 +424,7 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
           "bg-card text-card-foreground rounded-lg",
           "border-[0.5px] border-border/20 shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
           "overflow-hidden flex flex-col",
-          "relative"
+          "relative z-[10000]"
         )}
         ref={modalContentRef}
         onClick={(e) => e.stopPropagation()}
@@ -379,12 +433,12 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
         <div className={cn(
           "p-5 border-b border-border/30",
           "flex items-center justify-between flex-shrink-0",
-          "bg-card/80 backdrop-blur-sm relative z-10"
+          "bg-card/80 backdrop-blur-sm relative z-[9998]"
         )}>
           <h2 className={cn(
             "text-xl font-semibold m-0 text-foreground"
           )}>
-            {t('notifications.postDetail') || 'Bài viết'}
+            {title || postData?.user || t('notifications.postDetail') || 'Bài viết'}
           </h2>
           <button
             className={cn(
@@ -403,11 +457,11 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
 
         {/* Content */}
         <div className={cn(
-          "flex-1 overflow-y-auto flex flex-col min-h-0 relative z-10"
+          useScrollTogetherLayout ? "flex-1 flex flex-col min-h-0 relative z-10 overflow-hidden" : "flex-1 overflow-y-auto flex flex-col min-h-0 relative z-10"
         )}>
           {loading && (
             <div className={cn(
-              "py-12 px-8 text-center text-foreground"
+              "flex-1 flex items-center justify-center py-12 px-8 text-center text-foreground"
             )}>
               <p>{t('action.loading') || 'Đang tải...'}</p>
             </div>
@@ -415,36 +469,40 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
 
           {error && (
             <div className={cn(
-              "py-12 px-8 text-center text-foreground"
+              "flex-1 flex items-center justify-center py-12 px-8 text-center text-foreground"
             )}>
-              <p>{error}</p>
-              <button 
-                onClick={fetchPost}
-                className={cn(
-                  "mt-4 px-6 py-2.5 bg-primary",
-                  "text-primary-foreground border-none rounded-lg",
-                  "cursor-pointer font-medium transition-all duration-200",
-                  "hover:opacity-90",
-                  "active:scale-95"
-                )}
-              >
-                {t('action.retry') || 'Thử lại'}
-              </button>
+              <div>
+                <p>{error}</p>
+                <button 
+                  onClick={fetchPost}
+                  className={cn(
+                    "mt-4 px-6 py-2.5 bg-primary",
+                    "text-primary-foreground border-none rounded-lg",
+                    "cursor-pointer font-medium transition-all duration-200",
+                    "hover:opacity-90",
+                    "active:scale-95"
+                  )}
+                >
+                  {t('action.retry') || 'Thử lại'}
+                </button>
+              </div>
             </div>
           )}
 
-          {!loading && !error && post && (
+          {!loading && !error && postData && (
             <>
               {/* Post Card */}
               <div className={cn(
-                "p-0 border-b border-border/30 flex-shrink-0",
+                "p-0 border-b border-border/30",
+                useScrollTogetherLayout ? "" : "flex-shrink-0",
                 "[&_.post-card]:m-0 [&_.post-card]:rounded-none [&_.post-card]:border-none [&_.post-card]:shadow-none",
-                // Ẩn comment section trong PostCard vì chúng ta sẽ hiển thị riêng bên dưới
-                "[&_.post-card_.comment-section]:hidden",
-                "[&_.post-card_>_div:has(>_.comment-section)]:hidden"
+                "[&_.post-card_>_div:has(>_.comment-section)]:hidden",
+                "[&_.top-comments-preview]:hidden",
+                "[&_.view-all-comments-link]:hidden",
+                alwaysShowComments ? "" : "[&_.post-card_.comment-section]:hidden"
               )}>
                 <PostCard
-                  post={post}
+                  post={postData}
                   playingPost={playingPost}
                   setPlayingPost={setPlayingPost}
                   sharedAudioRef={sharedAudioRef}
@@ -455,22 +513,61 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
                 />
               </div>
 
-              {/* Comment Section - Chỉ hiển thị khi click vào icon comment */}
+              {/* Comment Section */}
               {showComments && (
-                <div className={cn(
-                  "flex-1 min-h-0 overflow-y-auto",
-                  "border-t border-border/30 pt-2",
-                  "[&_.comment-section]:max-h-none [&_.comment-section-inline]:max-h-none",
-                  "[&_.comment-section-inline]:border-none [&_.comment-section-inline]:pt-0"
-                )}>
-                  <CommentSection
-                    postId={postId}
-                    alwaysOpen={false}
-                    inline={true}
-                    scrollToCommentId={commentId}
-                    onClose={() => setShowComments(false)}
-                  />
-                </div>
+                <>
+                  {useScrollTogetherLayout ? (
+                    // Layout 1: Scroll together (PostDetailModal style)
+                    <>
+                      {/* Scrollable Content - Post + Comments scroll together */}
+                      <div className={cn(
+                        "flex-1 overflow-y-auto scrollbar-hide min-h-0 relative"
+                      )}>
+                        {/* Comment Section - Scrolls together with post, hide input form */}
+                        <div className="[&_form]:hidden">
+                          <CommentSection
+                            postId={postData.id}
+                            alwaysOpen={true}
+                            inline={true}
+                            scrollToCommentId={commentId}
+                            hideInputForm={true}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Fixed Input Form at Bottom - Outside scrollable container */}
+                      {showInputForm && (
+                        <div className={cn(
+                          "flex-shrink-0 border-t border-border/30 bg-card",
+                          "relative z-[10001] shadow-[0_-2px_8px_rgba(0,0,0,0.1)]"
+                        )}>
+                          <CommentSection
+                            postId={postData.id}
+                            alwaysOpen={true}
+                            inline={true}
+                            showInputOnly={true}
+                          />
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    // Layout 2: Separate scroll (NotificationToPostModal style)
+                    <div className={cn(
+                      "flex-1 min-h-0 overflow-y-auto",
+                      "border-t border-border/30 pt-2",
+                      "[&_.comment-section]:max-h-none [&_.comment-section-inline]:max-h-none",
+                      "[&_.comment-section-inline]:border-none [&_.comment-section-inline]:pt-0"
+                    )}>
+                      <CommentSection
+                        postId={postData.id || postId}
+                        alwaysOpen={false}
+                        inline={true}
+                        scrollToCommentId={commentId}
+                        onClose={alwaysShowComments ? undefined : () => setShowComments(false)}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
@@ -480,10 +577,13 @@ export default function NotificationToPostModal({ open, postId, commentId, onClo
   );
 }
 
-NotificationToPostModal.propTypes = {
+PostDetailModal.propTypes = {
   open: PropTypes.bool.isRequired,
+  post: PropTypes.object,
   postId: PropTypes.string,
   commentId: PropTypes.string,
   onClose: PropTypes.func.isRequired,
+  alwaysShowComments: PropTypes.bool,
+  showInputForm: PropTypes.bool,
+  title: PropTypes.string,
 };
-

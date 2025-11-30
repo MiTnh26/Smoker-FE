@@ -13,7 +13,7 @@ import notificationApi from "../../../api/notificationApi";
 import messageApi from "../../../api/messageApi";
 import { useSocket } from "../../../contexts/SocketContext";
 import { getSession, getActiveEntity, getEntities } from "../../../utils/sessionManager";
-import NotificationToPostModal from "../../../modules/feeds/components/modals/NotificationToPostModal";
+import PostDetailModal from "../../../modules/feeds/components/modals/PostDetailModal";
 
 export default function BarHeader() {
   const { socket, isConnected } = useSocket();
@@ -455,7 +455,7 @@ export default function BarHeader() {
       </DropdownPanel>
 
       {/* Post Detail Modal */}
-      <NotificationToPostModal
+      <PostDetailModal
         open={postModalOpen}
         postId={postModalPostId}
         commentId={postModalCommentId}
@@ -464,6 +464,8 @@ export default function BarHeader() {
           setPostModalPostId(null);
           setPostModalCommentId(null);
         }}
+        alwaysShowComments={false}
+        showInputForm={false}
       />
     </>
   );
