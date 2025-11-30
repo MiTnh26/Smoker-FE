@@ -30,7 +30,8 @@ function ChatWindow(props) {
   const [selectedPostId, setSelectedPostId] = useState(null);
   const [selectedCommentId, setSelectedCommentId] = useState(null);
   const [postPreviews, setPostPreviews] = useState(new Map()); // Store post previews by postId
-  const [lastReadMessageId, setLastReadMessageId] = useState(null);
+  const [lastReadMessageId, setLastReadMessageId] = useState(null); // Của current user
+  const [otherParticipantLastReadMessageId, setOtherParticipantLastReadMessageId] = useState(null); // Của đối phương (để hiển thị "đã xem")
 
   // Listen for session changes (when switching entities)
   useEffect(() => {
@@ -460,7 +461,9 @@ function ChatWindow(props) {
         const messages = res?.data?.data || res?.data || [];
         setMessages(Array.isArray(messages) ? messages : []);
         // Update last read message ID
-        setLastReadMessageId(res?.last_read_message_id || null);
+        const { lastReadId, otherLastReadId } = extractReadStatusFromResponse(res);
+        setLastReadMessageId(lastReadId);
+        setOtherParticipantLastReadMessageId(otherLastReadId);
         setTimeout(scrollToBottom, 100);
         
         // Show notifications if message is from other user
@@ -510,6 +513,32 @@ function ChatWindow(props) {
     };
   }, [chat.id, socket]);
 
+  // Listen for messages_read event để cập nhật "đã xem" tự động
+  useEffect(() => {
+    if (!socket || !chat.id) return;
+
+    const handleMessagesRead = (data) => {
+      // Chỉ cập nhật nếu là conversation hiện tại
+      if (data.conversationId === chat.id) {
+        // Nếu người đọc là đối phương (không phải mình) → cập nhật otherParticipantLastReadMessageId
+        const readerId = String(data.readerEntityAccountId).trim().toLowerCase();
+        const currentUserIdLower = currentUserId ? String(currentUserId).trim().toLowerCase() : null;
+        
+        if (currentUserIdLower && readerId !== currentUserIdLower) {
+          // Đối phương đã đọc → cập nhật để hiển thị "đã xem"
+          setOtherParticipantLastReadMessageId(data.last_read_message_id);
+          console.log('[ChatDock] Updated otherParticipantLastReadMessageId from socket:', data.last_read_message_id);
+        }
+      }
+    };
+
+    socket.on('messages_read', handleMessagesRead);
+
+    return () => {
+      socket.off('messages_read', handleMessagesRead);
+    };
+  }, [socket, chat.id, currentUserId]);
+
   // Lấy tin nhắn khi mở chat hoặc khi currentUserId thay đổi (khi switch role)
   useEffect(() => {
     if (!currentUserId || !chat.id) {
@@ -523,13 +552,16 @@ function ChatWindow(props) {
       const messages = res?.data?.data || res?.data || [];
       setMessages(Array.isArray(messages) ? messages : []);
       // Store last read message ID
-      setLastReadMessageId(res?.last_read_message_id || null);
+      const { lastReadId, otherLastReadId } = extractReadStatusFromResponse(res);
+      setLastReadMessageId(lastReadId);
+      setOtherParticipantLastReadMessageId(otherLastReadId);
       setLoading(false);
       setTimeout(scrollToBottom, 100);
     }).catch(err => {
       console.error("❌ Error loading messages:", err);
       setMessages([]);
       setLastReadMessageId(null);
+      setOtherParticipantLastReadMessageId(null);
       setLoading(false);
     });
   // Đánh dấu đã đọc (gửi conversationId qua body)
@@ -574,16 +606,10 @@ function ChatWindow(props) {
           messageApi.getMessages(chat.id).then(res => {
             const messages = res?.data?.data || res?.data || [];
             setMessages(Array.isArray(messages) ? messages : []);
-            setLastReadMessageId(res?.last_read_message_id || null);
-            // If the last message is from current user, update lastReadMessageId
-            if (messages.length > 0) {
-              const lastMsg = messages[messages.length - 1];
-              const lastSender = getSenderKey(lastMsg);
-              if (lastSender === String(currentUserId).toLowerCase().trim()) {
-                setLastReadMessageId(lastMsg._id || lastMsg.id || lastMsg.messageId);
-                //console.log('Updated lastReadMessageId after send:', lastMsg._id || lastMsg.id || lastMsg.messageId);
-              }
-            }
+            // Update last read message ID từ response
+            const { lastReadId, otherLastReadId } = extractReadStatusFromResponse(res);
+            setLastReadMessageId(lastReadId);
+            setOtherParticipantLastReadMessageId(otherLastReadId);
           }).catch(err => console.warn("Error refreshing messages:", err));
         }, 500);
       })
@@ -592,12 +618,21 @@ function ChatWindow(props) {
         messageApi.getMessages(chat.id).then((res) => {
           const messages = res?.data?.data || res?.data || [];
           setMessages(Array.isArray(messages) ? messages : []);
-          setLastReadMessageId(res?.data?.last_read_message_id || null);
+          const { lastReadId, otherLastReadId } = extractReadStatusFromResponse(res);
+          setLastReadMessageId(lastReadId);
+          setOtherParticipantLastReadMessageId(otherLastReadId);
         });
       });
   };
 
   const handleComposerTyping = () => {};
+
+  // Helper function để đọc response từ API getMessages
+  const extractReadStatusFromResponse = (res) => {
+    const lastReadId = res?.data?.last_read_message_id || res?.last_read_message_id || null;
+    const otherLastReadId = res?.data?.other_participant_last_read_message_id || res?.other_participant_last_read_message_id || null;
+    return { lastReadId, otherLastReadId };
+  };
 
   const getInitial = (name) => {
     if (!name) return '?';
@@ -900,11 +935,7 @@ function ChatWindow(props) {
 
             const bubbleTextColor = isMine ? "#ffffff" : "rgb(var(--foreground))";
 
-            // Check if this message should show "Đã xem"
-            const isLastMessage = idx === displayMessages.length - 1;
-            const showReadStatus = isLastMessage && lastReadMessageId === (msg._id || msg.id || msg.messageId);
-
-            //console.log('Message:', msg._id || msg.id || msg.messageId, 'isLast:', isLastMessage, 'lastReadId:', lastReadMessageId, 'showRead:', showReadStatus, 'isMy:', isMine);
+            // Không hiển thị "Đã xem" trong từng message nữa, sẽ hiển thị dưới cùng của cuộc trò chuyện
 
             // Create contentNode with link detection
             let contentNode;
@@ -1062,18 +1093,38 @@ function ChatWindow(props) {
                       </span>
                     </div>
                   )}
-                  {showReadStatus && (
-                    <div className="flex justify-end mt-1">
-                      <span className="text-[11px] text-muted-foreground px-2">
-                        Đã xem
-                      </span>
-                    </div>
-                  )}
                 </div>
               </React.Fragment>
             );
           })
         )}
+        
+        {/* Hiển thị "Đã xem" dưới cùng của cuộc trò chuyện */}
+        {(() => {
+          // Kiểm tra message cuối cùng có phải của mình không
+          const lastMessage = displayMessages.length > 0 ? displayMessages[displayMessages.length - 1] : null;
+          if (!lastMessage) return null;
+          
+          const isLastMessageFromMe = getSenderKey(lastMessage) === String(currentUserId).toLowerCase().trim();
+          const lastMessageId = String(lastMessage._id || lastMessage.id || lastMessage.messageId).trim();
+          const otherReadId = otherParticipantLastReadMessageId ? String(otherParticipantLastReadMessageId).trim() : null;
+          
+          // Chỉ hiển thị khi: message cuối cùng là của mình + đối phương đã đọc (otherReadId >= lastMessageId)
+          const showReadStatus = isLastMessageFromMe && 
+            otherReadId && 
+            lastMessageId && 
+            otherReadId >= lastMessageId;
+          
+          if (!showReadStatus) return null;
+          
+          return (
+            <div className="flex justify-end mt-2 mb-2 px-4">
+              <span className="text-[11px] text-muted-foreground">
+                Đã xem
+              </span>
+            </div>
+          );
+        })()}
       </div>
       <div className="border-t border-border/30 bg-card">
         <Composer
