@@ -973,6 +973,10 @@ export default function ProfilePage() {
           onClose={() => setBookingOpen(false)}
           performerEntityAccountId={entityId}
           performerRole={(profile.role || profile.type || "").toString().toUpperCase().includes("DANCER") ? "DANCER" : "DJ"}
+          performerProfile={{
+            pricePerHours: profile.pricePerHours || profile.PricePerHours || profile.pricePerHour || profile.PricePerHour || 0,
+            pricePerSession: profile.pricePerSession || profile.PricePerSession || 0,
+          }}
         />
       )}
       {reportModalOpen && (
