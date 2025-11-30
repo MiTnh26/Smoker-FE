@@ -20,6 +20,18 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
     }
   }, [open, post]);
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const handleSubmit = async (e) => {

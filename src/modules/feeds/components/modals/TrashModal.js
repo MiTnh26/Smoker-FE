@@ -1,9 +1,22 @@
+import { useEffect } from "react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../../utils/cn";
 
 export default function TrashModal({ open, posts, loading, onClose, onRestore, onClear }) {
   const { t, i18n } = useTranslation();
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
   
   if (!open) return null;
 

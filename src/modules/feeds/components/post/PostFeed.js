@@ -845,6 +845,7 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
       })(),
       likedByCurrentUser: isLikedByCurrentUser,
       comments: countTotalComments(post.comments),
+      topComments: post.topComments || [], // Top 2 comments with most likes
       shares: (() => {
         if (typeof post.shares === 'number') return post.shares;
         return Number(post.shares) || 0;

@@ -7,7 +7,7 @@ import { getSession, getActiveEntity, getEntities } from "../../../utils/session
 import UnifiedMenu from "../../common/UnifiedMenu";
 import MessagesPanel from "../common/MessagesPanel";
 import NotificationPanel from "../common/NotificationPanel";
-import NotificationToPostModal from "../../../modules/feeds/components/modals/NotificationToPostModal";
+import PostDetailModal from "../../../modules/feeds/components/modals/PostDetailModal";
 import DropdownPanel from "../../common/DropdownPanel";
 import { cn } from "../../../utils/cn";
 import GlobalSearch from "../common/GlobalSearch";
@@ -399,7 +399,7 @@ export default function CustomerHeader() {
       </DropdownPanel>
 
       {/* Notification to Post Modal - rendered at header level to persist */}
-      <NotificationToPostModal
+      <PostDetailModal
         open={modalOpen}
         postId={modalPostId}
         commentId={modalCommentId}
@@ -408,6 +408,8 @@ export default function CustomerHeader() {
           setModalPostId(null);
           setModalCommentId(null);
         }}
+        alwaysShowComments={false}
+        showInputForm={false}
       />
     </>
   );

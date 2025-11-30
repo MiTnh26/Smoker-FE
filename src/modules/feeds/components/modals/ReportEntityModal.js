@@ -21,6 +21,18 @@ export default function ReportEntityModal({
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   const session = useMemo(() => {
     try {
       const raw = localStorage.getItem("session");

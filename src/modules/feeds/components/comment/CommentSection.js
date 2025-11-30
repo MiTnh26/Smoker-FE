@@ -18,9 +18,9 @@ import {
   unlikeReply
 } from "../../../../api/postApi";
 import { cn } from "../../../../utils/cn";
-import "../../../../styles/modules/feeds/components/comment/comment-section.css";
 
-export default function CommentSection({ postId, onClose, inline = false, alwaysOpen = false, scrollToCommentId = null }) {
+
+export default function CommentSection({ postId, onClose, inline = false, alwaysOpen = false, scrollToCommentId = null, hideInputForm = false, showInputOnly = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [comments, setComments] = useState([]);
@@ -32,7 +32,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
   const [likedReplies, setLikedReplies] = useState(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
-  const [sortOrder, setSortOrder] = useState("newest"); // "newest" or "oldest"
+  const [sortOrder, setSortOrder] = useState("mostLiked"); // "mostLiked", "newest", or "oldest"
   const commentRefs = useRef({}); // Refs for scrolling to specific comments
   const [viewerAccountId, setViewerAccountId] = useState(null);
   const [viewerEntityAccountId, setViewerEntityAccountId] = useState(null);
@@ -42,6 +42,13 @@ export default function CommentSection({ postId, onClose, inline = false, always
   const [editReplyText, setEditReplyText] = useState("");
   const [commentActionLoadingId, setCommentActionLoadingId] = useState(null);
   const [replyActionLoadingKey, setReplyActionLoadingKey] = useState(null);
+  const [viewerName, setViewerName] = useState("");
+  const [viewerAvatar, setViewerAvatar] = useState(null);
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  const [availableEntities, setAvailableEntities] = useState([]);
+  const [menuPosition, setMenuPosition] = useState({ left: 0, bottom: 0 });
+  const roleMenuRef = useRef(null);
+  const menuRef = useRef(null);
 
   const normalizeId = (value) => (value ? String(value).trim().toLowerCase() : null);
 
@@ -65,12 +72,17 @@ export default function CommentSection({ postId, onClose, inline = false, always
         activeEntity?.entity_account_id ||
         null;
 
+      const name = activeEntity?.name || activeEntity?.userName || currentUser?.userName || "User";
+      const avatar = activeEntity?.avatar || currentUser?.avatar || null;
+
       return {
         accountId: normalizeId(accountId),
-        entityAccountId: normalizeId(entityAccountId)
+        entityAccountId: normalizeId(entityAccountId),
+        name,
+        avatar
       };
     } catch (error) {
-      return { accountId: null, entityAccountId: null };
+      return { accountId: null, entityAccountId: null, name: "User", avatar: null };
     }
   };
 
@@ -168,29 +180,49 @@ export default function CommentSection({ postId, onClose, inline = false, always
     return false;
   };
 
+  // Helper function to count likes for a comment/reply
+  const countLikes = (item) => {
+    if (!item?.likes) return 0;
+    if (item.likes instanceof Map) return item.likes.size;
+    if (Array.isArray(item.likes)) return item.likes.length;
+    if (typeof item.likes === 'object') return Object.keys(item.likes).length;
+    if (typeof item.likes === 'number') return item.likes;
+    return 0;
+  };
+
   // Helper function to sort comments array
   const sortComments = (commentsArray, order) => {
     const sorted = [...commentsArray].sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.updatedAt || 0);
-      const dateB = new Date(b.createdAt || b.updatedAt || 0);
-      if (order === "newest") {
+      if (order === "mostLiked") {
+        // Sort by likes (descending), then by date (newest first) as tiebreaker
+        const likesA = countLikes(a);
+        const likesB = countLikes(b);
+        if (likesB !== likesA) {
+          return likesB - likesA; // Most liked first
+        }
+        // If same likes, sort by newest
+        const dateA = new Date(a.createdAt || a.updatedAt || 0);
+        const dateB = new Date(b.createdAt || b.updatedAt || 0);
+        return dateB - dateA;
+      } else if (order === "newest") {
+        const dateA = new Date(a.createdAt || a.updatedAt || 0);
+        const dateB = new Date(b.createdAt || b.updatedAt || 0);
         return dateB - dateA; // Newest first
       } else {
+        // "oldest"
+        const dateA = new Date(a.createdAt || a.updatedAt || 0);
+        const dateB = new Date(b.createdAt || b.updatedAt || 0);
         return dateA - dateB; // Oldest first
       }
     });
 
-    // Sort replies within each comment
+    // Sort replies within each comment (replies always sorted by newest for now)
     for (const comment of sorted) {
       if (comment.replies && comment.replies.length > 0) {
         comment.replies = [...comment.replies].sort((a, b) => {
           const dateA = new Date(a.createdAt || a.updatedAt || 0);
           const dateB = new Date(b.createdAt || b.updatedAt || 0);
-          if (order === "newest") {
-            return dateB - dateA;
-          } else {
-            return dateA - dateB;
-          }
+          return dateB - dateA; // Replies always newest first
         });
       }
     }
@@ -206,7 +238,106 @@ export default function CommentSection({ postId, onClose, inline = false, always
     const identity = resolveViewerIdentity();
     setViewerAccountId(identity.accountId);
     setViewerEntityAccountId(identity.entityAccountId);
+    setViewerName(identity.name || "User");
+    setViewerAvatar(identity.avatar);
+
+    // Load available entities from session
+    try {
+      const raw = localStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      const entities = Array.isArray(session?.entities) ? session.entities : [];
+      const currentUser = session?.account;
+      const activeEntity = session?.activeEntity || currentUser;
+      
+      // Build list of available entities (current user + all entities)
+      const entityList = [];
+      if (currentUser) {
+        entityList.push({
+          id: currentUser.id || currentUser.AccountId || currentUser.accountId,
+          name: currentUser.userName || currentUser.name || "User",
+          avatar: currentUser.avatar || null,
+          role: "Account",
+          isActive: activeEntity?.id === currentUser.id || (!activeEntity && !session?.activeEntity)
+        });
+      }
+      entities.forEach(entity => {
+        if (entity) {
+          entityList.push({
+            id: entity.id || entity.EntityAccountId || entity.entityAccountId,
+            name: entity.name || entity.userName || entity.BarName || "Entity",
+            avatar: entity.avatar || entity.Avatar || null,
+            role: entity.role || entity.Role || "Account",
+            isActive: activeEntity?.id === entity.id || activeEntity?.EntityAccountId === entity.EntityAccountId
+          });
+        }
+      });
+      setAvailableEntities(entityList);
+    } catch (error) {
+      console.error("Error loading entities:", error);
+    }
   }, []);
+
+  // Calculate menu position when it opens
+  useEffect(() => {
+    if (roleMenuOpen && roleMenuRef.current) {
+      const rect = roleMenuRef.current.getBoundingClientRect();
+      setMenuPosition({
+        left: rect.left,
+        bottom: window.innerHeight - rect.top + 8
+      });
+    }
+  }, [roleMenuOpen]);
+
+  // Close role menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (roleMenuRef.current && !roleMenuRef.current.contains(e.target) &&
+          menuRef.current && !menuRef.current.contains(e.target)) {
+        setRoleMenuOpen(false);
+      }
+    };
+    if (roleMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [roleMenuOpen]);
+
+  const handleSwitchEntity = (entity) => {
+    try {
+      const raw = localStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      if (!session) return;
+
+      // Update activeEntity in session
+      const updatedSession = {
+        ...session,
+        activeEntity: entity
+      };
+      localStorage.setItem("session", JSON.stringify(updatedSession));
+
+      // Update viewer info
+      setViewerName(entity.name || "User");
+      setViewerAvatar(entity.avatar);
+      setViewerAccountId(entity.id);
+      setViewerEntityAccountId(entity.id);
+
+      // Update available entities to reflect active state
+      setAvailableEntities(prev => prev.map(e => ({
+        ...e,
+        isActive: e.id === entity.id
+      })));
+
+      // Close menu
+      setRoleMenuOpen(false);
+
+      // Trigger session update event
+      window.dispatchEvent(new Event('sessionUpdated'));
+    } catch (error) {
+      console.error("Error switching entity:", error);
+    }
+  };
 
   // Reload comments when activeEntity changes (role switch)
   useEffect(() => {
@@ -246,6 +377,18 @@ export default function CommentSection({ postId, onClose, inline = false, always
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortOrder]);
+
+  // Prevent body scroll when comment section is open (modal mode)
+  useEffect(() => {
+    if (!inline && !alwaysOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [inline, alwaysOpen]);
 
   // Scroll to specific comment when scrollToCommentId is set
   useEffect(() => {
@@ -1155,7 +1298,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
         )}
         {/* No header in inline mode while loading */}
         <div className={cn(
-          "flex-1 overflow-y-auto p-4"
+          "flex-1 overflow-y-auto p-4",
+          "scrollbar-hide"
         )}>
           <p className={cn("text-foreground")}>{t('comment.loading')}</p>
         </div>
@@ -1211,9 +1355,131 @@ export default function CommentSection({ postId, onClose, inline = false, always
           </div>
         )}
 
-      <div className={cn(
-        "flex-1 flex flex-col overflow-hidden min-h-0"
-      )}>
+        {/* Add Comment Form - Show when showInputOnly is true OR when not hiding */}
+        {!hideInputForm && (
+          <form onSubmit={handleAddComment} className={cn(
+            "flex items-start gap-2 p-3 border-t border-border/20 bg-card",
+            "flex-shrink-0 relative z-[10002]"
+          )}>
+          <div className="relative flex-shrink-0 z-[10003]" ref={roleMenuRef}>
+            <button
+              type="button"
+              onClick={() => setRoleMenuOpen(!roleMenuOpen)}
+              className="relative group"
+            >
+              <img 
+                src={viewerAvatar || getAvatarForAccount(viewerAccountId, viewerEntityAccountId)} 
+                alt="Your avatar" 
+                className="w-8 h-8 rounded-full object-cover mt-1 cursor-pointer ring-2 ring-transparent hover:ring-primary/30 transition-all"
+                onError={(e) => {
+                  e.target.src = getAvatarForAccount();
+                }}
+              />
+              <div className={cn(
+                "absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-muted border-2 border-card",
+                "flex items-center justify-center cursor-pointer",
+                "hover:bg-muted/80 transition-colors"
+              )}>
+                <svg className="w-2.5 h-2.5 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </button>
+            {roleMenuOpen && availableEntities.length > 0 && (
+              <div 
+                ref={menuRef}
+                className={cn(
+                  "fixed w-64 rounded-lg border border-border/30",
+                  "bg-card/95 backdrop-blur-sm shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
+                  "overflow-hidden z-[10004] max-h-80 overflow-y-auto scrollbar-hide"
+                )}
+                style={{
+                  left: `${menuPosition.left}px`,
+                  bottom: `${menuPosition.bottom}px`
+                }}
+              >
+                {availableEntities.map((entity, index) => (
+                  <button
+                    key={entity.id || index}
+                    type="button"
+                    onClick={() => handleSwitchEntity(entity)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 py-3 text-left",
+                      "hover:bg-muted/50 transition-colors",
+                      entity.isActive && "bg-primary/10"
+                    )}
+                  >
+                    <img 
+                      src={entity.avatar || getAvatarForAccount(entity.id)} 
+                      alt={entity.name}
+                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                      onError={(e) => {
+                        e.target.src = getAvatarForAccount();
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-foreground truncate">
+                        {entity.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {entity.role}
+                      </div>
+                    </div>
+                    {entity.isActive && (
+                      <svg className="w-5 h-5 text-primary flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 relative">
+            <textarea
+              placeholder={`${t('comment.commentAs', { defaultValue: 'Comment as' })} ${viewerName}`}
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleAddComment(e);
+                }
+              }}
+              className={cn(
+                "w-full px-4 py-2 pr-10 border-[0.5px] border-border/20 rounded-2xl",
+                "bg-muted/50 text-foreground text-sm outline-none resize-none",
+                "transition-all duration-200",
+                "focus:border-primary focus:ring-1 focus:ring-primary/10",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+              rows={1}
+              disabled={submitting}
+            />
+            <button
+              type="submit"
+              className={cn(
+                "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center",
+                "bg-transparent border-none rounded-full cursor-pointer transition-colors duration-200",
+                newComment.trim() 
+                  ? "text-primary hover:bg-primary/10"
+                  : "text-muted-foreground/50 cursor-not-allowed"
+              )}
+              disabled={submitting || !newComment.trim()}
+              aria-label="Send comment"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
+          </div>
+        </form>
+        )}
+
+      {!showInputOnly && (
+        <div className={cn(
+          "flex-1 flex flex-col overflow-hidden min-h-0"
+        )}>
         {/* Message notification */}
         {message && (
           <div className={cn(
@@ -1234,8 +1500,21 @@ export default function CommentSection({ postId, onClose, inline = false, always
             "sm:pt-2 sm:pb-2 sm:px-3 sm:gap-1.5"
           )}>
             <span className={cn("text-sm text-muted-foreground", "sm:text-xs md:text-sm")}>
-              {t('comment.sort')}
+              {t('comment.sort') || 'Sắp xếp:'}
             </span>
+            <button
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-sm font-semibold transition-all duration-200",
+                "bg-transparent border-none cursor-pointer",
+                sortOrder === "mostLiked" 
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted/30 hover:text-foreground",
+                "sm:px-2 sm:py-1 sm:text-xs md:px-3 md:py-1.5 md:text-sm"
+              )}
+              onClick={() => setSortOrder("mostLiked")}
+            >
+              {t('comment.mostLiked') || 'Yêu thích'}
+            </button>
             <button
               className={cn(
                 "px-3 py-1.5 rounded-xl text-sm font-semibold transition-all duration-200",
@@ -1247,7 +1526,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
               )}
               onClick={() => setSortOrder("newest")}
             >
-              {t('comment.newest')}
+              {t('comment.newest') || 'Mới nhất'}
             </button>
             <button
               className={cn(
@@ -1260,14 +1539,14 @@ export default function CommentSection({ postId, onClose, inline = false, always
               )}
               onClick={() => setSortOrder("oldest")}
             >
-              {t('comment.oldest')}
+              {t('comment.oldest') || 'Cũ nhất'}
             </button>
           </div>
         )}
 
         {/* Comments List */}
         <div className={cn(
-          "flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0",
+          "flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0 scrollbar-hide",
           "sm:p-3 md:p-4"
         )}>
           {comments.length === 0 ? (
@@ -1734,44 +2013,129 @@ export default function CommentSection({ postId, onClose, inline = false, always
             ))
           )}
         </div>
-      </div>
-      {/* Add Comment Form - Outside flex-1 container to always be visible */}
-      <form onSubmit={handleAddComment} className={cn(
-        "flex flex-wrap items-stretch gap-2 p-4 border-t border-border/30 bg-card/80 backdrop-blur-sm",
-        "flex-shrink-0 relative z-10",
-        "sm:flex-nowrap sm:gap-1.5 sm:p-3 md:p-4"
-      )}>
-          <input
-            type="text"
-            placeholder={t('input.writeComment')}
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-          className={cn(
-            "flex-1 min-w-0 w-full px-4 py-3 border-[0.5px] border-border/20 rounded-lg",
-            "bg-background text-foreground text-sm outline-none",
-            "transition-all duration-200",
-            "focus:border-primary focus:ring-2 focus:ring-primary/10",
-            "disabled:opacity-50 disabled:cursor-not-allowed",
-            "sm:w-auto sm:px-3 sm:py-2 sm:text-xs md:px-4 md:py-3 md:text-sm"
-          )}
-            disabled={submitting}
-          />
-          <button
-            type="submit"
-          className={cn(
-            "w-full sm:w-auto px-6 py-3 bg-primary text-primary-foreground",
-            "border-none rounded-lg font-medium text-sm cursor-pointer",
-            "transition-all duration-300 shadow-[0_4px_16px_rgba(var(--primary),0.4)]",
-            "hover:shadow-[0_6px_24px_rgba(var(--primary),0.5)]",
-            "active:scale-95",
-            "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none",
-            "sm:px-4 sm:py-2 sm:text-xs md:px-6 md:py-3 md:text-sm"
-          )}
-            disabled={submitting || !newComment.trim()}
-          >
-            {submitting ? t('action.posting') : t('action.post')}
-          </button>
+
+        {/* Add Comment Form - Fixed at bottom when in modal */}
+        {!hideInputForm && (
+          <form onSubmit={handleAddComment} className={cn(
+            "flex items-start gap-2 p-3 border-t border-border/20 bg-card",
+            "flex-shrink-0 relative z-[10002]"
+          )}>
+          <div className="relative flex-shrink-0 z-[10003]" ref={roleMenuRef}>
+            <button
+              type="button"
+              onClick={() => setRoleMenuOpen(!roleMenuOpen)}
+              className="relative group"
+            >
+              <img 
+                src={viewerAvatar || getAvatarForAccount(viewerAccountId, viewerEntityAccountId)} 
+                alt="Your avatar" 
+                className="w-8 h-8 rounded-full object-cover mt-1 cursor-pointer ring-2 ring-transparent hover:ring-primary/30 transition-all"
+                onError={(e) => {
+                  e.target.src = getAvatarForAccount();
+                }}
+              />
+              <div className={cn(
+                "absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-muted border-2 border-card",
+                "flex items-center justify-center cursor-pointer",
+                "hover:bg-muted/80 transition-colors"
+              )}>
+                <svg className="w-2.5 h-2.5 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </button>
+            {roleMenuOpen && availableEntities.length > 0 && (
+              <div 
+                ref={menuRef}
+                className={cn(
+                  "fixed w-64 rounded-lg border border-border/30",
+                  "bg-card/95 backdrop-blur-sm shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
+                  "overflow-hidden z-[10004] max-h-80 overflow-y-auto scrollbar-hide"
+                )}
+                style={{
+                  left: `${menuPosition.left}px`,
+                  bottom: `${menuPosition.bottom}px`
+                }}
+              >
+                {availableEntities.map((entity, index) => (
+                  <button
+                    key={entity.id || index}
+                    type="button"
+                    onClick={() => handleSwitchEntity(entity)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 py-3 text-left",
+                      "hover:bg-muted/50 transition-colors",
+                      entity.isActive && "bg-primary/10"
+                    )}
+                  >
+                    <img 
+                      src={entity.avatar || getAvatarForAccount(entity.id)} 
+                      alt={entity.name}
+                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                      onError={(e) => {
+                        e.target.src = getAvatarForAccount();
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-foreground truncate">
+                        {entity.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {entity.role}
+                      </div>
+                    </div>
+                    {entity.isActive && (
+                      <svg className="w-5 h-5 text-primary flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 relative">
+            <textarea
+              placeholder={`${t('comment.commentAs', { defaultValue: 'Comment as' })} ${viewerName}`}
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleAddComment(e);
+                }
+              }}
+              className={cn(
+                "w-full px-4 py-2 pr-10 border-[0.5px] border-border/20 rounded-2xl",
+                "bg-muted/50 text-foreground text-sm outline-none resize-none",
+                "transition-all duration-200",
+                "focus:border-primary focus:ring-1 focus:ring-primary/10",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+              rows={1}
+              disabled={submitting}
+            />
+            <button
+              type="submit"
+              className={cn(
+                "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center",
+                "bg-transparent border-none rounded-full cursor-pointer transition-colors duration-200",
+                newComment.trim() 
+                  ? "text-primary hover:bg-primary/10"
+                  : "text-muted-foreground/50 cursor-not-allowed"
+              )}
+              disabled={submitting || !newComment.trim()}
+              aria-label="Send comment"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+              </svg>
+            </button>
+          </div>
         </form>
+        )}
+        </div>
+      )}
       </div>
     </>
   );
@@ -1783,5 +2147,7 @@ CommentSection.propTypes = {
   inline: PropTypes.bool,
   alwaysOpen: PropTypes.bool,
   scrollToCommentId: PropTypes.string,
+  hideInputForm: PropTypes.bool,
+  showInputOnly: PropTypes.bool,
 };
 
