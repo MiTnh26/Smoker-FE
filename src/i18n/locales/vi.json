@@ -496,10 +496,12 @@
     "header": "Bình luận",
     "loading": "Đang tải bình luận...",
     "sort": "Sắp xếp:",
+    "mostLiked": "Nhiều lượt thích nhất",
     "newest": "Mới nhất",
     "oldest": "Cũ nhất",
     "none": "Chưa có bình luận nào.",
-    "reply": "Phản hồi"
+    "reply": "Phản hồi",
+    "commentAs": "Bình luận với tư cách"
   },
   "music": {
     "postMusic": "Đăng nhạc"

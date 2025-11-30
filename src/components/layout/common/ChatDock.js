@@ -1147,8 +1147,6 @@ function ChatWindow(props) {
           setSelectedPostId(null);
           setSelectedCommentId(null);
         }}
-        alwaysShowComments={false}
-        showInputForm={false}
       />
     </div>
   );
@@ -1175,10 +1173,12 @@ export default function ChatDock() {
     <div className={cn(
       "fixed right-3 bottom-0 flex gap-2",
       "flex-row-reverse items-end z-50",
-      "max-md:right-0 max-md:bottom-0 max-md:left-0 max-md:top-0 max-md:items-stretch max-md:gap-0"
+      "max-md:right-0 max-md:bottom-0 max-md:left-0 max-md:top-0 max-md:pointer-events-none"
     )}>
       {chats.map((c) => (
-        <ChatWindow key={c.id} chat={c} onClose={closeChat} />
+        <div key={c.id} className="max-md:pointer-events-auto">
+          <ChatWindow chat={c} onClose={closeChat} />
+        </div>
       ))}
     </div>
   );

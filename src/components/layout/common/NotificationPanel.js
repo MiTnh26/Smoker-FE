@@ -174,7 +174,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
     if (notification.link) {
       let targetPath = notification.link;
       
-      // Handle post notifications - open post modal
+      // Handle post notifications
       if (targetPath.startsWith('/posts/')) {
         // Extract post ID and commentId (if any) from link
         const urlParts = targetPath.split('?');

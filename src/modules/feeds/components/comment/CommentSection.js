@@ -20,7 +20,7 @@ import {
 import { cn } from "../../../../utils/cn";
 
 
-export default function CommentSection({ postId, onClose, inline = false, alwaysOpen = false, scrollToCommentId = null, hideInputForm = false, showInputOnly = false }) {
+export default function CommentSection({ postId, onClose, inline = false, alwaysOpen = false, scrollToCommentId = null }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [comments, setComments] = useState([]);
@@ -231,6 +231,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
   };
 
   useEffect(() => {
+    // Skip loading comments if only showing input form
     loadComments();
   }, [postId]);
 
@@ -415,6 +416,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
       return () => clearTimeout(timer);
     }
   }, [scrollToCommentId, comments, loading]);
+
 
   // Helper to extract ID from MongoDB ObjectId format
   const extractId = (id) => {
@@ -823,31 +825,48 @@ export default function CommentSection({ postId, onClose, inline = false, always
               typeof comment.likesCount === "number"
                 ? Number(comment.likesCount)
                 : countCollectionItems(comment.likes);
+            // Get author info - use fallback if not provided by backend
+            const identity = resolveViewerIdentity();
+            const commentEntityAccountId = normalizeId(comment.entityAccountId || comment.authorEntityAccountId);
+            const isCurrentUser = commentEntityAccountId === normalizeId(viewerEntityAccountId || identity.entityAccountId);
+            
             commentsArray.push({
               id: extractedCommentId,
               accountId: comment.accountId,
               content: comment.content || "",
               images: comment.images || "",
               likes: likesCount,
-              likesObject: comment.likes, // Preserve original likes object
+              likesObject: comment.likes,
               likedByViewer: typeof comment.likedByViewer === "boolean" ? comment.likedByViewer : undefined,
-              canManage: typeof comment.canManage === "boolean" ? comment.canManage : undefined,
+              canManage: typeof comment.canManage === "boolean" ? comment.canManage : isCurrentUser,
               typeRole: comment.typeRole,
               replies: repliesArray,
               createdAt: comment.createdAt,
               updatedAt: comment.updatedAt,
-              // Author info from backend
-              authorName: comment.authorName,
-              authorAvatar: comment.authorAvatar,
-              authorEntityAccountId: comment.authorEntityAccountId,
-              authorEntityType: comment.authorEntityType,
-              authorEntityId: comment.authorEntityId
+              // Author info from backend, fallback to current user if missing
+              authorName: comment.authorName || (isCurrentUser ? (viewerName || identity.name || "User") : "Người dùng"),
+              authorAvatar: comment.authorAvatar || (isCurrentUser ? (viewerAvatar || identity.avatar) : null),
+              authorEntityAccountId: comment.authorEntityAccountId || comment.entityAccountId,
+              authorEntityType: comment.authorEntityType || comment.entityType,
+              authorEntityId: comment.authorEntityId || comment.entityId
             });
           }
         }
 
         // Sort comments with current sortOrder
         const sortedComments = sortComments(commentsArray, sortOrder);
+        
+        // Log to debug
+        console.log('[CommentSection] Transformed comments:', {
+          total: sortedComments.length,
+          comments: sortedComments.map(c => ({
+            id: c.id,
+            content: c.content?.substring(0, 20),
+            authorName: c.authorName,
+            createdAt: c.createdAt
+          }))
+        });
+        
         setComments(sortedComments);
 
         // Initialize likedComments and likedReplies from backend data
@@ -952,6 +971,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
       }
     } catch (error) {
       console.error("Error loading comments:", error);
+      setComments([]);
     } finally {
       setLoading(false);
     }
@@ -1005,14 +1025,133 @@ export default function CommentSection({ postId, onClose, inline = false, always
 
       // Handle different response structures
       if (response?.success || response?.data?.success) {
+        const commentText = newComment.trim();
         setNewComment("");
-        // setMessage({ type: "success", text: "Đã thêm bình luận thành công!" });
-        // setTimeout(() => setMessage(null), 3000);
-
-        // Reload comments after a short delay to ensure backend has processed
+        
+        // Switch to "newest" sort first to ensure new comment appears at top
+        if (sortOrder !== "newest") {
+          setSortOrder("newest");
+        }
+        
+        // Create new comment object with current user info
+        const identity = resolveViewerIdentity();
+        const now = new Date().toISOString();
+        const newCommentObj = {
+          id: `temp-${Date.now()}`,
+          accountId: identity.accountId,
+          content: commentText,
+          images: "",
+          likes: 0,
+          likesObject: {},
+          likedByViewer: false,
+          canManage: true,
+          typeRole: entityType,
+          replies: [],
+          createdAt: now,
+          updatedAt: now,
+          authorName: viewerName || identity.name || "User",
+          authorAvatar: viewerAvatar || identity.avatar || null,
+          authorEntityAccountId: normalizeId(entityAccountId),
+          authorEntityType: entityType,
+          authorEntityId: entityId
+        };
+        
+        // Add comment to state immediately (optimistic update) - always at top for newest sort
+        setComments(prev => {
+          const updated = [newCommentObj, ...prev];
+          console.log('[CommentSection] Added optimistic comment:', {
+            newCommentId: newCommentObj.id,
+            totalComments: updated.length,
+            content: newCommentObj.content
+          });
+          return updated;
+        });
+        
+        // Reload in background to get full comment data from server
+        // Merge new comments instead of replacing all to preserve optimistic update
         setTimeout(async () => {
-          await loadComments();
-        }, 500);
+          try {
+            setLoading(true);
+            const response = await getPostDetail(postId, {
+              includeMedias: true,
+              includeMusic: true
+            });
+
+            let post = null;
+            if (response?.success && response.data) {
+              post = response.data;
+            } else if (response && response.comments) {
+              post = response;
+            } else if (response?.data && response.data.comments) {
+              post = response.data;
+            }
+
+            if (post && post.comments) {
+              // Transform comments (same logic as loadComments)
+              const commentsArray = [];
+              if (post.comments && typeof post.comments === 'object') {
+                let commentsData = [];
+                if (post.comments instanceof Map) {
+                  commentsData = Array.from(post.comments.entries());
+                } else if (Array.isArray(post.comments)) {
+                  commentsData = post.comments.map((comment, index) => [
+                    extractId(comment._id) || extractId(comment.id) || `comment-${index}`,
+                    comment
+                  ]);
+                } else {
+                  commentsData = Object.entries(post.comments);
+                }
+
+                for (const [commentId, comment] of commentsData) {
+                  if (!comment || typeof comment !== 'object') continue;
+                  
+                  const identity = resolveViewerIdentity();
+                  const commentEntityAccountId = normalizeId(comment.entityAccountId || comment.authorEntityAccountId);
+                  const isCurrentUser = commentEntityAccountId === normalizeId(viewerEntityAccountId || identity.entityAccountId);
+                  
+                  const extractedCommentId = extractId(commentId) || extractId(comment._id) || String(commentId);
+                  const likesCount = typeof comment.likesCount === "number"
+                    ? Number(comment.likesCount)
+                    : countCollectionItems(comment.likes);
+                  
+                  commentsArray.push({
+                    id: extractedCommentId,
+                    accountId: comment.accountId,
+                    content: comment.content || "",
+                    images: comment.images || "",
+                    likes: likesCount,
+                    likesObject: comment.likes,
+                    likedByViewer: typeof comment.likedByViewer === "boolean" ? comment.likedByViewer : undefined,
+                    canManage: typeof comment.canManage === "boolean" ? comment.canManage : isCurrentUser,
+                    typeRole: comment.typeRole,
+                    replies: comment.replies ? (Array.isArray(comment.replies) ? comment.replies : Object.values(comment.replies)) : [],
+                    createdAt: comment.createdAt,
+                    updatedAt: comment.updatedAt,
+                    authorName: comment.authorName || (isCurrentUser ? (viewerName || identity.name || "User") : "Người dùng"),
+                    authorAvatar: comment.authorAvatar || (isCurrentUser ? (viewerAvatar || identity.avatar) : null),
+                    authorEntityAccountId: comment.authorEntityAccountId || comment.entityAccountId,
+                    authorEntityType: comment.authorEntityType || comment.entityType,
+                    authorEntityId: comment.authorEntityId || comment.entityId
+                  });
+                }
+              }
+
+              // Merge with existing comments - keep optimistic comment if server hasn't returned it yet
+              setComments(prev => {
+                const serverCommentIds = new Set(commentsArray.map(c => c.id));
+                // Remove temp comments that are now in server response
+                const keptOptimistic = prev.filter(c => !c.id.startsWith('temp-') || !serverCommentIds.has(c.id));
+                // Merge: server comments + kept optimistic comments
+                const merged = [...commentsArray, ...keptOptimistic.filter(c => !serverCommentIds.has(c.id))];
+                return sortComments(merged, sortOrder);
+              });
+            }
+          } catch (error) {
+            console.error("Error reloading comments:", error);
+          } finally {
+            setLoading(false);
+          }
+        }, 1000);
       } else {
         setMessage({ type: "error", text: response?.message || "Không thể thêm bình luận" });
         setTimeout(() => setMessage(null), 3000);
@@ -1094,13 +1233,11 @@ export default function CommentSection({ postId, onClose, inline = false, always
           return newState;
         });
         setReplyingTo(null);
-        setMessage({ type: "success", text: "Đã thêm phản hồi thành công!" });
-        setTimeout(() => setMessage(null), 3000);
+        // setMessage({ type: "success", text: "Đã thêm phản hồi thành công!" });
+        // setTimeout(() => setMessage(null), 3000);
 
-        // Reload comments after a short delay
-        setTimeout(async () => {
-          await loadComments();
-        }, 500);
+        // Reload comments immediately to show the new reply
+        await loadComments();
       } else {
         setMessage({ type: "error", text: response?.message || "Không thể thêm phản hồi" });
         setTimeout(() => setMessage(null), 3000);
@@ -1270,6 +1407,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
   };
 
 
+  // Show loading
   if (loading) {
     return (
       <div className={cn(
@@ -1296,7 +1434,6 @@ export default function CommentSection({ postId, onClose, inline = false, always
             </button>
           </div>
         )}
-        {/* No header in inline mode while loading */}
         <div className={cn(
           "flex-1 overflow-y-auto p-4",
           "scrollbar-hide"
@@ -1355,131 +1492,11 @@ export default function CommentSection({ postId, onClose, inline = false, always
           </div>
         )}
 
-        {/* Add Comment Form - Show when showInputOnly is true OR when not hiding */}
-        {!hideInputForm && (
-          <form onSubmit={handleAddComment} className={cn(
-            "flex items-start gap-2 p-3 border-t border-border/20 bg-card",
-            "flex-shrink-0 relative z-[10002]"
-          )}>
-          <div className="relative flex-shrink-0 z-[10003]" ref={roleMenuRef}>
-            <button
-              type="button"
-              onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-              className="relative group"
-            >
-              <img 
-                src={viewerAvatar || getAvatarForAccount(viewerAccountId, viewerEntityAccountId)} 
-                alt="Your avatar" 
-                className="w-8 h-8 rounded-full object-cover mt-1 cursor-pointer ring-2 ring-transparent hover:ring-primary/30 transition-all"
-                onError={(e) => {
-                  e.target.src = getAvatarForAccount();
-                }}
-              />
-              <div className={cn(
-                "absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-muted border-2 border-card",
-                "flex items-center justify-center cursor-pointer",
-                "hover:bg-muted/80 transition-colors"
-              )}>
-                <svg className="w-2.5 h-2.5 text-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </div>
-            </button>
-            {roleMenuOpen && availableEntities.length > 0 && (
-              <div 
-                ref={menuRef}
-                className={cn(
-                  "fixed w-64 rounded-lg border border-border/30",
-                  "bg-card/95 backdrop-blur-sm shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
-                  "overflow-hidden z-[10004] max-h-80 overflow-y-auto scrollbar-hide"
-                )}
-                style={{
-                  left: `${menuPosition.left}px`,
-                  bottom: `${menuPosition.bottom}px`
-                }}
-              >
-                {availableEntities.map((entity, index) => (
-                  <button
-                    key={entity.id || index}
-                    type="button"
-                    onClick={() => handleSwitchEntity(entity)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-3 text-left",
-                      "hover:bg-muted/50 transition-colors",
-                      entity.isActive && "bg-primary/10"
-                    )}
-                  >
-                    <img 
-                      src={entity.avatar || getAvatarForAccount(entity.id)} 
-                      alt={entity.name}
-                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                      onError={(e) => {
-                        e.target.src = getAvatarForAccount();
-                      }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm text-foreground truncate">
-                        {entity.name}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {entity.role}
-                      </div>
-                    </div>
-                    {entity.isActive && (
-                      <svg className="w-5 h-5 text-primary flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex-1 relative">
-            <textarea
-              placeholder={`${t('comment.commentAs', { defaultValue: 'Comment as' })} ${viewerName}`}
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleAddComment(e);
-                }
-              }}
-              className={cn(
-                "w-full px-4 py-2 pr-10 border-[0.5px] border-border/20 rounded-2xl",
-                "bg-muted/50 text-foreground text-sm outline-none resize-none",
-                "transition-all duration-200",
-                "focus:border-primary focus:ring-1 focus:ring-primary/10",
-                "disabled:opacity-50 disabled:cursor-not-allowed"
-              )}
-              rows={1}
-              disabled={submitting}
-            />
-            <button
-              type="submit"
-              className={cn(
-                "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center",
-                "bg-transparent border-none rounded-full cursor-pointer transition-colors duration-200",
-                newComment.trim() 
-                  ? "text-primary hover:bg-primary/10"
-                  : "text-muted-foreground/50 cursor-not-allowed"
-              )}
-              disabled={submitting || !newComment.trim()}
-              aria-label="Send comment"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-              </svg>
-            </button>
-          </div>
-        </form>
-        )}
 
-      {!showInputOnly && (
-        <div className={cn(
-          "flex-1 flex flex-col overflow-hidden min-h-0"
-        )}>
+
+      <div className={cn(
+        "flex-1 flex flex-col overflow-hidden min-h-0"
+      )}>
         {/* Message notification */}
         {message && (
           <div className={cn(
@@ -2014,12 +2031,11 @@ export default function CommentSection({ postId, onClose, inline = false, always
           )}
         </div>
 
-        {/* Add Comment Form - Fixed at bottom when in modal */}
-        {!hideInputForm && (
-          <form onSubmit={handleAddComment} className={cn(
-            "flex items-start gap-2 p-3 border-t border-border/20 bg-card",
-            "flex-shrink-0 relative z-[10002]"
-          )}>
+        {/* Add Comment Form - Always shown */}
+        <form onSubmit={handleAddComment} className={cn(
+          "flex items-start gap-2 p-3 border-t border-border/20 bg-card",
+          "flex-shrink-0 relative z-[10002]"
+        )}>
           <div className="relative flex-shrink-0 z-[10003]" ref={roleMenuRef}>
             <button
               type="button"
@@ -2133,9 +2149,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
             </button>
           </div>
         </form>
-        )}
         </div>
-      )}
       </div>
     </>
   );
@@ -2147,7 +2161,5 @@ CommentSection.propTypes = {
   inline: PropTypes.bool,
   alwaysOpen: PropTypes.bool,
   scrollToCommentId: PropTypes.string,
-  hideInputForm: PropTypes.bool,
-  showInputOnly: PropTypes.bool,
 };
 

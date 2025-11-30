@@ -139,7 +139,7 @@ export default function NotificationsPage({ onOpenModal }) {
     if (notification.link) {
       let targetPath = notification.link;
       
-      // Handle post notifications - open post modal
+      // Handle post notifications
       if (targetPath.startsWith('/posts/')) {
         const urlParts = targetPath.split('?');
         const pathPart = urlParts[0];

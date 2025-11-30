@@ -1149,8 +1149,6 @@ function ConversationView({ chat, onBack }) {
             setSelectedPostId(null);
             setSelectedCommentId(null);
           }}
-          alwaysShowComments={false}
-          showInputForm={false}
         />
       </div>
     </div>

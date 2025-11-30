@@ -464,8 +464,6 @@ export default function BarHeader() {
           setPostModalPostId(null);
           setPostModalCommentId(null);
         }}
-        alwaysShowComments={false}
-        showInputForm={false}
       />
     </>
   );

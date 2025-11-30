@@ -26,7 +26,8 @@ export default function PostCard({
   onDelete,
   onReport,
   onImageClick,
-  onShared
+  onShared,
+  disableCommentButton = false
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -753,7 +754,7 @@ export default function PostCard({
                   "active:scale-95"
                 )}
             aria-label="Comment"
-            onClick={() => setPostDetailModalOpen(true)}
+            onClick={disableCommentButton ? undefined : () => setPostDetailModalOpen(true)}
           >
             <svg
               className="w-5 h-5 flex-shrink-0 transition-transform duration-200 hover:scale-110"
@@ -876,8 +877,6 @@ export default function PostCard({
           open={originalPostModalOpen}
           postId={post.repostedFromId}
           onClose={() => setOriginalPostModalOpen(false)}
-          alwaysShowComments={false}
-          showInputForm={false}
         />
       )}
       <ShareModal
@@ -892,8 +891,6 @@ export default function PostCard({
         post={post}
         postId={post.id}
         onClose={() => setPostDetailModalOpen(false)}
-        alwaysShowComments={true}
-        showInputForm={true}
       />
     </article>
   )
