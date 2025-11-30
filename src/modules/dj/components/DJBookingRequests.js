@@ -222,6 +222,28 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
     }
   };
 
+  const handleCompleteTransaction = async (booking) => {
+    if (!window.confirm("Bạn có chắc chắn đã hoàn thành giao dịch với khách hàng? Số tiền còn lại sẽ được chuyển vào tài khoản của bạn.")) {
+      return;
+    }
+
+    try {
+      const bookingId = booking.BookedScheduleId || booking.bookedScheduleId;
+      if (!bookingId) {
+        addToast("Không tìm thấy ID booking", "error");
+        return;
+      }
+
+      await bookingApi.completeTransaction(bookingId);
+      addToast("Xác nhận hoàn thành giao dịch thành công", "success");
+      fetchBookings(); // Refresh list
+    } catch (err) {
+      console.error("Error completing transaction:", err);
+      const errorMessage = err.response?.data?.message || err.message || "Không thể xác nhận hoàn thành giao dịch. Vui lòng thử lại.";
+      addToast(errorMessage, "error");
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     const date = new Date(dateString);
@@ -290,6 +312,52 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
         <div className="flex flex-col gap-4">
           {bookings.map((booking) => {
             const detailSchedule = booking.detailSchedule || booking.DetailSchedule;
+            const scheduleStatus = booking.ScheduleStatus || booking.scheduleStatus;
+            const paymentStatus = booking.PaymentStatus || booking.paymentStatus;
+            
+            // Xác định status badge
+            let statusBadge = null;
+            if (scheduleStatus === "Pending") {
+              statusBadge = (
+                <span
+                  className={cn("px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 flex-shrink-0")}
+                  style={{
+                    color: "rgb(var(--warning))",
+                    backgroundColor: "rgba(var(--warning), 0.1)",
+                  }}
+                >
+                  <AlertCircle size={14} />
+                  Chờ xác nhận
+                </span>
+              );
+            } else if (scheduleStatus === "Confirmed" && paymentStatus === "Paid") {
+              statusBadge = (
+                <span
+                  className={cn("px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 flex-shrink-0")}
+                  style={{
+                    color: "rgb(var(--primary))",
+                    backgroundColor: "rgba(var(--primary), 0.1)",
+                  }}
+                >
+                  <CheckCircle size={14} />
+                  Đã xác nhận - Đã cọc
+                </span>
+              );
+            } else if (scheduleStatus === "Completed") {
+              statusBadge = (
+                <span
+                  className={cn("px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 flex-shrink-0")}
+                  style={{
+                    color: "rgb(var(--success))",
+                    backgroundColor: "rgba(var(--success), 0.1)",
+                  }}
+                >
+                  <CheckCircle size={14} />
+                  Hoàn thành
+                </span>
+              );
+            }
+            
             return (
               <div
                 key={booking.BookedScheduleId || booking.bookedScheduleId}
@@ -300,16 +368,7 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
                 )}
               >
                 <div className="flex items-center gap-4 flex-1">
-                  <span
-                    className={cn("px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 flex-shrink-0")}
-                    style={{
-                      color: "rgb(var(--warning))",
-                      backgroundColor: "rgba(var(--warning), 0.1)",
-                    }}
-                  >
-                    <AlertCircle size={14} />
-                    Chờ xác nhận
-                  </span>
+                  {statusBadge}
                   <div className="flex items-center gap-6 flex-1">
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar size={16} className="text-muted-foreground" />
@@ -353,30 +412,48 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
                   >
                     <Eye size={18} />
                   </button>
-                  <button
-                    onClick={() => handleConfirm(booking)}
-                    className={cn(
-                      "px-4 py-2 rounded-lg text-sm font-semibold",
-                      "bg-success/10 text-success hover:bg-success/20",
-                      "border border-success/30 transition-colors",
-                      "flex items-center gap-2"
-                    )}
-                  >
-                    <CheckCircle size={16} />
-                    Xác nhận
-                  </button>
-                  <button
-                    onClick={() => handleReject(booking)}
-                    className={cn(
-                      "px-4 py-2 rounded-lg text-sm font-semibold",
-                      "bg-danger/10 text-danger hover:bg-danger/20",
-                      "border border-danger/30 transition-colors",
-                      "flex items-center gap-2"
-                    )}
-                  >
-                    <XCircle size={16} />
-                    Từ chối
-                  </button>
+                  {scheduleStatus === "Pending" && (
+                    <>
+                      <button
+                        onClick={() => handleConfirm(booking)}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-sm font-semibold",
+                          "bg-success/10 text-success hover:bg-success/20",
+                          "border border-success/30 transition-colors",
+                          "flex items-center gap-2"
+                        )}
+                      >
+                        <CheckCircle size={16} />
+                        Xác nhận
+                      </button>
+                      <button
+                        onClick={() => handleReject(booking)}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-sm font-semibold",
+                          "bg-danger/10 text-danger hover:bg-danger/20",
+                          "border border-danger/30 transition-colors",
+                          "flex items-center gap-2"
+                        )}
+                      >
+                        <XCircle size={16} />
+                        Từ chối
+                      </button>
+                    </>
+                  )}
+                  {scheduleStatus === "Confirmed" && paymentStatus === "Paid" && (
+                    <button
+                      onClick={() => handleCompleteTransaction(booking)}
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-semibold",
+                        "bg-primary/10 text-primary hover:bg-primary/20",
+                        "border border-primary/30 transition-colors",
+                        "flex items-center gap-2"
+                      )}
+                    >
+                      <CheckCircle size={16} />
+                      Xác nhận đã giao dịch xong
+                    </button>
+                  )}
                 </div>
               </div>
             );
