@@ -3,9 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import BarTables from "../components/BarTables";
-import Sidebar from "../../../components/layout/Sidebar";
 import barPageApi from "../../../api/barPageApi";
-// import "../../../styles/pages/barSettings.css";
 
 export default function BarSettings() {
   const { t } = useTranslation();
@@ -38,7 +36,6 @@ export default function BarSettings() {
       
 
       <div className="bar-settings-content">
-        <h2>{t('sidebar.barSettings')}: {profile.BarName}</h2>
         <BarTables barPageId={barPageId} />
       </div>
     </div>

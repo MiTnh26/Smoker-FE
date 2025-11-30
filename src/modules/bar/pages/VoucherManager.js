@@ -1,54 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Save, Trash2, Check, AlertCircle, TicketPercent } from "lucide-react";
 import voucherApi from "../../../api/voucherApi";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
 import "../../../styles/modules/barTables.css";
 import { useParams } from "react-router-dom";
-
-// Voucher Icon SVG Component
-const VoucherIcon = ({ className = "", color = null }) => {
-  const iconColor = color || "rgb(var(--primary))";
-  return (
-    <svg
-      className={className}
-      width="60"
-      height="60"
-      viewBox="0 0 60 60"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ color: iconColor }}
-    >
-      {/* Voucher ticket shape */}
-      <rect
-        x="10"
-        y="15"
-        width="40"
-        height="30"
-        rx="2"
-        fill="currentColor"
-        fillOpacity="0.2"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      {/* Perforated edge */}
-      <circle cx="30" cy="15" r="2" fill="currentColor" />
-      <circle cx="30" cy="45" r="2" fill="currentColor" />
-      {/* Discount symbol */}
-      <text
-        x="30"
-        y="35"
-        textAnchor="middle"
-        fontSize="16"
-        fontWeight="bold"
-        fill="currentColor"
-      >
-        %
-      </text>
-    </svg>
-  );
-};
 
 export default function VoucherManager() {
   const { t } = useTranslation();
@@ -229,14 +187,14 @@ export default function VoucherManager() {
         </div>
         <div className="bar-tables-actions">
           <button onClick={addVoucher} className="btn-add-table">
-            ➕ {t("bar.addVoucher")}
+            <Plus size={18} /> {t("bar.addVoucher")}
           </button>
           <button
             onClick={saveAll}
             disabled={saving || !vouchers.some((v) => v.dirty)}
             className={`btn-save-all-tables ${saving ? "loading" : ""}`}
           >
-            {saving ? t("bar.saving") : `💾 ${t("bar.saveAll")}`}
+            {saving ? t("bar.saving") : <><Save size={18} /> {t("bar.saveAll")}</>}
           </button>
         </div>
       </div>
@@ -245,7 +203,7 @@ export default function VoucherManager() {
       {vouchers.length === 0 && !loading && (
         <div className="bar-tables-empty">
           <div className="bar-tables-empty-icon">
-            <VoucherIcon />
+            <TicketPercent size={60} style={{ color: "rgb(var(--primary))", opacity: 0.5 }} />
           </div>
           <p className="bar-tables-empty-text">
             {t("bar.noVouchersYet")}
@@ -282,7 +240,7 @@ export default function VoucherManager() {
                 {/* Voucher Icon */}
                 <div className="bar-table-icon-wrapper">
                   <div className="bar-table-icon">
-                    <VoucherIcon color="rgb(var(--primary))" />
+                    <TicketPercent size={60} style={{ color: "rgb(var(--primary))" }} />
                   </div>
                 </div>
 
@@ -333,9 +291,9 @@ export default function VoucherManager() {
                     }`}
                   >
                     {v.dirty ? (
-                      <>🟡 {t("bar.statusEditing")}</>
+                      <><AlertCircle size={16} /> {t("bar.statusEditing")}</>
                     ) : (
-                      <>✅ {t("bar.statusSaved")}</>
+                      <><Check size={16} /> {t("bar.statusSaved")}</>
                     )}
                   </div>
                   {v.VoucherId && (
@@ -343,7 +301,7 @@ export default function VoucherManager() {
                       onClick={() => deleteVoucher(v.VoucherId, i)}
                       className="bar-table-delete-btn"
                     >
-                      {t("bar.delete")}
+                      <Trash2 size={16} /> {t("bar.delete")}
                     </button>
                   )}
                 </div>
@@ -358,7 +316,7 @@ export default function VoucherManager() {
             onClick={addVoucher}
             className="bar-table-add-card-btn"
           >
-            {t("bar.addVoucher")}
+            <Plus size={18} /> {t("bar.addVoucher")}
           </button>
         </div>
       </div>
