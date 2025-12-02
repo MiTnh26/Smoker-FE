@@ -114,16 +114,18 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
       const videos = {};
       mediaFiles.forEach((file, index) => {
         const key = (index + 1).toString();
+        const mediaCaption = file.caption ? file.caption : ""; // chỉ dùng caption user nhập, không fallback content
+
         if (file.type?.startsWith('video') || file.resource_type === 'video') {
           videos[key] = {
             url: file.url || file.path,
-            caption: file.caption || content,
+            caption: mediaCaption,
             type: "video"
           };
         } else {
           images[key] = {
             url: file.url || file.path,
-            caption: file.caption || content,
+            caption: mediaCaption,
             uploadDate: new Date().toISOString()
           };
         }
