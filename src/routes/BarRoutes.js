@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { Route } from "react-router-dom";
-import BarLayout from "../layouts/BarLayout";
+import DynamicLayout from "../layouts/DynamicLayout";
 import BarProfile from "../modules/bar/pages/BarProfile";
 import ProtectedRoute from "./ProtectedRoute";
 import BarSettings from "../modules/bar/pages/BarSettings";
@@ -13,38 +13,11 @@ import EventsPage from "../modules/bar/pages/EventsPage";
 import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed";
 import MessagesPage from "../modules/messages/pages/MessagesPage";
 import MessagesLayout from "../layouts/MessagesLayout";
-import CustomerLayout from "../layouts/CustomerLayout";
 import BarDashboardPage from "../modules/bar/pages/BarDashboardPage";
 
 const BarProfileRoute = () => {
-  const [useBarLayout, setUseBarLayout] = useState(null);
-
-  useEffect(() => {
-    try {
-      const sessionRaw = localStorage.getItem("session");
-      if (!sessionRaw) {
-        setUseBarLayout(false);
-        return;
-      }
-      const session = JSON.parse(sessionRaw);
-      const active = session?.activeEntity || {};
-      const accountRole = session?.account?.role || session?.role;
-      const isBarRole =
-        (accountRole && String(accountRole).toLowerCase() === "bar") ||
-        String(active?.role || "").toLowerCase() === "bar" ||
-        String(active?.type || "").toLowerCase() === "barpage";
-      setUseBarLayout(isBarRole);
-    } catch {
-      setUseBarLayout(false);
-    }
-  }, []);
-
-  if (useBarLayout === null) {
-    return null;
-  }
-
-  const content = <BarProfile />;
-  return useBarLayout ? <BarLayout>{content}</BarLayout> : <CustomerLayout>{content}</CustomerLayout>;
+  // DynamicLayout will automatically detect role and use appropriate header
+  return <DynamicLayout><BarProfile /></DynamicLayout>;
 };
 export default function BarRoutes() {
   return (
@@ -61,20 +34,20 @@ export default function BarRoutes() {
         <Route
           path="/bar/newsfeed"
           element={
-            <BarLayout><Newsfeed /></BarLayout>
+            <DynamicLayout><Newsfeed /></DynamicLayout>
           }
         />
         <Route
           path="/bar/events"
           element={
-            <BarLayout><EventsPage /></BarLayout>
+            <DynamicLayout><EventsPage /></DynamicLayout>
           }
         />
         <Route
           path="/bar/dashboard"
           element={
             <ProtectedRoute roles={["bar"]}>
-              <BarLayout><BarDashboardPage /></BarLayout>
+              <DynamicLayout><BarDashboardPage /></DynamicLayout>
             </ProtectedRoute>
           }
         />
@@ -87,7 +60,7 @@ export default function BarRoutes() {
         path="/bar/settings/:barPageId"
         element={
           <ProtectedRoute roles={["bar"]}>
-            <BarLayout> <BarSettings /></BarLayout>
+            <DynamicLayout> <BarSettings /></DynamicLayout>
           </ProtectedRoute>
         }
       />
@@ -95,7 +68,7 @@ export default function BarRoutes() {
         path="/bar/settings/:barPageId/table-types"
         element={
           <ProtectedRoute roles={["bar"]}>
-            <BarLayout> <TableClassificationManager /></BarLayout>
+            <DynamicLayout> <TableClassificationManager /></DynamicLayout>
           </ProtectedRoute>
         }
       />
@@ -103,7 +76,7 @@ export default function BarRoutes() {
         path="/bar/settings/:barPageId/vouchers"
         element={
           <ProtectedRoute roles={["bar"]}>
-            <BarLayout> <VoucherManager /></BarLayout>
+            <DynamicLayout> <VoucherManager /></DynamicLayout>
           </ProtectedRoute>
         }
       />
@@ -111,7 +84,7 @@ export default function BarRoutes() {
         path="/bar/settings/:barPageId/combos"
         element={
           <ProtectedRoute roles={["bar"]}>
-            <BarLayout> <ComboManager /></BarLayout>
+            <DynamicLayout> <ComboManager /></DynamicLayout>
           </ProtectedRoute>
         }
       />
@@ -119,7 +92,7 @@ export default function BarRoutes() {
         path="/bar/manage-post"
         element={
           // <ProtectedRoute roles={["bar"]}>
-            <BarLayout><ManagePost /></BarLayout>
+            <DynamicLayout><ManagePost /></DynamicLayout>
         //  </ProtectedRoute>
         }
       />
@@ -127,7 +100,7 @@ export default function BarRoutes() {
         path="/bar/manage-story"
         element={
           // <ProtectedRoute roles={["bar"]}>
-            <BarLayout><ManageStory /></BarLayout>
+            <DynamicLayout><ManageStory /></DynamicLayout>
           // </ProtectedRoute>
         }
       />

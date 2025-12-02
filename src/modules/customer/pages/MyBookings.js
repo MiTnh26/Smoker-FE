@@ -33,16 +33,12 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
         const isDJ = role === "DJ";
         const isDancer = role === "DANCER";
         
-        const profileId = isBar 
-          ? (data.barPageId || data.BarPageId || data.id)
-          : (data.businessId || data.BussinessAccountId || data.BusinessAccountId || data.id);
-        
-        const profileUrl = isBar
-          ? `/bar/${profileId}`
-          : isDJ
-          ? `/dj/${profileId}`
-          : isDancer
-          ? `/dancer/${profileId}`
+        // Use receiverId (EntityAccountId) for navigation instead of BusinessAccountId
+        // Bar still uses barPageId for /bar route, but DJ/Dancer use EntityAccountId for /profile route
+        const profileUrl = isBar 
+          ? `/bar/${data.barPageId || data.BarPageId || data.id}`
+          : (isDJ || isDancer)
+          ? `/profile/${receiverId}`  // Use EntityAccountId for DJ/Dancer
           : null;
 
         setReceiverInfo({
@@ -344,16 +340,12 @@ const ReceiverInfo = ({ receiverId, bookingType }) => {
         const isDJ = role === "DJ";
         const isDancer = role === "DANCER";
         
-        const profileId = isBar 
-          ? (data.barPageId || data.BarPageId || data.id)
-          : (data.businessId || data.BussinessAccountId || data.BusinessAccountId || data.id);
-        
-        const profileUrl = isBar
-          ? `/bar/${profileId}`
-          : isDJ
-          ? `/dj/${profileId}`
-          : isDancer
-          ? `/dancer/${profileId}`
+        // Use receiverId (EntityAccountId) for navigation instead of BusinessAccountId
+        // Bar still uses barPageId for /bar route, but DJ/Dancer use EntityAccountId for /profile route
+        const profileUrl = isBar 
+          ? `/bar/${data.barPageId || data.BarPageId || data.id}`
+          : (isDJ || isDancer)
+          ? `/profile/${receiverId}`  // Use EntityAccountId for DJ/Dancer
           : null;
 
         setReceiverInfo({

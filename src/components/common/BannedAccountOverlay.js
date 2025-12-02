@@ -59,7 +59,7 @@ export default function BannedAccountOverlay({ userRole, entityType }) {
     }
     
     // Quay lại customer account
-    navigate("/customer/profile", { replace: true });
+    navigate("/own/profile", { replace: true });
   };
 
   const handleLogout = async () => {

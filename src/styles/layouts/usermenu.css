@@ -1,6 +1,6 @@
 /* User Menu - Clean and basic style */
 
-/* Note: User menu được wrap trong dropdown-panel từ BarHeader */
+/* Note: User menu được wrap trong dropdown-panel từ PageHeader */
 
 .user-menu {
   display: flex;

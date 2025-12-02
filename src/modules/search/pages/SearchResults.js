@@ -6,6 +6,7 @@ import FollowButton from "../../../components/common/FollowButton";
 import PostCard from "../../feeds/components/post/PostCard";
 import { mapPostForCard } from "../../../utils/postTransformers";
 import { getAvatarUrl } from "../../../utils/defaultAvatar";
+import { getSession } from "../../../utils/sessionManager";
 import "../../../styles/components/globalSearch.css";
 
 function useQuery() {
@@ -186,6 +187,27 @@ function onOpenItem(navigate, item) {
     return;
   }
 
+  // Check if this is the current user's own profile (same role)
+  try {
+    const session = getSession();
+    if (session?.activeEntity) {
+      const activeEntityAccountId = 
+        session.activeEntity.EntityAccountId ||
+        session.activeEntity.entityAccountId ||
+        null;
+      
+      // If EntityAccountId matches, redirect to own profile page
+      if (activeEntityAccountId && 
+          String(activeEntityAccountId).toLowerCase() === String(itemEntityAccountId).toLowerCase()) {
+        navigate("/own/profile");
+        return;
+      }
+    }
+  } catch (error) {
+    console.error("[SearchResults] Error checking own profile:", error);
+  }
+
+  // Navigate to public profile page
   navigate(`/profile/${itemEntityAccountId}`);
 }
 

@@ -203,7 +203,7 @@ export const menuConfigs = {
 export function getEntityRoute(entity) {
   const { role, type, id } = entity;
   
-  if (!id) return "/customer/profile";
+  if (!id) return "/own/profile";
 
   // Use role first, then fallback to type
   const entityType = role || type || "";
@@ -218,7 +218,7 @@ export function getEntityRoute(entity) {
       return `/dancer/profile`;
     case "customer":
     case "account":
-      return `/customer/profile`;
+      return `/own/profile`;
     default:
       return `/user/${id}`;
   }

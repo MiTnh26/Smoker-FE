@@ -2,7 +2,7 @@
 .right-sidebar {
   position: sticky;
   top: 90px;
-  width: 280px;
+  /* Width được set bởi CSS của customer-body/bar-body (300px) */
   height: fit-content;
   align-self: flex-start;
 }

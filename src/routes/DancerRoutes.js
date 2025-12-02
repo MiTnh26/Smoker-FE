@@ -1,7 +1,6 @@
 import { Fragment } from "react";
-import { Route } from "react-router-dom";
-import DJLayout from "../layouts/DJLayout";
-import DancerProfile from "../modules/dancer/pages/DancerProfile";
+import { Route, Navigate } from "react-router-dom";
+import DynamicLayout from "../layouts/DynamicLayout";
 import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed";
 import MessagesPage from "../modules/messages/pages/MessagesPage";
 import MessagesLayout from "../layouts/MessagesLayout";
@@ -13,7 +12,7 @@ export default function DancerRoutes() {
       <Route
         path="/dancer/newsfeed"
         element={
-          <DJLayout><Newsfeed /></DJLayout>
+          <DynamicLayout><Newsfeed /></DynamicLayout>
         }
       />
       <Route
@@ -28,7 +27,7 @@ export default function DancerRoutes() {
         path="/dancer/profile"
         element={
           <ProtectedRoute role="dancer">
-            <DJLayout><DancerProfile /></DJLayout>
+            <Navigate to="/own/profile" replace />
           </ProtectedRoute>
         }
       />

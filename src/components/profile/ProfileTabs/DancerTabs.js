@@ -78,12 +78,37 @@ export const DancerTabs = ({ profile, posts, postsLoading, activeTab, performerT
           )}
         </div>
       );
-    case 'videos':
+    case 'videos': {
+      const videoPosts = (posts || []).filter((post) => {
+        const hasVideoMedia = post.medias?.videos && post.medias.videos.length > 0;
+        return hasVideoMedia || post.videoSrc;
+      });
+
       return (
-        <div className="profile-section">
-          <BarVideo barPageId={entityId} />
+        <div className="flex flex-col gap-6">
+          {postsLoading ? (
+            <div className={cn('text-center py-12 text-muted-foreground')}>
+              {t('common.loading')}
+            </div>
+          ) : videoPosts && videoPosts.length > 0 ? (
+            <div className={cn('space-y-4')}>
+              {videoPosts.map(post => (
+                <PostCard key={post.id} post={post} />
+              ))}
+            </div>
+          ) : (
+            <div
+              className={cn(
+                'text-center py-12 text-muted-foreground',
+                'bg-card rounded-lg border-[0.5px] border-border/20 p-8'
+              )}
+            >
+              {t('publicProfile.noVideos') || t('publicProfile.noPosts')}
+            </div>
+          )}
         </div>
       );
+    }
     case 'reviews':
       return (
         <div className={cn('flex flex-col gap-6')}>
