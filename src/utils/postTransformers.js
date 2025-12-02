@@ -220,19 +220,8 @@ const isLikedByViewer = (likes, viewerEntityAccountId, viewerAccountId) => {
   return false;
 };
 
-const resolveViewerAccountId = () => {
-  try {
-    const session = getSession();
-    return normalizeGuid(
-      session?.account?.id ||
-      session?.account?.AccountId ||
-      session?.account?.accountId
-    );
-  } catch (error) {
-    console.warn("[postTransformers] Failed to read session for viewer account:", error);
-    return null;
-  }
-};
+// Không còn dùng accountId để quyết định quyền canManage,
+// chỉ so sánh theo EntityAccountId (ownerEntityAccountId vs viewerEntityAccountId)
 
 /**
  * Map post data to PostCard format
@@ -262,7 +251,6 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     null; // Sẽ được xử lý bởi getAvatarUrl trong component
 
   const resolvedViewerEntityId = resolveViewerEntityAccountId(viewerEntityAccountId);
-  const resolvedViewerAccountId = resolveViewerAccountId();
 
   // Get audio from various sources
   const music = post.musicId || post.music || {};
@@ -277,17 +265,10 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     author.EntityAccountId
   );
 
-  const ownerAccountId = normalizeGuid(
-    post.accountId ||
-    post.ownerAccountId ||
-    author.accountId ||
-    author.AccountId ||
-    author.id
-  );
-
   const canManage =
-    (resolvedViewerEntityId && ownerEntityAccountId && resolvedViewerEntityId === ownerEntityAccountId) ||
-    (resolvedViewerAccountId && ownerAccountId && resolvedViewerAccountId === ownerAccountId);
+    resolvedViewerEntityId &&
+    ownerEntityAccountId &&
+    resolvedViewerEntityId === ownerEntityAccountId;
 
   return {
     id,
@@ -305,7 +286,7 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
     purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
     likes: countCollection(post.likes),
-    likedByCurrentUser: isLikedByViewer(post.likes, resolvedViewerEntityId, resolvedViewerAccountId),
+    likedByCurrentUser: isLikedByViewer(post.likes, resolvedViewerEntityId, null),
     comments: countCollection(post.comments),
     shares: post.shares || 0,
     hashtags: post.hashtags || [],
