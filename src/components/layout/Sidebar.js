@@ -49,10 +49,8 @@ export default function Sidebar({ isOpen, onClose }) {
     setUser(account);
     setActiveEntity(entity);
 
-    const role =
-      entity.type === "Account"
-        ? account.role?.toLowerCase()
-        : entity.role?.toLowerCase();
+    // Only use role, not type. Role can be: customer, bar, dj, dancer
+    const role = (entity.role || account.role || "").toLowerCase();
 
     let menus = sidebarConfig[role] || [];
 
@@ -361,10 +359,11 @@ export default function Sidebar({ isOpen, onClose }) {
 
       <aside className={cn(
         "sticky p-4 rounded-lg",
-        "w-[240px] bg-card",
+        "bg-card",
         "border-[0.5px] border-border/20",
         "top-[4.5rem] max-h-[calc(100vh-5.5rem)]",
         "overflow-y-auto overflow-x-hidden",
+        // Width được set bởi CSS của customer-body/bar-body (300px)
         // Mobile styles
         "max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50",
         "max-md:w-[280px] max-md:top-0 max-md:max-h-screen",

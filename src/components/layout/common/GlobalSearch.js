@@ -5,6 +5,7 @@ import FollowButton from "../../common/FollowButton";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../../utils/cn";
 import { getAvatarUrl } from "../../../utils/defaultAvatar";
+import { getSession } from "../../../utils/sessionManager";
 
 const TABS = [
   { key: "all", label: "Tất cả" },
@@ -297,81 +298,25 @@ function useDebounce(value, delay) {
 }
 
 function onOpenItem(navigate, item, setIsMobileExpanded, setQ) {
-  // Check if this is the current user's own profile/entity
-  // Logic synchronized with PublicProfile, BarProfile, DJProfile, DancerProfile
+  // Check if this is the current user's own profile (same role)
   try {
-    const sessionRaw = localStorage.getItem("session");
-    if (sessionRaw) {
-      const session = JSON.parse(sessionRaw);
-      const active = session?.activeEntity || {};
-      const entities = session?.entities || [];
-      const account = session?.account || {};
-      
-      const itemType = String(item.type || "").toUpperCase();
-      // Use EntityAccountId from raw if available, otherwise use id
-      const itemEntityAccountId = item.raw?.EntityAccountId || item.raw?.entityAccountId || item.id || "";
-      const itemId = String(itemEntityAccountId).toLowerCase();
-      
-      // Get current user's EntityAccountId (same logic as PublicProfile)
-      const currentUserEntityId = 
-        active.EntityAccountId ||
-        active.entityAccountId ||
-        active.id ||
-        account.EntityAccountId ||
-        account.entityAccountId ||
-        entities.find(e => e.type === "Account")?.EntityAccountId ||
-        entities.find(e => e.type === "Account")?.entityAccountId ||
-        entities[0]?.EntityAccountId ||
-        entities[0]?.entityAccountId ||
+    const session = getSession();
+    if (session?.activeEntity) {
+      const activeEntityAccountId = 
+        session.activeEntity.EntityAccountId ||
+        session.activeEntity.entityAccountId ||
         null;
       
-      // Check if item matches current user's Account (same logic as PublicProfile)
-      if (itemType === "USER" || itemType === "ACCOUNT") {
-        if (currentUserEntityId && String(currentUserEntityId).toLowerCase() === itemId) {
-          navigate("/customer/profile");
-          setIsMobileExpanded(false);
-          setQ("");
-          return;
-        }
-      }
+      // Use EntityAccountId from raw if available, otherwise use id
+      const itemEntityAccountId = item.raw?.EntityAccountId || item.raw?.entityAccountId || item.id || "";
       
-      // Check if item matches current user's activeEntity (only exact match)
-      // Different roles (even from same AccountId) are considered different profiles
-      const activeEntityAccountId = active.EntityAccountId || active.entityAccountId || null;
-      if (activeEntityAccountId && String(activeEntityAccountId).toLowerCase() === itemId) {
-        // Navigate to own profile page based on active role
-        // Use the entity's id (not EntityAccountId) for route params
-        if (active.type === "BarPage" || active.type === "BAR") {
-          // Use BarPageId for bar route
-          const barPageId = active.id || active.BarPageId || active.barPageId;
-          if (barPageId) {
-            navigate(`/bar/${barPageId}`);
-          } else {
-            navigate("/customer/profile");
-        }
-        } else if (active.type === "Business" || active.type === "BusinessAccount") {
-          const businessId = active.id || active.BusinessAccountId || active.businessAccountId;
-          if (active.role && active.role.toLowerCase() === "dj") {
-            if (businessId) {
-              navigate(`/dj/${businessId}`);
-            } else {
-              navigate("/customer/profile");
-            }
-          } else if (active.role && active.role.toLowerCase() === "dancer") {
-            if (businessId) {
-              navigate(`/dancer/${businessId}`);
-            } else {
-              navigate("/customer/profile");
-            }
-          } else {
-            navigate("/customer/profile");
-          }
-        } else {
-          navigate("/customer/profile");
-        }
-          setIsMobileExpanded(false);
-          setQ("");
-          return;
+      // If EntityAccountId matches, redirect to own profile page
+      if (activeEntityAccountId && 
+          String(activeEntityAccountId).toLowerCase() === String(itemEntityAccountId).toLowerCase()) {
+        navigate("/own/profile");
+        setIsMobileExpanded(false);
+        setQ("");
+        return;
       }
     }
   } catch (error) {

@@ -1,13 +1,13 @@
 // src/layouts/DJLayout.js
 import { useState } from "react";
-import BarHeader from "../components/layout/Bar/BarHeader"; // giả sử bạn có header riêng cho bar
+import PageHeader from "../components/layout/Bar/PageHeader"; // Shared header for Bar, DJ, Dancer
 import Sidebar from "../components/layout/Sidebar";
 import RightSidebar from "../components/layout/common/RightSidebar";
 import ChatDock from "../components/layout/common/ChatDock";
 import MenuContactsPanel from "../components/layout/common/MenuContactsPanel";
 import { Menu } from "lucide-react";
 import { cn } from "../utils/cn";
-import "../styles/modules/bar.css";// có thể tạo CSS riêng cho bar
+import "../styles/modules/bar.css";
 
 const DJLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -15,7 +15,7 @@ const DJLayout = ({ children }) => {
 
   return (
     <div className="bar-layout">
-      <BarHeader />    {/* Header trên cùng của Bar */}
+      <PageHeader />    {/* Shared header for Bar, DJ, Dancer */}
       <div className="bar-body">
         {/* Mobile Menu/Contacts Button */}
         <button

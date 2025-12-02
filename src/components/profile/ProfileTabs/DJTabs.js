@@ -62,7 +62,12 @@ export const DJTabs = ({ profile, posts, postsLoading, activeTab, performerTarge
           ) : posts && posts.length > 0 ? (
             <div className={cn('space-y-4')}>
               {posts.map(post => (
-                <PostCard key={post.id} post={post} />
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  playingPost={null}
+                  setPlayingPost={() => {}}
+                />
               ))}
             </div>
           ) : (
@@ -79,11 +84,9 @@ export const DJTabs = ({ profile, posts, postsLoading, activeTab, performerTarge
       );
     case 'music': {
       const musicPosts = posts.filter(post => {
-        return post.audioSrc || 
-               post.audioTitle || 
-               post.purchaseLink ||
-               post.targetType === 'music' ||
-               (post.medias?.audios && post.medias.audios.length > 0);
+        const hasExplicitMusic = post.audioSrc || post.audioTitle || post.purchaseLink;
+        const hasAudioMedias = post.medias?.audios && post.medias.audios.length > 0;
+        return hasExplicitMusic || hasAudioMedias;
       });
       
       return (
@@ -95,7 +98,12 @@ export const DJTabs = ({ profile, posts, postsLoading, activeTab, performerTarge
           ) : musicPosts && musicPosts.length > 0 ? (
             <div className={cn('space-y-4')}>
               {musicPosts.map(post => (
-                <PostCard key={post.id} post={post} />
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  playingPost={null}
+                  setPlayingPost={() => {}}
+                />
               ))}
             </div>
           ) : (

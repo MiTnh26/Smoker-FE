@@ -7,7 +7,7 @@
 
 /* Body container: sidebar trái + main content + sidebar phải */
 .bar-body {
-  @apply flex flex-1 bg-[rgb(var(--background))] gap-6;
+  @apply flex flex-1 bg-[rgb(var(--background))] gap-6 px-6;
   justify-content: center; /* căn giữa main content khi sidebar ẩn */
 }
 
@@ -33,15 +33,20 @@
   }
 }
 
-/* Sidebar trái */
+/* Sidebar - đồng bộ với customer */
+.bar-body > aside {
+  @apply w-[300px] flex-shrink-0;
+}
+
+/* Sidebar trái - đồng bộ với customer */
 .bar-body > aside:first-child {
-  @apply hidden lg:block flex-shrink-0 ml-10 w-[350px];
+  @apply hidden lg:block w-[300px] flex-shrink-0;
   z-index: 1; /* Ensure sidebar is visible */
 }
 
-/* Sidebar phải */
+/* Sidebar phải - đồng bộ với customer */
 .bar-body > aside:last-child {
-  @apply hidden xl:block flex-shrink-0 mr-10 w-[300px];
+  @apply hidden xl:block w-[300px] flex-shrink-0;
 }
 
 /* Main content */

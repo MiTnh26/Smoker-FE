@@ -203,7 +203,7 @@ export default function AddBankInfo() {
         
         // Redirect after 1.5 seconds
         setTimeout(() => {
-          navigate("/customer/profile");
+          navigate("/own/profile");
         }, 1500);
       } else {
         throw new Error(res?.message || "Có lỗi xảy ra");
@@ -305,7 +305,7 @@ export default function AddBankInfo() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => navigate("/customer/profile")}
+              onClick={() => navigate("/own/profile")}
               disabled={isLoading}
             >
               Hủy

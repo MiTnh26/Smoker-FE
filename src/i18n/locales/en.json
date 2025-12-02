@@ -595,6 +595,8 @@
     "reviewsTab": "Reviews",
     "tablesTab": "Tables",
     "musicTab": "Music",
+    "scheduleTab": "Schedule",
+    "bookingsTab": "Bookings",
     "priceTable": "Price List",
     "musicTabDescription": "Will display DJ's music tracks",
     "loadingProfile": "Loading profile...",

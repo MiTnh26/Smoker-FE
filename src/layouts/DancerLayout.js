@@ -1,6 +1,6 @@
 // src/layouts/DancerLayout.js
 import { useState } from "react";
-import BarHeader from "../components/layout/Bar/BarHeader";
+import PageHeader from "../components/layout/Bar/PageHeader"; // Shared header for Bar, DJ, Dancer
 import Sidebar from "../components/layout/Sidebar";
 import RightSidebar from "../components/layout/common/RightSidebar";
 import ChatDock from "../components/layout/common/ChatDock";
@@ -15,7 +15,7 @@ const DancerLayout = ({ children }) => {
 
   return (
     <div className="bar-layout">
-      <BarHeader />
+      <PageHeader />
       <div className="bar-body">
         {/* Mobile Menu/Contacts Button */}
         <button

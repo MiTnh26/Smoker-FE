@@ -1,6 +1,6 @@
 import { Route } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
-import CustomerLayout from "../layouts/CustomerLayout";
+import DynamicLayout from "../layouts/DynamicLayout";
 import SettingsPrivacyPage from "../modules/settings/pages/SettingsPrivacy";
 import LanguageSettings from "../modules/settings/pages/LanguageSettings";
 import SongLibraryPage from "../modules/settings/pages/SongLibrary";
@@ -12,7 +12,7 @@ export default function SettingsRoutes() {
         path="/settings"
         element={
           <ProtectedRoute roles={["customer", "bar", "dj", "dancer", "admin", "business"]}>
-            <CustomerLayout><SettingsPrivacyPage /></CustomerLayout>
+            <DynamicLayout><SettingsPrivacyPage /></DynamicLayout>
           </ProtectedRoute>
         }
       />
@@ -20,7 +20,7 @@ export default function SettingsRoutes() {
         path="/settings/language"
         element={
           <ProtectedRoute roles={["customer", "bar", "dj", "dancer", "admin", "business"]}>
-            <CustomerLayout><LanguageSettings /></CustomerLayout>
+            <DynamicLayout><LanguageSettings /></DynamicLayout>
           </ProtectedRoute>
         }
       />
@@ -28,7 +28,7 @@ export default function SettingsRoutes() {
         path="/settings/songs"
         element={
           <ProtectedRoute roles={["customer", "bar", "dj", "dancer", "admin", "business"]}>
-            <CustomerLayout><SongLibraryPage /></CustomerLayout>
+            <DynamicLayout><SongLibraryPage /></DynamicLayout>
           </ProtectedRoute>
         }
       />

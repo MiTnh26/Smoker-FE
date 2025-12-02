@@ -13,7 +13,6 @@ import AdminRoutes from "./AdminRoutes";
 import BusinessRouters from "./BusinessRouters";
 import SettingsRoutes from "./SettingsRoutes";
 import SearchResults from "../modules/search/pages/SearchResults";
-import CustomerLayout from "../layouts/CustomerLayout";
 import DynamicLayout from "../layouts/DynamicLayout";
 import ProfilePage from "../modules/profile/pages/ProfilePage";
 import PaymentReturn from "../pages/PaymentReturn";
