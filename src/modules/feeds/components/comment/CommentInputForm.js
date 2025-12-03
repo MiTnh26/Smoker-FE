@@ -6,15 +6,17 @@ import { cn } from "../../../../utils/cn";
 
 export default function CommentInputForm({ postId, onCommentAdded }) {
   const { t } = useTranslation();
+  const ANONYMOUS_AVATAR_URL = "/images/an-danh.png";
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [viewerName, setViewerName] = useState("");
   const [viewerAvatar, setViewerAvatar] = useState(null);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
-  const [availableEntities, setAvailableEntities] = useState([]);
   const [menuPosition, setMenuPosition] = useState({ left: 0, bottom: 0 });
   const roleMenuRef = useRef(null);
   const menuRef = useRef(null);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [canUseAnonymous, setCanUseAnonymous] = useState(false);
 
   const normalizeId = (value) => (value ? String(value).trim().toLowerCase() : null);
 
@@ -56,45 +58,26 @@ export default function CommentInputForm({ postId, onCommentAdded }) {
     }
   };
 
-  // Load viewer identity and available entities
+  // Load viewer identity & determine anonymous permission
   useEffect(() => {
     const identity = resolveViewerIdentity();
     setViewerName(identity.name || "User");
     setViewerAvatar(identity.avatar);
 
-    // Load available entities from session
     try {
       const raw = localStorage.getItem("session");
       const session = raw ? JSON.parse(raw) : null;
-      const entities = Array.isArray(session?.entities) ? session.entities : [];
       const currentUser = session?.account;
       const activeEntity = session?.activeEntity || currentUser;
-      
-      // Build list of available entities (current user + all entities)
-      const entityList = [];
-      if (currentUser) {
-        entityList.push({
-          id: currentUser.id || currentUser.AccountId || currentUser.accountId,
-          name: currentUser.userName || currentUser.name || "User",
-          avatar: currentUser.avatar || null,
-          role: "Account",
-          isActive: activeEntity?.id === currentUser.id || (!activeEntity && !session?.activeEntity)
-        });
-      }
-      entities.forEach(entity => {
-        if (entity) {
-          entityList.push({
-            id: entity.id || entity.EntityAccountId || entity.entityAccountId,
-            name: entity.name || entity.userName || entity.BarName || "Entity",
-            avatar: entity.avatar || entity.Avatar || null,
-            role: entity.role || entity.Role || "Account",
-            isActive: activeEntity?.id === entity.id || activeEntity?.EntityAccountId === entity.EntityAccountId
-          });
-        }
-      });
-      setAvailableEntities(entityList);
+
+      const role = (activeEntity?.role || currentUser?.role || "").toString().toLowerCase();
+      const isCustomer =
+        !role || role === "customer" || role === "account";
+
+      setCanUseAnonymous(Boolean(isCustomer));
     } catch (error) {
-      console.error("Error loading entities:", error);
+      console.error("Error loading viewer identity:", error);
+      setCanUseAnonymous(false);
     }
   }, []);
 
@@ -124,26 +107,6 @@ export default function CommentInputForm({ postId, onCommentAdded }) {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [roleMenuOpen]);
-
-  const handleSwitchEntity = (entity) => {
-    try {
-      const raw = localStorage.getItem("session");
-      const session = raw ? JSON.parse(raw) : null;
-      if (!session) return;
-
-      // Update activeEntity in session
-      const updatedSession = {
-        ...session,
-        activeEntity: entity
-      };
-      localStorage.setItem("session", JSON.stringify(updatedSession));
-
-      // Reload page to update session
-      window.location.reload();
-    } catch (error) {
-      console.error("Error switching entity:", error);
-    }
-  };
 
   const handleAddComment = async (e) => {
     e.preventDefault();
@@ -176,13 +139,15 @@ export default function CommentInputForm({ postId, onCommentAdded }) {
       const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
       const entityId = activeEntity?.entityId || session?.account?.id;
       const entityType = typeRole;
+      const useAnonymous = canUseAnonymous && isAnonymous;
 
       const response = await addComment(postId, {
         content: newComment.trim(),
         typeRole: typeRole,
         entityAccountId: entityAccountId,
         entityId: entityId,
-        entityType: entityType
+        entityType: entityType,
+        isAnonymous: useAnonymous,
       });
 
       if (response?.success || response?.data?.success) {
@@ -215,8 +180,12 @@ export default function CommentInputForm({ postId, onCommentAdded }) {
           className="relative group"
         >
           <img 
-            src={viewerAvatar || getAvatarForAccount()} 
-            alt="Your avatar" 
+            src={
+              isAnonymous
+                ? ANONYMOUS_AVATAR_URL
+                : (viewerAvatar || getAvatarForAccount())
+            } 
+            alt={isAnonymous ? "Anonymous" : "Your avatar"} 
             className="w-8 h-8 rounded-full object-cover mt-1 cursor-pointer ring-2 ring-transparent hover:ring-primary/30 transition-all"
             onError={(e) => {
               e.target.src = getAvatarForAccount();
@@ -232,7 +201,7 @@ export default function CommentInputForm({ postId, onCommentAdded }) {
             </svg>
           </div>
         </button>
-        {roleMenuOpen && availableEntities.length > 0 && (
+        {roleMenuOpen && (
           <div 
             ref={menuRef}
             className={cn(
@@ -245,46 +214,84 @@ export default function CommentInputForm({ postId, onCommentAdded }) {
               bottom: `${menuPosition.bottom}px`
             }}
           >
-            {availableEntities.map((entity, index) => (
+            {/* Option 1: dùng tài khoản hiện tại */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsAnonymous(false);
+                setRoleMenuOpen(false);
+              }}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors",
+                !isAnonymous && "bg-primary/10"
+              )}
+            >
+              <img 
+                src={viewerAvatar || getAvatarForAccount()} 
+                alt={viewerName}
+                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                onError={(e) => {
+                  e.target.src = getAvatarForAccount();
+                }}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm text-foreground truncate">
+                  {viewerName}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Account
+                </div>
+              </div>
+              {!isAnonymous && (
+                <svg className="w-5 h-5 text-primary flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                </svg>
+              )}
+            </button>
+
+            {/* Option 2: Ẩn danh - chỉ cho phép nếu là user thường */}
+            {canUseAnonymous && (
               <button
-                key={entity.id || index}
                 type="button"
-                onClick={() => handleSwitchEntity(entity)}
+                onClick={() => {
+                  setIsAnonymous(true);
+                  setRoleMenuOpen(false);
+                }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 text-left",
-                  "hover:bg-muted/50 transition-colors",
-                  entity.isActive && "bg-primary/10"
+                  "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors",
+                  isAnonymous && "bg-primary/10"
                 )}
               >
                 <img 
-                  src={entity.avatar || getAvatarForAccount(entity.id)} 
-                  alt={entity.name}
+                  src={ANONYMOUS_AVATAR_URL} 
+                  alt="Người ẩn danh"
                   className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                  onError={(e) => {
-                    e.target.src = getAvatarForAccount();
-                  }}
                 />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm text-foreground truncate">
-                    {entity.name}
+                    Người ẩn danh
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {entity.role}
+                    anonymous
                   </div>
                 </div>
-                {entity.isActive && (
+                {isAnonymous && (
                   <svg className="w-5 h-5 text-primary flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                   </svg>
                 )}
               </button>
-            ))}
+            )}
           </div>
         )}
       </div>
       <div className="flex-1 relative">
         <textarea
-          placeholder={`${t('comment.commentAs', { defaultValue: 'Comment as' })} ${viewerName}`}
+          placeholder={
+            isAnonymous
+              ? "Bình luận ẩn danh..."
+              : `${t('comment.commentAs', { defaultValue: 'Comment as' })} ${viewerName}`
+          }
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           onKeyDown={(e) => {

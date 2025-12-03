@@ -20,7 +20,7 @@ import { getSession, getActiveEntity } from "../utils/sessionManager";
 import "../styles/modules/customer.css";
 import "../styles/modules/bar.css";
 
-const DynamicLayout = ({ children }) => {
+const DynamicLayout = ({ children, hideSidebars = false }) => {
   const [currentRole, setCurrentRole] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuContactsOpen, setMenuContactsOpen] = useState(false);
@@ -88,13 +88,15 @@ const DynamicLayout = ({ children }) => {
   };
 
   // Determine layout class based on role
-  const layoutClass = 
+  const layoutClass =
     currentRole === "BAR" || currentRole === "BARPAGE" || currentRole === "DJ" || currentRole === "DANCER"
       ? "bar-layout"
       : "customer-layout";
 
-  const bodyClass = 
-    currentRole === "BAR" || currentRole === "BARPAGE" || currentRole === "DJ" || currentRole === "DANCER"
+  // Khi hideSidebars = true (ví dụ trang search), không dùng grid body mặc định để tránh co hẹp nội dung
+  const bodyClass = hideSidebars
+    ? "w-full min-h-[calc(100vh-64px)] bg-background"
+    : currentRole === "BAR" || currentRole === "BARPAGE" || currentRole === "DJ" || currentRole === "DANCER"
       ? "bar-body"
       : "customer-body";
 
@@ -116,12 +118,14 @@ const DynamicLayout = ({ children }) => {
           <Menu size={24} />
         </button>
 
-        <Sidebar 
-          isOpen={sidebarOpen} 
-          onClose={() => setSidebarOpen(false)} 
-        />
+        {!hideSidebars && (
+          <Sidebar 
+            isOpen={sidebarOpen} 
+            onClose={() => setSidebarOpen(false)} 
+          />
+        )}
         <main>{children}</main>
-        <RightSidebar />
+        {!hideSidebars && <RightSidebar />}
       </div>
       <ChatDock />
       

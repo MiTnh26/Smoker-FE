@@ -29,6 +29,10 @@ const messageApi = {
       entityId,
       ...extra,
     }),
+  deleteConversation: (conversationId, entityAccountId) =>
+    axiosClient.delete(`/messages/conversation/${conversationId}`, {
+      data: { entityAccountId },
+    }),
   markMessagesRead: (conversationId, entityAccountId, lastMessageId = null) =>
     axiosClient.post("/messages/messages/read", { conversationId, entityAccountId, lastMessageId }),
   createOrGetConversation: (participant1Id, participant2Id) =>

@@ -18,6 +18,7 @@
     "email": "Email",
     "phone": "Phone",
     "address": "Address",
+    "back": "Back",
     "cancel": "Cancel",
     "saving": "Saving...",
     "saveChanges": "Save changes"
@@ -276,7 +277,11 @@
     "you": "You",
     "attachment": "Attachment",
     "seen": "Seen",
-    "delivered": "Delivered"
+    "delivered": "Delivered",
+    "deleteConversation": "Delete chat",
+    "deleteConversationTitle": "Delete chat",
+    "deleteConversationConfirm": "Are you sure you want to delete this chat? It will only be deleted on your side.",
+    "openConversationMenu": "Open chat menu"
   },
   "unifiedMenu": {
     "entityLabel": "Your Pages / Businesses",
@@ -659,6 +664,20 @@
     "sentYouAMessageWithPreview": "{{name}}: {{preview}}",
     "postDetail": "Post detail",
     "default": "You have a new notification"
+  },
+  "search": {
+    "title": "Search results",
+    "resultsFor": "Results for \"{{q}}\"",
+    "placeholder": "Type a keyword to start searching",
+    "searching": "Searching...",
+    "noResults": "No matching results",
+    "filterTitle": "Filters",
+    "sectionUsers": "People",
+    "sectionBars": "Bars",
+    "sectionDjs": "DJs",
+    "sectionDancers": "Dancers",
+    "sectionPosts": "Posts",
+    "viewAll": "View all"
   }
 }
 

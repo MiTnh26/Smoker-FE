@@ -339,14 +339,14 @@ export default function PostCard({
         <div className="flex items-center gap-3.5 flex-1 min-w-0">
           <div className="relative flex-shrink-0">
             <img
-              src={getAvatarUrl(post.avatar, 40)}
+              src={getAvatarUrl(post.avatar, 32)}
               alt={post.user}
               onClick={handleProfileClick}
               onError={(e) => {
-                e.target.src = getAvatarUrl(null, 40);
+                e.target.src = getAvatarUrl(null, 32);
               }}
               className={cn(
-                "w-14 h-14 rounded-2xl object-cover",
+                "w-10 h-10 rounded-2xl object-cover",
                 "border-2 border-primary/20 ring-2 ring-primary/5",
                 "transition-all duration-500 ease-out",
                 "hover:border-primary/50 hover:ring-primary/20",
@@ -816,12 +816,22 @@ export default function PostCard({
             onClick={() => setPostDetailModalOpen(true)}
             className="w-full text-left"
           >
-            {post.topComments.map((comment, index) => (
+            {post.topComments.map((comment, index) => {
+              const isAnonymousComment = Boolean(comment.isAnonymous);
+              const anonymousIndex = comment.anonymousIndex;
+              const displayName = isAnonymousComment
+                ? `Người ẩn danh${anonymousIndex ? ` ${anonymousIndex}` : ""}`
+                : (comment.authorName || "Người dùng");
+              const displayAvatar = isAnonymousComment
+                ? "/images/an-danh.png"
+                : getAvatarUrl(comment.authorAvatar, 32);
+
+              return (
               <div key={comment.id || index} className="mb-2 last:mb-0">
                 <div className="flex gap-2 items-start">
                   <img
-                    src={getAvatarUrl(comment.authorAvatar, 32)}
-                    alt={comment.authorName || "User"}
+                    src={displayAvatar}
+                    alt={displayName || "User"}
                     className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                     onError={(e) => {
                       e.target.src = getAvatarUrl(null, 32);
@@ -830,7 +840,7 @@ export default function PostCard({
                   <div className="flex-1 min-w-0">
                     <div className="bg-muted/30 rounded-2xl px-3 py-2">
                       <span className="font-semibold text-sm text-foreground mr-2">
-                        {comment.authorName || "Người dùng"}
+                        {displayName}
                       </span>
                       <span className="text-sm text-foreground break-words">
                         {comment.content}
@@ -855,7 +865,8 @@ export default function PostCard({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </button>
         </div>
       )}

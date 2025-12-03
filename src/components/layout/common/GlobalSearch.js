@@ -23,6 +23,7 @@ export default function GlobalSearch() {
   const [data, setData] = useState({ users: [], bars: [], djs: [], dancers: [], posts: [] });
   const [refreshTick, setRefreshTick] = useState(0);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const debouncedQ = useDebounce(q, 300);
 
@@ -154,6 +155,7 @@ export default function GlobalSearch() {
         <button
           onClick={() => {
             setIsMobileExpanded(false);
+            setDropdownOpen(false);
             setQ("");
           }}
           className={cn(
@@ -178,20 +180,26 @@ export default function GlobalSearch() {
             "sm:text-xs md:text-sm"
           )}
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setDropdownOpen(true);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && q.trim()) {
-              navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+              const value = q.trim();
+              navigate(`/search?q=${encodeURIComponent(value)}`);
               setIsMobileExpanded(false);
+              setDropdownOpen(false);
             }
             if (e.key === "Escape") {
               setIsMobileExpanded(false);
+              setDropdownOpen(false);
               setQ("");
             }
           }}
           autoFocus={isMobileExpanded}
         />
-        {q && (
+        {dropdownOpen && q && (
           <div className={cn(
             "absolute top-[calc(100%+6px)] left-0 right-0 z-[60] w-full",
             "bg-card/95 backdrop-blur-md border-[0.5px] border-border/20 rounded-2xl",
