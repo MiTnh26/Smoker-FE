@@ -45,17 +45,36 @@ export const normalizeMediaArray = (medias) => {
     }
   } else if (medias && typeof medias === "object") {
     for (const key of Object.keys(medias)) {
-      const mediaItem = medias[key];
-      if (!mediaItem) continue;
-      const url = mediaItem.url || mediaItem.src || mediaItem.path;
-      const type = (mediaItem.type || "").toLowerCase();
-      if (!url) continue;
-      if (type === "audio" || isAudioUrl(url)) {
-        audios.push({ url, id: mediaItem._id || mediaItem.id || url });
-      } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
-        videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+      const value = medias[key];
+      if (!value) continue;
+
+      // Hỗ trợ cả dạng { images: [...], videos: [...], audios: [...] }
+      if (Array.isArray(value)) {
+        for (const mediaItem of value) {
+          if (!mediaItem) continue;
+          const url = mediaItem.url || mediaItem.src || mediaItem.path;
+          const type = (mediaItem.type || "").toLowerCase();
+          if (!url) continue;
+          if (type === "audio" || isAudioUrl(url)) {
+            audios.push({ url, id: mediaItem._id || mediaItem.id || url });
+          } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+            videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+          } else {
+            images.push({ url, id: mediaItem._id || mediaItem.id || url });
+          }
+        }
       } else {
-        images.push({ url, id: mediaItem._id || mediaItem.id || url });
+        const mediaItem = value;
+        const url = mediaItem.url || mediaItem.src || mediaItem.path;
+        const type = (mediaItem.type || "").toLowerCase();
+        if (!url) continue;
+        if (type === "audio" || isAudioUrl(url)) {
+          audios.push({ url, id: mediaItem._id || mediaItem.id || url });
+        } else if (type === "video" || url.includes(".mp4") || url.includes(".webm")) {
+          videos.push({ url, id: mediaItem._id || mediaItem.id || url });
+        } else {
+          images.push({ url, id: mediaItem._id || mediaItem.id || url });
+        }
       }
     }
   }

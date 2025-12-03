@@ -19,6 +19,7 @@ import {
 } from "../../../../api/postApi";
 import { cn } from "../../../../utils/cn";
 
+const ANONYMOUS_AVATAR_URL = "/images/an-danh.png";
 
 export default function CommentSection({ postId, onClose, inline = false, alwaysOpen = false, scrollToCommentId = null }) {
   const { t } = useTranslation();
@@ -45,10 +46,11 @@ export default function CommentSection({ postId, onClose, inline = false, always
   const [viewerName, setViewerName] = useState("");
   const [viewerAvatar, setViewerAvatar] = useState(null);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
-  const [availableEntities, setAvailableEntities] = useState([]);
   const [menuPosition, setMenuPosition] = useState({ left: 0, bottom: 0 });
   const roleMenuRef = useRef(null);
   const menuRef = useRef(null);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [canUseAnonymous, setCanUseAnonymous] = useState(false);
 
   const normalizeId = (value) => (value ? String(value).trim().toLowerCase() : null);
 
@@ -242,39 +244,21 @@ export default function CommentSection({ postId, onClose, inline = false, always
     setViewerName(identity.name || "User");
     setViewerAvatar(identity.avatar);
 
-    // Load available entities from session
+    // Chỉ user thường (Account/Customer) mới được phép ẩn danh
     try {
       const raw = localStorage.getItem("session");
       const session = raw ? JSON.parse(raw) : null;
-      const entities = Array.isArray(session?.entities) ? session.entities : [];
       const currentUser = session?.account;
       const activeEntity = session?.activeEntity || currentUser;
-      
-      // Build list of available entities (current user + all entities)
-      const entityList = [];
-      if (currentUser) {
-        entityList.push({
-          id: currentUser.id || currentUser.AccountId || currentUser.accountId,
-          name: currentUser.userName || currentUser.name || "User",
-          avatar: currentUser.avatar || null,
-          role: "Account",
-          isActive: activeEntity?.id === currentUser.id || (!activeEntity && !session?.activeEntity)
-        });
-      }
-      entities.forEach(entity => {
-        if (entity) {
-          entityList.push({
-            id: entity.id || entity.EntityAccountId || entity.entityAccountId,
-            name: entity.name || entity.userName || entity.BarName || "Entity",
-            avatar: entity.avatar || entity.Avatar || null,
-            role: entity.role || entity.Role || "Account",
-            isActive: activeEntity?.id === entity.id || activeEntity?.EntityAccountId === entity.EntityAccountId
-          });
-        }
-      });
-      setAvailableEntities(entityList);
+
+      const role = (activeEntity?.role || currentUser?.role || "").toString().toLowerCase();
+      const isCustomer =
+        !role || role === "customer" || role === "account";
+
+      setCanUseAnonymous(Boolean(isCustomer));
     } catch (error) {
-      console.error("Error loading entities:", error);
+      console.error("Error resolving viewer role:", error);
+      setCanUseAnonymous(false);
     }
   }, []);
 
@@ -304,41 +288,6 @@ export default function CommentSection({ postId, onClose, inline = false, always
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [roleMenuOpen]);
-
-  const handleSwitchEntity = (entity) => {
-    try {
-      const raw = localStorage.getItem("session");
-      const session = raw ? JSON.parse(raw) : null;
-      if (!session) return;
-
-      // Update activeEntity in session
-      const updatedSession = {
-        ...session,
-        activeEntity: entity
-      };
-      localStorage.setItem("session", JSON.stringify(updatedSession));
-
-      // Update viewer info
-      setViewerName(entity.name || "User");
-      setViewerAvatar(entity.avatar);
-      setViewerAccountId(entity.id);
-      setViewerEntityAccountId(entity.id);
-
-      // Update available entities to reflect active state
-      setAvailableEntities(prev => prev.map(e => ({
-        ...e,
-        isActive: e.id === entity.id
-      })));
-
-      // Close menu
-      setRoleMenuOpen(false);
-
-      // Trigger session update event
-      window.dispatchEvent(new Event('sessionUpdated'));
-    } catch (error) {
-      console.error("Error switching entity:", error);
-    }
-  };
 
   // Reload comments when activeEntity changes (role switch)
   useEffect(() => {
@@ -829,7 +778,9 @@ export default function CommentSection({ postId, onClose, inline = false, always
             const identity = resolveViewerIdentity();
             const commentEntityAccountId = normalizeId(comment.entityAccountId || comment.authorEntityAccountId);
             const isCurrentUser = commentEntityAccountId === normalizeId(viewerEntityAccountId || identity.entityAccountId);
-            
+            const isAnonymousComment = Boolean(comment.isAnonymous);
+            const anonymousIndex = comment.anonymousIndex;
+
             commentsArray.push({
               id: extractedCommentId,
               accountId: comment.accountId,
@@ -843,9 +794,15 @@ export default function CommentSection({ postId, onClose, inline = false, always
               replies: repliesArray,
               createdAt: comment.createdAt,
               updatedAt: comment.updatedAt,
-              // Author info from backend, fallback to current user if missing
-              authorName: comment.authorName || (isCurrentUser ? (viewerName || identity.name || "User") : "Người dùng"),
-              authorAvatar: comment.authorAvatar || (isCurrentUser ? (viewerAvatar || identity.avatar) : null),
+              isAnonymous: isAnonymousComment,
+              anonymousIndex: anonymousIndex,
+              // Author info: nếu ẩn danh thì luôn hiển thị Người ẩn danh #n và không dùng avatar thật
+              authorName: isAnonymousComment
+                ? `Người ẩn danh${anonymousIndex ? ` ${anonymousIndex}` : ""}`
+                : (comment.authorName || (isCurrentUser ? (viewerName || identity.name || "User") : "Người dùng")),
+              authorAvatar: isAnonymousComment
+                ? ANONYMOUS_AVATAR_URL
+                : (comment.authorAvatar || (isCurrentUser ? (viewerAvatar || identity.avatar) : null)),
               authorEntityAccountId: comment.authorEntityAccountId || comment.entityAccountId,
               authorEntityType: comment.authorEntityType || comment.entityType,
               authorEntityId: comment.authorEntityId || comment.entityId
@@ -1203,6 +1160,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
       const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
       const entityId = activeEntity?.entityId || currentUser?.id;
       const entityType = typeRole;
+      // Nếu đang bật chế độ ẩn danh và user được phép ẩn danh thì reply cũng phải ẩn danh
+      const useAnonymous = canUseAnonymous && isAnonymous;
 
       let response;
       if (replyToId) {
@@ -1212,7 +1171,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
           typeRole: typeRole,
           entityAccountId: entityAccountId,
           entityId: entityId,
-          entityType: entityType
+          entityType: entityType,
+          isAnonymous: useAnonymous
         });
       } else {
         // Reply to a comment
@@ -1221,7 +1181,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
           typeRole: typeRole,
           entityAccountId: entityAccountId,
           entityId: entityId,
-          entityType: entityType
+          entityType: entityType,
+          isAnonymous: useAnonymous
         });
       }
 
@@ -2042,9 +2003,13 @@ export default function CommentSection({ postId, onClose, inline = false, always
               onClick={() => setRoleMenuOpen(!roleMenuOpen)}
               className="relative group"
             >
-              <img 
-                src={viewerAvatar || getAvatarForAccount(viewerAccountId, viewerEntityAccountId)} 
-                alt="Your avatar" 
+          <img 
+            src={
+              isAnonymous
+                ? ANONYMOUS_AVATAR_URL
+                : (viewerAvatar || getAvatarForAccount(viewerAccountId, viewerEntityAccountId))
+            } 
+                alt={isAnonymous ? "Anonymous" : "Your avatar"} 
                 className="w-8 h-8 rounded-full object-cover mt-1 cursor-pointer ring-2 ring-transparent hover:ring-primary/30 transition-all"
                 onError={(e) => {
                   e.target.src = getAvatarForAccount();
@@ -2060,7 +2025,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
                 </svg>
               </div>
             </button>
-            {roleMenuOpen && availableEntities.length > 0 && (
+            {roleMenuOpen && (
               <div 
                 ref={menuRef}
                 className={cn(
@@ -2073,20 +2038,57 @@ export default function CommentSection({ postId, onClose, inline = false, always
                   bottom: `${menuPosition.bottom}px`
                 }}
               >
-                {availableEntities.map((entity, index) => (
+                {/* Option 1: dùng tài khoản hiện tại */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAnonymous(false);
+                    setRoleMenuOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors",
+                    !isAnonymous && "bg-primary/10"
+                  )}
+                >
+                  <img 
+                    src={viewerAvatar || getAvatarForAccount(viewerAccountId, viewerEntityAccountId)} 
+                    alt={viewerName}
+                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                    onError={(e) => {
+                      e.target.src = getAvatarForAccount();
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm text-foreground truncate">
+                      {viewerName}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Account
+                    </div>
+                  </div>
+                  {!isAnonymous && (
+                    <svg className="w-5 h-5 text-primary flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* Option 2: Ẩn danh - chỉ cho phép nếu là user thường */}
+                {canUseAnonymous && (
                   <button
-                    key={entity.id || index}
                     type="button"
-                    onClick={() => handleSwitchEntity(entity)}
+                    onClick={() => {
+                      setIsAnonymous(true);
+                      setRoleMenuOpen(false);
+                    }}
                     className={cn(
-                      "w-full flex items-center gap-3 px-4 py-3 text-left",
-                      "hover:bg-muted/50 transition-colors",
-                      entity.isActive && "bg-primary/10"
+                      "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/50 transition-colors",
+                      isAnonymous && "bg-primary/10"
                     )}
                   >
                     <img 
-                      src={entity.avatar || getAvatarForAccount(entity.id)} 
-                      alt={entity.name}
+                      src={getAvatarForAccount()} 
+                      alt="Người ẩn danh"
                       className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                       onError={(e) => {
                         e.target.src = getAvatarForAccount();
@@ -2094,25 +2096,29 @@ export default function CommentSection({ postId, onClose, inline = false, always
                     />
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm text-foreground truncate">
-                        {entity.name}
+                        Người ẩn danh
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {entity.role}
+                        anonymous
                       </div>
                     </div>
-                    {entity.isActive && (
+                    {isAnonymous && (
                       <svg className="w-5 h-5 text-primary flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                       </svg>
                     )}
                   </button>
-                ))}
+                )}
               </div>
             )}
           </div>
           <div className="flex-1 relative">
             <textarea
-              placeholder={`${t('comment.commentAs', { defaultValue: 'Comment as' })} ${viewerName}`}
+              placeholder={
+                isAnonymous
+                  ? "Bình luận ẩn danh..."
+                  : `${t('comment.commentAs', { defaultValue: 'Comment as' })} ${viewerName}`
+              }
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               onKeyDown={(e) => {

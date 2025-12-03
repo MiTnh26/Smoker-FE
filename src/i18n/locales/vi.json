@@ -276,7 +276,11 @@
     "you": "Bạn",
     "attachment": "Đính kèm",
     "seen": "Đã xem",
-    "delivered": "Đã gửi"
+    "delivered": "Đã gửi",
+    "deleteConversation": "Xóa đoạn chat",
+    "deleteConversationTitle": "Xóa đoạn chat",
+    "deleteConversationConfirm": "Bạn có chắc muốn xóa đoạn chat này? Đoạn chat sẽ chỉ bị xóa ở phía bạn.",
+    "openConversationMenu": "Mở menu đoạn chat"
   },
   "unifiedMenu": {
     "entityLabel": "Trang / Doanh nghiệp của bạn",
@@ -662,6 +666,20 @@
     "sentYouAMessageWithPreview": "{{name}}: {{preview}}",
     "postDetail": "Chi tiết bài viết",
     "default": "Bạn có thông báo mới"
+  },
+  "search": {
+    "title": "Kết quả tìm kiếm",
+    "resultsFor": "Kết quả cho \"{{q}}\"",
+    "placeholder": "Nhập từ khóa để bắt đầu tìm kiếm",
+    "searching": "Đang tìm kiếm...",
+    "noResults": "Không có kết quả phù hợp",
+    "filterTitle": "Bộ lọc",
+    "sectionUsers": "Mọi người",
+    "sectionBars": "Bar",
+    "sectionDjs": "DJ",
+    "sectionDancers": "Dancer",
+    "sectionPosts": "Bài viết",
+    "viewAll": "Xem tất cả"
   }
 }
 
