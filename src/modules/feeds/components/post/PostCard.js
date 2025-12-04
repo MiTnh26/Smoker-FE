@@ -37,6 +37,7 @@ export default function PostCard({
   const [postDetailModalOpen, setPostDetailModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
+  // originalPost: luôn bắt đầu từ null, rồi sync từ backend (post.originalPost) hoặc fetch bằng repostedFromId
   const [originalPost, setOriginalPost] = useState(null)
   const [loadingOriginalPost, setLoadingOriginalPost] = useState(false)
   const [originalPostModalOpen, setOriginalPostModalOpen] = useState(false)
@@ -71,17 +72,55 @@ export default function PostCard({
   };
 
   useEffect(() => {
-    // Reset khi repostedFromId thay đổi
+    // Nếu backend đã gửi sẵn originalPost thì normalize vào state, không cần fetch thêm
+    if (post.originalPost) {
+      const op = post.originalPost;
+      setOriginalPost({
+        id: op._id || op.id,
+        user: op.authorName || op.user || "Người dùng",
+        avatar: op.authorAvatar || op.avatar || null,
+        content: op.content || op.caption || "",
+        caption: op.caption || "",
+        medias: (() => {
+          const medias = op.medias;
+          if (!medias) return { images: [], videos: [], audios: [] };
+          if (Array.isArray(medias)) {
+            return {
+              images: medias.filter(m => m.type === 'image').map(m => ({ id: m._id || m.id, url: m.url || m.src, caption: m.caption })),
+              videos: medias.filter(m => m.type === 'video').map(m => ({ id: m._id || m.id, url: m.url || m.src, poster: m.poster || m.thumbnail })),
+              audios: medias.filter(m => m.type === 'audio').map(m => ({ id: m._id || m.id, url: m.url || m.src }))
+            };
+          }
+          if (typeof medias === 'object') {
+            return {
+              images: (medias.images || []).map(m => ({ id: m._id || m.id, url: m.url || m.src, caption: m.caption })),
+              videos: (medias.videos || []).map(m => ({ id: m._id || m.id, url: m.url || m.src, poster: m.poster || m.thumbnail })),
+              audios: (medias.audios || []).map(m => ({ id: m._id || m.id, url: m.url || m.src }))
+            };
+          }
+          return { images: [], videos: [], audios: [] };
+        })(),
+      });
+      originalPostFetched.current = 'fromBackend';
+      return;
+    }
+
+    // Reset khi repostedFromId thay đổi (và chưa có originalPost từ backend)
     if (post.repostedFromId && post.repostedFromId.toString() !== originalPostFetched.current) {
       originalPostFetched.current = post.repostedFromId.toString();
-      setOriginalPost(null); // Reset để query lại
+      if (!post.originalPost) {
+        setOriginalPost(null); // Reset để query lại khi chưa có dữ liệu backend
+      }
     }
-  }, [post.repostedFromId]);
+  }, [post.repostedFromId, post.originalPost, originalPost]);
 
   useEffect(() => {
+    // Nếu đã có originalPost từ backend hoặc đã fetch thì không cần query nữa
+    if (originalPost || originalPostFetched.current === 'fromBackend') return;
+
     // Validate ObjectId trước khi query
     if (!post.repostedFromId || !isValidObjectId(post.repostedFromId) || 
-        originalPost || loadingOriginalPost || originalPostFetched.current === 'failed') {
+        loadingOriginalPost || originalPostFetched.current === 'failed') {
       return; // Đã có data, đang loading, đã fail, hoặc ID không hợp lệ thì không query
     }
 
@@ -480,13 +519,24 @@ export default function PostCard({
       <div>
       {/* Repost indicator and original post info */}
       {post.repostedFromId && (
-        <div className="mb-3 flex items-center gap-2 text-muted-foreground text-[0.8rem]">
+        <div className="mb-3 flex flex-wrap items-center gap-2 text-muted-foreground text-[0.8rem]">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
             <polyline points="16 6 12 2 8 6" />
             <line x1="12" y1="2" x2="12" y2="15" />
           </svg>
-          <span>{post.user || "Người dùng"} {t('feed.reposted') || 'đã đăng lại'}</span>
+          {originalPost ? (
+            <span>
+              <strong className="text-foreground">{post.user || "Người dùng"}</strong>{" "}
+              {t('feed.repostedOf', { defaultValue: 'đã đăng lại bài viết của' })}{" "}
+              <strong className="text-foreground">{originalPost.user || t('feed.someone', { defaultValue: 'Ai đó' })}</strong>
+            </span>
+          ) : (
+            <span>
+              <strong className="text-foreground">{post.user || "Người dùng"}</strong>{" "}
+              {t('feed.reposted', { defaultValue: 'đã đăng lại một bài viết' })}
+            </span>
+          )}
         </div>
       )}
 

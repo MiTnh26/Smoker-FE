@@ -320,8 +320,14 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     authorEntityType: post.authorEntityType || post.entityType || post.type || null,
     ownerAccountId: post.accountId || post.ownerAccountId || author.id || null,
     targetType: post.type || "post",
-    // Repost fields - chỉ lưu ID, query lại khi hiển thị
-    repostedFromId: post.repostedFromId || null
+    // Repost fields: nếu backend đã đổi thành originalPost thì lấy ID từ đó
+    repostedFromId:
+      post.repostedFromId ||
+      post.originalPost?._id ||
+      post.originalPost?.id ||
+      null,
+    // Backend đã attach originalPost (không kèm comments) khi là repost
+    originalPost: post.originalPost || null
   };
 };
 
