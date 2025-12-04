@@ -56,10 +56,14 @@ export default function PostCard({
   }, [menuOpen])
 
   // Update liked state when post prop changes
+  // Check both likedByCurrentUser and stats.isLikedByMe for compatibility
   useEffect(() => {
-    setLiked(Boolean(post.likedByCurrentUser));
-    setLikeCount(Number(post.likes || 0));
-  }, [post.likedByCurrentUser, post.likes, post.id])
+    const isLiked = post.stats?.isLikedByMe !== undefined 
+      ? post.stats.isLikedByMe 
+      : Boolean(post.likedByCurrentUser);
+    setLiked(isLiked);
+    setLikeCount(Number(post.likes || post.stats?.likeCount || 0));
+  }, [post.likedByCurrentUser, post.stats?.isLikedByMe, post.likes, post.stats?.likeCount, post.id])
 
   // Query original post if this is a repost (chỉ query 1 lần, có cache)
   const originalPostFetched = useRef(false);
@@ -172,17 +176,19 @@ export default function PostCard({
       // Optimistic update
       const nextLiked = !liked
       setLiked(nextLiked)
-      setLikeCount((c) => c + (nextLiked ? 1 : -1))
+      setLikeCount((c) => Math.max(0, c + (nextLiked ? 1 : -1)))
 
-      if (nextLiked) {
-        await likePost(post.id, { typeRole, entityAccountId: viewerEntityAccountId })
-      } else {
-        await unlikePost(post.id, { entityAccountId: viewerEntityAccountId })
-      }
+      const response = nextLiked
+        ? await likePost(post.id, { typeRole, entityAccountId: viewerEntityAccountId })
+        : await unlikePost(post.id, { entityAccountId: viewerEntityAccountId })
+
+      // Response từ like/unlike API trả về raw post, không phải DTO
+      // Optimistic update đã đúng rồi, không cần sync từ response
+      // State sẽ được sync đúng khi reload từ useEffect (đọc từ post.stats.isLikedByMe)
     } catch (error) {
       // Revert optimistic update on error
       setLiked((v) => !v)
-      setLikeCount((c) => (liked ? c + 1 : c - 1))
+      setLikeCount((c) => Math.max(0, liked ? c + 1 : c - 1))
       // eslint-disable-next-line no-console
       console.error("Failed to toggle like on post", error)
     }

@@ -358,6 +358,13 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
     likes,
     likedByCurrentUser,
+    // Include stats object so PostCard can read stats.isLikedByMe directly
+    stats: {
+      likeCount: likes,
+      commentCount: comments,
+      shareCount: shares,
+      isLikedByMe: likedByCurrentUser
+    },
     comments,
     topComments,
     shares,

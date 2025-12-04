@@ -734,6 +734,10 @@ export default function CommentSection({ postId, onClose, inline = false, always
                   const likeCount = reply.stats?.likeCount ?? 
                                   (reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0);
                   
+                  // Get isLikedByMe from stats if available (backend should provide this)
+                  const isLikedByMe = reply.stats?.isLikedByMe ?? 
+                                    (typeof reply.likedByViewer === "boolean" ? reply.likedByViewer : false);
+                  
                   repliesArray.push({
                     id: extractId(reply.id) || extractId(reply._id) || String(reply.id || reply._id),
                     accountId: reply.accountId,
@@ -751,8 +755,9 @@ export default function CommentSection({ postId, onClose, inline = false, always
                     authorEntityAccountId: reply.authorEntityAccountId || reply.author?.entityAccountId || null,
                     authorEntityType: reply.authorEntityType || reply.author?.entityType || null,
                     authorEntityId: reply.authorEntityId || reply.author?.entityId || null,
-                    // Stats from backend
-                    isLikedByMe: reply.stats?.isLikedByMe || false
+                    // Stats from backend - set both isLikedByMe and likedByViewer for compatibility
+                    isLikedByMe: isLikedByMe,
+                    likedByViewer: isLikedByMe
                   });
                 }
               }
@@ -779,8 +784,14 @@ export default function CommentSection({ postId, onClose, inline = false, always
                     });
                   }
                   
-                  // Preserve original likes object for checking liked status
-                  const likesCount = reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0;
+                  // Get likeCount from stats if available, otherwise calculate from likes
+                  const likesCount = reply.stats?.likeCount ?? 
+                                  (reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0);
+                  
+                  // Get isLikedByMe from stats if available (backend should provide this)
+                  const isLikedByMe = reply.stats?.isLikedByMe ?? 
+                                    (typeof reply.likedByViewer === "boolean" ? reply.likedByViewer : false);
+                  
                   repliesArray.push({
                     id: extractId(replyId) || extractId(reply._id) || String(replyId),
                     accountId: reply.accountId,
@@ -792,12 +803,15 @@ export default function CommentSection({ postId, onClose, inline = false, always
                     typeRole: reply.typeRole,
                     createdAt: reply.createdAt,
                     updatedAt: reply.updatedAt,
-                    // Author info from backend
-                    authorName: reply.authorName,
-                    authorAvatar: reply.authorAvatar,
-                    authorEntityAccountId: reply.authorEntityAccountId,
-                    authorEntityType: reply.authorEntityType,
-                    authorEntityId: reply.authorEntityId
+                    // Author info from backend (ưu tiên flat fields, fallback nested author object)
+                    authorName: reply.authorName || reply.author?.name || 'Người dùng',
+                    authorAvatar: reply.authorAvatar || reply.author?.avatar || null,
+                    authorEntityAccountId: reply.authorEntityAccountId || reply.author?.entityAccountId || null,
+                    authorEntityType: reply.authorEntityType || reply.author?.entityType || null,
+                    authorEntityId: reply.authorEntityId || reply.author?.entityId || null,
+                    // Stats from backend - set both isLikedByMe and likedByViewer for compatibility
+                    isLikedByMe: isLikedByMe,
+                    likedByViewer: isLikedByMe
                   });
                 }
               }
@@ -924,7 +938,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
             if (comment.replies && Array.isArray(comment.replies)) {
               for (const reply of comment.replies) {
                 const replyKey = `${comment.id}-${reply.id}`;
-                if (reply.likedByViewer) {
+                // Check isLikedByMe from stats first, then likedByViewer for backward compatibility
+                if (reply.isLikedByMe || reply.likedByViewer) {
                   likedRepliesSet.add(replyKey);
                   continue;
                 }
@@ -1498,11 +1513,12 @@ export default function CommentSection({ postId, onClose, inline = false, always
                   if (c.id !== commentId) return c;
                   const replies = (c.replies || []).map(r => {
                     if (r.id !== replyId) return r;
-                    return {
-                      ...r,
-                      isLikedByMe: updatedReply.stats?.isLikedByMe ?? !alreadyLiked,
-                      likes: updatedReply.stats?.likeCount ?? r.likes
-                    };
+                      return {
+                        ...r,
+                        isLikedByMe: updatedReply.stats?.isLikedByMe ?? !alreadyLiked,
+                        likedByViewer: updatedReply.stats?.isLikedByMe ?? !alreadyLiked,
+                        likes: updatedReply.stats?.likeCount ?? r.likes
+                      };
                   });
                   return { ...c, replies };
                 }));
@@ -2051,12 +2067,12 @@ export default function CommentSection({ postId, onClose, inline = false, always
                               "text-muted-foreground text-sm px-1 py-1 rounded",
                               "cursor-pointer transition-all duration-200",
                               "hover:bg-muted/30 hover:text-foreground",
-                              likedReplies.has(`${comment.id}-${reply.id}`) && "text-danger",
+                              (reply.isLikedByMe || likedReplies.has(`${comment.id}-${reply.id}`)) && "text-danger",
                               "sm:gap-1 sm:text-xs md:text-sm"
                             )}
                             aria-label="Like reply"
                           >
-                            <svg className="w-5 h-5 flex-shrink-0 sm:w-4 sm:h-4 md:w-5 md:h-5" width="20" height="20" viewBox="0 0 24 24" fill={likedReplies.has(`${comment.id}-${reply.id}`) ? "currentColor" : "none"} stroke="currentColor">
+                            <svg className="w-5 h-5 flex-shrink-0 sm:w-4 sm:h-4 md:w-5 md:h-5" width="20" height="20" viewBox="0 0 24 24" fill={(reply.isLikedByMe || likedReplies.has(`${comment.id}-${reply.id}`)) ? "currentColor" : "none"} stroke="currentColor">
                               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                             </svg>
                             <span className="font-semibold min-w-[1.25rem] text-left sm:min-w-[1rem]">{reply.likes}</span>
