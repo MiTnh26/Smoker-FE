@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import YouTubeLinkPreview from "../../../../components/common/YouTubeLinkPreview"
 import { splitTextWithYouTube } from "../../../../utils/youtube"
-import { likePost, unlikePost, trackPostView, getPostById } from "../../../../api/postApi"
+import { likePost, unlikePost, trackPostView } from "../../../../api/postApi"
 import AudioWaveform from "../audio/AudioWaveform"
 import PostMediaLayout from "./PostMediaLayout"
 import ShareModal from "../modals/ShareModal"
@@ -11,6 +11,7 @@ import PostDetailModal from "../modals/PostDetailModal"
 import ReadMoreText from "../comment/ReadMoreText"
 import { cn } from "../../../../utils/cn"
 import { getAvatarUrl } from "../../../../utils/defaultAvatar"
+import { mapPostForCard, formatPostTime } from "../../../../utils/postTransformers"
 import "../../../../styles/modules/feeds/components/post/post-card.css"
 
 export default function PostCard({
@@ -37,9 +38,8 @@ export default function PostCard({
   const [postDetailModalOpen, setPostDetailModalOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
-  // originalPost: luôn bắt đầu từ null, rồi sync từ backend (post.originalPost) hoặc fetch bằng repostedFromId
+  // originalPost: luôn bắt đầu từ null, rồi sync từ backend (post.originalPost) nếu có
   const [originalPost, setOriginalPost] = useState(null)
-  const [loadingOriginalPost, setLoadingOriginalPost] = useState(false)
   const [originalPostModalOpen, setOriginalPostModalOpen] = useState(false)
   const menuRef = useRef(null)
   const shareButtonRef = useRef(null)
@@ -72,35 +72,17 @@ export default function PostCard({
   };
 
   useEffect(() => {
+    // Nếu đã xử lý originalPost từ backend rồi thì không làm lại nữa để tránh loop
+    if (originalPostFetched.current === 'fromBackend') {
+      return;
+    }
+
     // Nếu backend đã gửi sẵn originalPost thì normalize vào state, không cần fetch thêm
     if (post.originalPost) {
       const op = post.originalPost;
-      setOriginalPost({
-        id: op._id || op.id,
-        user: op.authorName || op.user || "Người dùng",
-        avatar: op.authorAvatar || op.avatar || null,
-        content: op.content || op.caption || "",
-        caption: op.caption || "",
-        medias: (() => {
-          const medias = op.medias;
-          if (!medias) return { images: [], videos: [], audios: [] };
-          if (Array.isArray(medias)) {
-            return {
-              images: medias.filter(m => m.type === 'image').map(m => ({ id: m._id || m.id, url: m.url || m.src, caption: m.caption })),
-              videos: medias.filter(m => m.type === 'video').map(m => ({ id: m._id || m.id, url: m.url || m.src, poster: m.poster || m.thumbnail })),
-              audios: medias.filter(m => m.type === 'audio').map(m => ({ id: m._id || m.id, url: m.url || m.src }))
-            };
-          }
-          if (typeof medias === 'object') {
-            return {
-              images: (medias.images || []).map(m => ({ id: m._id || m.id, url: m.url || m.src, caption: m.caption })),
-              videos: (medias.videos || []).map(m => ({ id: m._id || m.id, url: m.url || m.src, poster: m.poster || m.thumbnail })),
-              audios: (medias.audios || []).map(m => ({ id: m._id || m.id, url: m.url || m.src }))
-            };
-          }
-          return { images: [], videos: [], audios: [] };
-        })(),
-      });
+      // Sử dụng cùng transformer với profile/newsfeed để đảm bảo structure đồng nhất
+      const transformedOriginal = mapPostForCard(op, t);
+      setOriginalPost(transformedOriginal);
       originalPostFetched.current = 'fromBackend';
       return;
     }
@@ -112,72 +94,10 @@ export default function PostCard({
         setOriginalPost(null); // Reset để query lại khi chưa có dữ liệu backend
       }
     }
-  }, [post.repostedFromId, post.originalPost, originalPost]);
+  }, [post.repostedFromId, post.originalPost, t]);
 
-  useEffect(() => {
-    // Nếu đã có originalPost từ backend hoặc đã fetch thì không cần query nữa
-    if (originalPost || originalPostFetched.current === 'fromBackend') return;
-
-    // Validate ObjectId trước khi query
-    if (!post.repostedFromId || !isValidObjectId(post.repostedFromId) || 
-        loadingOriginalPost || originalPostFetched.current === 'failed') {
-      return; // Đã có data, đang loading, đã fail, hoặc ID không hợp lệ thì không query
-    }
-
-    setLoadingOriginalPost(true);
-    getPostById(post.repostedFromId, { includeMedias: true, includeMusic: true })
-      .then(response => {
-        const postData = response?.data?.post || response?.data || response;
-        if (postData && (postData._id || postData.id)) {
-          // Transform post data similar to transformPost in PostFeed
-          const transformed = {
-            id: postData._id || postData.id,
-            user: postData.authorName || postData.author?.userName || postData.account?.userName || "Người dùng",
-            avatar: postData.authorAvatar || postData.author?.avatar || postData.account?.avatar || null,
-            content: postData.content || postData.caption || "",
-            caption: postData.caption || "",
-            // Extract medias
-            medias: (() => {
-              const medias = postData.medias;
-              if (!medias) return { images: [], videos: [], audios: [] };
-              
-              if (Array.isArray(medias)) {
-                return {
-                  images: medias.filter(m => m.type === 'image').map(m => ({ id: m._id || m.id, url: m.url || m.src, caption: m.caption })),
-                  videos: medias.filter(m => m.type === 'video').map(m => ({ id: m._id || m.id, url: m.url || m.src, poster: m.poster || m.thumbnail })),
-                  audios: medias.filter(m => m.type === 'audio').map(m => ({ id: m._id || m.id, url: m.url || m.src }))
-                };
-              }
-              
-              if (typeof medias === 'object') {
-                return {
-                  images: (medias.images || []).map(m => ({ id: m._id || m.id, url: m.url || m.src, caption: m.caption })),
-                  videos: (medias.videos || []).map(m => ({ id: m._id || m.id, url: m.url || m.src, poster: m.poster || m.thumbnail })),
-                  audios: (medias.audios || []).map(m => ({ id: m._id || m.id, url: m.url || m.src }))
-                };
-              }
-              
-              return { images: [], videos: [], audios: [] };
-            })(),
-            hashtags: postData.hashtags || [],
-            time: postData.createdAt ? new Date(postData.createdAt).toLocaleDateString('vi-VN') : null
-          };
-          setOriginalPost(transformed);
-        } else {
-          // Post not found - mark as failed để không query lại
-          originalPostFetched.current = 'failed';
-          console.warn('[PostCard] Original post not found:', post.repostedFromId);
-        }
-      })
-      .catch(err => {
-        console.error('[PostCard] Failed to load original post:', err);
-        // Mark as failed để không query lại liên tục
-        originalPostFetched.current = 'failed';
-      })
-      .finally(() => {
-        setLoadingOriginalPost(false);
-      });
-  }, [post.repostedFromId, originalPost, loadingOriginalPost])
+  // KHÔNG fetch thêm originalPost ở FE nữa.
+  // Giả định backend đã populate sẵn originalPost trong post khi là repost.
 
   // Track view khi post được render (chỉ track 1 lần, chỉ cho post hợp lệ)
   useEffect(() => {
@@ -322,6 +242,49 @@ export default function PostCard({
     
     return { images: [], videos: [], audios: [] }
   })()
+
+  // Helper: loại bỏ dòng tên trùng với tác giả ở cuối content (vd: dòng cuối chỉ là "Smoker fa")
+  const stripTrailingAuthorName = (rawContent) => {
+    if (!rawContent) return "";
+    const authorName = (post.user || "").trim();
+    if (!authorName) return String(rawContent).trim();
+
+    const lines = String(rawContent).split(/\r?\n/);
+    while (lines.length > 0) {
+      const last = lines[lines.length - 1].trim();
+      if (!last) {
+        lines.pop();
+        continue;
+      }
+      if (last === authorName) {
+        lines.pop();
+        continue;
+      }
+      break;
+    }
+    return lines.join("\n").trim();
+  };
+
+  // tránh duplicate nội dung khi là repost:
+  // - nếu post là repost và content trùng với content của originalPost => ẩn content bên ngoài
+  // - nếu user có caption riêng thì vẫn hiển thị caption đó (sau khi strip tên ở cuối)
+  const displayContent = (() => {
+    if (!post.content) return "";
+    const cleaned = stripTrailingAuthorName(post.content);
+    if (!cleaned) return "";
+
+    const isRepost = Boolean(post.repostedFromId || post.originalPost);
+    if (!isRepost) return cleaned;
+
+    // Nếu có originalPost và nội dung trùng nhau (bỏ khoảng trắng) thì không render ngoài
+    if (originalPost && originalPost.content) {
+      const outer = cleaned.trim();
+      const inner = String(originalPost.content).trim();
+      if (outer === inner) return "";
+    }
+
+    return cleaned;
+  })();
 
   const handleImageClick = (imageUrl) => {
     if (onImageClick) {
@@ -541,17 +504,17 @@ export default function PostCard({
       )}
 
       {/* Content */}
-        {post.content && (
+        {displayContent && (
       <div className="mt-3">
             {(() => {
               // Parse content to detect YouTube links
-              const segments = splitTextWithYouTube(post.content);
+              const segments = splitTextWithYouTube(displayContent);
               
               // If no YouTube links found, render as plain text
               if (segments.length === 1 && segments[0].type === 'text') {
                 return (
                   <ReadMoreText 
-                    text={post.content} 
+                    text={displayContent} 
                     maxLines={3}
                     className="whitespace-pre-wrap leading-[1.7] text-[0.95rem] text-foreground m-0 break-words"
                   />
@@ -577,7 +540,7 @@ export default function PostCard({
                       return (
                         <ReadMoreText 
                           key={`text-${idx}`}
-                          text={segment.text} 
+                          text={segment.text}
                           maxLines={3}
                           className="whitespace-pre-wrap leading-[1.7] text-[0.95rem] text-foreground m-0 break-words"
                         />
@@ -682,15 +645,11 @@ export default function PostCard({
             "hover:bg-muted/50 transition-colors",
             "cursor-pointer"
           )}>
-            {loadingOriginalPost ? (
-              <div className="text-center py-4 text-muted-foreground text-sm">
-                {t('common.loading') || 'Đang tải...'}
-              </div>
-            ) : originalPost ? (
+            {originalPost ? (
               <>
                 {/* Original Author Info */}
                 {originalPost.user && (
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-start gap-2 mb-2">
                     <img
                       src={getAvatarUrl(originalPost.avatar, 32)}
                       alt={originalPost.user}
@@ -699,20 +658,47 @@ export default function PostCard({
                         e.target.src = getAvatarUrl(null, 32);
                       }}
                     />
-                    <span className="font-semibold text-[0.9rem] text-foreground">
-                      {originalPost.user}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold text-[0.9rem] text-foreground block">
+                        {originalPost.user}
+                      </span>
+                      {originalPost.createdAt && (
+                        <span className="text-xs text-muted-foreground block mt-0.5">
+                          {formatPostTime(originalPost.createdAt, t)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
                 
                 {/* Original Content */}
                 {originalPost.content && (
-                  <div className="mb-2">
+                  <div className="mt-2">
                     <ReadMoreText 
                       text={originalPost.content} 
                       maxLines={3}
-                      className="whitespace-pre-wrap leading-[1.6] text-[0.9rem] text-foreground/90 m-0 break-words"
+                      className="whitespace-pre-wrap leading-[1.7] text-[0.95rem] text-foreground m-0 break-words font-normal"
                     />
+                  </div>
+                )}
+                
+                {/* Original Music Thumbnail / Info (nếu có) */}
+                {(originalPost.thumbnail || originalPost.artistName) && (
+                  <div className="mt-2 flex items-center gap-3">
+                    {originalPost.thumbnail && (
+                      <img
+                        src={originalPost.thumbnail}
+                        alt="Cover"
+                        className="w-14 h-14 rounded-md object-cover flex-shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      {originalPost.artistName && originalPost.artistName !== originalPost.user && (
+                        <p className="text-xs text-muted-foreground truncate">
+                          {originalPost.artistName}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -869,12 +855,16 @@ export default function PostCard({
             {post.topComments.map((comment, index) => {
               const isAnonymousComment = Boolean(comment.isAnonymous);
               const anonymousIndex = comment.anonymousIndex;
+              // Read from new DTO schema: author.name or legacy authorName
+              const authorName = comment.author?.name || comment.authorName;
               const displayName = isAnonymousComment
                 ? `Người ẩn danh${anonymousIndex ? ` ${anonymousIndex}` : ""}`
-                : (comment.authorName || "Người dùng");
+                : (authorName || "Người dùng");
+              // Read avatar from new DTO schema: author.avatar or legacy authorAvatar
+              const authorAvatar = comment.author?.avatar || comment.authorAvatar;
               const displayAvatar = isAnonymousComment
                 ? "/images/an-danh.png"
-                : getAvatarUrl(comment.authorAvatar, 32);
+                : getAvatarUrl(authorAvatar, 32);
 
               return (
               <div key={comment.id || index} className="mb-2 last:mb-0">
