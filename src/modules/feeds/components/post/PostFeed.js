@@ -767,8 +767,14 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
         post.account?.AccountId ||
         post.account?.id ||
         null,
-      // Repost fields - chỉ lưu ID, query lại khi hiển thị
-      repostedFromId: post.repostedFromId || null
+      // Repost fields: nếu backend đã đổi thành originalPost thì lấy ID từ đó
+      repostedFromId:
+        post.repostedFromId ||
+        post.originalPost?._id ||
+        post.originalPost?.id ||
+        null,
+      // originalPost (đã được backend enrich với authorName/authorAvatar, không kèm comments)
+      originalPost: post.originalPost || null
     };
   };
 

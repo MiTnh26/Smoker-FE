@@ -70,6 +70,8 @@
     "music": "Music",
     "feeling": "Feeling",
     "reposted": "reposted",
+    "repostedOf": "reposted a post from",
+    "someone": "Someone",
     "repostedPost": "Post has been reposted",
     "repostedMedia": "Media has been reposted",
     "loadingMore": "Loading more...",
