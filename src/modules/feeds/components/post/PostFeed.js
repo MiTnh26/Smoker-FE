@@ -509,7 +509,9 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
             // Handle post
             const post = item.data;
             const postId = post._id || post.postId || post.id || `post-${index}`;
-            const transformedPost = mapPostForCard(post, t);
+            // Get viewerEntityAccountId for like status calculation
+            const viewerEntityAccountId = getCurrentEntityAccountId();
+            const transformedPost = mapPostForCard(post, t, viewerEntityAccountId);
             return (
               <React.Fragment key={postId}>
                 <PostCard
