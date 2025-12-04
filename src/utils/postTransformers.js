@@ -245,42 +245,73 @@ const isLikedByViewer = (likes, viewerEntityAccountId, viewerAccountId) => {
 /**
  * Map post data to PostCard format
  * This is the main transformation function used across all profile pages
+ * Updated to use new DTO schema: author, medias, stats, originalPost, topComments
  */
 // eslint-disable-next-line complexity
 export const mapPostForCard = (post, t, viewerEntityAccountId) => {
-  const id = post._id || post.id || post.postId;
+  // Support both new DTO schema and legacy schema for backward compatibility
+  const id = post.id || post._id || post.postId;
+  
+  // Read from new DTO schema (author object)
   const author = post.author || post.account || {};
-  const mediaFromPost = normalizeMediaArray(post.medias);
+  const authorName = author.name || post.authorName || author.userName || post.user || t("common.user");
+  const authorAvatar = author.avatar || post.authorAvatar || post.avatar || null;
+  
+  // Read medias from new DTO schema (clean array) or legacy format
+  const mediasArray = post.medias || post.mediaIds || [];
+  const mediaFromPost = normalizeMediaArray(mediasArray);
+  
+  // Legacy support: also check old format
   const mediaFromMediaIds = normalizeMediaArray(post.mediaIds);
-  const images = [...mediaFromPost.images, ...mediaFromMediaIds.images];
-  const videos = [...mediaFromPost.videos, ...mediaFromMediaIds.videos];
-  const audios = [...mediaFromPost.audios, ...mediaFromMediaIds.audios];
 
-  const resolveUserName = () =>
-    post.authorName ||
-    author.userName ||
-    author.name ||
-    post.user ||
-    t("common.user");
+  // Merge và loại trùng media theo (id|url) để tránh duplicate ảnh/video/audio
+  const dedupeMedia = (items) => {
+    const seen = new Set();
+    const result = [];
+    for (const item of items) {
+      if (!item) continue;
+      const key = `${item.id || item._id || ""}|${item.url || ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(item);
+    }
+    return result;
+  };
 
-  const resolveAvatar = () =>
-    post.authorAvatar ||
-    author.avatar ||
-    post.avatar ||
-    null; // Sẽ được xử lý bởi getAvatarUrl trong component
+  const images = dedupeMedia([
+    ...mediaFromPost.images,
+    ...mediaFromMediaIds.images,
+  ]);
+  const videos = dedupeMedia([
+    ...mediaFromPost.videos,
+    ...mediaFromMediaIds.videos,
+  ]);
+  const audios = dedupeMedia([
+    ...mediaFromPost.audios,
+    ...mediaFromMediaIds.audios,
+  ]);
 
   const resolvedViewerEntityId = resolveViewerEntityAccountId(viewerEntityAccountId);
 
-  // Get audio from various sources
-  const music = post.musicId || post.music || {};
+  // Read music from new DTO schema (music object) or legacy format
+  const music = post.music || post.musicId || {};
   const audioFromMusic = extractAudioFromMusic(music);
-  const audioFromMedias = extractAudioFromMedias(post.medias);
+  const audioFromMedias = extractAudioFromMedias(mediasArray);
   const audioSrc = audioFromMusic || audios[0]?.url || audioFromMedias || post.audioSrc || post.audioUrl || null;
 
+  // Read stats from new DTO schema or legacy format
+  const stats = post.stats || {};
+  const likes = stats.likeCount !== undefined ? stats.likeCount : countCollection(post.likes);
+  const comments = stats.commentCount !== undefined ? stats.commentCount : countCollection(post.comments);
+  const shares = stats.shareCount !== undefined ? stats.shareCount : (post.shares || 0);
+  const likedByCurrentUser = stats.isLikedByMe !== undefined ? stats.isLikedByMe : 
+                             isLikedByViewer(post.likes, resolvedViewerEntityId, null);
+
+  // Read author info from new DTO schema
   const ownerEntityAccountId = normalizeEntityAccountId(
+    author.entityAccountId ||
     post.entityAccountId ||
     post.authorEntityAccountId ||
-    author.entityAccountId ||
     author.EntityAccountId
   );
 
@@ -289,11 +320,32 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     ownerEntityAccountId &&
     resolvedViewerEntityId === ownerEntityAccountId;
 
+  // Read topComments from new DTO schema
+  const topComments = Array.isArray(post.topComments) ? post.topComments : [];
+
+  // Handle originalPost (repost) - already in DTO format
+  const originalPost = post.originalPost || null;
+  const repostedFromId = post.repostedFromId || 
+                         originalPost?.id || 
+                         originalPost?._id || 
+                         null;
+
+  // Transform originalPost recursively if exists (to ensure createdAt and other fields are preserved)
+  let transformedOriginalPost = null;
+  if (originalPost) {
+    transformedOriginalPost = mapPostForCard(originalPost, t, viewerEntityAccountId);
+    // Ensure createdAt is preserved for time display (in case it was lost during transformation)
+    if (originalPost.createdAt) {
+      transformedOriginalPost.createdAt = originalPost.createdAt;
+    }
+  }
+
   return {
     id,
-    user: resolveUserName(),
-    avatar: resolveAvatar(),
+    user: authorName,
+    avatar: authorAvatar,
     time: formatPostTime(post.createdAt, t),
+    createdAt: post.createdAt || null, // Preserve createdAt for time formatting
     content: post.content || post.caption || post["Tiêu Đề"] || "",
     caption: post.caption || "",
     medias: { images, videos, audios: audioSrc ? [{ url: audioSrc }] : audios },
@@ -301,33 +353,28 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     videoSrc: videos[0]?.url || null,
     audioSrc: audioSrc,
     audioTitle: music.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
-    artistName: music.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorName || post.user || null,
-    thumbnail: music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
+    artistName: music.artistName || music.artist || post.artistName || post["Tên Nghệ Sĩ"] || authorName || null,
+    thumbnail: music.thumbnailUrl || music.coverUrl || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null,
     purchaseLink: music.purchaseLink || post.purchaseLink || post.musicPurchaseLink || null,
-    likes: countCollection(post.likes),
-    likedByCurrentUser: isLikedByViewer(post.likes, resolvedViewerEntityId, null),
-    comments: countCollection(post.comments),
-    shares: post.shares || 0,
+    likes,
+    likedByCurrentUser,
+    comments,
+    topComments,
+    shares,
     hashtags: post.hashtags || [],
     verified: !!post.verified,
     location: post.location || null,
     title: post.title || null,
     canManage,
-    ownerEntityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
-    entityAccountId: post.entityAccountId || post.authorEntityAccountId || null,
-    authorEntityAccountId: post.authorEntityAccountId || post.entityAccountId || null,
-    authorEntityId: post.authorEntityId || post.authorId || post.accountId || null,
-    authorEntityType: post.authorEntityType || post.entityType || post.type || null,
+    ownerEntityAccountId: author.entityAccountId || post.entityAccountId || post.authorEntityAccountId || null,
+    entityAccountId: author.entityAccountId || post.entityAccountId || post.authorEntityAccountId || null,
+    authorEntityAccountId: author.entityAccountId || post.authorEntityAccountId || post.entityAccountId || null,
+    authorEntityId: author.entityId || post.authorEntityId || post.authorId || post.accountId || null,
+    authorEntityType: author.entityType || post.authorEntityType || post.entityType || post.type || null,
     ownerAccountId: post.accountId || post.ownerAccountId || author.id || null,
     targetType: post.type || "post",
-    // Repost fields: nếu backend đã đổi thành originalPost thì lấy ID từ đó
-    repostedFromId:
-      post.repostedFromId ||
-      post.originalPost?._id ||
-      post.originalPost?.id ||
-      null,
-    // Backend đã attach originalPost (không kèm comments) khi là repost
-    originalPost: post.originalPost || null
+    repostedFromId,
+    originalPost: transformedOriginalPost || originalPost
   };
 };
 

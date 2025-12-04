@@ -52,7 +52,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [canUseAnonymous, setCanUseAnonymous] = useState(false);
 
-  const normalizeId = (value) => (value ? String(value).trim().toLowerCase() : null);
+  const normalizeId = (value) => (value ? String(value).trim() : null);
 
   const resolveViewerIdentity = () => {
     try {
@@ -722,58 +722,93 @@ export default function CommentSection({ postId, onClose, inline = false, always
               });
             }
 
-            // Transform replies from Map/Object to array
+            // Transform replies from Map/Object/Array to array
             const repliesArray = [];
-            if (comment.replies && typeof comment.replies === 'object' && !Array.isArray(comment.replies)) {
-              let repliesData;
-              if (comment.replies instanceof Map) {
-                repliesData = Array.from(comment.replies.entries());
-              } else {
-                repliesData = Object.entries(comment.replies);
+            if (comment.replies) {
+              // Backend đã trả về replies là array, xử lý trực tiếp
+              if (Array.isArray(comment.replies)) {
+                for (const reply of comment.replies) {
+                  if (!reply || typeof reply !== 'object') continue;
+                  
+                  // Get likeCount from stats if available, otherwise calculate from likes
+                  const likeCount = reply.stats?.likeCount ?? 
+                                  (reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0);
+                  
+                  repliesArray.push({
+                    id: extractId(reply.id) || extractId(reply._id) || String(reply.id || reply._id),
+                    accountId: reply.accountId,
+                    content: reply.content || "",
+                    images: reply.images || "",
+                    likes: likeCount,
+                    likesObject: reply.likes, // Preserve original likes object
+                    replyToId: reply.replyToId ? extractId(reply.replyToId) : null,
+                    typeRole: reply.typeRole,
+                    createdAt: reply.createdAt,
+                    updatedAt: reply.updatedAt,
+                    // Author info from backend (ưu tiên flat fields, fallback nested author object)
+                    authorName: reply.authorName || reply.author?.name || 'Người dùng',
+                    authorAvatar: reply.authorAvatar || reply.author?.avatar || null,
+                    authorEntityAccountId: reply.authorEntityAccountId || reply.author?.entityAccountId || null,
+                    authorEntityType: reply.authorEntityType || reply.author?.entityType || null,
+                    authorEntityId: reply.authorEntityId || reply.author?.entityId || null,
+                    // Stats from backend
+                    isLikedByMe: reply.stats?.isLikedByMe || false
+                  });
+                }
               }
+              // Legacy: Handle Map/Object format (backward compatibility)
+              else if (typeof comment.replies === 'object' && !Array.isArray(comment.replies)) {
+                let repliesData;
+                if (comment.replies instanceof Map) {
+                  repliesData = Array.from(comment.replies.entries());
+                } else {
+                  repliesData = Object.entries(comment.replies);
+                }
 
-              for (const [replyId, reply] of repliesData) {
-                if (!reply || typeof reply !== 'object') continue;
-                
-                // Debug: Log author info from backend
-                if (reply.entityAccountId && (!reply.authorName || reply.authorName === 'Người dùng')) {
-                  console.warn(`[CommentSection] Reply ${replyId} missing authorName:`, {
-                    entityAccountId: reply.entityAccountId,
+                for (const [replyId, reply] of repliesData) {
+                  if (!reply || typeof reply !== 'object') continue;
+                  
+                  // Debug: Log author info from backend
+                  if (reply.entityAccountId && (!reply.authorName || reply.authorName === 'Người dùng')) {
+                    console.warn(`[CommentSection] Reply ${replyId} missing authorName:`, {
+                      entityAccountId: reply.entityAccountId,
+                      authorName: reply.authorName,
+                      authorAvatar: reply.authorAvatar,
+                      authorEntityAccountId: reply.authorEntityAccountId,
+                      entityType: reply.entityType
+                    });
+                  }
+                  
+                  // Preserve original likes object for checking liked status
+                  const likesCount = reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0;
+                  repliesArray.push({
+                    id: extractId(replyId) || extractId(reply._id) || String(replyId),
+                    accountId: reply.accountId,
+                    content: reply.content || "",
+                    images: reply.images || "",
+                    likes: likesCount,
+                    likesObject: reply.likes, // Preserve original likes object
+                    replyToId: reply.replyToId ? extractId(reply.replyToId) : null,
+                    typeRole: reply.typeRole,
+                    createdAt: reply.createdAt,
+                    updatedAt: reply.updatedAt,
+                    // Author info from backend
                     authorName: reply.authorName,
                     authorAvatar: reply.authorAvatar,
                     authorEntityAccountId: reply.authorEntityAccountId,
-                    entityType: reply.entityType
+                    authorEntityType: reply.authorEntityType,
+                    authorEntityId: reply.authorEntityId
                   });
                 }
-                
-                // Preserve original likes object for checking liked status
-                const likesCount = reply.likes ? (typeof reply.likes === 'object' ? Object.keys(reply.likes).length : reply.likes) : 0;
-                repliesArray.push({
-                  id: extractId(replyId) || extractId(reply._id) || String(replyId),
-                  accountId: reply.accountId,
-                  content: reply.content || "",
-                  images: reply.images || "",
-                  likes: likesCount,
-                  likesObject: reply.likes, // Preserve original likes object
-                  replyToId: reply.replyToId ? extractId(reply.replyToId) : null,
-                  typeRole: reply.typeRole,
-                  createdAt: reply.createdAt,
-                  updatedAt: reply.updatedAt,
-                  // Author info from backend
-                  authorName: reply.authorName,
-                  authorAvatar: reply.authorAvatar,
-                  authorEntityAccountId: reply.authorEntityAccountId,
-                  authorEntityType: reply.authorEntityType,
-                  authorEntityId: reply.authorEntityId
-                });
               }
             }
 
-            const extractedCommentId = extractId(commentId) || extractId(comment._id) || String(commentId);
-            const likesCount =
-              typeof comment.likesCount === "number"
-                ? Number(comment.likesCount)
-                : countCollectionItems(comment.likes);
+            const extractedCommentId = extractId(commentId) || extractId(comment._id) || extractId(comment.id) || String(commentId);
+            // Get likeCount from stats if available, otherwise calculate from likes
+            const likesCount = comment.stats?.likeCount ?? 
+                              (typeof comment.likesCount === "number"
+                                ? Number(comment.likesCount)
+                                : countCollectionItems(comment.likes));
             // Get author info - use fallback if not provided by backend
             const identity = resolveViewerIdentity();
             const commentEntityAccountId = normalizeId(comment.entityAccountId || comment.authorEntityAccountId);
@@ -781,6 +816,10 @@ export default function CommentSection({ postId, onClose, inline = false, always
             const isAnonymousComment = Boolean(comment.isAnonymous);
             const anonymousIndex = comment.anonymousIndex;
 
+            // Get isLikedByMe from stats if available
+            const isLikedByMe = comment.stats?.isLikedByMe ?? 
+                               (typeof comment.likedByViewer === "boolean" ? comment.likedByViewer : undefined);
+            
             commentsArray.push({
               id: extractedCommentId,
               accountId: comment.accountId,
@@ -788,7 +827,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
               images: comment.images || "",
               likes: likesCount,
               likesObject: comment.likes,
-              likedByViewer: typeof comment.likedByViewer === "boolean" ? comment.likedByViewer : undefined,
+              likedByViewer: isLikedByMe, // Use stats.isLikedByMe from backend
               canManage: typeof comment.canManage === "boolean" ? comment.canManage : isCurrentUser,
               typeRole: comment.typeRole,
               replies: repliesArray,
@@ -796,16 +835,17 @@ export default function CommentSection({ postId, onClose, inline = false, always
               updatedAt: comment.updatedAt,
               isAnonymous: isAnonymousComment,
               anonymousIndex: anonymousIndex,
-              // Author info: nếu ẩn danh thì luôn hiển thị Người ẩn danh #n và không dùng avatar thật
+              // Author info: ưu tiên flat fields (authorName, authorAvatar), fallback nested author object
+              // Nếu ẩn danh thì luôn hiển thị Người ẩn danh #n và không dùng avatar thật
               authorName: isAnonymousComment
                 ? `Người ẩn danh${anonymousIndex ? ` ${anonymousIndex}` : ""}`
-                : (comment.authorName || (isCurrentUser ? (viewerName || identity.name || "User") : "Người dùng")),
+                : (comment.authorName || comment.author?.name || (isCurrentUser ? (viewerName || identity.name || "User") : "Người dùng")),
               authorAvatar: isAnonymousComment
                 ? ANONYMOUS_AVATAR_URL
-                : (comment.authorAvatar || (isCurrentUser ? (viewerAvatar || identity.avatar) : null)),
-              authorEntityAccountId: comment.authorEntityAccountId || comment.entityAccountId,
-              authorEntityType: comment.authorEntityType || comment.entityType,
-              authorEntityId: comment.authorEntityId || comment.entityId
+                : (comment.authorAvatar || comment.author?.avatar || (isCurrentUser ? (viewerAvatar || identity.avatar) : null)),
+              authorEntityAccountId: comment.authorEntityAccountId || comment.author?.entityAccountId || comment.entityAccountId,
+              authorEntityType: comment.authorEntityType || comment.author?.entityType || comment.entityType,
+              authorEntityId: comment.authorEntityId || comment.author?.entityId || comment.entityId
             });
           }
         }
@@ -966,8 +1006,9 @@ export default function CommentSection({ postId, onClose, inline = false, always
 
       console.log("Submitting comment:", { postId, content: newComment, typeRole });
 
-      // Lấy entityAccountId, entityId, entityType từ activeEntity
-      const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      // Lấy entityAccountId, entityId, entityType từ activeEntity (trim để đảm bảo format đúng)
+      const rawEntityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      const entityAccountId = rawEntityAccountId ? String(rawEntityAccountId).trim() : null;
       const entityId = activeEntity?.entityId || session?.account?.id;
       const entityType = typeRole;
 
@@ -1156,12 +1197,22 @@ export default function CommentSection({ postId, onClose, inline = false, always
       };
       const typeRole = normalizeTypeRole(activeEntity);
 
-      // Lấy entityAccountId, entityId, entityType từ activeEntity
-      const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      // Lấy entityAccountId, entityId, entityType từ activeEntity (trim để đảm bảo format đúng)
+      const rawEntityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      const entityAccountId = rawEntityAccountId ? String(rawEntityAccountId).trim() : null;
       const entityId = activeEntity?.entityId || currentUser?.id;
       const entityType = typeRole;
       // Nếu đang bật chế độ ẩn danh và user được phép ẩn danh thì reply cũng phải ẩn danh
       const useAnonymous = canUseAnonymous && isAnonymous;
+
+      console.log('[CommentSection] Add reply request:', {
+        postId,
+        commentId,
+        replyToId,
+        entityAccountId,
+        typeRole,
+        text: text.substring(0, 50)
+      });
 
       let response;
       if (replyToId) {
@@ -1186,8 +1237,13 @@ export default function CommentSection({ postId, onClose, inline = false, always
         });
       }
 
+      console.log('[CommentSection] Add reply response:', response);
+
+      // Axios interceptor unwraps response.data, so response is already the backend response
       // Handle different response structures
-      if (response?.success || response?.data?.success) {
+      const isSuccess = response?.success === true || response?.data?.success === true;
+      
+      if (isSuccess) {
         setReplyContent(prev => {
           const newState = { ...prev };
           delete newState[replyKey];
@@ -1248,14 +1304,71 @@ export default function CommentSection({ postId, onClose, inline = false, always
         return { ...c, likes: nextLikes };
       }));
 
-      // Lấy entityAccountId từ activeEntity
-      const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      // Lấy entityAccountId từ activeEntity (trim để đảm bảo format đúng)
+      const rawEntityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      const entityAccountId = rawEntityAccountId ? String(rawEntityAccountId).trim() : null;
+
+      console.log('[CommentSection] Like comment request:', {
+        postId,
+        commentId,
+        entityAccountId,
+        typeRole,
+        alreadyLiked
+      });
 
       const response = alreadyLiked
         ? await unlikeComment(postId, commentId, { entityAccountId })
         : await likeComment(postId, commentId, { typeRole, entityAccountId });
 
-      if (!(response?.success || response?.data?.success)) {
+      console.log('[CommentSection] Like comment response:', response);
+
+      // Axios interceptor unwraps response.data, so response is already the backend response
+      // Backend returns: { success: true, data: post, message: "..." }
+      const isSuccess = response?.success === true || response?.data?.success === true;
+      
+      if (isSuccess) {
+        // Không reload comments để tránh nháy UI, chỉ update state local
+        // State đã được update optimistic rồi, chỉ cần sync likedComments set
+        // Đảm bảo likedComments set được sync với state
+        if (!alreadyLiked) {
+          // Đã like thành công, thêm vào set
+          setLikedComments(prev => {
+            const newSet = new Set(prev);
+            newSet.add(commentId);
+            return newSet;
+          });
+        } else {
+          // Đã unlike thành công, xóa khỏi set
+          setLikedComments(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(commentId);
+            return newSet;
+          });
+        }
+        
+        // Sync likedByViewer và likes count từ response nếu có
+        if (response?.data?.comments) {
+          const updatedPost = response.data;
+          if (updatedPost.comments && Array.isArray(updatedPost.comments)) {
+            const updatedComment = updatedPost.comments.find(c => 
+              String(c.id) === String(commentId) || 
+              String(c._id) === String(commentId)
+            );
+            if (updatedComment) {
+              // Update likedByViewer và likes count từ backend
+              setComments(prev => prev.map(c => {
+                if (c.id !== commentId) return c;
+                return {
+                  ...c,
+                  likedByViewer: updatedComment.stats?.isLikedByMe ?? !alreadyLiked,
+                  likes: updatedComment.stats?.likeCount ?? c.likes
+                };
+              }));
+            }
+          }
+        }
+      } else {
+        console.warn('[CommentSection] Like comment failed:', response);
         // Rollback optimistic update on failure
         setLikedComments(prev => {
           const newSet = new Set(prev);
@@ -1267,6 +1380,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
           const nextLikes = Math.max(0, (Number(c.likes) || 0) + (alreadyLiked ? 1 : -1));
           return { ...c, likes: nextLikes };
         }));
+        setMessage({ type: "error", text: response?.message || "Không thể thích bình luận" });
+        setTimeout(() => setMessage(null), 3000);
       }
     } catch (error) {
       console.error("Error liking comment:", error);
@@ -1322,14 +1437,81 @@ export default function CommentSection({ postId, onClose, inline = false, always
         return { ...c, replies };
       }));
 
-      // Lấy entityAccountId từ activeEntity
-      const entityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      // Lấy entityAccountId từ activeEntity (trim để đảm bảo format đúng)
+      const rawEntityAccountId = activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
+      const entityAccountId = rawEntityAccountId ? String(rawEntityAccountId).trim() : null;
+
+      console.log('[CommentSection] Like reply request:', {
+        postId,
+        commentId,
+        replyId,
+        entityAccountId,
+        typeRole,
+        alreadyLiked
+      });
 
       const response = alreadyLiked
         ? await unlikeReply(postId, commentId, replyId, { entityAccountId })
         : await likeReply(postId, commentId, replyId, { typeRole, entityAccountId });
 
-      if (!(response?.success || response?.data?.success)) {
+      console.log('[CommentSection] Like reply response:', response);
+
+      // Axios interceptor unwraps response.data, so response is already the backend response
+      const isSuccess = response?.success === true || response?.data?.success === true;
+      
+      if (isSuccess) {
+        // Không reload comments để tránh nháy UI, chỉ update state local
+        // State đã được update optimistic rồi, chỉ cần sync likedReplies set
+        // Đảm bảo likedReplies set được sync với state
+        if (!alreadyLiked) {
+          // Đã like thành công, thêm vào set
+          setLikedReplies(prev => {
+            const newSet = new Set(prev);
+            newSet.add(replyKey);
+            return newSet;
+          });
+        } else {
+          // Đã unlike thành công, xóa khỏi set
+          setLikedReplies(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(replyKey);
+            return newSet;
+          });
+        }
+        
+        // Sync isLikedByMe và likes count từ response nếu có
+        if (response?.data?.comments) {
+          const updatedPost = response.data;
+          if (updatedPost.comments && Array.isArray(updatedPost.comments)) {
+            const updatedComment = updatedPost.comments.find(c => 
+              String(c.id) === String(commentId) || 
+              String(c._id) === String(commentId)
+            );
+            if (updatedComment && updatedComment.replies && Array.isArray(updatedComment.replies)) {
+              const updatedReply = updatedComment.replies.find(r => 
+                String(r.id) === String(replyId) || 
+                String(r._id) === String(replyId)
+              );
+              if (updatedReply) {
+                // Update isLikedByMe và likes count từ backend
+                setComments(prev => prev.map(c => {
+                  if (c.id !== commentId) return c;
+                  const replies = (c.replies || []).map(r => {
+                    if (r.id !== replyId) return r;
+                    return {
+                      ...r,
+                      isLikedByMe: updatedReply.stats?.isLikedByMe ?? !alreadyLiked,
+                      likes: updatedReply.stats?.likeCount ?? r.likes
+                    };
+                  });
+                  return { ...c, replies };
+                }));
+              }
+            }
+          }
+        }
+      } else {
+        console.warn('[CommentSection] Like reply failed:', response);
         // Rollback on failure
         setLikedReplies(prev => {
           const newSet = new Set(prev);
@@ -1345,6 +1527,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
           });
           return { ...c, replies };
         }));
+        setMessage({ type: "error", text: response?.message || "Không thể thích phản hồi" });
+        setTimeout(() => setMessage(null), 3000);
       }
     } catch (error) {
       console.error("Error liking reply:", error);

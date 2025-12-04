@@ -13,6 +13,7 @@ import businessApi from '../../../api/businessApi';
 import publicProfileApi from '../../../api/publicProfileApi';
 import { ProfileHeader } from '../../../components/profile/ProfileHeader';
 import { ProfileStats } from '../../../components/profile/ProfileStats';
+import FollowersModal from '../../../components/profile/FollowersModal';
 import { CustomerTabs, BarTabs, DJTabs, DancerTabs } from '../../../components/profile/ProfileTabs';
 import ProfileEditModal from '../../../components/profile/ProfileEditModal';
 import { normalizeProfileData } from '../../../utils/profileDataMapper';
@@ -178,6 +179,8 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
   const [activeTab, setActiveTab] = useState('info');
   const [showEditModal, setShowEditModal] = useState(false);
   const [pendingBookingsCount, setPendingBookingsCount] = useState(0);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
 
   // Shared audio player for own profile (Customer, DJ, etc.)
   const {
@@ -366,7 +369,25 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
       </ProfileHeader>
 
       <div className={cn('max-w-6xl mx-auto px-4 md:px-6 py-6')}>
-        <ProfileStats followers={followers} following={following} />
+        <ProfileStats
+          followers={followers}
+          following={following}
+          onFollowersClick={() => setShowFollowersModal(true)}
+          onFollowingClick={() => setShowFollowingModal(true)}
+        />
+
+        <FollowersModal
+          open={showFollowersModal}
+          onClose={() => setShowFollowersModal(false)}
+          entityId={currentUserEntityId}
+          mode="followers"
+        />
+        <FollowersModal
+          open={showFollowingModal}
+          onClose={() => setShowFollowingModal(false)}
+          entityId={currentUserEntityId}
+          mode="following"
+        />
         
         {/* Tabs Section */}
         <section className={cn("py-6")}>

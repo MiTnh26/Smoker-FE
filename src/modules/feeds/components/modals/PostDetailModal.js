@@ -143,8 +143,8 @@ export default function PostDetailModal({
       );
     }
 
-    // Check ownership
-    const ownerId = normalizeId(post.entityAccountId);
+    // Check ownership - read from new DTO schema: author.entityAccountId or legacy format
+    const ownerId = normalizeId(post.author?.entityAccountId || post.entityAccountId);
     const viewerEntityId = normalizeId(activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id);
     const canManage = ownerId && viewerEntityId && ownerId === viewerEntityId;
 
@@ -200,14 +200,35 @@ export default function PostDetailModal({
       }
     };
 
-    // Extract medias
+    // Extract medias - support both new DTO schema (array) and legacy format
     const extractMedias = (medias) => {
       if (!medias) return { images: [], videos: [], audios: [] };
       
+      // New DTO schema: medias is already a clean array
+      if (Array.isArray(medias)) {
+        const images = [], videos = [], audios = [];
+        medias.forEach(item => {
+          if (!item?.url) return;
+          const url = item.url.toLowerCase();
+          const mediaObj = { 
+            id: item.id || item._id || '', 
+            url: item.url, 
+            caption: item.caption || "",
+            type: item.type
+          };
+          const isAudio = item.type === 'audio' || /\.(mp3|wav|m4a|ogg|aac)$/i.test(url);
+          const isVideo = item.type === 'video' || /\.(mp4|webm|mov)$/i.test(url);
+          
+          if (isAudio) audios.push(mediaObj);
+          else if (isVideo) videos.push(mediaObj);
+          else images.push(mediaObj);
+        });
+        return { images, videos, audios };
+      }
+      
+      // Legacy format: object or Map
       const images = [], videos = [], audios = [];
-      const entries = Array.isArray(medias)
-        ? medias.map((item, idx) => [item._id || item.id || idx, item])
-        : medias instanceof Map
+      const entries = medias instanceof Map
         ? Array.from(medias.entries())
         : Object.entries(medias);
       
@@ -251,49 +272,70 @@ export default function PostDetailModal({
     const audioFromSong = getAudioUrl(populatedSong);
     const audioMedia = extractedMedias.audios?.[0];
 
+    // Read from new DTO schema: author.name or legacy format
+    const authorName = post.author?.name || post.authorName || post.account?.userName || post.accountName || "Người dùng";
+    const authorAvatar = post.author?.avatar || post.authorAvatar || post.account?.avatar || null;
+    
+    // Read stats from new DTO schema or legacy format
+    const stats = post.stats || {};
+    const finalLikeCount = stats.likeCount !== undefined ? stats.likeCount : likeCount;
+    const finalCommentCount = stats.commentCount !== undefined ? stats.commentCount : commentCount;
+    const finalLikedByCurrentUser = stats.isLikedByMe !== undefined ? stats.isLikedByMe : isLikedByCurrentUser;
+    
+    // Read medias from new DTO schema (clean array) or legacy format
+    const mediasArray = post.medias || extractedMedias;
+    const finalImages = Array.isArray(mediasArray) 
+      ? mediasArray.filter(m => m.type === 'image' || (!m.type && !m.url?.match(/\.(mp4|webm|mov|mp3|wav|m4a|ogg|aac)$/i)))
+      : (mediasArray.images || extractedMedias.images || []);
+    const finalVideos = Array.isArray(mediasArray)
+      ? mediasArray.filter(m => m.type === 'video' || m.url?.match(/\.(mp4|webm|mov)$/i))
+      : (mediasArray.videos || extractedMedias.videos || []);
+
     return {
       id: post._id || post.id,
-      user: post.authorName || post.author?.userName || post.account?.userName || post.accountName || "Người dùng",
-      avatar: post.authorAvatar || post.author?.avatar || post.account?.avatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPC9zdmc+",
+      user: authorName,
+      avatar: authorAvatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPC9zdmc+",
       time: formatTimeDisplay(post.createdAt || post.updatedAt),
       content: post.content || post.caption || post["Tiêu Đề"] || "",
       caption: post.caption || "",
       medias: {
-        images: extractedMedias.images,
-        videos: extractedMedias.videos
+        images: finalImages,
+        videos: finalVideos
       },
-      image: extractedMedias.images?.[0]?.url || populatedMusic?.coverUrl || populatedSong?.coverUrl || post.musicBackgroundImage || post.thumbnail || null,
-      videoSrc: extractedMedias.videos?.[0]?.url || null,
+      image: finalImages?.[0]?.url || populatedMusic?.coverUrl || populatedSong?.coverUrl || post.musicBackgroundImage || post.thumbnail || null,
+      videoSrc: finalVideos?.[0]?.url || null,
       audioSrc: audioFromMusic || audioFromSong || audioMedia?.url || post.audioSrc || null,
       audioTitle: populatedMusic?.title || populatedSong?.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
-      artistName: populatedMusic?.artist || populatedSong?.artist || post.artistName || post["Tên Nghệ Sĩ"] || post.authorName || post.user || null,
+      artistName: populatedMusic?.artist || populatedSong?.artist || post.artistName || post["Tên Nghệ Sĩ"] || authorName || null,
       album: post.album || null,
       genre: populatedMusic?.hashTag || populatedSong?.hashTag || post.hashTag || post["HashTag"] || null,
       releaseDate: post.releaseDate || post.createdAt || null,
       description: post.description || populatedMusic?.details || populatedSong?.details || post["Chi Tiết"] || post.content || null,
       thumbnail: populatedMusic?.coverUrl || populatedSong?.coverUrl || post.musicBackgroundImage || post.thumbnail || null,
-      likes: likeCount,
-      likedByCurrentUser: isLikedByCurrentUser,
-      comments: commentCount,
-      shares: typeof post.shares === 'number' ? post.shares : Number(post.shares) || 0,
-      views: post.views || 0,
+      likes: finalLikeCount,
+      likedByCurrentUser: finalLikedByCurrentUser,
+      comments: finalCommentCount,
+      shares: stats.shareCount !== undefined ? stats.shareCount : (typeof post.shares === 'number' ? post.shares : Number(post.shares) || 0),
+      views: stats.viewCount !== undefined ? stats.viewCount : (post.views || 0),
       hashtags: post.hashtags || [],
       verified: post.verified || false,
       location: post.location || null,
       title: post.title || null,
       canManage,
-      ownerEntityAccountId: ownerId || null,
+      ownerEntityAccountId: post.author?.entityAccountId || ownerId || null,
       _id: post._id || post.id,
       accountId: post.accountId,
-      entityAccountId: post.entityAccountId,
-      entityId: post.entityId,
-      entityType: post.entityType,
-      authorEntityId: post.authorEntityId,
-      authorEntityType: post.authorEntityType,
-      authorEntityAccountId: post.authorEntityAccountId,
+      entityAccountId: post.author?.entityAccountId || post.entityAccountId,
+      entityId: post.author?.entityId || post.entityId,
+      entityType: post.author?.entityType || post.entityType,
+      authorEntityId: post.author?.entityId || post.authorEntityId,
+      authorEntityType: post.author?.entityType || post.authorEntityType,
+      authorEntityAccountId: post.author?.entityAccountId || post.authorEntityAccountId,
       createdAt: post.createdAt,
       updatedAt: post.updatedAt,
       type: post.type,
+      originalPost: post.originalPost || null,
+      repostedFromId: post.repostedFromId || null,
     };
   };
 

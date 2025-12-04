@@ -8,7 +8,13 @@ import { cn } from "../../utils/cn";
  * Accepts counts (numbers) or arrays for backward compatibility
  * Keep exact same styling as original
  */
-export const ProfileStats = ({ followers = 0, following = 0, posts = null }) => {
+export const ProfileStats = ({
+  followers = 0,
+  following = 0,
+  posts = null,
+  onFollowersClick,
+  onFollowingClick,
+}) => {
   const { t } = useTranslation();
 
   // Handle backward compatibility: if followers/following are arrays, use length
@@ -51,11 +57,15 @@ export const ProfileStats = ({ followers = 0, following = 0, posts = null }) => 
         </>
       )}
 
-      <button className={cn(
+      <button
+        type="button"
+        onClick={onFollowersClick}
+        className={cn(
         "flex flex-col items-center gap-1.5 cursor-pointer",
         "group transition-all duration-200",
         "hover:opacity-90 active:scale-95"
-      )}>
+      )}
+      >
         <span className={cn(
           "text-2xl md:text-3xl font-bold text-foreground",
           "tracking-tight leading-none",
@@ -77,11 +87,15 @@ export const ProfileStats = ({ followers = 0, following = 0, posts = null }) => 
         "hidden md:block"
       )} />
 
-      <button className={cn(
+      <button
+        type="button"
+        onClick={onFollowingClick}
+        className={cn(
         "flex flex-col items-center gap-1.5 cursor-pointer",
         "group transition-all duration-200",
         "hover:opacity-90 active:scale-95"
-      )}>
+      )}
+      >
         <span className={cn(
           "text-2xl md:text-3xl font-bold text-foreground",
           "tracking-tight leading-none",

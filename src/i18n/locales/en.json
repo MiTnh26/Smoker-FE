@@ -21,7 +21,8 @@
     "back": "Back",
     "cancel": "Cancel",
     "saving": "Saving...",
-    "saveChanges": "Save changes"
+    "saveChanges": "Save changes",
+    "search": "Search"
   },
   "sidebar": {
     "home": "Home",
