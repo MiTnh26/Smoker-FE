@@ -88,65 +88,26 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         oldScript.parentNode.replaceChild(newScript, oldScript);
       });
 
-      // Apply CSS cho ảnh từ Revive - resize để hiển thị toàn bộ ảnh
+      // Apply CSS cho ảnh từ Revive - fill full container với crop
       const images = containerRef.current.querySelectorAll('img');
       images.forEach(img => {
-        // Đặt kích thước tối đa (có thể tùy chỉnh)
-        const maxWidth = 500; // Chiều dài tối đa (px)
-        const maxHeight = 600; // Chiều rộng tối đa (px)
-        
-        // Set các style cơ bản
-        img.style.maxWidth = `${maxWidth}px`;
-        img.style.maxHeight = `${maxHeight}px`;
-        img.style.width = 'auto';
-        img.style.height = 'auto';
-        img.style.objectFit = 'contain'; // Hiển thị toàn bộ ảnh, không crop
+        // Set style để fill full container với object-fit: cover
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover'; // Fill full, crop nếu cần
         img.style.display = 'block';
         img.style.borderRadius = '0.5rem';
-        img.style.margin = '0 auto'; // Center image
+        img.style.margin = '0';
         img.style.padding = '0';
-        
-        // Resize động khi ảnh load xong
-        const resizeImage = () => {
-          if (img.naturalWidth && img.naturalHeight) {
-            const naturalAspectRatio = img.naturalWidth / img.naturalHeight;
-            const maxAspectRatio = maxWidth / maxHeight;
-            
-            // Tính toán kích thước mới để vừa với max nhưng giữ nguyên tỷ lệ
-            let newWidth, newHeight;
-            
-            if (naturalAspectRatio > maxAspectRatio) {
-              // Ảnh ngang hơn -> giới hạn theo width
-              newWidth = Math.min(img.naturalWidth, maxWidth);
-              newHeight = newWidth / naturalAspectRatio;
-            } else {
-              // Ảnh dọc hơn -> giới hạn theo height
-              newHeight = Math.min(img.naturalHeight, maxHeight);
-              newWidth = newHeight * naturalAspectRatio;
-            }
-            
-            // Áp dụng kích thước (chỉ khi nhỏ hơn ảnh gốc)
-            if (newWidth < img.naturalWidth || newHeight < img.naturalHeight) {
-              img.style.width = `${newWidth}px`;
-              img.style.height = `${newHeight}px`;
-            }
-          }
-        };
-        
-        // Gọi resize khi ảnh load xong
-        if (img.complete && img.naturalWidth) {
-          resizeImage();
-        } else {
-          img.addEventListener('load', resizeImage, { once: true });
-        }
       });
 
-      // Style links
+      // Style links để fill full container
       const links = containerRef.current.querySelectorAll('a');
       links.forEach(link => {
-        // Style links - đảm bảo khớp với card
+        // Style links - fill full container
         link.style.display = 'block';
         link.style.width = '100%';
+        link.style.height = '100%';
         link.style.textDecoration = 'none';
         link.style.borderRadius = '0.5rem';
         link.style.overflow = 'hidden';
@@ -269,10 +230,10 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         ref={containerRef}
         className="w-full overflow-hidden rounded-lg"
         style={{ 
-          minHeight: '100px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
+          width: '100%',
+          aspectRatio: '16 / 9', // Tỷ lệ 16:9 - có thể thay đổi thành 4/3, 1/1, etc
+          position: 'relative',
+          overflow: 'hidden'
         }}
       />
     </div>
