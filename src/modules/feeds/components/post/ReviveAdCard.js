@@ -40,12 +40,28 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
   // Render HTML từ Revive vào container
   useEffect(() => {
     if (adHtml && containerRef.current) {
+      // Production URL để thay thế localhost
+      const productionUrl = 'https://smoker-fe-henna.vercel.app';
+      
       // Clean HTML: bỏ \n và whitespace không cần thiết
-      const cleanHtml = adHtml
+      let cleanHtml = adHtml
         .replace(/\\n/g, '') // Bỏ \n
         .replace(/\n/g, '') // Bỏ newline thực sự
         .replace(/\s+/g, ' ') // Thay nhiều whitespace bằng 1 space
         .trim();
+      
+      // Thay thế localhost URLs bằng production URL trong HTML
+      // Match các pattern: http://localhost:PORT/path hoặc https://localhost:PORT/path
+      cleanHtml = cleanHtml.replace(
+        /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s"'<>]*)?/gi,
+        (match) => {
+          // Lấy path từ URL gốc (sau domain và port)
+          const urlMatch = match.match(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(\/.*)?$/i);
+          const path = urlMatch && urlMatch[1] ? urlMatch[1] : '';
+          // Thay thế với production URL + path
+          return productionUrl + path;
+        }
+      );
       
       // Xóa nội dung cũ
       containerRef.current.innerHTML = '';
@@ -125,9 +141,11 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         }
       });
 
-      // Style links - đảm bảo khớp với card
+      // Style links và fix redirect URLs - thay thế localhost bằng production URL
       const links = containerRef.current.querySelectorAll('a');
+      
       links.forEach(link => {
+        // Style links - đảm bảo khớp với card
         link.style.display = 'block';
         link.style.width = '100%';
         link.style.textDecoration = 'none';
@@ -135,6 +153,52 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         link.style.overflow = 'hidden';
         link.style.margin = '0';
         link.style.padding = '0';
+        
+        // Fix redirect URL: thay thế localhost bằng production URL
+        const originalHref = link.getAttribute('href') || link.href;
+        if (originalHref && (originalHref.includes('localhost') || originalHref.includes('127.0.0.1'))) {
+          try {
+            // Parse URL để lấy path, query, hash
+            const url = new URL(originalHref);
+            const pathAndQuery = url.pathname + (url.search || '') + (url.hash || '');
+            
+            // Tạo URL mới với production domain
+            const newHref = productionUrl + pathAndQuery;
+            link.href = newHref;
+            link.setAttribute('href', newHref);
+            
+            console.log(`[ReviveAdCard] Updated redirect URL: ${originalHref} -> ${newHref}`);
+          } catch (e) {
+            // Nếu không parse được URL, thử replace trực tiếp
+            const newHref = originalHref.replace(
+              /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/gi,
+              productionUrl
+            );
+            link.href = newHref;
+            link.setAttribute('href', newHref);
+            console.log(`[ReviveAdCard] Updated redirect URL (fallback): ${originalHref} -> ${newHref}`);
+          }
+        }
+        
+        // Intercept click để đảm bảo redirect đúng (backup method)
+        link.addEventListener('click', (e) => {
+          const href = link.getAttribute('href') || link.href;
+          if (href && (href.includes('localhost') || href.includes('127.0.0.1'))) {
+            e.preventDefault();
+            try {
+              const url = new URL(href);
+              const pathAndQuery = url.pathname + (url.search || '') + (url.hash || '');
+              const newUrl = productionUrl + pathAndQuery;
+              console.log(`[ReviveAdCard] Intercepting click: ${href} -> ${newUrl}`);
+              window.location.href = newUrl;
+            } catch (err) {
+              console.error(`[ReviveAdCard] Error processing redirect:`, err);
+              // Fallback: use production URL with same path
+              const newUrl = productionUrl + (href.startsWith('/') ? href : '/' + href);
+              window.location.href = newUrl;
+            }
+          }
+        });
       });
       
       // Ẩn tracking div (beacon) nếu có
