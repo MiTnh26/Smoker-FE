@@ -27,9 +27,9 @@ const barPageApi = {
     return axiosClient.get(`/bar/${barPageId}`);
   },
 
-  // Update Bar Page
-  updateBarPage(barPageId, payload) {
-    return axiosClient.put(`/bar/${barPageId}`, payload);
+  // Update Bar Page by EntityAccountId
+  updateBarPage(entityAccountId, payload) {
+    return axiosClient.put(`/bar/${entityAccountId}`, payload);
   },
 
   // Step 5: Xóa Bar Page
