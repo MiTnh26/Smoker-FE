@@ -141,9 +141,8 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         }
       });
 
-      // Style links và fix redirect URLs - thay thế localhost bằng production URL
+      // Style links
       const links = containerRef.current.querySelectorAll('a');
-      
       links.forEach(link => {
         // Style links - đảm bảo khớp với card
         link.style.display = 'block';
@@ -153,52 +152,6 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         link.style.overflow = 'hidden';
         link.style.margin = '0';
         link.style.padding = '0';
-        
-        // Fix redirect URL: thay thế localhost bằng production URL
-        const originalHref = link.getAttribute('href') || link.href;
-        if (originalHref && (originalHref.includes('localhost') || originalHref.includes('127.0.0.1'))) {
-          try {
-            // Parse URL để lấy path, query, hash
-            const url = new URL(originalHref);
-            const pathAndQuery = url.pathname + (url.search || '') + (url.hash || '');
-            
-            // Tạo URL mới với production domain
-            const newHref = productionUrl + pathAndQuery;
-            link.href = newHref;
-            link.setAttribute('href', newHref);
-            
-            console.log(`[ReviveAdCard] Updated redirect URL: ${originalHref} -> ${newHref}`);
-          } catch (e) {
-            // Nếu không parse được URL, thử replace trực tiếp
-            const newHref = originalHref.replace(
-              /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/gi,
-              productionUrl
-            );
-            link.href = newHref;
-            link.setAttribute('href', newHref);
-            console.log(`[ReviveAdCard] Updated redirect URL (fallback): ${originalHref} -> ${newHref}`);
-          }
-        }
-        
-        // Intercept click để đảm bảo redirect đúng (backup method)
-        link.addEventListener('click', (e) => {
-          const href = link.getAttribute('href') || link.href;
-          if (href && (href.includes('localhost') || href.includes('127.0.0.1'))) {
-            e.preventDefault();
-            try {
-              const url = new URL(href);
-              const pathAndQuery = url.pathname + (url.search || '') + (url.hash || '');
-              const newUrl = productionUrl + pathAndQuery;
-              console.log(`[ReviveAdCard] Intercepting click: ${href} -> ${newUrl}`);
-              window.location.href = newUrl;
-            } catch (err) {
-              console.error(`[ReviveAdCard] Error processing redirect:`, err);
-              // Fallback: use production URL with same path
-              const newUrl = productionUrl + (href.startsWith('/') ? href : '/' + href);
-              window.location.href = newUrl;
-            }
-          }
-        });
       });
       
       // Ẩn tracking div (beacon) nếu có
@@ -210,6 +163,88 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         beacon.style.width = '0';
         beacon.style.height = '0';
       });
+      
+      // Sử dụng event delegation để intercept clicks trên toàn bộ container
+      // Điều này đảm bảo bắt được cả links được tạo động
+      const handleClick = (e) => {
+        // Chỉ xử lý clicks trên links
+        let target = e.target;
+        while (target && target !== containerRef.current) {
+          if (target.tagName === 'A') {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            let href = target.getAttribute('href') || target.href;
+            if (!href) return;
+            
+            console.log(`[ReviveAdCard] Click intercepted via delegation, href: ${href}`);
+            
+            try {
+              // Kiểm tra nếu đây là Revive click tracking URL
+              const isReviveTrackingUrl = href.includes('/delivery/cl.php') || 
+                                          href.includes('/delivery/ck.php') || 
+                                          href.includes('cl.php') || 
+                                          href.includes('ck.php') ||
+                                          (href.includes('revive') && href.includes('delivery'));
+              
+              if (isReviveTrackingUrl) {
+                // Extract dest parameter từ URL
+                let url;
+                try {
+                  url = new URL(href);
+                } catch (e) {
+                  try {
+                    url = new URL(href, window.location.origin);
+                  } catch (e2) {
+                    console.error(`[ReviveAdCard] Cannot parse URL: ${href}`, e2);
+                    window.location.href = href;
+                    return;
+                  }
+                }
+                
+                const destParam = url.searchParams.get('dest');
+                
+                if (destParam) {
+                  // Decode dest URL và redirect trực tiếp
+                  const destUrl = decodeURIComponent(destParam);
+                  console.log(`[ReviveAdCard] ✅ Extracted dest URL: ${destUrl}`);
+                  console.log(`[ReviveAdCard] Redirecting directly (bypassing Revive tracking)`);
+                  
+                  // Redirect trực tiếp - localStorage tự động được giữ (cùng domain)
+                  window.location.href = destUrl;
+                  return;
+                }
+              }
+              
+              // Nếu không phải Revive tracking, redirect bình thường
+              if (href.includes('localhost') || href.includes('127.0.0.1')) {
+                const url = new URL(href);
+                const pathAndQuery = url.pathname + (url.search || '') + (url.hash || '');
+                window.location.href = productionUrl + pathAndQuery;
+                return;
+              }
+              
+              // Fallback
+              window.location.href = href;
+            } catch (error) {
+              console.error(`[ReviveAdCard] Error:`, error);
+              window.location.href = href;
+            }
+            return;
+          }
+          target = target.parentElement;
+        }
+      };
+      
+      // Attach event listener với capture phase để intercept sớm
+      containerRef.current.addEventListener('click', handleClick, true);
+      
+      // Cleanup function
+      return () => {
+        if (containerRef.current) {
+          containerRef.current.removeEventListener('click', handleClick, true);
+        }
+      };
     }
   }, [adHtml]);
 
