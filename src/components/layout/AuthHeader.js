@@ -38,10 +38,16 @@ export default function AuthHeader() {
             "cursor-pointer",
             "transition-opacity duration-200",
             "hover:opacity-90",
-            "bg-transparent border-none"
+            "bg-transparent border-none",
+            "flex items-center gap-2"
           )}
         >
-          <img src="/logo3.png" alt={t('layout.brand')} className="h-8 w-auto" />
+          <img
+              src="/13.png"
+              alt="Smoker Page"
+              className="h-12 w-auto sm:h-6 md:h-12"
+            />
+       
         </button>
       </div>
     </header>

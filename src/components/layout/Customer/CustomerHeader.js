@@ -237,12 +237,13 @@ export default function CustomerHeader() {
               "flex-shrink-0"
             )}
           >
-
+            <span className="flex items-center gap-2">
             <img
               src="/13.png"
               alt="Smoker Page"
               className="h-12 w-auto sm:h-6 md:h-12"
             />
+            </span>
           </Link>
 
           <div className={cn(
