@@ -34,7 +34,7 @@ export default function PageHeader() {
       return null;
     }
   });
-  
+
   const conversations = [
     { id: 1, name: "Người dùng A", lastMessage: "Hello!", time: "10 phút", unread: 2 },
     { id: 2, name: "Người dùng B", lastMessage: "Ok nhé!", time: "30 phút", unread: 0 },
@@ -48,7 +48,7 @@ export default function PageHeader() {
     try {
       const newSession = JSON.parse(localStorage.getItem("session"));
       setSession(newSession);
-      
+
       if (!newSession) return;
 
       // Nếu có mảng entities thì tìm trong đó, còn không thì fallback sang account
@@ -74,20 +74,20 @@ export default function PageHeader() {
   useEffect(() => {
     if (!session) return;
     updateSession();
-    
+
     // Listen for profile updates
     const handleProfileUpdate = () => {
       console.log("[PageHeader] Profile updated event received");
       updateSession();
     };
-    
+
     // eslint-disable-next-line no-undef
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line no-undef
       window.addEventListener('profileUpdated', handleProfileUpdate);
       // eslint-disable-next-line no-undef
       window.addEventListener('storage', handleProfileUpdate);
-      
+
       return () => {
         // eslint-disable-next-line no-undef
         window.removeEventListener('profileUpdated', handleProfileUpdate);
@@ -123,7 +123,7 @@ export default function PageHeader() {
       const session = JSON.parse(localStorage.getItem("session") || "{}");
       const active = session?.activeEntity || {};
       const entities = session?.entities || [];
-      
+
       const entityAccountId =
         active.EntityAccountId ||
         active.entityAccountId ||
@@ -151,19 +151,19 @@ export default function PageHeader() {
       const session = JSON.parse(localStorage.getItem("session") || "{}");
       const active = session?.activeEntity || {};
       const entities = session?.entities || [];
-      
+
       const currentUserEntityId =
         active.EntityAccountId ||
         active.entityAccountId ||
         entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
         entities[0]?.EntityAccountId ||
         null;
-      
+
       if (!currentUserEntityId) {
         setUnreadMessageCount(0);
         return;
       }
-      
+
       const res = await messageApi.getUnreadCount(currentUserEntityId);
       if (res.success && res.data) {
         setUnreadMessageCount(res.data.totalUnreadCount || 0);
@@ -176,17 +176,17 @@ export default function PageHeader() {
   useEffect(() => {
     fetchUnreadNotificationCount();
     const interval = setInterval(fetchUnreadNotificationCount, 60000);
-    
+
     // Listen for notification refresh events (e.g., when someone follows)
     const handleNotificationRefresh = () => {
       fetchUnreadNotificationCount();
     };
-    
+
     const win = (typeof window !== "undefined") ? window : null;
     if (win) {
       win.addEventListener("notificationRefresh", handleNotificationRefresh);
     }
-    
+
     return () => {
       clearInterval(interval);
       if (win) {
@@ -199,18 +199,18 @@ export default function PageHeader() {
   useEffect(() => {
     fetchUnreadMessageCount();
     const interval = setInterval(fetchUnreadMessageCount, 60000);
-    
+
     // Listen for message refresh events (e.g., when new messages arrive)
     const handleMessageRefresh = () => {
       fetchUnreadMessageCount();
     };
-    
+
     // eslint-disable-next-line no-undef
     const win = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : null);
     if (win) {
       win.addEventListener("messageRefresh", handleMessageRefresh);
     }
-    
+
     return () => {
       clearInterval(interval);
       if (win) {
@@ -218,7 +218,7 @@ export default function PageHeader() {
       }
     };
   }, []);
-  
+
   // Join socket room and realtime updates for bar/dj/dancer headers
   useEffect(() => {
     if (!socket || !isConnected) return;
@@ -247,7 +247,7 @@ export default function PageHeader() {
           console.log("[PageHeader] Joined socket room with AccountId (fallback):", accountId);
         }
       }
-    } catch {}
+    } catch { }
 
     const onNewNotification = () => {
       // Recompute from API so we exclude Messages
@@ -271,7 +271,7 @@ export default function PageHeader() {
 
   const role = (session.activeEntity.role || session.activeEntity.type || "").toLowerCase();
   const activeEntityId = session.activeEntity.id;
-  
+
   // Determine menu config based on role
   const getMenuConfig = () => {
     if (role === "dj") return "dj";
@@ -280,9 +280,9 @@ export default function PageHeader() {
     if (session.activeEntity.type === "Business" || session.activeEntity.type === "BusinessAccount") return "business";
     return "bar"; // default fallback
   };
-  
+
   const menuConfig = getMenuConfig();
-  
+
   // Determine newsfeed path based on role
   const getNewsfeedPath = () => {
     if (role === "dj") return "/dj/newsfeed";
@@ -303,17 +303,26 @@ export default function PageHeader() {
           "max-w-[1400px]",
           "sm:gap-2 md:gap-4"
         )}>
-          <Link 
-            to={getNewsfeedPath()} 
+          <Link
+            to={getNewsfeedPath()}
             className={cn(
-              "text-2xl font-bold no-underline",
-              "text-primary",
+              "no-underline",
               "transition-opacity duration-200",
               "hover:opacity-80",
-              "sm:text-lg sm:flex-shrink-0 md:text-2xl"
+              "flex-shrink-0",
+              "flex items-center gap-2"
             )}
           >
-            {t('layout.brandPage')}
+            <img
+              src="/13.png"
+              alt="Smoker Page"
+              className="h-12 w-auto sm:h-6 md:h-12"
+            />
+            <img
+              src="/page.png"
+              alt="Smoker Page"
+              className="h-3 w-auto sm:h-6 md:h-4"
+            />
           </Link>
 
           <div className={cn(
@@ -324,7 +333,7 @@ export default function PageHeader() {
           </div>
 
           <div className={cn("flex gap-2", "sm:gap-1.5 md:gap-2")}>
-            <button 
+            <button
               className={cn(
                 "rounded-lg p-2 flex items-center justify-center",
                 "transition-all duration-200 cursor-pointer relative",
@@ -337,13 +346,13 @@ export default function PageHeader() {
             >
               <Home size={24} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
             </button>
-            <button 
+            <button
               className={cn(
                 "rounded-lg p-2 flex items-center justify-center",
                 "transition-all duration-200 cursor-pointer relative",
                 "text-muted-foreground",
-                activePanel === "messages" 
-                  ? "text-primary-foreground bg-primary" 
+                activePanel === "messages"
+                  ? "text-primary-foreground bg-primary"
                   : "hover:text-primary hover:bg-primary/10",
                 "active:scale-95",
                 "sm:p-1.5 md:p-2"
@@ -366,14 +375,14 @@ export default function PageHeader() {
                 </span>
               )}
             </button>
-            
-            <button 
+
+            <button
               className={cn(
                 "rounded-lg p-2 flex items-center justify-center",
                 "transition-all duration-200 cursor-pointer relative",
                 "text-muted-foreground",
-                activePanel === "notifications" 
-                  ? "text-primary-foreground bg-primary" 
+                activePanel === "notifications"
+                  ? "text-primary-foreground bg-primary"
                   : "hover:text-primary hover:bg-primary/10",
                 "active:scale-95",
                 "sm:p-1.5 md:p-2"
@@ -397,13 +406,13 @@ export default function PageHeader() {
               )}
             </button>
 
-            <button 
+            <button
               className={cn(
                 "rounded-lg p-2 flex items-center justify-center",
                 "transition-all duration-200 cursor-pointer relative",
                 "text-muted-foreground",
-                activePanel === "user" 
-                  ? "text-primary-foreground bg-primary" 
+                activePanel === "user"
+                  ? "text-primary-foreground bg-primary"
                   : "hover:text-primary hover:bg-primary/10",
                 "active:scale-95",
                 "sm:p-1.5 md:p-2"
@@ -435,8 +444,8 @@ export default function PageHeader() {
           />
         )}
         {activePanel === "messages" && (
-          <MessagesPanel 
-            conversations={conversations} 
+          <MessagesPanel
+            conversations={conversations}
             onClose={() => setActivePanel(null)}
             onUnreadCountChange={(count) => setUnreadMessageCount(count)}
           />
@@ -469,4 +478,3 @@ export default function PageHeader() {
     </>
   );
 }
-

@@ -35,13 +35,13 @@ export default function AuthHeader() {
           type="button"
           onClick={goHome}
           className={cn(
-            "text-2xl font-bold text-primary cursor-pointer",
-            "transition-all duration-200",
-            "hover:text-primary/90",
+            "cursor-pointer",
+            "transition-opacity duration-200",
+            "hover:opacity-90",
             "bg-transparent border-none"
           )}
         >
-          {t('layout.brand')}
+          <img src="/logo3.png" alt={t('layout.brand')} className="h-8 w-auto" />
         </button>
       </div>
     </header>
