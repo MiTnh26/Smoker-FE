@@ -34,12 +34,16 @@ export default function AuthHeader() {
           type="button"
           onClick={goHome}
           className={cn(
-            "text-2xl font-bold text-primary",
             "bg-transparent border-none cursor-pointer",
-            "transition-colors duration-200 hover:text-primary/90"
+            "transition-opacity duration-200 hover:opacity-80"
           )}
         >
-          Smoker
+           
+           <img 
+              src="/13.png" 
+              alt="Smoker Page" 
+              className="h-12 w-auto sm:h-6 md:h-12"
+            />
         </button>
         <div className={cn("flex items-center gap-3")}>
           <Button

@@ -33,9 +33,9 @@ export default function CustomerHeader() {
       let entityAccountId = active.EntityAccountId || active.entityAccountId || null;
       if (!entityAccountId && active.id && active.type) {
         const foundEntity = entities.find(
-          e => String(e.id) === String(active.id) && 
-               (e.type === active.type || 
-                (e.type === "BusinessAccount" && active.type === "Business"))
+          e => String(e.id) === String(active.id) &&
+            (e.type === active.type ||
+              (e.type === "BusinessAccount" && active.type === "Business"))
         );
         entityAccountId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
       }
@@ -58,7 +58,7 @@ export default function CustomerHeader() {
 
       const active = getActiveEntity() || {};
       const entities = getEntities();
-      
+
       const entityAccountId =
         active.EntityAccountId ||
         active.entityAccountId ||
@@ -86,19 +86,19 @@ export default function CustomerHeader() {
       const session = JSON.parse(localStorage.getItem("session") || "{}");
       const active = session?.activeEntity || {};
       const entities = session?.entities || [];
-      
+
       const currentUserEntityId =
         active.EntityAccountId ||
         active.entityAccountId ||
         entities.find(e => String(e.id) === String(active.id) && e.type === active.type)?.EntityAccountId ||
         entities[0]?.EntityAccountId ||
         null;
-      
+
       if (!currentUserEntityId) {
         setUnreadMessageCount(0);
         return;
       }
-      
+
       const res = await messageApi.getUnreadCount(currentUserEntityId);
       if (res.success && res.data) {
         setUnreadMessageCount(res.data.totalUnreadCount || 0);
@@ -121,19 +121,19 @@ export default function CustomerHeader() {
 
     const active = getActiveEntity() || {};
     const entities = getEntities();
-    
+
     // Get EntityAccountId (priority: activeEntity > matching entity > first entity)
     let entityAccountId = active.EntityAccountId || active.entityAccountId || null;
-    
+
     if (!entityAccountId && active.id && active.type) {
       const foundEntity = entities.find(
-        e => String(e.id) === String(active.id) && 
-             (e.type === active.type || 
-              (e.type === "BusinessAccount" && active.type === "Business"))
+        e => String(e.id) === String(active.id) &&
+          (e.type === active.type ||
+            (e.type === "BusinessAccount" && active.type === "Business"))
       );
       entityAccountId = foundEntity?.EntityAccountId || foundEntity?.entityAccountId || null;
     }
-    
+
     // Join socket room với EntityAccountId (theo NOTIFICATION_FLOW.md)
     // Backend emit với receiverEntityAccountId, nên frontend phải join với EntityAccountId
     if (entityAccountId) {
@@ -169,37 +169,37 @@ export default function CustomerHeader() {
   // Fetch unread message count on mount and periodically
   useEffect(() => {
     if (!socket || !isConnected) return;
-    
+
     fetchUnreadMessageCount();
-    
+
     const interval = setInterval(() => {
       fetchUnreadMessageCount();
     }, 60000); // Update every 60 seconds
-    
+
     // Listen for message refresh events (e.g., when new messages arrive)
     const handleMessageRefresh = () => {
       fetchUnreadMessageCount();
     };
-    
+
     // Listen for new_message socket event to update message count in real-time
     const handleNewMessage = () => {
       fetchUnreadMessageCount();
     };
-    
+
     // Listen for message_notification_created event
     const handleMessageNotificationCreated = () => {
       fetchUnreadMessageCount();
     };
-    
+
     socket.on("new_message", handleNewMessage);
     socket.on("message_notification_created", handleMessageNotificationCreated);
-    
+
     // eslint-disable-next-line no-undef
     const win = typeof globalThis !== "undefined" ? globalThis : (typeof window !== "undefined" ? window : null);
     if (win) {
       win.addEventListener("messageRefresh", handleMessageRefresh);
     }
-    
+
     return () => {
       clearInterval(interval);
       socket.off("new_message", handleNewMessage);
@@ -228,17 +228,21 @@ export default function CustomerHeader() {
           "max-w-[1400px]",
           "sm:gap-2 md:gap-4"
         )}>
-          <Link 
-            to="/customer/newsfeed" 
+          <Link
+            to="/customer/newsfeed"
             className={cn(
-              "text-2xl font-bold no-underline",
-              "text-primary",
+              "no-underline",
               "transition-opacity duration-200",
               "hover:opacity-80",
-              "sm:text-lg sm:flex-shrink-0 md:text-2xl"
+              "flex-shrink-0"
             )}
           >
-            {t('layout.brand')}
+
+            <img
+              src="/13.png"
+              alt="Smoker Page"
+              className="h-12 w-auto sm:h-6 md:h-12"
+            />
           </Link>
 
           <div className={cn(
@@ -249,7 +253,7 @@ export default function CustomerHeader() {
           </div>
 
           <div className={cn("flex gap-2", "sm:gap-1.5 md:gap-2")}>
-            <button 
+            <button
               className={cn(
                 "rounded-lg p-2 flex items-center justify-center",
                 "transition-all duration-200 cursor-pointer relative",
@@ -268,8 +272,8 @@ export default function CustomerHeader() {
                 "rounded-lg p-2 flex items-center justify-center",
                 "transition-all duration-200 cursor-pointer relative",
                 "text-muted-foreground",
-                activePanel === "messages" 
-                  ? "text-primary-foreground bg-primary" 
+                activePanel === "messages"
+                  ? "text-primary-foreground bg-primary"
                   : "hover:text-primary hover:bg-primary/10",
                 "active:scale-95",
                 "sm:p-1.5 md:p-2"
@@ -301,8 +305,8 @@ export default function CustomerHeader() {
                 "rounded-lg p-2 flex items-center justify-center",
                 "transition-all duration-200 cursor-pointer relative",
                 "text-muted-foreground",
-                activePanel === "notifications" 
-                  ? "text-primary-foreground bg-primary" 
+                activePanel === "notifications"
+                  ? "text-primary-foreground bg-primary"
                   : "hover:text-primary hover:bg-primary/10",
                 "active:scale-95",
                 "sm:p-1.5 md:p-2"
@@ -333,8 +337,8 @@ export default function CustomerHeader() {
                 "rounded-lg p-2 flex items-center justify-center",
                 "transition-all duration-200 cursor-pointer relative",
                 "text-muted-foreground",
-                activePanel === "user" 
-                  ? "text-primary-foreground bg-primary" 
+                activePanel === "user"
+                  ? "text-primary-foreground bg-primary"
                   : "hover:text-primary hover:bg-primary/10",
                 "active:scale-95",
                 "sm:p-1.5 md:p-2"

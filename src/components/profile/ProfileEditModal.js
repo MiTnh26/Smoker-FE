@@ -124,7 +124,7 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
             setErrors({ submit: "Internal Error: Bar EntityAccountId is missing. Cannot save." });
             setSaving(false);
             return;
-          }
+    }
           const barData = { ...data };
           // Map userName to BarName for BarPage API
           if (barData.userName && !barData.BarName) {
@@ -178,7 +178,7 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
               value={formData.avatar} 
               onChange={url => setFormData(p => ({...p, avatar: url}))} 
               uploading={uploadingAvatar} 
-              onUploadStateChange={setUploadingAvatar}
+              onUploadStateChange={setUploadingAvatar} 
               urlInput={false}
             />
           </div>
@@ -186,15 +186,15 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
             <label className={cn('block text-sm font-semibold text-foreground mb-2')}>
               {t('profile.background') || 'Background'}
             </label>
-            <ImageUploadField
+          <ImageUploadField
               label="" 
               value={formData.background} 
               onChange={url => setFormData(p => ({...p, background: url}))} 
               uploading={uploadingBackground} 
-              onUploadStateChange={setUploadingBackground}
+              onUploadStateChange={setUploadingBackground} 
               urlInput={false}
-            />
-          </div>
+          />
+        </div>
         </div>
 
         {/* Name */}
@@ -229,22 +229,22 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
           <div className={cn('space-y-2')}>
             <label htmlFor="bio" className={cn('block text-sm font-semibold text-foreground')}>
               {t('profile.bio') || 'Giới thiệu'}
-            </label>
-            <textarea
-              id="bio"
-              name="bio"
-              rows={4}
-              value={formData.bio || ''}
-              onChange={handleChange}
-              className={cn(
+          </label>
+          <textarea
+            id="bio"
+            name="bio"
+            rows={4}
+            value={formData.bio || ''}
+            onChange={handleChange}
+            className={cn(
                 'w-full px-4 py-3 rounded-xl border resize-none',
                 'bg-background/50 backdrop-blur-sm text-foreground',
                 'border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20',
                 'transition-all duration-200 placeholder:text-muted-foreground/50'
-              )}
-              placeholder={t('profile.bioPlaceholder') || 'Tell us about yourself...'}
-            />
-          </div>
+            )}
+            placeholder={t('profile.bioPlaceholder') || 'Tell us about yourself...'}
+          />
+        </div>
         )}
 
         {/* Phone */}
@@ -275,32 +275,32 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
           </label>
           <div className={cn('bg-background/30 backdrop-blur-sm rounded-xl p-4 border border-border/30')}>
             <AddressSelector
-              selectedProvinceId={selectedProvinceId}
-              selectedDistrictId={selectedDistrictId}
-              selectedWardId={selectedWardId}
-              addressDetail={addressDetail}
+            selectedProvinceId={selectedProvinceId}
+            selectedDistrictId={selectedDistrictId}
+            selectedWardId={selectedWardId}
+            addressDetail={addressDetail}
               onProvinceChange={(id) => {
-                setSelectedProvinceId(id);
-                setSelectedDistrictId('');
-                setSelectedWardId('');
+              setSelectedProvinceId(id);
+              setSelectedDistrictId('');
+              setSelectedWardId('');
               }}
               onDistrictChange={(id) => {
-                setSelectedDistrictId(id);
-                setSelectedWardId('');
+              setSelectedDistrictId(id);
+              setSelectedWardId('');
               }}
-              onWardChange={(id) => {
-                setSelectedWardId(id);
-              }}
-              onAddressDetailChange={(detail) => {
-                setAddressDetail(detail);
-              }}
-              onAddressChange={(fullAddress) => {
-                // Update formData.address with the full address string
-                setFormData(prev => ({ ...prev, address: fullAddress }));
+            onWardChange={(id) => {
+              setSelectedWardId(id);
+            }}
+            onAddressDetailChange={(detail) => {
+              setAddressDetail(detail);
+            }}
+            onAddressChange={(fullAddress) => {
+              // Update formData.address with the full address string
+              setFormData(prev => ({ ...prev, address: fullAddress }));
               }}
             />
           </div>
-        </div>
+          </div>
 
         {/* Price fields for Performers */}
         {isPerformer && (

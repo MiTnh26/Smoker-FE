@@ -74,7 +74,7 @@ export default function CreateStory({ onOpenEditor }) {
       <div 
         className="relative h-[200px] w-full overflow-hidden rounded-lg border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
         style={{
-          backgroundImage: 'url(https://static.vecteezy.com/system/resources/previews/011/786/385/non_2x/ape-monkey-smoking-mascot-logo-design-illustration-vector.jpg)',
+          backgroundImage: "url('/story.png')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat'
