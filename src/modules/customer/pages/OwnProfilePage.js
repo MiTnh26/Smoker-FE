@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Edit } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useCurrentUserEntity } from '../../../hooks/useCurrentUserEntity';
 import { useProfilePosts } from '../../../hooks/useProfilePosts';
+import { useSharedAudioPlayer } from '../../../hooks/useSharedAudioPlayer';
 import { useFollowers, useFollowing } from '../../../hooks/useFollow';
 import { useProfileType } from '../../../hooks/useProfileType';
 import { userApi } from '../../../api/userApi';
@@ -11,11 +13,14 @@ import businessApi from '../../../api/businessApi';
 import publicProfileApi from '../../../api/publicProfileApi';
 import { ProfileHeader } from '../../../components/profile/ProfileHeader';
 import { ProfileStats } from '../../../components/profile/ProfileStats';
+import FollowersModal from '../../../components/profile/FollowersModal';
 import { CustomerTabs, BarTabs, DJTabs, DancerTabs } from '../../../components/profile/ProfileTabs';
 import ProfileEditModal from '../../../components/profile/ProfileEditModal';
 import { normalizeProfileData } from '../../../utils/profileDataMapper';
 import bookingApi from '../../../api/bookingApi';
 import DJBookingRequests from '../../dj/components/DJBookingRequests';
+import DancerBookingRequests from '../../dancer/components/DancerBookingRequests';
+import PerformerSchedule from '../../dj/components/PerformerSchedule';
 
 // A new hook to fetch profile data based on type
 const unwrapProfileResponse = (response) => {
@@ -174,6 +179,21 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
   const [activeTab, setActiveTab] = useState('info');
   const [showEditModal, setShowEditModal] = useState(false);
   const [pendingBookingsCount, setPendingBookingsCount] = useState(0);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+
+  // Shared audio player for own profile (Customer, DJ, etc.)
+  const {
+    playingPost,
+    setPlayingPost,
+    activePlayer,
+    setActivePlayer,
+    sharedAudioRef,
+    sharedCurrentTime,
+    sharedDuration,
+    sharedIsPlaying,
+    handleSeek,
+  } = useSharedAudioPlayer();
 
   useEffect(() => {
     if (currentUserEntityId) {
@@ -242,18 +262,71 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
   }, [isDJProfile, profileEntityAccountId]);
 
   const renderTabContent = () => {
-    const props = { profile, posts, postsLoading, activeTab, isOwnProfile: true, entityId: currentUserEntityId };
-    if (isBarProfile) return <BarTabs {...props} barPageId={barPageId} currentUserRole={profile?.role || profile?.Role} />;
-    if (isDJProfile) {
-      if (activeTab === 'bookings') {
-        return (
-          <div className={cn('flex flex-col gap-6')}>
+    // Special tabs for DJ/Dancer schedule & bookings
+    if (isDJProfile && activeTab === "schedule") {
+      return (
+        <section className={cn("mt-4")}>
+          <div className={cn("bg-card rounded-lg border-[0.5px] border-border/20 p-4 md:p-6")}>
+            <PerformerSchedule 
+              performerEntityAccountId={profileEntityAccountId}
+              isOwnProfile={true}
+            />
+          </div>
+        </section>
+      );
+    }
+
+    if (isDJProfile && activeTab === "bookings") {
+      return (
+        <section className={cn("mt-4")}>
+          <div className={cn("bg-card rounded-lg border-[0.5px] border-border/20 p-4 md:p-6")}>
             <DJBookingRequests performerEntityAccountId={profileEntityAccountId} />
           </div>
-        );
-      }
-      return <DJTabs {...props} performerTargetId={performerTargetId} />;
+        </section>
+      );
     }
+
+    if (isDancerProfile && activeTab === "schedule") {
+      return (
+        <section className={cn("mt-4")}>
+          <div className={cn("bg-card rounded-lg border-[0.5px] border-border/20 p-4 md:p-6")}>
+            <PerformerSchedule 
+              performerEntityAccountId={profileEntityAccountId}
+              isOwnProfile={true}
+            />
+          </div>
+        </section>
+      );
+    }
+
+    if (isDancerProfile && activeTab === "bookings") {
+      return (
+        <section className={cn("mt-4")}>
+          <div className={cn("bg-card rounded-lg border-[0.5px] border-border/20 p-4 md:p-6")}>
+            <DancerBookingRequests performerEntityAccountId={profileEntityAccountId} />
+          </div>
+        </section>
+      );
+    }
+
+    const props = {
+      profile,
+      posts,
+      postsLoading,
+      activeTab,
+      isOwnProfile: true,
+      entityId: currentUserEntityId,
+      playingPost,
+      setPlayingPost,
+      sharedAudioRef,
+      sharedCurrentTime,
+      sharedDuration,
+      sharedIsPlaying,
+      handleSeek,
+      setActivePlayer,
+    };
+    if (isBarProfile) return <BarTabs {...props} barPageId={barPageId} currentUserRole={profile?.role || profile?.Role} />;
+    if (isDJProfile) return <DJTabs {...props} performerTargetId={performerTargetId} />;
     if (isDancerProfile) return <DancerTabs {...props} performerTargetId={performerTargetId} entityId={currentUserEntityId} />;
     if (isCustomerProfile) return <CustomerTabs {...props} entityId={currentUserEntityId} />;
     return null;
@@ -282,20 +355,39 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
         <button
           onClick={() => setShowEditModal(true)}
           className={cn(
-            'px-4 py-2 rounded-lg font-semibold text-sm',
+            'w-10 h-10 rounded-lg font-semibold',
             'bg-card/80 backdrop-blur-sm text-foreground border-none',
             'hover:bg-card/90 transition-all duration-200',
             'active:scale-95',
-            'flex items-center gap-2'
+            'flex items-center justify-center'
           )}
+          title={t('profile.editProfile')}
+          aria-label={t('profile.editProfile')}
         >
-          <i className="bx bx-edit text-base"></i>
-          {t('profile.editProfile')}
+          <Edit className="w-5 h-5" />
         </button>
       </ProfileHeader>
 
       <div className={cn('max-w-6xl mx-auto px-4 md:px-6 py-6')}>
-        <ProfileStats followers={followers} following={following} />
+        <ProfileStats
+          followers={followers}
+          following={following}
+          onFollowersClick={() => setShowFollowersModal(true)}
+          onFollowingClick={() => setShowFollowingModal(true)}
+        />
+
+        <FollowersModal
+          open={showFollowersModal}
+          onClose={() => setShowFollowersModal(false)}
+          entityId={currentUserEntityId}
+          mode="followers"
+        />
+        <FollowersModal
+          open={showFollowingModal}
+          onClose={() => setShowFollowingModal(false)}
+          entityId={currentUserEntityId}
+          mode="following"
+        />
         
         {/* Tabs Section */}
         <section className={cn("py-6")}>
@@ -406,35 +498,42 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
                 )}
               </button>
             )}
-            
-            {/* Booking Tab - DJ only */}
-            {isDJProfile && (
+
+            {/* Schedule Tab - DJ & Dancer */}
+            {(isDJProfile || isDancerProfile) && (
+              <button
+                onClick={() => setActiveTab("schedule")}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "schedule"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t('profile.scheduleTab')}
+                {activeTab === "schedule" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+            )}
+
+            {/* Bookings Tab - DJ & Dancer */}
+            {(isDJProfile || isDancerProfile) && (
               <button
                 onClick={() => setActiveTab("bookings")}
                 className={cn(
                   "px-4 py-3 text-sm font-semibold border-none bg-transparent",
                   "transition-all duration-200 relative whitespace-nowrap",
-                  "flex items-center gap-2",
                   activeTab === "bookings"
                     ? "text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {t('profile.bookingsTab') || "Yêu cầu booking"}
-                {pendingBookingsCount > 0 && (
-                  <span
-                    className={cn(
-                      "px-2 py-0.5 rounded-full text-xs font-bold",
-                      "flex items-center justify-center min-w-[20px]"
-                    )}
-                    style={{
-                      backgroundColor: "rgb(var(--danger))",
-                      color: "white"
-                    }}
-                  >
-                    {pendingBookingsCount > 99 ? "99+" : pendingBookingsCount}
-                  </span>
-                )}
+                {t('profile.bookingsTab')}
                 {activeTab === "bookings" && (
                   <span className={cn(
                     "absolute bottom-0 left-0 right-0 h-0.5",
@@ -443,7 +542,7 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
                 )}
               </button>
             )}
-            
+
             {/* Tables Tab - Bar only */}
             {isBarProfile && (
               <button
@@ -492,6 +591,7 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
           {/* Tab Content */}
           {renderTabContent()}
         </section>
+
       </div>
 
       {showEditModal && (

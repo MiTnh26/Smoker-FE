@@ -16,6 +16,7 @@ export default function VideoPlayer({ src, poster, className = "" }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isPortrait, setIsPortrait] = useState(false);
   const hideControlsTimeoutRef = useRef(null);
   const isDraggingRef = useRef(false);
 
@@ -140,12 +141,12 @@ export default function VideoPlayer({ src, poster, className = "" }) {
       setIsLoaded(true);
       // Đảm bảo video hiển thị đúng kích thước sau khi load metadata
       if (video.videoWidth && video.videoHeight) {
-        // Tính aspect ratio
-        const ratio = video.videoWidth / video.videoHeight;
+        // Kiểm tra xem video có phải portrait (dọc) không
+        const portrait = video.videoHeight > video.videoWidth;
+        
+        setIsPortrait(portrait);
         
         // Set aspect-ratio CSS để video giữ nguyên tỷ lệ gốc
-        // Video dọc (height > width) sẽ hiển thị dọc
-        // Video ngang (width > height) sẽ hiển thị ngang
         video.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
         
         // Reset và set lại để đảm bảo video render đúng
@@ -283,7 +284,18 @@ export default function VideoPlayer({ src, poster, className = "" }) {
   return (
     <div
       ref={containerRef}
-      className={`video-player-container ${className}`}
+      className={`video-player-container ${className} ${isPortrait ? 'video-portrait' : 'video-landscape'}`}
+      style={{
+        ...(isPortrait && {
+          backgroundColor: '#000',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          maxWidth: '100%',
+          maxHeight: '80vh',
+          margin: '0 auto'
+        })
+      }}
       onMouseEnter={() => {
         setIsHovering(true);
         setShowControls(true);
@@ -331,6 +343,13 @@ export default function VideoPlayer({ src, poster, className = "" }) {
           playsInline
           data-playsinline="true"
           crossOrigin="anonymous"
+          style={{
+            maxWidth: '100%',
+            maxHeight: isPortrait ? '80vh' : 'none',
+            width: isPortrait ? 'auto' : '100%',
+            height: isPortrait ? '100%' : 'auto',
+            objectFit: 'contain'
+          }}
         >
           <track kind="captions" />
         </video>
@@ -470,11 +489,11 @@ export default function VideoPlayer({ src, poster, className = "" }) {
               aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             >
               {isFullscreen ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M8 3v5h5M21 8h-5V3M3 16h5v5M16 21v-5h5" />
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
                 </svg>
               ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
                 </svg>
               )}

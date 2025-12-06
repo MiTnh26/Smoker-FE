@@ -18,9 +18,11 @@
     "email": "Email",
     "phone": "Phone",
     "address": "Address",
+    "back": "Back",
     "cancel": "Cancel",
     "saving": "Saving...",
-    "saveChanges": "Save changes"
+    "saveChanges": "Save changes",
+    "search": "Search"
   },
   "sidebar": {
     "home": "Home",
@@ -69,6 +71,8 @@
     "music": "Music",
     "feeling": "Feeling",
     "reposted": "reposted",
+    "repostedOf": "reposted a post from",
+    "someone": "Someone",
     "repostedPost": "Post has been reposted",
     "repostedMedia": "Media has been reposted",
     "loadingMore": "Loading more...",
@@ -276,7 +280,11 @@
     "you": "You",
     "attachment": "Attachment",
     "seen": "Seen",
-    "delivered": "Delivered"
+    "delivered": "Delivered",
+    "deleteConversation": "Delete chat",
+    "deleteConversationTitle": "Delete chat",
+    "deleteConversationConfirm": "Are you sure you want to delete this chat? It will only be deleted on your side.",
+    "openConversationMenu": "Open chat menu"
   },
   "unifiedMenu": {
     "entityLabel": "Your Pages / Businesses",
@@ -497,10 +505,12 @@
     "header": "Comments",
     "loading": "Loading comments...",
     "sort": "Sort:",
+    "mostLiked": "Most liked",
     "newest": "Newest",
     "oldest": "Oldest",
     "none": "No comments yet.",
-    "reply": "Reply"
+    "reply": "Reply",
+    "commentAs": "Comment as"
   },
   "music": {
     "postMusic": "Post music"
@@ -593,6 +603,8 @@
     "reviewsTab": "Reviews",
     "tablesTab": "Tables",
     "musicTab": "Music",
+    "scheduleTab": "Schedule",
+    "bookingsTab": "Bookings",
     "priceTable": "Price List",
     "musicTabDescription": "Will display DJ's music tracks",
     "loadingProfile": "Loading profile...",
@@ -655,6 +667,20 @@
     "sentYouAMessageWithPreview": "{{name}}: {{preview}}",
     "postDetail": "Post detail",
     "default": "You have a new notification"
+  },
+  "search": {
+    "title": "Search results",
+    "resultsFor": "Results for \"{{q}}\"",
+    "placeholder": "Type a keyword to start searching",
+    "searching": "Searching...",
+    "noResults": "No matching results",
+    "filterTitle": "Filters",
+    "sectionUsers": "People",
+    "sectionBars": "Bars",
+    "sectionDjs": "DJs",
+    "sectionDancers": "Dancers",
+    "sectionPosts": "Posts",
+    "viewAll": "View all"
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next"; // i18n: translate UI strings
 import { Link } from "react-router-dom";
 import LanguageSwitcher from "../../../components/common/LanguageSwitcher"; // i18n: language buttons
@@ -10,6 +10,21 @@ export default function SettingsPrivacyPage() {
   const [emailVisibility, setEmailVisibility] = useState("friends");
   const [phoneVisibility, setPhoneVisibility] = useState("onlyme");
   const [twoFA, setTwoFA] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if user is admin
+  useEffect(() => {
+    try {
+      const session = JSON.parse(localStorage.getItem("session") || "{}");
+      const account = session.account || {};
+      const activeEntity = session.activeEntity || {};
+      const role = account.role?.toLowerCase() || activeEntity.role?.toLowerCase() || "";
+      setIsAdmin(role === "admin");
+    } catch (err) {
+      console.error("Error checking admin role:", err);
+      setIsAdmin(false);
+    }
+  }, []);
 
   return (
     <div className="settings-container">
@@ -83,18 +98,21 @@ export default function SettingsPrivacyPage() {
 
           <TrashManager />
 
-          <section className="settings-card">
-            <h2>{t('settings.content') || 'Nội dung'}</h2>
-            <div className="settings-item">
-              <div className="settings-item-info">
-                <div className="settings-item-title">{t('settings.songLibrary') || 'Quản lý nhạc'}</div>
-                <div className="settings-item-desc">{t('settings.songLibraryDesc') || 'Upload và quản lý nhạc trong library của bạn'}</div>
+          {/* Chỉ hiển thị Quản lý nhạc cho admin */}
+          {isAdmin && (
+            <section className="settings-card">
+              <h2>{t('settings.content') || 'Nội dung'}</h2>
+              <div className="settings-item">
+                <div className="settings-item-info">
+                  <div className="settings-item-title">{t('settings.songLibrary') || 'Quản lý nhạc'}</div>
+                  <div className="settings-item-desc">{t('settings.songLibraryDesc') || 'Upload và quản lý nhạc trong library của bạn'}</div>
+                </div>
+                <Link to="/settings/songs" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>
+                  {t('settings.manageSongs') || 'Quản lý nhạc'}
+                </Link>
               </div>
-              <Link to="/settings/songs" className="btn-primary" style={{ textDecoration: 'none', display: 'inline-block' }}>
-                {t('settings.manageSongs') || 'Quản lý nhạc'}
-              </Link>
-            </div>
-          </section>
+            </section>
+          )}
         </div>
       </div>
   );

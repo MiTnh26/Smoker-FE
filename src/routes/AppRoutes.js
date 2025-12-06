@@ -13,7 +13,6 @@ import AdminRoutes from "./AdminRoutes";
 import BusinessRouters from "./BusinessRouters";
 import SettingsRoutes from "./SettingsRoutes";
 import SearchResults from "../modules/search/pages/SearchResults";
-import CustomerLayout from "../layouts/CustomerLayout";
 import DynamicLayout from "../layouts/DynamicLayout";
 import ProfilePage from "../modules/profile/pages/ProfilePage";
 import PaymentReturn from "../pages/PaymentReturn";
@@ -43,7 +42,14 @@ export default function AppRoutes() {
         {AdminRoutes()}
         {BusinessRouters()}
         {SettingsRoutes()}
-        <Route path="/search" element={<SearchResults />} />
+        <Route
+          path="/search"
+          element={(
+            <DynamicLayout hideSidebars>
+              <SearchResults />
+            </DynamicLayout>
+          )}
+        />
         <Route path="/profile/:entityId" element={<DynamicLayout><ProfilePage /></DynamicLayout>} />
         <Route path="/payment-return" element={<PaymentReturn />} />
         <Route path="/payment-cancel" element={<PaymentReturn />} />

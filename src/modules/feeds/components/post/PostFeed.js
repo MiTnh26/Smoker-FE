@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { getFeed, trashPost } from "../../../../api/postApi";
 import PostCard from "./PostCard";
 import LivestreamCardInline from "../livestream/LivestreamCardInline";
+import { useSharedAudioPlayer } from "../../../../hooks/useSharedAudioPlayer";
 import ReviveAdCard from "./ReviveAdCard";
 import PostComposerModal from "../modals/PostComposerModal";
 import MusicPostModal from "../music/MusicPostModal";
@@ -11,6 +12,7 @@ import AudioPlayerBar from "../audio/AudioPlayerBar";
 import PostEditModal from "../modals/PostEditModal";
 import ReportPostModal from "../modals/ReportPostModal";
 import ImageDetailModal from "../media/mediasOfPost/ImageDetailModal";
+import { mapPostForCard } from "../../../../utils/postTransformers";
 
 const normalizeGuid = (value) => {
   if (!value) return null;
@@ -36,8 +38,17 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [playingPost, setPlayingPost] = useState(null);
-  const [activePlayer, setActivePlayer] = useState(null); // Post info for player bar
+  const {
+    playingPost,
+    setPlayingPost,
+    activePlayer,
+    setActivePlayer,
+    sharedAudioRef,
+    sharedCurrentTime,
+    sharedDuration,
+    sharedIsPlaying,
+    handleSeek,
+  } = useSharedAudioPlayer();
   const [showMediaComposer, setShowMediaComposer] = useState(false);
   const [showMusicComposer, setShowMusicComposer] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,128 +79,7 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
     }
   };
   
-  // Shared audio state for synchronization
-  const sharedAudioRef = useRef(null);
-  const [sharedCurrentTime, setSharedCurrentTime] = useState(0);
-  const [sharedDuration, setSharedDuration] = useState(0);
-  const [sharedIsPlaying, setSharedIsPlaying] = useState(false);
-
-  // Initialize shared audio element
-  useEffect(() => {
-    if (!sharedAudioRef.current) {
-      sharedAudioRef.current = new Audio();
-      sharedAudioRef.current.preload = "metadata";
-      
-      // Sync currentTime updates
-      const handleTimeUpdate = () => {
-        if (sharedAudioRef.current) {
-          setSharedCurrentTime(sharedAudioRef.current.currentTime);
-        }
-      };
-      
-      const handleLoadedMetadata = () => {
-        if (sharedAudioRef.current) {
-          setSharedDuration(sharedAudioRef.current.duration);
-        }
-      };
-      
-      const handlePlay = () => {
-        setSharedIsPlaying(true);
-      };
-      
-      const handlePause = () => {
-        setSharedIsPlaying(false);
-      };
-      
-      const handleEnded = () => {
-        setSharedIsPlaying(false);
-        setSharedCurrentTime(0);
-        setPlayingPost(null);
-      };
-      
-      sharedAudioRef.current.addEventListener('timeupdate', handleTimeUpdate);
-      sharedAudioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-      sharedAudioRef.current.addEventListener('play', handlePlay);
-      sharedAudioRef.current.addEventListener('pause', handlePause);
-      sharedAudioRef.current.addEventListener('ended', handleEnded);
-      
-      return () => {
-        if (sharedAudioRef.current) {
-          sharedAudioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
-          sharedAudioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
-          sharedAudioRef.current.removeEventListener('play', handlePlay);
-          sharedAudioRef.current.removeEventListener('pause', handlePause);
-          sharedAudioRef.current.removeEventListener('ended', handleEnded);
-          sharedAudioRef.current.pause();
-          sharedAudioRef.current.src = '';
-          sharedAudioRef.current = null;
-        }
-      };
-    }
-  }, []);
-
-  // Update audio source when activePlayer changes
-  useEffect(() => {
-    if (sharedAudioRef.current && activePlayer?.audioSrc) {
-      const currentSrc = sharedAudioRef.current.src;
-      const newSrc = activePlayer.audioSrc;
-      
-      // Normalize URLs for comparison (handle both relative and absolute URLs)
-      const normalizeUrl = (url) => {
-        if (!url) return '';
-        try {
-          // If it's already a full URL, return it
-          if (url.startsWith('http://') || url.startsWith('https://')) {
-            return new URL(url).href;
-          }
-          // Otherwise, treat it as relative
-          return url;
-        } catch {
-          return url;
-        }
-      };
-      
-      const normalizedCurrent = normalizeUrl(currentSrc);
-      const normalizedNew = normalizeUrl(newSrc);
-      
-      // Only update if source changed
-      if (normalizedCurrent !== normalizedNew && !normalizedCurrent.includes(normalizedNew)) {
-        sharedAudioRef.current.src = newSrc;
-        sharedAudioRef.current.load();
-        setSharedCurrentTime(0);
-      }
-    } else if (sharedAudioRef.current && !activePlayer?.audioSrc) {
-      // Pause and clear if no active player
-      sharedAudioRef.current.pause();
-      sharedAudioRef.current.src = '';
-      setSharedCurrentTime(0);
-      setSharedDuration(0);
-    }
-  }, [activePlayer?.audioSrc]);
-
-  // Sync play/pause state with shared audio
-  useEffect(() => {
-    if (!sharedAudioRef.current || !activePlayer?.audioSrc) return;
-    
-    if (playingPost === activePlayer.id) {
-      if (sharedAudioRef.current.paused) {
-        sharedAudioRef.current.play().catch(console.error);
-      }
-    } else {
-      if (!sharedAudioRef.current.paused) {
-        sharedAudioRef.current.pause();
-      }
-    }
-  }, [playingPost, activePlayer?.id]);
-
-  // Handle seek from either player
-  const handleSeek = (newTime) => {
-    if (sharedAudioRef.current && sharedDuration > 0) {
-      const clampedTime = Math.max(0, Math.min(newTime, sharedDuration));
-      sharedAudioRef.current.currentTime = clampedTime;
-      setSharedCurrentTime(clampedTime);
-    }
-  };
+  // Shared audio state is now managed by useSharedAudioPlayer
 
 
   // Load posts automatically on component mount
@@ -550,338 +440,6 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
     return { images, videos, audios };
   };
 
-  // Transform post data to match PostCard component expectations
-  const transformPost = (post) => {
-    const formatTimeDisplay = (value) => {
-      try {
-        const d = value ? new Date(value) : new Date();
-        if (isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
-        const now = new Date();
-        const diffMs = now.getTime() - d.getTime();
-        if (diffMs < 0) return d.toLocaleString('vi-VN');
-        const minutes = Math.floor(diffMs / 60000);
-        if (minutes < 1) return t('time.justNow');
-        if (minutes < 60) return t('time.minutesAgo', { minutes });
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return t('time.hoursAgo', { hours });
-        return d.toLocaleDateString('vi-VN');
-      } catch {
-        return new Date().toLocaleString('vi-VN');
-      }
-    };
-    const countTotalComments = (comments) => {
-      if (!comments) return 0;
-      let total = 0;
-      // Handle Map
-      if (comments instanceof Map) {
-        for (const [, c] of comments.entries()) {
-          total += 1;
-          const replies = c?.replies;
-          if (replies) {
-            if (replies instanceof Map) {
-              total += replies.size;
-            } else if (Array.isArray(replies)) {
-              total += replies.length;
-            } else if (typeof replies === 'object') {
-              total += Object.keys(replies).length;
-            }
-          }
-        }
-        return total;
-      }
-      // Handle Array of comments
-      if (Array.isArray(comments)) {
-        for (const c of comments) {
-          total += 1;
-          const replies = c?.replies;
-          if (replies) {
-            if (replies instanceof Map) {
-              total += replies.size;
-            } else if (Array.isArray(replies)) {
-              total += replies.length;
-            } else if (typeof replies === 'object') {
-              total += Object.keys(replies).length;
-            }
-          }
-        }
-        return total;
-      }
-      // Handle plain object map
-      if (typeof comments === 'object') {
-        for (const key of Object.keys(comments)) {
-          const c = comments[key];
-          if (!c || typeof c !== 'object') continue;
-          total += 1;
-          const replies = c?.replies;
-          if (replies) {
-            if (replies instanceof Map) {
-              total += replies.size;
-            } else if (Array.isArray(replies)) {
-              total += replies.length;
-            } else if (typeof replies === 'object') {
-              total += Object.keys(replies).length;
-            }
-          }
-        }
-        return total;
-      }
-      return 0;
-    };
-    // Read session for fallback avatar/name
-    let session
-    try {
-      const raw = localStorage.getItem("session")
-      session = raw ? JSON.parse(raw) : null
-    } catch (e) {
-      session = null
-    }
-    const currentUser = session?.account
-    const activeEntity = session?.activeEntity || currentUser
-    const entities = Array.isArray(session?.entities) ? session.entities : []
-
-    const resolveViewerEntityAccountId = () => {
-      const tryNormalize = (value) => normalizeGuid(
-        value?.EntityAccountId ||
-        value?.entityAccountId ||
-        value?.entity_account_id ||
-        value
-      )
-
-      // 1. Direct fields on active entity
-      let resolved =
-        tryNormalize(activeEntity) ||
-        tryNormalize(currentUser)
-
-      // 2. Lookup from entities array if not found
-      if (!resolved && activeEntity?.id && entities.length > 0) {
-        const match = entities.find((entity) => {
-          if (!entity?.id) return false;
-          return String(entity.id).toLowerCase() === String(activeEntity.id).toLowerCase();
-        });
-        resolved = tryNormalize(match);
-      }
-
-      return resolved || null;
-    };
-
-    const viewerEntityAccountId = resolveViewerEntityAccountId();
-
-    const viewerAccountId = normalizeGuid(
-      currentUser?.id ||
-      currentUser?.AccountId ||
-      currentUser?.accountId
-    );
-
-    // Determine if current user liked this post (simplified)
-    const isLikedByCurrentUser = (() => {
-      if (!post?.likes) return false;
-
-      const matchesLike = (likeObj) => {
-        if (!likeObj) return false;
-        const likeEntityId = extractLikeEntityAccountId(likeObj);
-        if (viewerEntityAccountId && likeEntityId) {
-          return likeEntityId === viewerEntityAccountId;
-        }
-
-        const likeAccountId = extractLikeAccountId(likeObj);
-        // Legacy fallback: khi like chưa lưu entityAccountId
-        if (!viewerEntityAccountId && viewerAccountId && likeAccountId) {
-          return likeAccountId === viewerAccountId;
-        }
-        if (viewerEntityAccountId && !likeEntityId && viewerAccountId && likeAccountId) {
-          return likeAccountId === viewerAccountId;
-        }
-        return false;
-      };
-
-      const likes = post.likes;
-      if (likes instanceof Map) {
-        for (const [, likeObj] of likes.entries()) {
-          if (matchesLike(likeObj)) return true;
-        }
-        return false;
-      }
-      if (Array.isArray(likes)) return likes.some(matchesLike);
-      if (typeof likes === 'object') return Object.values(likes).some(matchesLike);
-      return false;
-    })();
-
-    // So sánh ownership dựa trên entityAccountId
-    const ownerEntityAccountId = normalizeGuid(
-      post.entityAccountId ||
-      post.authorEntityAccountId
-    );
-    
-    // Debug log để kiểm tra
-    if (!ownerEntityAccountId || !viewerEntityAccountId) {
-      console.warn('[PostFeed] Missing entityAccountId for ownership check:', {
-        postId: post._id || post.postId,
-        ownerEntityAccountId,
-        viewerEntityAccountId,
-        activeEntityId: activeEntity?.id,
-        activeEntityAccountId: activeEntity?.EntityAccountId || activeEntity?.entityAccountId,
-        postEntityAccountId: post.entityAccountId
-      });
-    }
-    
-    // Chỉ so sánh entityAccountId - phải có cả 2 và phải khác rỗng
-    const canManage = ownerEntityAccountId &&
-                      viewerEntityAccountId &&
-                      ownerEntityAccountId.length > 0 &&
-                      viewerEntityAccountId.length > 0 &&
-                      ownerEntityAccountId === viewerEntityAccountId;
-
-    // Prefer populated objects if available
-    const populatedSong = (post.song && typeof post.song === 'object') ? post.song : null;
-    const populatedMusic = (post.music && typeof post.music === 'object') ? post.music : null;
-
-    // Get author name and avatar from post data (backend đã populate đầy đủ)
-    const authorName = post.authorName ||
-        post.author?.userName ||
-        post.account?.userName ||
-        post.accountName ||
-      post.BarName ||
-      post.barName ||
-      "Người dùng";
-    
-    const authorAvatar = post.authorAvatar ||
-        post.author?.avatar ||
-        post.account?.avatar ||
-      null;
-
-    return {
-      id: post._id || post.postId,
-      user: authorName,
-      avatar: authorAvatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPHN2ZyB4PSI4IiB5PSI4IiB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAxMkMxNC4yMDkxIDEyIDE2IDEwLjIwOTEgMTYgOEMxNiA1Ljc5MDg2IDE0LjIwOTEgNCAxMiA0QzkuNzkwODYgNCA4IDUuNzkwODYgOCA4QzggMTAuMjA5MSA5Ljc5MDg2IDEyIDEyIDEyWiIgZmlsbD0iIzljYTNhZiIvPgo8cGF0aCBkPSJNMTIgMTRDMTUuMzEzNyAxNCAxOCAxNi42ODYzIDE4IDIwSDEwQzEwIDE2LjY4NjMgMTIuNjg2MyAxNCAxMiAxNFoiIGZpbGw9IiM5Y2EzYWYiLz4KPC9zdmc+Cjwvc3ZnPgo=",
-      time: formatTimeDisplay(post.createdAt || post.updatedAt),
-      content: post.content || post.caption || post["Tiêu Đề"],
-      // Extract medias from post.medias Map/Object
-      ...(() => {
-        const extractedMedias = extractMedias(post.medias);
-        // Determine audio from priority: populated music -> populated song -> medias
-        const isAudioUrl = (url) => {
-          if (!url || typeof url !== 'string') return false;
-          const u = url.toLowerCase();
-          return (
-            u.includes('.mp3') ||
-            u.includes('.m4a') ||
-            u.includes('.wav') ||
-            u.includes('.ogg') ||
-            u.includes('.aac')
-          );
-        };
-
-        const audioFromMusic = (() => {
-          if (!populatedMusic) return null;
-          const candidates = [
-            populatedMusic.audioUrl,
-            populatedMusic.streamUrl,
-            populatedMusic.fileUrl,
-            populatedMusic.url,
-            populatedMusic.sourceUrl,
-            populatedMusic.downloadUrl,
-            populatedMusic.purchaseLink,
-          ];
-          for (const c of candidates) if (isAudioUrl(c)) return c;
-          return null;
-        })();
-
-        const audioFromSong = (() => {
-          if (!populatedSong) return null;
-          const candidates = [
-            populatedSong.audioUrl,
-            populatedSong.streamUrl,
-            populatedSong.fileUrl,
-            populatedSong.url,
-            populatedSong.sourceUrl,
-            populatedSong.downloadUrl,
-            populatedSong.purchaseLink,
-          ];
-          for (const c of candidates) if (isAudioUrl(c)) return c;
-          return null;
-        })();
-
-        const audioMedia = extractedMedias.audios?.[0];
-
-        // Prefer music fields for display if available
-        const displayTitle = (populatedMusic?.title) || (populatedSong?.title) || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null;
-        const displayArtist = (populatedMusic?.artist) || (populatedSong?.artist) || post.artistName || post["Tên Nghệ Sĩ"] || post.authorName || post.user || null;
-        const displayThumb = (populatedMusic?.coverUrl) || (populatedSong?.coverUrl) || post.musicBackgroundImage || post["Ảnh Nền Bài Nhạc"] || post.thumbnail || null;
-        const displayPurchaseLink = (populatedMusic?.purchaseLink) || (populatedSong?.purchaseLink) || post.purchaseLink || post.musicPurchaseLink || null;
-
-        return {
-          medias: {
-            images: extractedMedias.images,
-            videos: extractedMedias.videos
-          },
-          image: extractedMedias.images?.[0]?.url || displayThumb || null,
-          videoSrc: extractedMedias.videos?.[0]?.url || null,
-          audioSrc: audioFromMusic || audioFromSong || audioMedia?.url || post.audioSrc || null,
-          audioTitle: displayTitle,
-          artistName: displayArtist,
-          album: post.album || null,
-          genre: post.genre || (populatedMusic ? populatedMusic.hashTag : null) || (populatedSong ? populatedSong.hashTag : null) || post.hashTag || post["HashTag"] || null,
-          releaseDate: post.releaseDate || post.createdAt || null,
-          description: post.description || (populatedMusic ? populatedMusic.details : null) || (populatedSong ? populatedSong.details : null) || post["Chi Tiết"] || post.content || null,
-          thumbnail: displayThumb,
-          purchaseLink: displayPurchaseLink,
-        };
-      })(),
-      likes: (() => {
-        if (!post.likes) return 0;
-        // Handle Map (trước khi toObject)
-        if (post.likes instanceof Map) {
-          return post.likes.size;
-        }
-        // Handle object (sau khi toObject từ Map)
-        if (typeof post.likes === 'object' && !Array.isArray(post.likes)) {
-          return Object.keys(post.likes).length;
-        }
-        // Handle number (nếu đã được count sẵn)
-        if (typeof post.likes === 'number') {
-          return post.likes;
-        }
-        return 0;
-      })(),
-      likedByCurrentUser: isLikedByCurrentUser,
-      comments: countTotalComments(post.comments),
-      shares: (() => {
-        if (typeof post.shares === 'number') return post.shares;
-        return Number(post.shares) || 0;
-      })(),
-      views: post.views || 0,
-      hashtags: post.hashtags || [],
-      verified: post.verified || false,
-      location: post.location || null,
-      title: post.title || null,
-      canManage,
-      ownerEntityAccountId: ownerEntityAccountId || null,
-      ownerAccountId:
-        post.accountId ||
-        post.ownerAccountId ||
-        post.owner?.AccountId ||
-        post.owner?.id ||
-        post.author?.AccountId ||
-        post.author?.id ||
-        post.account?.AccountId ||
-        post.account?.id ||
-        null,
-      targetType: post.type || "post",
-      accountId:
-        post.accountId ||
-        post.ownerAccountId ||
-        post.owner?.AccountId ||
-        post.owner?.id ||
-        post.author?.AccountId ||
-        post.author?.id ||
-        post.account?.AccountId ||
-        post.account?.id ||
-        null,
-      // Repost fields - chỉ lưu ID, query lại khi hiển thị
-      repostedFromId: post.repostedFromId || null
-    };
-  };
-
   // Minimal loader/error using existing layout classes
   if (loading) {
     return (
@@ -951,7 +509,9 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
             // Handle post
             const post = item.data;
             const postId = post._id || post.postId || post.id || `post-${index}`;
-            const transformedPost = transformPost(post);
+            // Get viewerEntityAccountId for like status calculation
+            const viewerEntityAccountId = getCurrentEntityAccountId();
+            const transformedPost = mapPostForCard(post, t, viewerEntityAccountId);
             return (
               <React.Fragment key={postId}>
                 <PostCard

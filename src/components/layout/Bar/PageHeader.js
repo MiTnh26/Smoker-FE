@@ -1,4 +1,5 @@
-// src/components/layout/BarHeader.js
+// src/components/layout/PageHeader.js
+// Shared header for Bar, DJ, and Dancer pages
 import { Link, useNavigate } from "react-router-dom";
 import { Home, MessageCircle, User, Search, Bell } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -13,9 +14,9 @@ import notificationApi from "../../../api/notificationApi";
 import messageApi from "../../../api/messageApi";
 import { useSocket } from "../../../contexts/SocketContext";
 import { getSession, getActiveEntity, getEntities } from "../../../utils/sessionManager";
-import NotificationToPostModal from "../../../modules/feeds/components/modals/NotificationToPostModal";
+import PostDetailModal from "../../../modules/feeds/components/modals/PostDetailModal";
 
-export default function BarHeader() {
+export default function PageHeader() {
   const { socket, isConnected } = useSocket();
   const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState(null); // 'user' | 'messages' | 'notifications' | null
@@ -66,7 +67,7 @@ export default function BarHeader() {
 
       setBarUser(activeBar);
     } catch (e) {
-      console.error("[BarHeader] Error parsing session:", e);
+      console.error("[PageHeader] Error parsing session:", e);
     }
   };
 
@@ -76,7 +77,7 @@ export default function BarHeader() {
     
     // Listen for profile updates
     const handleProfileUpdate = () => {
-      console.log("[BarHeader] Profile updated event received");
+      console.log("[PageHeader] Profile updated event received");
       updateSession();
     };
     
@@ -110,7 +111,7 @@ export default function BarHeader() {
       }
       return entityAccountId;
     } catch (error) {
-      console.warn("[BarHeader] Error getting entityAccountId:", error);
+      console.warn("[PageHeader] Error getting entityAccountId:", error);
       return null;
     }
   };
@@ -140,7 +141,7 @@ export default function BarHeader() {
         setUnreadNotificationCount(response.data.count || 0);
       }
     } catch (error) {
-      console.error("[BarHeader] Error fetching unread notification count:", error);
+      console.error("[PageHeader] Error fetching unread notification count:", error);
     }
   };
 
@@ -168,7 +169,7 @@ export default function BarHeader() {
         setUnreadMessageCount(res.data.totalUnreadCount || 0);
       }
     } catch (error) {
-      console.error("[BarHeader] Error fetching unread message count:", error);
+      console.error("[PageHeader] Error fetching unread message count:", error);
     }
   };
 
@@ -237,13 +238,13 @@ export default function BarHeader() {
       // Backend emit với receiverEntityAccountId, nên frontend phải join với EntityAccountId
       if (entityAccountId) {
         socket.emit("join", String(entityAccountId));
-        console.log("[BarHeader] Joined socket room with EntityAccountId:", entityAccountId);
+        console.log("[PageHeader] Joined socket room with EntityAccountId:", entityAccountId);
       } else {
         // Fallback: Join với AccountId chỉ khi không có EntityAccountId (backward compatibility)
         const accountId = active.id || session?.account?.id || null;
         if (accountId) {
           socket.emit("join", String(accountId));
-          console.log("[BarHeader] Joined socket room with AccountId (fallback):", accountId);
+          console.log("[PageHeader] Joined socket room with AccountId (fallback):", accountId);
         }
       }
     } catch {}
@@ -292,7 +293,7 @@ export default function BarHeader() {
   return (
     <>
       <header className={cn(
-        "h-16 flex items-center px-4 md:px-8 sticky top-0 z-10",
+        "h-16 flex items-center px-4 md:px-8 sticky top-0 z-50",
         "bg-card border-b border-[0.5px] border-border/20",
         "backdrop-blur-sm",
         "sm:h-14 sm:px-3 md:h-16 md:px-4 lg:px-8"
@@ -455,7 +456,7 @@ export default function BarHeader() {
       </DropdownPanel>
 
       {/* Post Detail Modal */}
-      <NotificationToPostModal
+      <PostDetailModal
         open={postModalOpen}
         postId={postModalPostId}
         commentId={postModalCommentId}
@@ -468,3 +469,4 @@ export default function BarHeader() {
     </>
   );
 }
+

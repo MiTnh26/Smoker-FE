@@ -1,9 +1,6 @@
-import { Fragment } from "react";
 import { Route } from "react-router-dom";
-import CustomerLayout from "../layouts/CustomerLayout";
-import {  Profile, AddBankInfo } from "../modules/customer";
-import ProfilePage from "../modules/profile/pages/ProfilePage";
 import DynamicLayout from "../layouts/DynamicLayout";
+import {  Profile, AddBankInfo } from "../modules/customer";
 import ProtectedRoute from "./ProtectedRoute";
 import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed"
 import { StoryEditor } from "../modules/feeds/components/story";
@@ -12,15 +9,15 @@ import MessagesLayout from "../layouts/MessagesLayout";
 import BarTablesPage from "../modules/customer/pages/BarTablesPage";
 import MyBookings from "../modules/customer/pages/MyBookings";
 import NotificationsPage from "../modules/customer/pages/NotificationsPage";
+import EventsFeedPage from "../modules/customer/pages/EventsFeedPage";
 export default function CustomerRoutes() {
   return (
-    <Fragment>
     <>
       <Route
         path="/customer/newsfeed"
         element={
           <ProtectedRoute roles={["customer"]}>
-            <CustomerLayout><Newsfeed /></CustomerLayout>
+            <DynamicLayout><Newsfeed /></DynamicLayout>
           </ProtectedRoute>
         }
       />
@@ -36,29 +33,23 @@ export default function CustomerRoutes() {
         path="/customer/story-editor"
         element={
           <ProtectedRoute roles={["customer"]}>
-            <CustomerLayout><StoryEditor /></CustomerLayout>
+            <DynamicLayout><StoryEditor /></DynamicLayout>
           </ProtectedRoute>
         }
       />
       <Route
-        path="/customer/profile"
+        path="/own/profile"
         element={
-          <ProtectedRoute roles={["customer"]}>
-            <CustomerLayout><Profile /></CustomerLayout>
+          <ProtectedRoute roles={["customer", "dj", "dancer", "bar"]}>
+            <DynamicLayout><Profile /></DynamicLayout>
           </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile/:entityId"
-        element={
-          <DynamicLayout><ProfilePage /></DynamicLayout>
         }
       />
       <Route
         path="/customer/bank-info"
         element={
           <ProtectedRoute roles={["customer"]}>
-            <CustomerLayout><AddBankInfo /></CustomerLayout>
+            <DynamicLayout><AddBankInfo /></DynamicLayout>
           </ProtectedRoute>
         }
       />
@@ -67,9 +58,9 @@ export default function CustomerRoutes() {
           path="/customer/bars/:barId/tables"
           element={
             <ProtectedRoute roles={["customer"]}>
-              <CustomerLayout>
+              <DynamicLayout>
                 <BarTablesPage />
-              </CustomerLayout>
+              </DynamicLayout>
             </ProtectedRoute>
           }
         />
@@ -78,9 +69,9 @@ export default function CustomerRoutes() {
           path="/customer/my-bookings"
           element={
             <ProtectedRoute roles={["customer"]}>
-              <CustomerLayout>
+              <DynamicLayout>
                 <MyBookings />
-              </CustomerLayout>
+              </DynamicLayout>
             </ProtectedRoute>
           }
         />
@@ -89,16 +80,24 @@ export default function CustomerRoutes() {
           path="/notifications"
           element={
             <ProtectedRoute roles={["customer"]}>
-              <CustomerLayout>
+              <DynamicLayout>
                 <NotificationsPage />
-              </CustomerLayout>
+              </DynamicLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* ✅ Route: Events Feed Page */}
+        <Route
+          path="/customer/events"
+          element={
+            <ProtectedRoute roles={["customer"]}>
+              <DynamicLayout>
+                <EventsFeedPage />
+              </DynamicLayout>
             </ProtectedRoute>
           }
         />
     </>
-      
-      
-    </Fragment>
   );
 }
 

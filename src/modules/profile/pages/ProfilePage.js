@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import FollowButton from "../../../components/common/FollowButton";
 import { getProfile } from "../../../api/profileApi";
+import { getPostsByAuthor } from "../../../api/postApi";
 import messageApi from "../../../api/messageApi";
 import { cn } from "../../../utils/cn";
 import RequestBookingModal from "../../../components/booking/RequestBookingModal";
@@ -19,7 +20,7 @@ import { userApi } from "../../../api/userApi";
 import { normalizeProfileData } from "../../../utils/profileDataMapper";
 import { mapPostForCard } from "../../../utils/postTransformers";
 import PostCard from "../../feeds/components/post/PostCard";
-import { DollarSign } from "lucide-react";
+import { DollarSign, MessageCircle } from "lucide-react";
 import BarEvent from "../../bar/components/BarEvent";
 import BarMenu from "../../bar/components/BarMenuCombo";
 import BarVideo from "../../bar/components/BarVideo";
@@ -28,6 +29,8 @@ import BarTables from "../../bar/components/BarTables";
 import BarTablesPage from "../../customer/pages/BarTablesPage";
 import PerformerReviews from "../../business/components/PerformerReviews";
 import { ProfileInfoSection } from "../../../components/profile/ProfileInfoSection";
+import AudioPlayerBar from "../../feeds/components/audio/AudioPlayerBar";
+import { useSharedAudioPlayer } from "../../../hooks/useSharedAudioPlayer";
 
 const getWindow = () => (typeof globalThis !== "undefined" ? globalThis : undefined);
 
@@ -60,11 +63,23 @@ export default function ProfilePage() {
   const [isBanned, setIsBanned] = useState(false);
   const [showBookingView, setShowBookingView] = useState(false);
 
+  // Shared audio player for profile pages (used when playing music posts)
+  const {
+    playingPost,
+    setPlayingPost,
+    activePlayer,
+    setActivePlayer,
+    sharedAudioRef,
+    sharedCurrentTime,
+    sharedDuration,
+    sharedIsPlaying,
+    handleSeek,
+  } = useSharedAudioPlayer();
+
   useEffect(() => {
     let alive = true;
     const fetchProfileData = async () => {
       setLoading(true);
-      setPostsLoading(true);
       setError("");
       try {
         const profileData = await getProfile(entityId);
@@ -75,15 +90,6 @@ export default function ProfilePage() {
           // Dữ liệu profile đã được gộp sẵn từ backend
           const mappedData = normalizeProfileData(profileData);
           setProfile(mappedData);
-
-          // Cập nhật state cho posts và pagination (chấp nhận cả array lẫn object-map)
-          const rawPosts = Array.isArray(profileData.posts)
-            ? profileData.posts
-            : (profileData.posts && typeof profileData.posts === "object"
-                ? Object.values(profileData.posts)
-                : []);
-          setRawPosts(rawPosts);
-          setPostsPagination(profileData.postsPagination || { nextCursor: null, hasMore: false });
         } else {
           if (alive) {
             setError('Profile not found');
@@ -101,7 +107,6 @@ export default function ProfilePage() {
       } finally {
         if (alive) {
           setLoading(false);
-          setPostsLoading(false);
         }
       }
     };
@@ -113,10 +118,71 @@ export default function ProfilePage() {
     return () => { alive = false; };
   }, [entityId, t]);
 
+  // Fetch posts separately to include reposts
+  useEffect(() => {
+    let alive = true;
+    const fetchPosts = async () => {
+      if (!entityId) {
+        setPostsLoading(false);
+        return;
+      }
+
+      setPostsLoading(true);
+      try {
+        // Use getPostsByAuthor API which includes reposts
+        const response = await getPostsByAuthor(entityId, { 
+          includeMedias: true, 
+          includeMusic: true,
+          populateReposts: true 
+        });
+        
+        if (!alive) return;
+
+        let rawPosts = [];
+        if (Array.isArray(response?.data)) {
+          rawPosts = response.data;
+        } else if (Array.isArray(response?.data?.data)) {
+          rawPosts = response.data.data;
+        } else if (response?.data?.posts && Array.isArray(response.data.posts)) {
+          rawPosts = response.data.posts;
+        }
+
+        setRawPosts(rawPosts);
+        setPostsPagination(response?.data?.pagination || { nextCursor: null, hasMore: false });
+      } catch (e) {
+        if (alive) {
+          console.error("[ProfilePage] Error fetching posts:", e);
+          setRawPosts([]);
+          setPosts([]);
+        }
+      } finally {
+        if (alive) {
+          setPostsLoading(false);
+        }
+      }
+    };
+
+    if (entityId) {
+      fetchPosts();
+    }
+
+    return () => { alive = false; };
+  }, [entityId]);
+
   useEffect(() => {
     const transformedPosts = rawPosts.map((post) => mapPostForCard(post, t, currentUserEntityId));
     setPosts(transformedPosts);
   }, [rawPosts, currentUserEntityId, t]);
+
+  // Auto-redirect to own profile page if viewing own profile
+  useEffect(() => {
+    if (isOwnProfile && profile) {
+      const win = getWindow();
+      if (win?.location) {
+        win.location.href = "/own/profile";
+      }
+    }
+  }, [isOwnProfile, profile]);
 
 
 
@@ -273,11 +339,18 @@ export default function ProfilePage() {
                 {t('common.loading')}
               </div>
             ) : posts && posts.length > 0 ? (
-              <div className={cn("space-y-4")}>
+              <div className={cn("space-y-4 -mx-4 md:-mx-6")}>
                 {posts.map(post => (
                   <PostCard
                     key={post.id}
                     post={post}
+                    playingPost={playingPost}
+                    setPlayingPost={setPlayingPost}
+                    sharedAudioRef={sharedAudioRef}
+                    sharedCurrentTime={sharedCurrentTime}
+                    sharedDuration={sharedDuration}
+                    sharedIsPlaying={sharedIsPlaying && playingPost === (post.id)}
+                    onSeek={handleSeek}
                   />
                 ))}
               </div>
@@ -291,12 +364,40 @@ export default function ProfilePage() {
             )}
           </div>
         );
-      case "videos":
+      case "videos": {
+        const videoPosts = (posts || []).filter((post) => {
+          const hasVideoMedia = post.medias?.videos && post.medias.videos.length > 0;
+          return hasVideoMedia || post.videoSrc;
+        });
+
         return (
-          <div className="profile-section">
-            <BarVideo barPageId={barPageId} />
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : videoPosts && videoPosts.length > 0 ? (
+              <div className={cn("space-y-4 -mx-4 md:-mx-6")}>
+                {videoPosts.map(post => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    playingPost={null}
+                    setPlayingPost={() => {}}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noVideos") || t("publicProfile.noPosts")}
+              </div>
+            )}
           </div>
         );
+      }
       case "reviews":
         return (
           <div className="profile-section">
@@ -442,6 +543,13 @@ export default function ProfilePage() {
                   <PostCard
                     key={post.id}
                     post={post}
+                    playingPost={playingPost}
+                    setPlayingPost={setPlayingPost}
+                    sharedAudioRef={sharedAudioRef}
+                    sharedCurrentTime={sharedCurrentTime}
+                    sharedDuration={sharedDuration}
+                    sharedIsPlaying={sharedIsPlaying && playingPost === (post.id)}
+                    onSeek={handleSeek}
                   />
                 ))}
               </div>
@@ -456,13 +564,11 @@ export default function ProfilePage() {
           </div>
         );
       case "music": {
-        // Filter posts that have music
+        // Filter posts that have music (avoid including pure video posts)
         const musicPosts = posts.filter(post => {
-          return post.audioSrc || 
-                 post.audioTitle || 
-                 post.purchaseLink ||
-                 post.targetType === "music" ||
-                 (post.medias?.audios && post.medias.audios.length > 0);
+          const hasExplicitMusic = post.audioSrc || post.audioTitle || post.purchaseLink;
+          const hasAudioMedias = post.medias?.audios && post.medias.audios.length > 0;
+          return hasExplicitMusic || hasAudioMedias;
         });
         
         return (
@@ -477,6 +583,13 @@ export default function ProfilePage() {
                   <PostCard
                     key={post.id}
                     post={post}
+                    playingPost={playingPost}
+                    setPlayingPost={setPlayingPost}
+                    sharedAudioRef={sharedAudioRef}
+                    sharedCurrentTime={sharedCurrentTime}
+                    sharedDuration={sharedDuration}
+                    sharedIsPlaying={sharedIsPlaying && playingPost === (post.id)}
+                    onSeek={handleSeek}
                   />
                 ))}
               </div>
@@ -572,6 +685,8 @@ export default function ProfilePage() {
                   <PostCard
                     key={post.id}
                     post={post}
+                    playingPost={null}
+                    setPlayingPost={() => {}}
                   />
                 ))}
               </div>
@@ -585,12 +700,38 @@ export default function ProfilePage() {
             )}
           </div>
         );
-      case "videos":
+      case "videos": {
+        const videoPosts = (posts || []).filter((post) => {
+          const hasVideoMedia = post.medias?.videos && post.medias.videos.length > 0;
+          return hasVideoMedia || post.videoSrc;
+        });
+
         return (
-          <div className="profile-section">
-            <BarVideo barPageId={entityId} />
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : videoPosts && videoPosts.length > 0 ? (
+              <div className={cn("space-y-4")}>
+                {videoPosts.map(post => (
+                  <PostCard
+                    key={post._id || post.id}
+                    post={post}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noVideos") || t("publicProfile.noPosts")}
+              </div>
+            )}
           </div>
         );
+      }
       case "reviews":
         return (
           <div className={cn("flex flex-col gap-6")}>
@@ -645,12 +786,38 @@ export default function ProfilePage() {
             )}
           </div>
         );
-      case "videos":
+      case "videos": {
+        const videoPosts = (posts || []).filter((post) => {
+          const hasVideoMedia = post.medias?.videos && post.medias.videos.length > 0;
+          return hasVideoMedia || post.videoSrc;
+        });
+
         return (
-          <div className="profile-section">
-            <BarVideo barPageId={entityId} />
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : videoPosts && videoPosts.length > 0 ? (
+              <div className={cn("space-y-4")}>
+                {videoPosts.map(post => (
+                  <PostCard
+                    key={post._id || post.id}
+                    post={post}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noVideos") || t("publicProfile.noPosts")}
+              </div>
+            )}
           </div>
         );
+      }
       default:
         return null;
     }
@@ -682,28 +849,7 @@ export default function ProfilePage() {
         name={profile.name}
         role={(profile.type || profile.role || "USER").toString()}
       >
-        {isOwnProfile ? (
-          // Show Edit Profile button for own profile
-          <button
-            onClick={() => {
-              // Redirect to own profile page with edit functionality
-              const win = getWindow();
-              if (win?.location) {
-                win.location.href = "/customer/profile";
-              }
-            }}
-            className={cn(
-              "px-4 py-2 rounded-lg font-semibold text-sm",
-              "bg-card/80 backdrop-blur-sm text-foreground border-none",
-              "hover:bg-card/90 transition-all duration-200",
-              "active:scale-95",
-              "flex items-center gap-2"
-            )}
-          >
-            <i className="bx bx-edit text-base"></i>
-            {t('profile.editProfile')}
-          </button>
-        ) : (
+        {!isOwnProfile && (
           <>
             {/* Request booking button - chỉ hiển thị cho DJ/Dancer (không phải own profile) */}
             {canRequestBooking && (
@@ -744,15 +890,18 @@ export default function ProfilePage() {
                 }
               }}
               className={cn(
-                "px-4 py-2 rounded-lg font-semibold text-sm",
-                "bg-card/80 backdrop-blur-sm text-foreground border-none",
-                "hover:bg-card/90 transition-all duration-200",
-                "active:scale-95",
-                "flex items-center gap-2"
+                "w-10 h-10 rounded-xl font-medium",
+                "bg-primary/10 text-primary border border-primary/30",
+                "hover:bg-primary/20 hover:border-primary/50",
+                "shadow-sm hover:shadow-md",
+                "transition-all duration-200 ease-out",
+                "active:scale-[0.98]",
+                "flex items-center justify-center"
               )}
+              title="Chat"
+              aria-label="Chat"
             >
-              <i className="bx bx-message-rounded text-base" />
-              <span>Chat</span>
+              <MessageCircle className="w-5 h-5" />
             </button>
             <FollowButton
               followingId={followEntityId}
@@ -773,9 +922,11 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => setActionMenuOpen((prev) => !prev)}
                 className={cn(
-                  "w-10 h-10 rounded-full border border-border/40 text-foreground/80",
-                  "bg-card/70 backdrop-blur-sm flex items-center justify-center",
-                  "hover:bg-card/90 transition-all duration-200 active:scale-95"
+                  "w-10 h-10 rounded-xl border border-border/50 text-foreground/80",
+                  "bg-background/80 backdrop-blur-sm flex items-center justify-center",
+                  "hover:bg-background hover:border-border/70 hover:text-foreground",
+                  "shadow-sm hover:shadow-md",
+                  "transition-all duration-200 ease-out active:scale-[0.98]"
                 )}
                 aria-haspopup="true"
                 aria-expanded={actionMenuOpen}
@@ -791,7 +942,7 @@ export default function ProfilePage() {
                   className={cn(
                     "absolute right-0 mt-2 w-48 rounded-lg border border-border/30",
                     "bg-card/95 backdrop-blur-sm text-foreground shadow-[0_10px_30px_rgba(0,0,0,0.25)]",
-                    "overflow-hidden z-20"
+                    "overflow-hidden z-[9]"
                   )}
                   role="menu"
                 >
@@ -993,6 +1144,29 @@ export default function ProfilePage() {
         />
       )}
     </div>
+
+    {/* Shared audio player bar for profile pages (reused like in feed) */}
+    {activePlayer?.audioSrc && (
+      <AudioPlayerBar
+        audioSrc={activePlayer.audioSrc}
+        audioTitle={activePlayer.audioTitle || activePlayer.title}
+        artistName={activePlayer.artistName || activePlayer.user}
+        thumbnail={activePlayer.thumbnail}
+        isPlaying={playingPost === activePlayer.id}
+        onPlayPause={() => {
+          setPlayingPost(playingPost === activePlayer.id ? null : activePlayer.id);
+        }}
+        onClose={() => {
+          setPlayingPost(null);
+          setActivePlayer(null);
+        }}
+        sharedAudioRef={sharedAudioRef}
+        sharedCurrentTime={sharedCurrentTime}
+        sharedDuration={sharedDuration}
+        onSeek={handleSeek}
+      />
+    )}
+
     {isBanned && (
       <BannedAccountOverlay 
         userRole="Customer"

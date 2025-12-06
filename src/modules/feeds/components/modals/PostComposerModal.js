@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { Camera, Video, X } from "lucide-react";
@@ -13,6 +13,18 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
   const [mediaFiles, setMediaFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const { t } = useTranslation();
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
   
   if (!open) return null;
 
@@ -102,16 +114,18 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
       const videos = {};
       mediaFiles.forEach((file, index) => {
         const key = (index + 1).toString();
+        const mediaCaption = file.caption ? file.caption : ""; // chỉ dùng caption user nhập, không fallback content
+
         if (file.type?.startsWith('video') || file.resource_type === 'video') {
           videos[key] = {
             url: file.url || file.path,
-            caption: file.caption || content,
+            caption: mediaCaption,
             type: "video"
           };
         } else {
           images[key] = {
             url: file.url || file.path,
-            caption: file.caption || content,
+            caption: mediaCaption,
             uploadDate: new Date().toISOString()
           };
         }

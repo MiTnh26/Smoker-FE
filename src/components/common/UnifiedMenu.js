@@ -60,8 +60,20 @@ export default function UnifiedMenu({
   const currentUser = userData || session?.account;
   const currentEntities = entities.length > 0 ? entities : session?.entities || [];
   const activeEntity = session?.activeEntity || normalizeEntity(userData);
+  
+  // Check if there's an Account entity in entities list (for "Back to Account" button)
+  // Only check by role: customer, bar, dj, dancer
+  const hasAccountEntity = currentEntities.some(e => {
+    const role = (e.role || "").toLowerCase();
+    return role === "customer";
+  }) || !!session?.account;
+  
+  // Check if currently on customer role (not DJ/Dancer/Bar)
+  // Only check by role: customer, bar, dj, dancer
+  const activeRole = (activeEntity?.role || "").toLowerCase();
+  const isOnCustomerRole = activeRole === "customer";
 
-  console.log("[UnifiedMenu] currentUser:", currentUser, "currentEntities:", currentEntities, "activeEntity:", activeEntity);
+  console.log("[UnifiedMenu] currentUser:", currentUser, "currentEntities:", currentEntities, "activeEntity:", activeEntity, "hasAccountEntity:", hasAccountEntity, "isOnCustomerRole:", isOnCustomerRole);
 
   // Check if we have at least some data to display
   const hasData = currentUser || activeEntity || currentEntities.length > 0;
@@ -150,24 +162,30 @@ export default function UnifiedMenu({
   };
 
   const handleBackToAccount = async () => {
-    if (!session?.account) return;
+    // Use session.account or fallback to currentUser
+    const account = session?.account || currentUser;
+    if (!account) return;
 
     // Priority: EntityAccountId from account > EntityAccountId from entities list > fetch from API
     let accountEntityAccountId = 
-      session.account.EntityAccountId || 
-      session.account.entityAccountId || 
+      account.EntityAccountId || 
+      account.entityAccountId || 
       null;
 
     // If not found in account, try entities list
+    // Only check by role: customer, bar, dj, dancer
     if (!accountEntityAccountId && session?.entities) {
-      const accountEntity = session.entities.find(e => e.type === "Account");
+      const accountEntity = session.entities.find(e => {
+        const role = (e.role || "").toLowerCase();
+        return role === "customer";
+      });
       accountEntityAccountId = accountEntity?.EntityAccountId || null;
     }
 
     // If still not found, fetch it
-    if (!accountEntityAccountId) {
+    if (!accountEntityAccountId && account.id) {
       try {
-        const entityAccountRes = await userApi.getEntityAccountId(session.account.id);
+        const entityAccountRes = await userApi.getEntityAccountId(account.id);
         accountEntityAccountId = entityAccountRes?.data?.data?.EntityAccountId || null;
         
         // Update account with EntityAccountId for future use
@@ -181,10 +199,10 @@ export default function UnifiedMenu({
     }
 
     const accountEntity = {
-      id: session.account.id,
-      name: session.account.userName,
-      avatar: session.account.avatar,
-      role: session.account.role,
+      id: account.id,
+      name: account.userName || account.name,
+      avatar: account.avatar,
+      role: account.role,
       type: "Account",
       EntityAccountId: accountEntityAccountId,  // Add EntityAccountId
     };
@@ -193,6 +211,10 @@ export default function UnifiedMenu({
     try {
       const currentSession = JSON.parse(localStorage.getItem("session")) || {};
       currentSession.activeEntity = accountEntity;
+      // Ensure account exists in session
+      if (!currentSession.account && account) {
+        currentSession.account = account;
+      }
       localStorage.setItem("session", JSON.stringify(currentSession));
       
       // Dispatch event to notify other components (MessagesPanel, RightSidebar, etc.)
@@ -201,7 +223,7 @@ export default function UnifiedMenu({
       console.error("[UnifiedMenu] Error updating session:", error);
     }
 
-    navigate("/customer/profile");
+    navigate("/own/profile");
     onClose?.();
   };
 
@@ -226,9 +248,11 @@ export default function UnifiedMenu({
   const handleViewProfile = () => {
     if (!activeEntity) return;
     
-    if (activeEntity.type === "Account") {
+    // Check by role: customer, bar, dj, dancer
+    const role = (activeEntity.role || "").toLowerCase();
+    if (role === "customer") {
       // Navigate to personal profile
-      navigate("/customer/profile");
+      navigate("/own/profile");
     } else {
       // Navigate to entity profile using getEntityRoute
       const route = getEntityRoute(activeEntity);
@@ -265,24 +289,29 @@ export default function UnifiedMenu({
           <div className="user-menu-info">
             <h3>{activeEntity?.name || currentUser?.userName || "(User)"}</h3>
             <p>
-              {activeEntity?.type === "Account"
-                ? t('menu.viewPersonal')
-                : t('menu.viewBusiness')}
+              {(() => {
+                // Check by role: customer, bar, dj, dancer
+                const role = (activeEntity?.role || "").toLowerCase();
+                return role === "customer"
+                  ? t('menu.viewPersonal')
+                  : t('menu.viewBusiness');
+              })()}
             </p>
           </div>
         </div>
 
         {/* Back to Account Button (for Bar/Business menus) */}
-        {/* Only show if user is NOT already on Account entity */}
-        {config.showBackToAccount && session?.account && activeEntity?.type !== "Account" && (
+        {/* Only show if user is NOT already on customer/account role */}
+        {/* Show if: config allows it, has account data, and currently NOT on customer role */}
+        {config.showBackToAccount && hasAccountEntity && !isOnCustomerRole && (
           <button
             className="user-menu-back-to-account"
             onClick={handleBackToAccount}
           >
             <div className="user-menu-avatar user-menu-avatar-small">
-              {renderAvatar(session.account.avatar, 28)}
+              {renderAvatar((session?.account || currentUser)?.avatar, 28)}
             </div>
-            <span>{session.account.userName}</span>
+            <span>{(session?.account || currentUser)?.userName || (session?.account || currentUser)?.name}</span>
             <h4>{t('menu.backToAccount')}</h4>
           </button>
         )}
@@ -321,7 +350,11 @@ export default function UnifiedMenu({
           </div>
         )}
 
-        {filteredEntities.length === 0 && config.showEntities && activeEntity?.type !== "Account" && (
+        {filteredEntities.length === 0 && config.showEntities && (() => {
+          // Check by role: customer, bar, dj, dancer
+          const role = (activeEntity?.role || "").toLowerCase();
+          return role !== "customer";
+        })() && (
           <div className="user-menu-no-entities">
             <p>{t('unifiedMenu.noEntities')}</p>
           </div>

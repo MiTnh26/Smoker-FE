@@ -165,9 +165,15 @@ export default function FollowButton({ followingId, followingType, onChange, com
     return null; // Don't render follow button if trying to follow yourself
   }
 
-  const baseCompact = "inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-150 active:scale-95 disabled:opacity-60";
-  const followCompactClass = `${baseCompact} ${compact ? "px-3 py-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90" : "btn btn-primary"}`;
-  const followingCompactClass = `${baseCompact} ${compact ? "px-3 py-1.5 text-xs bg-primary/80 text-primary-foreground border border-primary/40 hover:bg-primary/70 hover:border-primary/60" : "btn btn-primary"}`;
+  const baseCompact = "inline-flex items-center justify-center rounded-xl font-medium transition-all duration-200 ease-out active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed";
+  
+  const followCompactClass = compact 
+    ? `${baseCompact} px-3 py-1.5 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md`
+    : `${baseCompact} px-5 py-2.5 text-sm bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md`;
+  
+  const followingCompactClass = compact
+    ? `${baseCompact} px-3 py-1.5 text-xs bg-white text-primary border border-primary/50 hover:bg-primary/5 hover:border-primary/60`
+    : `${baseCompact} px-5 py-2.5 text-sm bg-white text-primary border border-primary/50 hover:bg-primary/5 hover:border-primary/60 shadow-sm hover:shadow-md`;
 
   return internalFollowing ? (
     <button

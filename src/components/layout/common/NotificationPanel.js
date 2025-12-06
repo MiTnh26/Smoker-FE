@@ -174,7 +174,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
     if (notification.link) {
       let targetPath = notification.link;
       
-      // Handle post notifications - open post modal
+      // Handle post notifications
       if (targetPath.startsWith('/posts/')) {
         // Extract post ID and commentId (if any) from link
         const urlParts = targetPath.split('?');
@@ -243,8 +243,9 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   // Format notification content with translation
   // Backend now stores raw data (sender name only), Frontend translates based on type
   const getNotificationText = (notification) => {
-    const { type, content, link, sender } = notification;
-    const senderName = sender?.name || "Someone";
+    const { type, content, link, sender, isAnonymous } = notification;
+    // Use "Ai đó" for anonymous notifications, otherwise use sender name
+    const senderName = isAnonymous ? "Ai đó" : (sender?.name || "Someone");
     
     // Check if content contains ":" (old format with message preview)
     const hasPreview = content && content.includes(":");
@@ -448,7 +449,9 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
         {!loading && notifications.length > 0 && (
           notifications.map((notification) => {
             const isUnread = notification.status === "Unread";
-            const senderAvatar = notification.sender?.avatar;
+            const isAnonymous = notification.isAnonymous || false;
+            // Use anonymous avatar if notification is anonymous, otherwise use sender avatar
+            const senderAvatar = isAnonymous ? "/images/an-danh.png" : (notification.sender?.avatar || null);
             return (
               <button
                 key={notification._id}
@@ -466,7 +469,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
                     <>
                       <img 
                         src={senderAvatar} 
-                        alt="avatar" 
+                        alt={isAnonymous ? "Ẩn danh" : "avatar"} 
                         className={cn("w-full h-full object-cover rounded-full")}
                         onError={(e) => {
                           e.target.style.display = 'none';

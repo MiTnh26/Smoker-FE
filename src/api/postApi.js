@@ -16,11 +16,11 @@ export const getPosts = (params) => axiosClient.get("/posts", { params });
 // Returns: { feed: Array, nextCursor: string | null, hasMore: boolean }
 export const getFeed = (params) => axiosClient.get("/feed", { params });
 
-// Lấy post theo id (supports includeMedias/includeMusic) - backward compatibility
+// Lấy post theo id (full detail với comments và topComments)
 export const getPostById = (id, params) => axiosClient.get(`/posts/${id}`, { params });
 
-// Lấy chi tiết post (enrich đầy đủ comments với author info) - dùng cho post detail view
-export const getPostDetail = (id, params) => axiosClient.get(`/posts/${id}/detail`, { params });
+// Alias cho backward compatibility - giờ dùng chung endpoint với getPostById
+export const getPostDetail = (id, params) => axiosClient.get(`/posts/${id}`, { params });
 
 // Tạo post mới
 export const createPost = (data) => axiosClient.post("/posts", data);

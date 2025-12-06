@@ -60,7 +60,17 @@ export default function ProtectedRoute({ roles, children }) {
     dj: "dj",
     dancer: "dancer",
   };
-  const activeRole = roleMap[rawRole] || rawRole;
+  // If rawRole is empty or doesn't match, check entity type as fallback
+  let activeRole = roleMap[rawRole];
+  if (!activeRole) {
+    // Fallback: check entity type if role is missing
+    const entityType = (activeEntity?.type || user?.type || "").toLowerCase();
+    if (entityType === "account" || !entityType) {
+      activeRole = "customer"; // Default to customer for Account type or missing type
+    } else {
+      activeRole = roleMap[entityType] || rawRole; // Try entity type, then fallback to rawRole
+    }
+  }
   const activeId = activeEntity?.id || user?.id;
 
   // Debug log (rất quan trọng để kiểm tra)

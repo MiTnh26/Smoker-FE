@@ -9,7 +9,7 @@ import publicProfileApi from "../../../api/publicProfileApi";
 import useChatSocket from "../../../api/useChatSocket";
 import Composer from "../components/Composer";
 import { getEntityMapFromSession } from "../../../utils/sessionHelper";
-import NotificationToPostModal from "../../feeds/components/modals/NotificationToPostModal";
+import PostDetailModal from "../../feeds/components/modals/PostDetailModal";
 import { getPostById } from "../../../api/postApi";
 
 const themeVars = {
@@ -1140,7 +1140,7 @@ function ConversationView({ chat, onBack }) {
             else socket.emit("typing:stop", { convId: chat.id });
           }}
         />
-        <NotificationToPostModal
+        <PostDetailModal
           open={postModalOpen}
           postId={selectedPostId}
           commentId={selectedCommentId}

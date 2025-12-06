@@ -8,9 +8,10 @@ import messageApi from "../../../api/messageApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { userApi } from "../../../api/userApi";
 import useChatSocket from '../../../api/useChatSocket';
-import { Reply, X, FileText } from "lucide-react";
+import { Reply, X, FileText, Trash2, ChevronDown } from "lucide-react";
+import { Modal } from "../../../components/common/Modal";
 import Composer from "../../../modules/messages/components/Composer";
-import NotificationToPostModal from "../../../modules/feeds/components/modals/NotificationToPostModal";
+import PostDetailModal from "../../../modules/feeds/components/modals/PostDetailModal";
 import { getPostById } from "../../../api/postApi";
 
 function ChatWindow(props) {
@@ -539,6 +540,23 @@ function ChatWindow(props) {
     };
   }, [socket, chat.id, currentUserId]);
 
+  // Lắng nghe event conversation bị xóa (từ đối phương hoặc chính mình)
+  useEffect(() => {
+    if (!socket || !chat.id) return;
+
+    const handleConversationDeleted = (data) => {
+      if (data.conversationId === chat.id || data.conversationId === String(chat.id)) {
+        onClose(chat.id);
+      }
+    };
+
+    socket.on('conversation_deleted', handleConversationDeleted);
+    return () => {
+      socket.off('conversation_deleted', handleConversationDeleted);
+    };
+  }, [socket, chat.id, onClose]);
+
+
   // Lấy tin nhắn khi mở chat hoặc khi currentUserId thay đổi (khi switch role)
   useEffect(() => {
     if (!currentUserId || !chat.id) {
@@ -838,10 +856,40 @@ function ChatWindow(props) {
 
   const displayName = otherUserInfo?.name || chat.name || "User";
   const displayAvatar = otherUserInfo?.avatar;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+
+  const handleDeleteConversation = useCallback(() => {
+    setConfirmOpen(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!chat.id || !currentUserId) return;
+
+    messageApi
+      .deleteConversation(chat.id, currentUserId)
+      .then(() => {
+        try {
+          (typeof globalThis !== "undefined" && globalThis.window) &&
+            globalThis.window.dispatchEvent(new Event("messageRefresh"));
+        } catch (err) {
+          console.warn("Error dispatching messageRefresh event:", err);
+        }
+        setConfirmOpen(false);
+        onClose(chat.id);
+      })
+      .catch((err) => {
+        console.error("❌ Error deleting conversation:", err);
+        setConfirmOpen(false);
+      });
+  }, [chat.id, currentUserId, onClose]);
 
   return (
+    <>
     <div className={cn(
       "w-[360px] h-[500px] bg-card rounded-t-lg",
+      "md:w-[360px] md:h-[500px]",
+      "max-md:w-screen max-md:h-screen max-md:rounded-none max-md:fixed max-md:inset-0 max-md:z-50",
       "border-[0.5px] border-border/20",
       "shadow-[0_2px_16px_rgba(0,0,0,0.18),0_0.5px_1.5px_rgba(0,0,0,0.08)]",
       "flex flex-col overflow-hidden",
@@ -850,7 +898,7 @@ function ChatWindow(props) {
       <div
         className={cn(
           "border-b border-border/30 bg-gradient-to-r from-card to-card/80 px-4 py-3",
-          "flex-shrink-0"
+          "flex-shrink-0 relative"
         )}
       >
         <div className="flex items-center gap-3">
@@ -869,13 +917,23 @@ function ChatWindow(props) {
             )}
           </button>
           <div className="flex min-w-0 flex-1 flex-col">
-            <button
-              type="button"
-              className="text-left text-[15px] font-semibold text-foreground border-none bg-transparent p-0"
-              onClick={handleHeaderClick}
-            >
-              {displayName}
-            </button>
+            <div className="flex items-center gap-1 group/header cursor-pointer select-none">
+              <button
+                type="button"
+                className="text-left text-[15px] font-semibold text-foreground border-none bg-transparent p-0 group-hover/header:text-primary transition-colors"
+                onClick={handleHeaderClick}
+              >
+                {displayName}
+              </button>
+              <button
+                type="button"
+                className="ml-1 flex h-6 w-6 items-center justify-center rounded-full border border-transparent bg-transparent text-muted-foreground transition-colors transition-shadow group-hover/header:border-border/70 group-hover/header:bg-card/70 hover:text-foreground"
+                onClick={() => setHeaderMenuOpen((prev) => !prev)}
+                aria-label={t("messages.openConversationMenu") || "Mở menu đoạn chat"}
+              >
+                <ChevronDown size={16} />
+              </button>
+            </div>
             <span className="text-xs text-muted-foreground">&nbsp;</span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
@@ -890,10 +948,30 @@ function ChatWindow(props) {
           </div>
         </div>
 
+        {headerMenuOpen && (
+          <div
+            className="absolute right-4 top-14 z-50 w-56 rounded-lg border bg-card/95 shadow-[0_10px_30px_rgba(0,0,0,0.30)] py-1 text-sm backdrop-blur-md"
+            style={{ borderColor: "rgba(255,255,255,0.18)" }}
+          >
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/90 hover:text-destructive transition-colors"
+              onClick={() => {
+                setHeaderMenuOpen(false);
+                handleDeleteConversation();
+              }}
+            >
+              <Trash2 size={16} className="text-destructive" />
+              <span>{t("messages.deleteConversation") || "Xóa đoạn chat"}</span>
+            </button>
+          </div>
+        )}
+
       </div>
       <div
-        className="flex-1 overflow-y-auto overflow-x-hidden bg-background p-4"
+        className="flex-1 overflow-y-auto overflow-x-hidden bg-background p-4 max-md:pb-6"
         ref={bodyRef}
+        style={{ minHeight: 0 }}
       >
         {/* eslint-disable-next-line complexity */}
         {loading || !currentUserId ? (
@@ -904,7 +982,10 @@ function ChatWindow(props) {
           displayMessages.map((msg, idx) => {
             const sender = getSenderKey(msg);
             const isMine = currentUserId ? sender === String(currentUserId).toLowerCase().trim() : false;
-            const rawContent = msg.content || msg.message || "";
+            const rawContent =
+              msg.is_deleted && !storyImageUrl
+                ? t("messages.deleted") || "Tin nhắn đã bị xóa"
+                : msg.content || msg.message || "";
             const storyImgMatch = rawContent.match(/\[STORY_IMAGE:([^\]]+)\]/i);
             const storyImageUrl = storyImgMatch ? storyImgMatch[1] : null;
             const textContent = storyImageUrl ? rawContent.replaceAll(/\[STORY_IMAGE:[^\]]+\]/gi, "").trim() : rawContent;
@@ -928,7 +1009,7 @@ function ChatWindow(props) {
             })();
 
             const actionIcons = [
-              { label: t("comment.reply") || "Reply", Icon: Reply }
+              { label: t("comment.reply") || "Reply", Icon: Reply, type: "reply" },
             ];
 
             const messageKey = msg.id || msg._id || msg.messageId || `${msg.createdAt || ""}-${idx}`;
@@ -1068,7 +1149,11 @@ function ChatWindow(props) {
                       style={{ borderColor: "rgb(var(--border))", background: "rgb(var(--card))", color: "rgb(var(--muted-foreground))" }}
                     >
                       {actionIcons.map(({ label, Icon }) => (
-                        <button key={label} title={label} type="button">
+                        <button
+                          key={label}
+                          title={label}
+                          type="button"
+                        >
                           <Icon size={14} />
                         </button>
                       ))}
@@ -1126,7 +1211,7 @@ function ChatWindow(props) {
           );
         })()}
       </div>
-      <div className="border-t border-border/30 bg-card">
+      <div className="border-t border-border/30 bg-card flex-shrink-0">
         <Composer
           convId={chat.id}
           placeholder={t("input.messagePlaceholder")}
@@ -1135,7 +1220,7 @@ function ChatWindow(props) {
         />
       </div>
 
-      <NotificationToPostModal
+      <PostDetailModal
         open={postModalOpen}
         postId={selectedPostId}
         commentId={selectedCommentId}
@@ -1146,6 +1231,38 @@ function ChatWindow(props) {
         }}
       />
     </div>
+
+    <Modal
+      isOpen={confirmOpen}
+      onClose={() => setConfirmOpen(false)}
+      size="sm"
+    >
+      <div className="p-4">
+        <h2 className="text-lg font-semibold mb-2">
+          {t("messages.deleteConversationTitle") || "Xóa cuộc trò chuyện"}
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          {t("messages.deleteConversationConfirm") || "Bạn có chắc muốn xóa toàn bộ cuộc trò chuyện này? Thao tác này không thể hoàn tác."}
+        </p>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            className="px-3 py-1.5 text-sm rounded-md border border-border text-foreground bg-background"
+            onClick={() => setConfirmOpen(false)}
+          >
+            {t("common.cancel") || "Hủy"}
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground"
+            onClick={handleConfirmDelete}
+          >
+            {t("messages.deleteConversation") || "Xóa"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+    </>
   );
 }
 
@@ -1169,10 +1286,13 @@ export default function ChatDock() {
   return (
     <div className={cn(
       "fixed right-3 bottom-0 flex gap-2",
-      "flex-row-reverse items-end z-50"
+      "flex-row-reverse items-end z-50",
+      "max-md:right-0 max-md:bottom-0 max-md:left-0 max-md:top-0 max-md:pointer-events-none"
     )}>
       {chats.map((c) => (
-        <ChatWindow key={c.id} chat={c} onClose={closeChat} />
+        <div key={c.id} className="max-md:pointer-events-auto">
+          <ChatWindow chat={c} onClose={closeChat} />
+        </div>
       ))}
     </div>
   );

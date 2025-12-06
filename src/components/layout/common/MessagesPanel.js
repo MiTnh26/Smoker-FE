@@ -8,7 +8,7 @@ import publicProfileApi from "../../../api/publicProfileApi";
 import { getEntityMapFromSession } from "../../../utils/sessionHelper";
 /**
  * MessagesPanel - Hiển thị danh sách tin nhắn
- * Dùng DropdownPanel component chung từ BarHeader/CustomerHeader
+ * Dùng DropdownPanel component chung từ PageHeader/CustomerHeader
  */
 export default function MessagesPanel({ onClose, onUnreadCountChange, selectedId }) {
   const { t } = useTranslation();

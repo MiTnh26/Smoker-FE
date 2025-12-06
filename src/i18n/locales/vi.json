@@ -21,7 +21,8 @@
     "back": "Quay lại",
     "cancel": "Hủy",
     "saving": "Đang lưu...",
-    "saveChanges": "Lưu thay đổi"
+    "saveChanges": "Lưu thay đổi",
+    "search": "Tìm kiếm"
   },
   "sidebar": {
     "home": "Trang chủ",
@@ -70,6 +71,8 @@
     "music": "Âm nhạc",
     "feeling": "Cảm xúc",
     "reposted": "đã đăng lại",
+    "repostedOf": "đã đăng lại bài viết của",
+    "someone": "Ai đó",
     "repostedPost": "Bài viết đã được đăng lại",
     "repostedMedia": "Ảnh/Video đã được đăng lại",
     "loadingMore": "Đang tải thêm...",
@@ -276,7 +279,11 @@
     "you": "Bạn",
     "attachment": "Đính kèm",
     "seen": "Đã xem",
-    "delivered": "Đã gửi"
+    "delivered": "Đã gửi",
+    "deleteConversation": "Xóa đoạn chat",
+    "deleteConversationTitle": "Xóa đoạn chat",
+    "deleteConversationConfirm": "Bạn có chắc muốn xóa đoạn chat này? Đoạn chat sẽ chỉ bị xóa ở phía bạn.",
+    "openConversationMenu": "Mở menu đoạn chat"
   },
   "unifiedMenu": {
     "entityLabel": "Trang / Doanh nghiệp của bạn",
@@ -496,10 +503,12 @@
     "header": "Bình luận",
     "loading": "Đang tải bình luận...",
     "sort": "Sắp xếp:",
+    "mostLiked": "Nhiều lượt thích nhất",
     "newest": "Mới nhất",
     "oldest": "Cũ nhất",
     "none": "Chưa có bình luận nào.",
-    "reply": "Phản hồi"
+    "reply": "Phản hồi",
+    "commentAs": "Bình luận với tư cách"
   },
   "music": {
     "postMusic": "Đăng nhạc"
@@ -592,6 +601,8 @@
     "reviewsTab": "Đánh giá",
     "tablesTab": "Bàn",
     "musicTab": "Nhạc",
+    "scheduleTab": "Lịch diễn",
+    "bookingsTab": "Yêu cầu booking",
     "priceTable": "Bảng giá",
     "musicTabDescription": "Sẽ hiển thị các bài nhạc của DJ",
     "loadingProfile": "Đang tải hồ sơ...",
@@ -658,6 +669,20 @@
     "sentYouAMessageWithPreview": "{{name}}: {{preview}}",
     "postDetail": "Chi tiết bài viết",
     "default": "Bạn có thông báo mới"
+  },
+  "search": {
+    "title": "Kết quả tìm kiếm",
+    "resultsFor": "Kết quả cho \"{{q}}\"",
+    "placeholder": "Nhập từ khóa để bắt đầu tìm kiếm",
+    "searching": "Đang tìm kiếm...",
+    "noResults": "Không có kết quả phù hợp",
+    "filterTitle": "Bộ lọc",
+    "sectionUsers": "Mọi người",
+    "sectionBars": "Bar",
+    "sectionDjs": "DJ",
+    "sectionDancers": "Dancer",
+    "sectionPosts": "Bài viết",
+    "viewAll": "Xem tất cả"
   }
 }
 
