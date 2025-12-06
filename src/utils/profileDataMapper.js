@@ -53,6 +53,21 @@ export function normalizeProfileData(data) {
     address: data.address || data.Address || data.AddressDetail || null,
     Address: data.Address || data.address || data.AddressDetail || null,
     addressData: data.addressData || data.AddressData || null,
+    addressText: data.addressText || data.AddressText || null,
+    AddressText: data.AddressText || data.addressText || null,
+    addressObject: data.addressObject || data.AddressObject || null,
+    AddressObject: data.AddressObject || data.addressObject || null,
+    addressRaw: data.addressRaw || data.AddressRaw || null,
+    AddressRaw: data.AddressRaw || data.addressRaw || null,
+    // Address components (for edit form)
+    provinceId: data.provinceId || data.ProvinceId || null,
+    ProvinceId: data.ProvinceId || data.provinceId || null,
+    districtId: data.districtId || data.DistrictId || null,
+    DistrictId: data.DistrictId || data.districtId || null,
+    wardId: data.wardId || data.WardId || null,
+    WardId: data.WardId || data.wardId || null,
+    addressDetail: data.addressDetail || data.AddressDetail || data.detail || data.Detail || null,
+    AddressDetail: data.AddressDetail || data.addressDetail || data.detail || data.Detail || null,
     
     // Bio
     bio: data.bio || data.Bio || data.description || data.Description || data.about || data.About || null,

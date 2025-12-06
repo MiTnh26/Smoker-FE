@@ -80,7 +80,21 @@ export const useCurrentUserEntity = () => {
       }
     };
 
+    // Initial resolve
     resolveCurrentUserEntityId();
+
+    // Listen for session updates (when user switches role)
+    const handleSessionUpdate = () => {
+      resolveCurrentUserEntityId();
+    };
+
+    window.addEventListener('sessionUpdated', handleSessionUpdate);
+    window.addEventListener('profileUpdated', handleSessionUpdate);
+
+    return () => {
+      window.removeEventListener('sessionUpdated', handleSessionUpdate);
+      window.removeEventListener('profileUpdated', handleSessionUpdate);
+    };
   }, []);
 
   return currentUserEntityId;
