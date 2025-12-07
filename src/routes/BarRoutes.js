@@ -4,6 +4,7 @@ import DynamicLayout from "../layouts/DynamicLayout";
 import BarProfile from "../modules/bar/pages/BarProfile";
 import ProtectedRoute from "./ProtectedRoute";
 import BarSettings from "../modules/bar/pages/BarSettings";
+import BarTableListPage from "../modules/bar/pages/BarTableListPage";
 import TableClassificationManager from "../modules/bar/pages/TableClassificationManager";
 import ComboManager from "../modules/bar/pages/ComboManager";
 import VoucherManager from "../modules/bar/pages/VoucherManager";
@@ -61,6 +62,14 @@ export default function BarRoutes() {
         element={
           <ProtectedRoute roles={["bar"]}>
             <DynamicLayout> <BarSettings /></DynamicLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/bar/settings/:barPageId/tables"
+        element={
+          <ProtectedRoute roles={["bar"]}>
+            <DynamicLayout> <BarTableListPage /></DynamicLayout>
           </ProtectedRoute>
         }
       />

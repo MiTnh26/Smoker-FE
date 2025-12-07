@@ -11,6 +11,7 @@ import ManageAdPackages from "../modules/admin/pages/ManageAdPackages";
 import ManageEventAdApprovals from "../modules/admin/pages/ManageEventAdApprovals";
 import ManagePauseRequests from "../modules/admin/pages/ManagePauseRequests";
 import ManageResumeRequests from "../modules/admin/pages/ManageResumeRequests";
+import ManageRefundRequests from "../modules/admin/pages/ManageRefundRequests";
 import ProtectedRoute from "./ProtectedRoute";
 
 export default function AdminRoutes() {
@@ -25,6 +26,7 @@ export default function AdminRoutes() {
       <Route path="/admin/event-ad-approvals" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageEventAdApprovals /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/pause-requests" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManagePauseRequests /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/resume-requests" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageResumeRequests /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/refund-requests" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageRefundRequests /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/settings/language" element={<ProtectedRoute roles={["admin"]}><AdminLayout><LanguageSettings /></AdminLayout></ProtectedRoute>} />
     </Fragment>
   );
