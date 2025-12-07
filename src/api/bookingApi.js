@@ -56,7 +56,15 @@ const bookingApi = {
 
   // DJ/Dancer xác nhận đã giao dịch xong
   completeTransaction: (bookingId) => 
-    axiosClient.post(`/booking/${bookingId}/complete-transaction`)
+    axiosClient.post(`/booking/${bookingId}/complete-transaction`),
+
+  // Đánh dấu đã thanh toán cho table booking
+  markPaid: (bookingId) =>
+    axiosClient.patch(`/bookingtable/${bookingId}/mark-paid`),
+
+  // Cập nhật status thành Ended cho table booking
+  endBooking: (bookingId) =>
+    axiosClient.patch(`/bookingtable/${bookingId}/end`)
 };
 
 export default bookingApi;
