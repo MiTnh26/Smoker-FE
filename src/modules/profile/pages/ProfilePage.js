@@ -14,13 +14,14 @@ import { useProfileType } from "../../../hooks/useProfileType";
 import { useIsOwnProfile } from "../../../hooks/useIsOwnProfile";
 import { ProfileHeader } from "../../../components/profile/ProfileHeader";
 import { ProfileStats } from "../../../components/profile/ProfileStats";
+import FollowersModal from "../../../components/profile/FollowersModal";
 import BannedAccountOverlay from "../../../components/common/BannedAccountOverlay";
 import { getSession } from "../../../utils/sessionManager";
 import { userApi } from "../../../api/userApi";
 import { normalizeProfileData } from "../../../utils/profileDataMapper";
 import { mapPostForCard } from "../../../utils/postTransformers";
 import PostCard from "../../feeds/components/post/PostCard";
-import { DollarSign, MessageCircle } from "lucide-react";
+import { DollarSign, MessageCircle, Calendar } from "lucide-react";
 import BarEvent from "../../bar/components/BarEvent";
 import BarMenu from "../../bar/components/BarMenuCombo";
 import BarVideo from "../../bar/components/BarVideo";
@@ -58,6 +59,8 @@ export default function ProfilePage() {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [followersModalMode, setFollowersModalMode] = useState("followers");
   const menuRef = useRef(null);
   const [activeTab, setActiveTab] = useState("info");
   const [isBanned, setIsBanned] = useState(false);
@@ -848,25 +851,29 @@ export default function ProfilePage() {
         avatar={profile.avatar}
         name={profile.name}
         role={(profile.type || profile.role || "USER").toString()}
+        requestBookingButton={
+          !isOwnProfile && canRequestBooking ? (
+            <button
+              onClick={() => setBookingOpen(true)}
+              className={cn(
+                "px-3 py-2 rounded-lg font-semibold text-xs md:text-sm",
+                "bg-primary border-none",
+                "shadow-md hover:shadow-lg",
+                "hover:bg-primary/90",
+                "hover:scale-105 active:scale-95",
+                "transition-all duration-200 ease-out",
+                "flex items-center gap-1.5 md:gap-2",
+                "text-primary-foreground"
+              )}
+            >
+              <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-primary-foreground" />
+              <span className="whitespace-nowrap text-primary-foreground">{t("publicProfile.requestBooking")}</span>
+            </button>
+          ) : null
+        }
       >
         {!isOwnProfile && (
           <>
-            {/* Request booking button - chỉ hiển thị cho DJ/Dancer (không phải own profile) */}
-            {canRequestBooking && (
-              <button
-                onClick={() => setBookingOpen(true)}
-                className={cn(
-                  "px-4 py-2 rounded-lg font-semibold text-sm",
-                  "bg-primary text-primary-foreground border-none",
-                  "hover:bg-primary/90 transition-all duration-200",
-                  "active:scale-95",
-                  "flex items-center gap-2"
-                )}
-              >
-                <i className="bx bxs-calendar-check text-base" />
-                <span>Request booking</span>
-              </button>
-            )}
             {/* Chat button - hiển thị cho tất cả */}
             <button
               onClick={async () => {
@@ -891,8 +898,8 @@ export default function ProfilePage() {
               }}
               className={cn(
                 "w-10 h-10 rounded-xl font-medium",
-                "bg-primary/10 text-primary border border-primary/30",
-                "hover:bg-primary/20 hover:border-primary/50",
+                "bg-card text-primary border-none",
+                "hover:bg-[rgb(var(--primary-light))]",
                 "shadow-sm hover:shadow-md",
                 "transition-all duration-200 ease-out",
                 "active:scale-[0.98]",
@@ -922,9 +929,9 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => setActionMenuOpen((prev) => !prev)}
                 className={cn(
-                  "w-10 h-10 rounded-xl border border-border/50 text-foreground/80",
-                  "bg-background/80 backdrop-blur-sm flex items-center justify-center",
-                  "hover:bg-background hover:border-border/70 hover:text-foreground",
+                  "w-10 h-10 rounded-xl flex items-center justify-center",
+                  "bg-card text-foreground border-none",
+                  "hover:bg-[rgb(var(--card-hover))]",
                   "shadow-sm hover:shadow-md",
                   "transition-all duration-200 ease-out active:scale-[0.98]"
                 )}
@@ -978,7 +985,18 @@ export default function ProfilePage() {
 
       {/* Main Content Container */}
       <div className={cn("max-w-6xl mx-auto px-4 md:px-6 py-6")}>
-                <ProfileStats followers={profile.followersCount} following={profile.followingCount} />
+                <ProfileStats 
+                  followers={profile.followersCount} 
+                  following={profile.followingCount}
+                  onFollowersClick={() => {
+                    setFollowersModalMode("followers");
+                    setFollowersModalOpen(true);
+                  }}
+                  onFollowingClick={() => {
+                    setFollowersModalMode("following");
+                    setFollowersModalOpen(true);
+                  }}
+                />
 
         {/* Tabs Section - All Profile Types */}
           <section className={cn("py-6")}>
@@ -1090,27 +1108,6 @@ export default function ProfilePage() {
               </button>
             )}
             
-            {/* Tables Tab - Bar only */}
-            {isBarProfile && (
-              <button
-                onClick={() => setActiveTab("tables")}
-                className={cn(
-                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
-                  "transition-all duration-200 relative whitespace-nowrap",
-                  activeTab === "tables"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {t('profile.tablesTab')}
-                {activeTab === "tables" && (
-                  <span className={cn(
-                    "absolute bottom-0 left-0 right-0 h-0.5",
-                    "bg-primary"
-                  )} />
-                )}
-              </button>
-            )}
             </div>
           
             {/* Tab Content */}
@@ -1141,6 +1138,14 @@ export default function ProfilePage() {
             setReportModalOpen(false);
             alert(t("publicProfile.reportSubmitted"));
           }}
+        />
+      )}
+      {followersModalOpen && (
+        <FollowersModal
+          open={followersModalOpen}
+          onClose={() => setFollowersModalOpen(false)}
+          entityId={followEntityId}
+          mode={followersModalMode}
         />
       )}
     </div>

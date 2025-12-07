@@ -47,9 +47,9 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Header />
       <main>
-        <HeroCarousel slides={featuredBars} loading={loading} />
+        <HeroCarousel />
         <div className="container mx-auto px-4 py-8">
-          <SearchBar />
+       
           <FeaturedVenues venues={featuredBars} loading={loading} error={error} />
         </div>
       </main>

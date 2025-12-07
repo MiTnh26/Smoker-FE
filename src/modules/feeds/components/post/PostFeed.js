@@ -443,7 +443,7 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
   // Minimal loader/error using existing layout classes
   if (loading) {
     return (
-      <div className="feed-posts gap-2">
+      <div className="feed-posts gap-1.5">
         <p className="text-gray-400">{t('feed.loadingPosts')}</p>
       </div>
     );
@@ -451,7 +451,7 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
 
   if (error) {
     return (
-      <div className="feed-posts gap-2">
+      <div className="feed-posts gap-1.5">
         <div>
           <p className="text-red-500">❌ {t('feed.loadFail')}</p>
           <button onClick={() => loadPosts(true)} className="btn btn-primary mt-2">{t('common.retry')}</button>
@@ -476,7 +476,7 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
         onGoLive={onGoLive}
       />
 
-      <div className="feed-posts gap-2">
+      <div className="feed-posts gap-1.5">
         {feed.length === 0 ? (
           <p key="empty-feed" className="text-gray-400">{t('feed.noPosts')}</p>
         ) : (

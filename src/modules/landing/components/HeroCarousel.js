@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../../utils/cn";
 
@@ -32,24 +32,8 @@ const defaultSlides = [
   },
 ];
 
-export function HeroCarousel({ slides = [], loading = false }) {
-  const slidesData = useMemo(() => {
-    if (!slides || slides.length === 0) {
-      return defaultSlides;
-    }
-
-    return slides.map((item, index) => ({
-      id: item.barPageId || item.id || index,
-      image: item.background || item.avatar || FALLBACK_IMAGE,
-      title: item.barName || item.name || "Địa điểm nổi bật",
-      description:
-        item.address ||
-        item.email ||
-        "Khám phá những địa điểm giải trí hàng đầu trong thành phố",
-      rating: item.averageRating,
-      reviewCount: item.reviewCount,
-    }));
-  }, [slides]);
+export function HeroCarousel({ loading = false }) {
+  const slidesData = defaultSlides;
 
   const totalSlides = slidesData.length;
 
@@ -192,22 +176,6 @@ export function HeroCarousel({ slides = [], loading = false }) {
             >
               {slide.description}
             </p>
-            {slide.rating ? (
-              <div
-                className={cn(
-                  "mt-4 inline-flex items-center gap-2 px-3 py-1.5",
-                  "bg-background/70 backdrop-blur-sm rounded-full",
-                  "border-[0.5px] border-border/30 text-sm font-medium text-foreground"
-                )}
-              >
-                <span>{slide.rating}⭐</span>
-                {slide.reviewCount ? (
-                  <span className="text-muted-foreground/80">
-                    ({slide.reviewCount} đánh giá)
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
           </div>
         </div>
       ))}
@@ -285,11 +253,9 @@ export function HeroCarousel({ slides = [], loading = false }) {
 }
 
 HeroCarousel.propTypes = {
-  slides: PropTypes.arrayOf(PropTypes.object),
   loading: PropTypes.bool,
 };
 
 HeroCarousel.defaultProps = {
-  slides: [],
   loading: false,
 };

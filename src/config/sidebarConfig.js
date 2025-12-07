@@ -53,12 +53,11 @@ export const sidebarConfig = {
     { label: "Newsfeed", icon: Home, path: "/bar/newsfeed" },
     { label: "Dashboard", icon: BarChart3, path: "/bar/dashboard" },
     { label: "Sự kiện", icon: Calendar, path: "/bar/events" },
-    { label: "Nhân sự (DJ, Dancer)", icon: Users, path: "/bar/staff" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/bar/messages" },
     {
       label: "Bar page",
       icon: User,
-      path: "/bar/:barPageId",
+      path: "/own/profile",
     },
     {
       label: "Cài đặt quán",

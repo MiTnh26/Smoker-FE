@@ -12,7 +12,8 @@ export const ProfileHeader = ({
   avatar,
   name,
   role,
-  children, // Action buttons
+  children, // Action buttons (top right)
+  requestBookingButton, // Request booking button (bottom right)
   defaultBackground = "https://i.imgur.com/6IUbEMn.jpg",
   defaultAvatar = null, // Sẽ dùng getAvatarUrl
 }) => {
@@ -27,10 +28,17 @@ export const ProfileHeader = ({
       {/* Gradient Overlay */}
       <div className={cn("absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60")} />
 
-      {/* Action Buttons */}
+      {/* Action Buttons - Top Right */}
       {children && (
         <div className={cn("absolute top-4 right-4 z-10 flex items-center gap-2")}>
           {children}
+        </div>
+      )}
+      
+      {/* Request Booking Button - Bottom Right */}
+      {requestBookingButton && (
+        <div className={cn("absolute bottom-4 right-4 z-30")}>
+          {requestBookingButton}
         </div>
       )}
 
