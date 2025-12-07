@@ -183,18 +183,47 @@ export default function RightSidebar() {
 
   return (
     <aside className="right-sidebar">
-      <div className="right-sidebar__section">
+      {/* 2 ô quảng cáo */}
+      <div className="right-sidebar__section right-sidebar__section--ad">
+        <a 
+          href="#" 
+          onClick={(e) => e.preventDefault()}
+          className="right-sidebar__ad-link"
+        >
+          <img 
+            src="/ad/337406424_5980905451997256_2591754975946748745_n.jpg" 
+            alt="Quảng cáo trà sữa"
+            className="right-sidebar__ad-image"
+          />
+        </a>
+      </div>
+      <div className="right-sidebar__section right-sidebar__section--ad">
+        <a 
+          href="#" 
+          onClick={(e) => e.preventDefault()}
+          className="right-sidebar__ad-link"
+        >
+          <img 
+            src="/ad/maxresdefault.jpg" 
+            alt="Quảng cáo nước khoáng"
+            className="right-sidebar__ad-image"
+          />
+        </a>
+      </div>
+
+      {/* Phần liên hệ - có thể scroll */}
+      <div className="right-sidebar__section right-sidebar__section--contacts">
         <h4 className="right-sidebar__title">{t('layout.contacts')}</h4>
         {loading ? (
-          <div style={{ padding: "20px", textAlign: "center", color: "rgb(var(--muted-foreground))" }}>
-            <p style={{ margin: 0, fontSize: "14px" }}>Đang tải...</p>
+          <div className="right-sidebar__empty">
+            <p>Đang tải...</p>
           </div>
         ) : contacts.length === 0 ? (
-          <div style={{ padding: "20px", textAlign: "center", color: "rgb(var(--muted-foreground))" }}>
-            <p style={{ margin: 0, fontSize: "14px" }}>Chưa có liên hệ</p>
+          <div className="right-sidebar__empty">
+            <p>Chưa có liên hệ</p>
           </div>
         ) : (
-          <ul className="right-sidebar__list">
+          <ul className="right-sidebar__list right-sidebar__list--scrollable">
             {contacts.map((contact) => (
               <li
                 key={contact.id}

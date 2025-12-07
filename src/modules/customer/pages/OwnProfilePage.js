@@ -584,27 +584,6 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
               </button>
             )}
 
-            {/* Tables Tab - Bar only */}
-            {isBarProfile && (
-              <button
-                onClick={() => setActiveTab("tables")}
-                className={cn(
-                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
-                  "transition-all duration-200 relative whitespace-nowrap",
-                  activeTab === "tables"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {t('profile.tablesTab')}
-                {activeTab === "tables" && (
-                  <span className={cn(
-                    "absolute bottom-0 left-0 right-0 h-0.5",
-                    "bg-primary"
-                  )} />
-                )}
-              </button>
-            )}
             
             {/* Ads Tab - Bar only (for bar owners) */}
             {isBarProfile && (
