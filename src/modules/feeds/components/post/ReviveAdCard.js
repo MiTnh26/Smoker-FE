@@ -40,12 +40,28 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
   // Render HTML từ Revive vào container
   useEffect(() => {
     if (adHtml && containerRef.current) {
+      // Production URL để thay thế localhost
+      const productionUrl = 'https://smoker-fe-henna.vercel.app';
+      
       // Clean HTML: bỏ \n và whitespace không cần thiết
-      const cleanHtml = adHtml
+      let cleanHtml = adHtml
         .replace(/\\n/g, '') // Bỏ \n
         .replace(/\n/g, '') // Bỏ newline thực sự
         .replace(/\s+/g, ' ') // Thay nhiều whitespace bằng 1 space
         .trim();
+      
+      // Thay thế localhost URLs bằng production URL trong HTML
+      // Match các pattern: http://localhost:PORT/path hoặc https://localhost:PORT/path
+      cleanHtml = cleanHtml.replace(
+        /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s"'<>]*)?/gi,
+        (match) => {
+          // Lấy path từ URL gốc (sau domain và port)
+          const urlMatch = match.match(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(\/.*)?$/i);
+          const path = urlMatch && urlMatch[1] ? urlMatch[1] : '';
+          // Thay thế với production URL + path
+          return productionUrl + path;
+        }
+      );
       
       // Xóa nội dung cũ
       containerRef.current.innerHTML = '';
@@ -72,64 +88,26 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         oldScript.parentNode.replaceChild(newScript, oldScript);
       });
 
-      // Apply CSS cho ảnh từ Revive - resize để hiển thị toàn bộ ảnh
+      // Apply CSS cho ảnh từ Revive - fill full container với crop
       const images = containerRef.current.querySelectorAll('img');
       images.forEach(img => {
-        // Đặt kích thước tối đa (có thể tùy chỉnh)
-        const maxWidth = 500; // Chiều dài tối đa (px)
-        const maxHeight = 600; // Chiều rộng tối đa (px)
-        
-        // Set các style cơ bản
-        img.style.maxWidth = `${maxWidth}px`;
-        img.style.maxHeight = `${maxHeight}px`;
-        img.style.width = 'auto';
-        img.style.height = 'auto';
-        img.style.objectFit = 'contain'; // Hiển thị toàn bộ ảnh, không crop
+        // Set style để fill full container với object-fit: cover
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover'; // Fill full, crop nếu cần
         img.style.display = 'block';
         img.style.borderRadius = '0.5rem';
-        img.style.margin = '0 auto'; // Center image
+        img.style.margin = '0';
         img.style.padding = '0';
-        
-        // Resize động khi ảnh load xong
-        const resizeImage = () => {
-          if (img.naturalWidth && img.naturalHeight) {
-            const naturalAspectRatio = img.naturalWidth / img.naturalHeight;
-            const maxAspectRatio = maxWidth / maxHeight;
-            
-            // Tính toán kích thước mới để vừa với max nhưng giữ nguyên tỷ lệ
-            let newWidth, newHeight;
-            
-            if (naturalAspectRatio > maxAspectRatio) {
-              // Ảnh ngang hơn -> giới hạn theo width
-              newWidth = Math.min(img.naturalWidth, maxWidth);
-              newHeight = newWidth / naturalAspectRatio;
-            } else {
-              // Ảnh dọc hơn -> giới hạn theo height
-              newHeight = Math.min(img.naturalHeight, maxHeight);
-              newWidth = newHeight * naturalAspectRatio;
-            }
-            
-            // Áp dụng kích thước (chỉ khi nhỏ hơn ảnh gốc)
-            if (newWidth < img.naturalWidth || newHeight < img.naturalHeight) {
-              img.style.width = `${newWidth}px`;
-              img.style.height = `${newHeight}px`;
-            }
-          }
-        };
-        
-        // Gọi resize khi ảnh load xong
-        if (img.complete && img.naturalWidth) {
-          resizeImage();
-        } else {
-          img.addEventListener('load', resizeImage, { once: true });
-        }
       });
 
-      // Style links - đảm bảo khớp với card
+      // Style links để fill full container
       const links = containerRef.current.querySelectorAll('a');
       links.forEach(link => {
+        // Style links - fill full container
         link.style.display = 'block';
         link.style.width = '100%';
+        link.style.height = '100%';
         link.style.textDecoration = 'none';
         link.style.borderRadius = '0.5rem';
         link.style.overflow = 'hidden';
@@ -146,6 +124,88 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         beacon.style.width = '0';
         beacon.style.height = '0';
       });
+      
+      // Sử dụng event delegation để intercept clicks trên toàn bộ container
+      // Điều này đảm bảo bắt được cả links được tạo động
+      const handleClick = (e) => {
+        // Chỉ xử lý clicks trên links
+        let target = e.target;
+        while (target && target !== containerRef.current) {
+          if (target.tagName === 'A') {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            let href = target.getAttribute('href') || target.href;
+            if (!href) return;
+            
+            console.log(`[ReviveAdCard] Click intercepted via delegation, href: ${href}`);
+            
+            try {
+              // Kiểm tra nếu đây là Revive click tracking URL
+              const isReviveTrackingUrl = href.includes('/delivery/cl.php') || 
+                                          href.includes('/delivery/ck.php') || 
+                                          href.includes('cl.php') || 
+                                          href.includes('ck.php') ||
+                                          (href.includes('revive') && href.includes('delivery'));
+              
+              if (isReviveTrackingUrl) {
+                // Extract dest parameter từ URL
+                let url;
+                try {
+                  url = new URL(href);
+                } catch (e) {
+                  try {
+                    url = new URL(href, window.location.origin);
+                  } catch (e2) {
+                    console.error(`[ReviveAdCard] Cannot parse URL: ${href}`, e2);
+                    window.location.href = href;
+                    return;
+                  }
+                }
+                
+                const destParam = url.searchParams.get('dest');
+                
+                if (destParam) {
+                  // Decode dest URL và redirect trực tiếp
+                  const destUrl = decodeURIComponent(destParam);
+                  console.log(`[ReviveAdCard] ✅ Extracted dest URL: ${destUrl}`);
+                  console.log(`[ReviveAdCard] Redirecting directly (bypassing Revive tracking)`);
+                  
+                  // Redirect trực tiếp - localStorage tự động được giữ (cùng domain)
+                  window.location.href = destUrl;
+                  return;
+                }
+              }
+              
+              // Nếu không phải Revive tracking, redirect bình thường
+              if (href.includes('localhost') || href.includes('127.0.0.1')) {
+                const url = new URL(href);
+                const pathAndQuery = url.pathname + (url.search || '') + (url.hash || '');
+                window.location.href = productionUrl + pathAndQuery;
+                return;
+              }
+              
+              // Fallback
+              window.location.href = href;
+            } catch (error) {
+              console.error(`[ReviveAdCard] Error:`, error);
+              window.location.href = href;
+            }
+            return;
+          }
+          target = target.parentElement;
+        }
+      };
+      
+      // Attach event listener với capture phase để intercept sớm
+      containerRef.current.addEventListener('click', handleClick, true);
+      
+      // Cleanup function
+      return () => {
+        if (containerRef.current) {
+          containerRef.current.removeEventListener('click', handleClick, true);
+        }
+      };
     }
   }, [adHtml]);
 
@@ -170,10 +230,10 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         ref={containerRef}
         className="w-full overflow-hidden rounded-lg"
         style={{ 
-          minHeight: '100px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
+          width: '100%',
+          aspectRatio: '16 / 9', // Tỷ lệ 16:9 - có thể thay đổi thành 4/3, 1/1, etc
+          position: 'relative',
+          overflow: 'hidden'
         }}
       />
     </div>

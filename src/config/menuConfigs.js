@@ -201,9 +201,13 @@ export const menuConfigs = {
  * @returns {string} Navigation route
  */
 export function getEntityRoute(entity) {
-  const { role, type, id } = entity;
+  const { role, type, id, EntityAccountId, entityAccountId } = entity;
   
-  if (!id) return "/own/profile";
+  // For BarPage, BusinessAccount, and Account, use EntityAccountId to navigate to /profile/:entityAccountId
+  // This ensures consistency and avoids the need to resolve BarPageId
+  const entityAccountIdToUse = EntityAccountId || entityAccountId;
+  
+  if (!id && !entityAccountIdToUse) return "/own/profile";
 
   // Use role first, then fallback to type
   const entityType = role || type || "";
@@ -211,15 +215,27 @@ export function getEntityRoute(entity) {
   switch (entityType.toLowerCase()) {
     case "bar":
     case "barpage":
+      // Use EntityAccountId if available, otherwise fallback to id (BarPageId)
+      if (entityAccountIdToUse) {
+        return `/profile/${entityAccountIdToUse}`;
+      }
       return `/bar/${id}`;
     case "dj":
-      return `/dj/profile`;
     case "dancer":
-      return `/dancer/profile`;
+      // For DJ/Dancer, use EntityAccountId to navigate to /profile/:entityAccountId
+      if (entityAccountIdToUse) {
+        return `/profile/${entityAccountIdToUse}`;
+      }
+      // Fallback to old routes if EntityAccountId not available
+      return entityType.toLowerCase() === "dj" ? `/dj/profile` : `/dancer/profile`;
     case "customer":
     case "account":
       return `/own/profile`;
     default:
+      // For other types, use EntityAccountId if available
+      if (entityAccountIdToUse) {
+        return `/profile/${entityAccountIdToUse}`;
+      }
       return `/user/${id}`;
   }
 }

@@ -155,9 +155,9 @@ export default function UnifiedMenu({
       console.error("[UnifiedMenu] Error updating session:", error);
     }
 
-    // Navigate to entity
-    const route = getEntityRoute(normalized);
-    navigate(route);
+    // When switching role, always navigate to /own/profile
+    // The OwnProfilePage will detect the activeEntity from session and load the correct profile
+    navigate("/own/profile");
     onClose?.();
   };
 
