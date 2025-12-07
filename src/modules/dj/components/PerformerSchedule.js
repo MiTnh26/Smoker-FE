@@ -269,9 +269,14 @@ function BookingCard({ booking, isUpcoming, navigate }) {
   const statusConfig = statusConfigs[status] || statusConfigs.Confirmed;
   const StatusIcon = statusConfig.icon;
 
-  const detailSchedule = booking.detailSchedule || {};
-  const location = detailSchedule.Location || booking.location || "Chưa có địa chỉ";
-  const note = detailSchedule.Note || booking.note || "";
+  const detailSchedule = booking.detailSchedule || booking.DetailSchedule || {};
+  // Lấy địa chỉ từ nhiều nguồn để đảm bảo hiển thị được
+  const location = detailSchedule.Location || 
+                   detailSchedule.location || 
+                   booking.location || 
+                   booking.Location ||
+                   "Chưa có địa chỉ";
+  const note = detailSchedule.Note || detailSchedule.note || booking.note || "";
   const totalAmount = booking.TotalAmount || booking.totalAmount || 0;
   const bookingDate = booking.bookingDate || booking.BookingDate;
 

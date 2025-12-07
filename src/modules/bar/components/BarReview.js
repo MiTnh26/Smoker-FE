@@ -70,20 +70,38 @@ export default function BarReview({ barPageId }) {
         // Nếu API trả về mảng, map lại cho đúng định dạng FE
         const data = Array.isArray(res) ? res : [];
         // console.log('🔄 [BarReview] Fetched data:', data);
-        setReviews(
-          data
-            .filter((r) => !barPageId || r.BarId === barPageId)
-            .map((r) => ({
-              id: r.BarReviewId,
-              userName: r.user?.UserName || "Ẩn danh",
-              avatar: r.user?.Avatar || "https://i.pravatar.cc/50",
-              rating: r.Star || r.rating || 0,
-              comment: r.Content || r.comment || "",
-              date: r.created_at || r.date || new Date().toISOString(),
-              AccountId: r.AccountId,
-              FeedBackContent: r.FeedBackContent,
-            }))
-        );
+        const mappedReviews = data
+          .filter((r) => !barPageId || r.BarId === barPageId)
+          .map((r) => ({
+            id: r.BarReviewId,
+            userName: r.user?.UserName || "Ẩn danh",
+            avatar: r.user?.Avatar || "https://i.pravatar.cc/50",
+            rating: r.Star || r.rating || 0,
+            comment: r.Content || r.comment || "",
+            date: r.created_at || r.date || new Date().toISOString(),
+            AccountId: r.AccountId,
+            Picture: r.Picture, // Ảnh feed
+            FeedBackContent: r.FeedBackContent, // Ảnh back hoặc text
+            BookingId: r.BookingId || r.bookingId, // ID booking
+            BookingDate: r.BookingDate || r.bookingDate, // Ngày book
+            TableName: r.TableName || r.tableName, // Tên bàn
+          }));
+        
+        // Debug: Log reviews với ảnh
+        mappedReviews.forEach((r) => {
+          if (r.Picture || r.FeedBackContent) {
+            console.log('[BarReview] Review with images:', {
+              id: r.id,
+              userName: r.userName,
+              hasPicture: !!r.Picture,
+              hasFeedBackContent: !!r.FeedBackContent,
+              Picture: r.Picture,
+              FeedBackContent: r.FeedBackContent
+            });
+          }
+        });
+        
+        setReviews(mappedReviews);
         // console.log('✅ [BarReview] Fetched data:', data);
         setLoading(false);
       })
@@ -166,7 +184,17 @@ export default function BarReview({ barPageId }) {
             rating: r.Star || r.rating || 0,
             comment: r.Content || r.comment || "",
             date: r.created_at || r.date || new Date().toISOString(),
+            AccountId: r.AccountId,
+            Picture: r.Picture, // Ảnh feed
+            FeedBackContent: r.FeedBackContent, // Ảnh back hoặc text
+            BookingId: r.BookingId || r.bookingId, // ID booking
+            BookingDate: r.BookingDate || r.bookingDate, // Ngày book
+            TableName: r.TableName || r.tableName, // Tên bàn
           }))
+          .sort((a, b) => {
+            // Sắp xếp theo ngày review mới nhất trước
+            return new Date(b.date) - new Date(a.date);
+          })
       );
       setLoading(false);
     } catch (err) {
@@ -176,8 +204,27 @@ export default function BarReview({ barPageId }) {
     }
   };
 
-  // Kiểm tra user đã review chưa
-  const myReview = user && reviews.find((r) => r.AccountId === user.id);
+  // Không cần check myReview nữa vì mỗi booking có thể có review riêng
+  // Form review trong component này chỉ dùng cho backward compatibility
+  // Review chính được gửi từ MyBookings với BookingId cụ thể
+  const myReview = null; // Disable form review trong component này
+
+  // Tính số sao trung bình và breakdown
+  const reviewStats = useMemo(() => {
+    if (reviews.length === 0) {
+      return { average: 0, count: 0, breakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
+    }
+    const totalStars = reviews.reduce((sum, r) => sum + (r.rating || 0), 0);
+    const average = totalStars / reviews.length;
+    const breakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    reviews.forEach((r) => {
+      const star = r.rating || 0;
+      if (star >= 1 && star <= 5) {
+        breakdown[star] = (breakdown[star] || 0) + 1;
+      }
+    });
+    return { average, count: reviews.length, breakdown };
+  }, [reviews]);
 
   // Kiểm tra user có phải là customer không (không phải BAR, DJ, DANCER)
   const isCustomer = useMemo(() => {
@@ -209,10 +256,48 @@ export default function BarReview({ barPageId }) {
       {/* Header */}
       <div className={cn("mb-6")}>
         <h3 className={cn(
-          "text-xl md:text-2xl font-bold text-foreground"
+          "text-xl md:text-2xl font-bold text-foreground mb-2"
         )}>
           ⭐ Đánh giá của khách hàng
         </h3>
+        {reviewStats.count > 0 ? (
+          <div className={cn("flex flex-col gap-2")}>
+            <div className={cn("flex items-center gap-2")}>
+              <span className={cn("text-lg font-semibold text-foreground")}>
+                {reviewStats.average.toFixed(1)}
+              </span>
+              <div className={cn("flex items-center gap-0.5")}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star
+                    key={i}
+                    size={18}
+                    className={cn(
+                      i < Math.round(reviewStats.average)
+                        ? "text-warning fill-warning"
+                        : "text-muted-foreground/40"
+                    )}
+                  />
+                ))}
+              </div>
+              <span className={cn("text-sm text-muted-foreground")}>
+                ({reviewStats.count} đánh giá)
+              </span>
+            </div>
+            <div className={cn("flex flex-wrap gap-3 text-xs text-muted-foreground")}>
+              {[5, 4, 3, 2, 1].map((star) => (
+                <span key={star} className={cn("flex items-center gap-1")}>
+                  <Star size={12} className={cn("text-warning fill-warning")} />
+                  <span>{star}★</span>
+                  <span>({reviewStats.breakdown[star] || 0})</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className={cn("text-sm text-muted-foreground")}>
+            Chưa có đánh giá nào
+          </p>
+        )}
       </div>
 
       {error && (
@@ -350,18 +435,72 @@ export default function BarReview({ barPageId }) {
             />
             <div className={cn("flex-1 min-w-0")}>
               <div className={cn("flex justify-between items-start mb-2 gap-2")}>
-                <h4 className={cn(
-                  "font-semibold text-foreground",
-                  "text-sm md:text-base"
-                )}>
-                  {r.userName}
-                </h4>
-                <span className={cn(
-                  "text-xs text-muted-foreground",
-                  "flex-shrink-0 whitespace-nowrap"
-                )}>
-                  {new Date(r.date).toLocaleDateString("vi-VN")}
-                </span>
+                <div className={cn("flex-1")}>
+                  <div className={cn("flex items-center gap-2 mb-1")}>
+                    <h4 className={cn(
+                      "font-semibold text-foreground",
+                      "text-sm md:text-base"
+                    )}>
+                      {r.userName}
+                    </h4>
+                    {/* Badge "Đã đánh giá" nếu có BookingId (review từ booking cụ thể) */}
+                    {r.BookingId && (
+                      <span className={cn(
+                        "px-2 py-0.5 rounded text-xs font-medium",
+                        "bg-success/10 text-success border border-success/20"
+                      )}>
+                        ✓ Đã đánh giá
+                      </span>
+                    )}
+                  </div>
+                  {/* Thông tin booking - hiển thị nổi bật theo chiều ngang */}
+                  {(r.TableName || r.BookingDate) && (
+                    <div className={cn(
+                      "mb-3 p-3 rounded-lg",
+                      "bg-primary/5 border border-primary/20"
+                    )}>
+                      <p className={cn("text-xs font-semibold text-muted-foreground mb-2")}>
+                        Thông tin đặt bàn:
+                      </p>
+                      <div className={cn("flex flex-wrap items-center gap-3 text-sm")}>
+                        {r.BookingDate && (
+                          <div className={cn("flex items-center gap-2")}>
+                            <span className={cn("text-muted-foreground font-medium")}>Ngày:</span>
+                            <span className={cn("px-2.5 py-1 rounded-md bg-warning/10 text-warning font-semibold")}>
+                              {new Date(r.BookingDate).toLocaleDateString("vi-VN", {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {r.TableName && (
+                          <div className={cn("flex items-center gap-2")}>
+                            <span className={cn("text-muted-foreground font-medium")}>Bàn đã đặt:</span>
+                            <span className={cn("px-2.5 py-1 rounded-md bg-primary/10 text-primary font-semibold")}>
+                              {r.TableName}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className={cn("flex flex-col items-end gap-1")}>
+                  <span className={cn(
+                    "text-xs text-muted-foreground",
+                    "flex-shrink-0 whitespace-nowrap"
+                  )}>
+                    ⭐ Đánh giá: {new Date(r.date).toLocaleDateString("vi-VN", {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                </div>
               </div>
               <div className={cn("flex items-center gap-0.5 mb-2")}>
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -382,7 +521,107 @@ export default function BarReview({ barPageId }) {
               )}>
                 {r.comment}
               </p>
-              {/* Nếu là review của user hiện tại thì hiện nút sửa/xóa */}
+              
+              {/* Hiển thị ảnh feed và back nếu có - gọn và cân đối */}
+              {(r.Picture || r.FeedBackContent) && (
+                <div className={cn("mt-3")}>
+                  {/* Kiểm tra xem có cả 2 ảnh không */}
+                  {(() => {
+                    const hasPicture = r.Picture && r.Picture.trim() !== '';
+                    const hasFeedbackImage = r.FeedBackContent && 
+                      r.FeedBackContent.trim() !== '' && 
+                      (r.FeedBackContent.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
+                       r.FeedBackContent.startsWith('data:image') ||
+                       r.FeedBackContent.startsWith('http'));
+                    
+                    // Nếu có cả 2 ảnh, hiển thị cạnh nhau với kích thước gọn hơn
+                    if (hasPicture && hasFeedbackImage) {
+                      return (
+                        <div className={cn("grid grid-cols-2 gap-2")}>
+                          <div className={cn("relative rounded-lg overflow-hidden border border-border/20 bg-muted/10 group")}>
+                            <img
+                              src={r.Picture}
+                              alt="Review feed"
+                              className={cn("w-full h-32 sm:h-40 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105")}
+                              onClick={() => window.open(r.Picture, '_blank')}
+                              onError={(e) => {
+                                console.error('[BarReview] Error loading Picture:', r.Picture);
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                            <div className={cn("absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200")} />
+                          </div>
+                          <div className={cn("relative rounded-lg overflow-hidden border border-border/20 bg-muted/10 group")}>
+                            <img
+                              src={r.FeedBackContent}
+                              alt="Review back"
+                              className={cn("w-full h-32 sm:h-40 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105")}
+                              onClick={() => window.open(r.FeedBackContent, '_blank')}
+                              onError={(e) => {
+                                console.error('[BarReview] Error loading FeedBackContent:', r.FeedBackContent);
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                            <div className={cn("absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200")} />
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    // Nếu chỉ có 1 ảnh, hiển thị với kích thước gọn hơn
+                    return (
+                      <div className={cn("flex flex-col gap-2")}>
+                        {hasPicture && (
+                          <div className={cn("relative rounded-lg overflow-hidden border border-border/20 bg-muted/10 group max-w-xs")}>
+                            <img
+                              src={r.Picture}
+                              alt="Review feed"
+                              className={cn("w-full h-40 sm:h-48 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-[1.02]")}
+                              onClick={() => window.open(r.Picture, '_blank')}
+                              onError={(e) => {
+                                console.error('[BarReview] Error loading Picture:', r.Picture);
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                            <div className={cn("absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200")} />
+                          </div>
+                        )}
+                        {r.FeedBackContent && (
+                          <div className={cn("relative rounded-lg overflow-hidden border border-border/20 bg-muted/10 max-w-xs")}>
+                            {/* Check if FeedBackContent is an image URL */}
+                            {r.FeedBackContent.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
+                             r.FeedBackContent.startsWith('data:image') ||
+                             r.FeedBackContent.startsWith('http') ? (
+                              <div className={cn("group")}>
+                                <img
+                                  src={r.FeedBackContent}
+                                  alt="Review back"
+                                  className={cn("w-full h-40 sm:h-48 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-[1.02]")}
+                                  onClick={() => window.open(r.FeedBackContent, '_blank')}
+                                  onError={(e) => {
+                                    console.error('[BarReview] Error loading FeedBackContent image:', r.FeedBackContent);
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                                <div className={cn("absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200")} />
+                              </div>
+                            ) : (
+                              <p className={cn(
+                                "text-sm text-foreground p-3",
+                                "leading-relaxed whitespace-pre-wrap break-words"
+                              )}>
+                                {r.FeedBackContent}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+              
+              {/* Nếu là review của user hiện tại thì hiện nút sửa */}
               {user && r.AccountId === user.id && (
                 <div className={cn("flex gap-2 mt-2")}>
                   <button
@@ -397,19 +636,6 @@ export default function BarReview({ barPageId }) {
                     onClick={() => handleEdit(r)}
                   >
                     Sửa
-                  </button>
-                  <button
-                    className={cn(
-                      "bg-transparent border-none",
-                      "text-danger font-semibold text-xs",
-                      "px-3 py-1.5 rounded-lg",
-                      "transition-all duration-200",
-                      "hover:bg-danger/10",
-                      "active:scale-95"
-                    )}
-                    onClick={() => handleDeleteReview(r.id)}
-                  >
-                    Xóa
                   </button>
                 </div>
               )}

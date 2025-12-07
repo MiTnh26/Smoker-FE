@@ -306,7 +306,11 @@ export default function DancerBookingRequests({ performerEntityAccountId }) {
         </p>
       </div>
 
-      <div className={cn("flex flex-col gap-4")}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+        gap: '16px'
+      }}>
         {bookings.map((booking) => {
           const detailSchedule = booking.detailSchedule || booking.DetailSchedule;
           const location = detailSchedule?.Location || "Chưa có địa chỉ";
@@ -318,142 +322,230 @@ export default function DancerBookingRequests({ performerEntityAccountId }) {
           // Xác định status badge
           let statusBadge = null;
           if (scheduleStatus === "Pending") {
-            statusBadge = (
-              <span
-                className={cn("px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1")}
-                style={{
-                  color: "rgb(var(--warning))",
-                  backgroundColor: "rgba(var(--warning), 0.1)",
-                }}
-              >
-                <AlertCircle size={14} />
-                Chờ xác nhận
-              </span>
-            );
+            statusBadge = {
+              label: "Chờ xác nhận",
+              color: "rgb(var(--warning))",
+              bg: "rgba(var(--warning), 0.1)",
+              icon: AlertCircle
+            };
           } else if (scheduleStatus === "Confirmed" && paymentStatus === "Paid") {
-            statusBadge = (
-              <span
-                className={cn("px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1")}
-                style={{
-                  color: "rgb(var(--primary))",
-                  backgroundColor: "rgba(var(--primary), 0.1)",
-                }}
-              >
-                <CheckCircle size={14} />
-                Đã xác nhận - Đã cọc
-              </span>
-            );
+            statusBadge = {
+              label: "Đã xác nhận - Đã cọc",
+              color: "rgb(var(--primary))",
+              bg: "rgba(var(--primary), 0.1)",
+              icon: CheckCircle
+            };
           } else if (scheduleStatus === "Completed") {
-            statusBadge = (
-              <span
-                className={cn("px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1")}
-                style={{
-                  color: "rgb(var(--success))",
-                  backgroundColor: "rgba(var(--success), 0.1)",
-                }}
-              >
-                <CheckCircle size={14} />
-                Hoàn thành
-              </span>
-            );
+            statusBadge = {
+              label: "Hoàn thành",
+              color: "rgb(var(--success))",
+              bg: "rgba(var(--success), 0.1)",
+              icon: CheckCircle
+            };
           }
+
+          const StatusIcon = statusBadge?.icon;
 
           return (
             <div
               key={booking.BookedScheduleId || booking.bookedScheduleId}
-              className={cn(
-                "bg-card rounded-xl border border-border/20 p-6",
-                "shadow-sm hover:shadow-md transition-shadow"
-              )}
+              style={{
+                background: 'rgb(var(--card))',
+                borderRadius: '8px',
+                padding: '14px',
+                border: '1px solid rgb(var(--border))',
+                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.08)',
+                transition: 'all 0.2s ease-in-out',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = '0 1px 4px rgba(0, 0, 0, 0.08)';
+              }}
             >
-              <div className={cn("flex items-start justify-between gap-4")}>
-                <div className={cn("flex-1 flex flex-col gap-3")}>
-                  <div className={cn("flex items-center gap-3")}>
-                    {statusBadge}
-                    <span className={cn("text-sm text-muted-foreground")}>
-                      {formatDate(booking.bookingDate || booking.BookingDate)}
-                    </span>
-                  </div>
-
-                  <div className={cn("flex items-start gap-2")}>
-                    <MapPin className={cn("w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0")} />
-                    <p className={cn("text-sm text-foreground")}>
-                      {location}
-                    </p>
-                  </div>
-
-                  {note && (
-                    <div className={cn("text-sm text-muted-foreground")}>
-                      <p className={cn("font-medium mb-1")}>Ghi chú:</p>
-                      <p className={cn("whitespace-pre-wrap")}>{note}</p>
-                    </div>
-                  )}
-
-                  {totalAmount > 0 && (
-                    <div className={cn("flex items-center gap-2")}>
-                      <DollarSign className={cn("w-4 h-4 text-primary")} />
-                      <p className={cn("text-sm font-semibold text-primary")}>
-                        {parseInt(totalAmount).toLocaleString('vi-VN')} đ
-                      </p>
-                    </div>
-                  )}
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{
+                  fontSize: '0.7rem',
+                  color: '#9ca3af',
+                  marginBottom: '6px',
+                  fontFamily: 'monospace',
+                  wordBreak: 'break-all',
+                  lineHeight: '1.2'
+                }}>
+                  {booking.BookedScheduleId || booking.bookedScheduleId || 'N/A'}
                 </div>
+                <div style={{
+                  fontSize: '0.8rem',
+                  color: '#6b7280',
+                  marginBottom: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <Calendar size={14} style={{ color: '#9ca3af' }} />
+                  <span>{formatDate(booking.bookingDate || booking.BookingDate)}</span>
+                </div>
+                <div style={{
+                  fontSize: '0.75rem',
+                  color: '#6b7280',
+                  marginBottom: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <MapPin size={14} style={{ color: '#9ca3af' }} />
+                  <span style={{ wordBreak: 'break-word' }}>{location}</span>
+                </div>
+                {note && (
+                  <div style={{
+                    fontSize: '0.75rem',
+                    color: '#6b7280',
+                    marginTop: '8px',
+                    padding: '6px 8px',
+                    background: 'rgba(var(--muted), 0.2)',
+                    borderRadius: '4px',
+                    borderLeft: '2px solid rgb(var(--primary))'
+                  }}>
+                    <span style={{ fontWeight: '500', color: '#374151' }}>📝 </span>
+                    {note}
+                  </div>
+                )}
+              </div>
 
-                <div className={cn("flex items-center gap-2 flex-shrink-0")}>
-                  <button
-                    onClick={() => {
-                      setSelectedBooking(booking);
-                      setDetailModalOpen(true);
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                {statusBadge && (
+                  <span
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.7rem',
+                      fontWeight: '600',
+                      background: statusBadge.bg,
+                      color: statusBadge.color,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
                     }}
-                    className={cn(
-                      "px-3 py-2 rounded-lg text-sm font-medium",
-                      "bg-muted text-muted-foreground hover:bg-muted/80",
-                      "flex items-center gap-2 transition-colors"
-                    )}
                   >
-                    <Eye size={16} />
-                    Chi tiết
-                  </button>
-                  {scheduleStatus === "Pending" && (
-                    <>
-                      <button
-                        onClick={() => handleReject(booking)}
-                        className={cn(
-                          "px-4 py-2 rounded-lg text-sm font-semibold",
-                          "bg-danger text-white hover:bg-danger/90",
-                          "flex items-center gap-2 transition-colors"
-                        )}
-                      >
-                        <XCircle size={16} />
-                        Từ chối
-                      </button>
-                      <button
-                        onClick={() => handleConfirm(booking)}
-                        className={cn(
-                          "px-4 py-2 rounded-lg text-sm font-semibold",
-                          "bg-success text-white hover:bg-success/90",
-                          "flex items-center gap-2 transition-colors"
-                        )}
-                      >
-                        <CheckCircle size={16} />
-                        Xác nhận
-                      </button>
-                    </>
-                  )}
-                  {scheduleStatus === "Confirmed" && paymentStatus === "Paid" && (
+                    {StatusIcon && <StatusIcon size={12} />}
+                    {statusBadge.label}
+                  </span>
+                )}
+                {totalAmount > 0 && (
+                  <span style={{
+                    fontSize: '0.8rem',
+                    fontWeight: '600',
+                    color: 'rgb(var(--success))',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    <DollarSign size={14} />
+                    {parseInt(totalAmount).toLocaleString('vi-VN')} đ
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    setSelectedBooking(booking);
+                    setDetailModalOpen(true);
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    background: 'rgb(var(--muted))',
+                    color: 'rgb(var(--foreground))',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '0.75rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'background-color 0.2s ease-in-out'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(var(--muted-hover))'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(var(--muted))'}
+                >
+                  <Eye size={14} />
+                  Chi tiết
+                </button>
+                {scheduleStatus === "Pending" && (
+                  <>
                     <button
-                      onClick={() => handleCompleteTransaction(booking)}
-                      className={cn(
-                        "px-4 py-2 rounded-lg text-sm font-semibold",
-                        "bg-primary text-white hover:bg-primary/90",
-                        "flex items-center gap-2 transition-colors"
-                      )}
+                      onClick={() => handleReject(booking)}
+                      style={{
+                        padding: '6px 12px',
+                        border: 'none',
+                        borderRadius: '4px',
+                        background: 'rgb(var(--danger))',
+                        color: 'rgb(var(--white))',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'background-color 0.2s ease-in-out'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(var(--danger-hover))'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(var(--danger))'}
                     >
-                      <CheckCircle size={16} />
-                      Xác nhận đã giao dịch xong
+                      <XCircle size={14} />
+                      Từ chối
                     </button>
-                  )}
-                </div>
+                    <button
+                      onClick={() => handleConfirm(booking)}
+                      style={{
+                        padding: '6px 12px',
+                        border: 'none',
+                        borderRadius: '4px',
+                        background: 'rgb(var(--success))',
+                        color: 'rgb(var(--white))',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'background-color 0.2s ease-in-out'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(var(--success-hover))'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(var(--success))'}
+                    >
+                      <CheckCircle size={14} />
+                      Xác nhận
+                    </button>
+                  </>
+                )}
+                {scheduleStatus === "Confirmed" && paymentStatus === "Paid" && (
+                  <button
+                    onClick={() => handleCompleteTransaction(booking)}
+                    style={{
+                      padding: '6px 12px',
+                      border: 'none',
+                      borderRadius: '4px',
+                      background: 'rgb(var(--primary))',
+                      color: 'rgb(var(--white))',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '0.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'background-color 0.2s ease-in-out'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgb(var(--primary-hover))'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgb(var(--primary))'}
+                  >
+                    <CheckCircle size={14} />
+                    Hoàn thành
+                  </button>
+                )}
               </div>
             </div>
           );

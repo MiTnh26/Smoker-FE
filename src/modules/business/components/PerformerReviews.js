@@ -79,6 +79,12 @@ const normalizeReview = (item) => ({
   star: item.StarValue || item.star || 0,
   comment: item.Content || item.content || "",
   createdAt: item.created_at || item.createdAt || item.updatedAt || null,
+  Picture: item.Picture || null, // Ảnh feed
+  FeedBackContent: item.FeedBackContent || null, // Ảnh back hoặc text
+  BookingId: item.BookingId || item.bookingId, // ID booking
+  BookingDate: item.BookingDate || item.bookingDate, // Ngày book
+  Picture: item.Picture || null, // Ảnh feed
+  FeedBackContent: item.FeedBackContent || null, // Ảnh back hoặc text
   reviewer: {
     accountId:
       item.reviewer?.AccountId ||
@@ -519,14 +525,43 @@ export default function PerformerReviews({
               />
               <div className={cn("flex-1 min-w-0 flex flex-col gap-2")}>
                 <div className={cn("flex justify-between items-start")}>
-                  <div>
-                    <p className={cn("text-sm font-semibold text-foreground")}>
-                      {review.reviewer.name || t("performerReviews.anonymous")}
-                    </p>
-                    {review.comment && (
-                      <p className={cn("text-sm text-foreground leading-relaxed mt-1 whitespace-pre-wrap break-words")}>
-                        {review.comment}
+                  <div className={cn("flex-1")}>
+                    <div className={cn("flex items-center gap-2 mb-1")}>
+                      <p className={cn("text-sm font-semibold text-foreground")}>
+                        {review.reviewer.name || t("performerReviews.anonymous")}
                       </p>
+                      {/* Badge "Đã đánh giá" nếu có BookingId (review từ booking cụ thể) */}
+                      {review.BookingId && (
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-xs font-medium",
+                          "bg-success/10 text-success border border-success/20"
+                        )}>
+                          ✓ Đã đánh giá
+                        </span>
+                      )}
+                    </div>
+                    {/* Thông tin booking - hiển thị theo chiều ngang giống bar review */}
+                    {review.BookingDate && (
+                      <div className={cn(
+                        "mb-2 p-2 rounded-lg",
+                        "bg-primary/5 border border-primary/20"
+                      )}>
+                        <p className={cn("text-xs font-semibold text-muted-foreground mb-1.5")}>
+                          Thông tin đặt lịch:
+                        </p>
+                        <div className={cn("flex flex-wrap items-center gap-2 text-xs")}>
+                          <div className={cn("flex items-center gap-1.5")}>
+                            <span className={cn("text-muted-foreground font-medium")}>Ngày:</span>
+                            <span className={cn("px-2 py-0.5 rounded-md bg-warning/10 text-warning font-semibold")}>
+                              {new Date(review.BookingDate).toLocaleDateString("vi-VN", {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                   <div className={cn("flex flex-col items-end gap-1 text-xs text-muted-foreground")}>
@@ -543,9 +578,115 @@ export default function PerformerReviews({
                         />
                       ))}
                     </div>
-                    <span>{formatDateTime(review.createdAt)}</span>
+                    <span>
+                      ⭐ Đánh giá: {formatDateTime(review.createdAt)}
+                    </span>
                   </div>
                 </div>
+                {review.comment && (
+                  <p className={cn("text-sm text-foreground leading-relaxed mt-1 whitespace-pre-wrap break-words")}>
+                    {review.comment}
+                  </p>
+                )}
+                
+                {/* Hiển thị ảnh feed và back nếu có */}
+                {(review.Picture || review.FeedBackContent) && (
+                  <div className={cn("mt-3")}>
+                    {/* Kiểm tra xem có cả 2 ảnh không */}
+                    {(() => {
+                      const hasPicture = review.Picture && review.Picture.trim() !== '';
+                      const hasFeedbackImage = review.FeedBackContent && 
+                        review.FeedBackContent.trim() !== '' && 
+                        (review.FeedBackContent.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
+                         review.FeedBackContent.startsWith('data:image') ||
+                         review.FeedBackContent.startsWith('http'));
+                      
+                      // Nếu có cả 2 ảnh, hiển thị cạnh nhau
+                      if (hasPicture && hasFeedbackImage) {
+                        return (
+                          <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3")}>
+                            <div className={cn("relative rounded-lg overflow-hidden border border-border/20 bg-muted/10 group")}>
+                              <img
+                                src={review.Picture}
+                                alt="Review feed"
+                                className={cn("w-full h-48 sm:h-56 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105")}
+                                onClick={() => window.open(review.Picture, '_blank')}
+                                onError={(e) => {
+                                  console.error('[PerformerReviews] Error loading Picture:', review.Picture);
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <div className={cn("absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200")} />
+                            </div>
+                            <div className={cn("relative rounded-lg overflow-hidden border border-border/20 bg-muted/10 group")}>
+                              <img
+                                src={review.FeedBackContent}
+                                alt="Review back"
+                                className={cn("w-full h-48 sm:h-56 object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105")}
+                                onClick={() => window.open(review.FeedBackContent, '_blank')}
+                                onError={(e) => {
+                                  console.error('[PerformerReviews] Error loading FeedBackContent:', review.FeedBackContent);
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <div className={cn("absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200")} />
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      // Nếu chỉ có 1 ảnh hoặc có text, hiển thị dọc
+                      return (
+                        <div className={cn("flex flex-col gap-3")}>
+                          {hasPicture && (
+                            <div className={cn("relative rounded-lg overflow-hidden border border-border/20 bg-muted/10 group")}>
+                              <img
+                                src={review.Picture}
+                                alt="Review feed"
+                                className={cn("w-full max-w-md h-auto object-cover cursor-pointer transition-transform duration-200 group-hover:scale-[1.02]")}
+                                onClick={() => window.open(review.Picture, '_blank')}
+                                onError={(e) => {
+                                  console.error('[PerformerReviews] Error loading Picture:', review.Picture);
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <div className={cn("absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200")} />
+                            </div>
+                          )}
+                          {review.FeedBackContent && (
+                            <div className={cn("relative rounded-lg overflow-hidden border border-border/20 bg-muted/10")}>
+                              {/* Check if FeedBackContent is an image URL */}
+                              {review.FeedBackContent.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
+                               review.FeedBackContent.startsWith('data:image') ||
+                               review.FeedBackContent.startsWith('http') ? (
+                                <div className={cn("group")}>
+                                  <img
+                                    src={review.FeedBackContent}
+                                    alt="Review back"
+                                    className={cn("w-full max-w-md h-auto object-cover cursor-pointer transition-transform duration-200 group-hover:scale-[1.02]")}
+                                    onClick={() => window.open(review.FeedBackContent, '_blank')}
+                                    onError={(e) => {
+                                      console.error('[PerformerReviews] Error loading FeedBackContent image:', review.FeedBackContent);
+                                      e.target.style.display = 'none';
+                                    }}
+                                  />
+                                  <div className={cn("absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200")} />
+                                </div>
+                              ) : (
+                                <p className={cn(
+                                  "text-sm text-foreground p-3",
+                                  "leading-relaxed whitespace-pre-wrap break-words"
+                                )}>
+                                  {review.FeedBackContent}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
           ))

@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import bankInfoApi from "../../../api/bankInfoApi";
 import "../../../styles/modules/addBankInfo.css";
 
 export default function AddBankInfo() {
   const navigate = useNavigate();
+  const location = useLocation();
   // Parse once to prevent changing object references on each render (avoids effect loops)
   const storedUser = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("user")); } catch { return null; }
@@ -56,14 +57,30 @@ export default function AddBankInfo() {
       try {
         if (entityType === "account" && storedUser?.id) {
           const res = await bankInfoApi.getByAccountId(storedUser.id);
-          if (res?.status === "success" && res.data) {
-            setExistingBankInfo(res.data);
+          // Parse response: API có thể trả về { status: "success", data: {...} } hoặc { data: {...} }
+          let bankInfo = null;
+          if (res?.data) {
+            if (res.data.status === "success" && res.data.data) {
+              bankInfo = res.data.data;
+            } else if (res.data.BankInfoId || res.data.BankName) {
+              // res.data chính là bankInfo object
+              bankInfo = res.data;
+            }
+          }
+          
+          if (bankInfo && (bankInfo.BankInfoId || bankInfo.BankName)) {
+            console.log("✅ Found existing bank info for account:", bankInfo);
+            setExistingBankInfo(bankInfo);
             setFormData({
-              bankName: res.data.BankName || "",
-              accountNumber: res.data.AccountNumber || "",
-              accountId: res.data.AccountId,
+              bankName: bankInfo.BankName || "",
+              accountNumber: bankInfo.AccountNumber || "",
+              accountId: bankInfo.AccountId,
               barPageId: null,
             });
+          } else {
+            // Không có bank info, reset
+            console.log("❌ No bank info found for account");
+            setExistingBankInfo(null);
           }
         } else if (entityType === "bar") {
           // Tìm bar page entity trong session
@@ -73,27 +90,44 @@ export default function AddBankInfo() {
           const barId = barEntity?.entityId || barEntity?.id;
           if (barId) {
             const res = await bankInfoApi.getByBarPageId(barId);
-            if (res?.status === "success" && res.data) {
-              setExistingBankInfo(res.data);
+            // Parse response tương tự như account
+            let bankInfo = null;
+            if (res?.data) {
+              if (res.data.status === "success" && res.data.data) {
+                bankInfo = res.data.data;
+              } else if (res.data.BankInfoId || res.data.BankName) {
+                bankInfo = res.data;
+              }
+            }
+            
+            if (bankInfo && (bankInfo.BankInfoId || bankInfo.BankName)) {
+              console.log("✅ Found existing bank info for bar:", bankInfo);
+              setExistingBankInfo(bankInfo);
               setFormData({
-                bankName: res.data.BankName || "",
-                accountNumber: res.data.AccountNumber || "",
+                bankName: bankInfo.BankName || "",
+                accountNumber: bankInfo.AccountNumber || "",
                 accountId: null,
-                barPageId: res.data.BarPageId,
+                barPageId: bankInfo.BarPageId,
               });
+            } else {
+              setExistingBankInfo(null);
             }
           }
         }
       } catch (error) {
         // Không tìm thấy bank info là bình thường (404)
-        if (error.response?.status !== 404) {
+        if (error.response?.status === 404) {
+          setExistingBankInfo(null);
+          console.log("No existing bank info found (404) - this is normal for new users");
+        } else {
           console.error("Error checking existing bank info:", error);
+          setExistingBankInfo(null);
         }
       }
     };
 
     checkExistingBankInfo();
-  }, [entityType]);
+  }, [entityType, storedUser, storedSession]);
 
   // Update formData khi entityType thay đổi
   useEffect(() => {
@@ -183,7 +217,7 @@ export default function AddBankInfo() {
       };
 
       let res;
-      if (existingBankInfo) {
+      if (existingBankInfo && existingBankInfo.BankInfoId) {
         // Update existing bank info
         res = await bankInfoApi.update(existingBankInfo.BankInfoId, {
           bankName: payload.bankName,
@@ -191,27 +225,102 @@ export default function AddBankInfo() {
         });
       } else {
         // Create new bank info
-        res = await bankInfoApi.create(payload);
+        try {
+          res = await bankInfoApi.create(payload);
+        } catch (createError) {
+          // Nếu lỗi "đã có thông tin ngân hàng", thử lấy lại và update
+          if (createError.response?.status === 400) {
+            const errorData = createError.response?.data;
+            const errorMessage = errorData?.message || errorData?.error || "";
+            const hasExistingInfo = errorMessage.includes("đã có thông tin ngân hàng");
+            
+            // Kiểm tra xem backend có trả về existingBankInfo không
+            const existingFromError = errorData?.existingBankInfo;
+            
+            if (hasExistingInfo) {
+              console.log("Bank info already exists, attempting to update...");
+              
+              let existing = existingFromError;
+              
+              // Nếu backend không trả về existingBankInfo, thử fetch lại
+              if (!existing || !existing.BankInfoId) {
+                try {
+                  let existingRes;
+                  if (entityType === "account" && formData.accountId) {
+                    existingRes = await bankInfoApi.getByAccountId(formData.accountId);
+                  } else if (entityType === "bar" && formData.barPageId) {
+                    existingRes = await bankInfoApi.getByBarPageId(formData.barPageId);
+                  }
+                  
+                  // Parse response đúng format
+                  if (existingRes?.data) {
+                    if (existingRes.data.status === "success" && existingRes.data.data) {
+                      existing = existingRes.data.data;
+                    } else if (existingRes.data.BankInfoId || existingRes.data.BankName) {
+                      existing = existingRes.data;
+                    }
+                  }
+                } catch (fetchError) {
+                  console.error("Error fetching existing bank info:", fetchError);
+                  // Nếu không fetch được, vẫn thử update với existingFromError nếu có
+                }
+              }
+              
+              if (existing && existing.BankInfoId) {
+                // Update thay vì create
+                console.log("Updating existing bank info:", existing.BankInfoId);
+                // Cập nhật existingBankInfo state để form hiển thị đúng mode
+                setExistingBankInfo(existing);
+                res = await bankInfoApi.update(existing.BankInfoId, {
+                  bankName: payload.bankName,
+                  accountNumber: payload.accountNumber,
+                });
+                // Sau khi update, reload lại để đảm bảo state sync
+                if (res?.status === "success" || res?.data) {
+                  const updatedBankInfo = res?.data?.data || res?.data || existing;
+                  setExistingBankInfo(updatedBankInfo);
+                }
+              } else {
+                // Nếu không tìm thấy existing, có thể là lỗi thật
+                console.error("Cannot find existing bank info to update");
+                throw createError;
+              }
+            } else {
+              throw createError;
+            }
+          } else {
+            throw createError;
+          }
+        }
       }
 
-      if (res?.status === "success") {
+      if (res?.status === "success" || res?.data) {
         setMessage(
           existingBankInfo
             ? "✅ Cập nhật thông tin ngân hàng thành công!"
             : "✅ Thêm thông tin ngân hàng thành công!"
         );
         
+        // Check if there's a returnTo in location state (from review modal redirect)
+        const locationState = window.history.state?.usr || {};
+        const returnTo = locationState.returnTo;
+        
         // Redirect after 1.5 seconds
         setTimeout(() => {
-          navigate("/own/profile");
+          if (returnTo) {
+            navigate(returnTo);
+          } else {
+            navigate("/own/profile");
+          }
         }, 1500);
       } else {
-        throw new Error(res?.message || "Có lỗi xảy ra");
+        throw new Error(res?.message || res?.error || "Có lỗi xảy ra");
       }
     } catch (error) {
       console.error("Bank info error:", error);
       const errorMessage =
         error.response?.data?.message ||
+        error.response?.data?.error ||
         error.message ||
         "Có lỗi xảy ra khi thêm thông tin ngân hàng";
       setMessage(`❌ ${errorMessage}`);
