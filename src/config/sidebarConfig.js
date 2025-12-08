@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Pause,
   Play,
+  DollarSign,
   Megaphone
 } from "lucide-react";
 
@@ -53,12 +54,11 @@ export const sidebarConfig = {
     { label: "Newsfeed", icon: Home, path: "/bar/newsfeed" },
     { label: "Dashboard", icon: BarChart3, path: "/bar/dashboard" },
     { label: "Sự kiện", icon: Calendar, path: "/bar/events" },
-    { label: "Nhân sự (DJ, Dancer)", icon: Users, path: "/bar/staff" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/bar/messages" },
     {
       label: "Bar page",
       icon: User,
-      path: "/bar/:barPageId",
+      path: "/own/profile",
     },
     {
       label: "Cài đặt quán",
@@ -67,6 +67,7 @@ export const sidebarConfig = {
       subMenu: [
         { label: "Quản lý loại bàn", path: "/bar/settings/:barPageId/table-types" },
         { label: "Quản lý bàn", path: "/bar/settings/:barPageId" },
+        { label: "Danh sách bàn", path: "/bar/settings/:barPageId/tables" },
         { label: "Quản lý voucher", path: "/bar/settings/:barPageId/vouchers" },
         { label: "Quản lý combo", path: "/bar/settings/:barPageId/combos" },
       ],
@@ -102,6 +103,7 @@ export const sidebarConfig = {
     { label: "Duyệt QC Event", icon: CheckCircle2, path: "/admin/event-ad-approvals" },
     { label: "Yêu cầu tạm dừng QC", icon: Pause, path: "/admin/pause-requests" },
     { label: "Yêu cầu tiếp tục QC", icon: Play, path: "/admin/resume-requests" },
+    { label: "Yêu cầu hoàn tiền", icon: DollarSign, path: "/admin/refund-requests" },
     { label: "Báo cáo & thống kê", icon: BarChart3, path: "/admin/reports" },
     { label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },
     { label: "Cài Đặt Quảng Cáo", icon: Megaphone, path: "https://smoker-revive.onrender.com/revive/www/admin/index.php", external: true },

@@ -4,14 +4,11 @@ import bookingApi from "../../api/bookingApi";
 import publicProfileApi from "../../api/publicProfileApi";
 import { normalizeProfileData } from "../../utils/profileDataMapper";
 import { cn } from "../../utils/cn";
-import { Calendar, MapPin, DollarSign, X, AlertCircle, Clock } from "lucide-react";
+import { Calendar, MapPin, DollarSign, X, AlertCircle } from "lucide-react";
 import AddressSelector from "../common/AddressSelector";
 
 export default function RequestBookingModal({ open, onClose, performerEntityAccountId, performerRole = "DJ", performerProfile = null }) {
-  const [bookingType, setBookingType] = useState("day"); // "day" hoặc "hour"
   const [date, setDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
   const [selectedProvinceId, setSelectedProvinceId] = useState("");
   const [selectedDistrictId, setSelectedDistrictId] = useState("");
   const [selectedWardId, setSelectedWardId] = useState("");
@@ -19,14 +16,20 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
   const [location, setLocation] = useState(""); // Full address string
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [bookedDates, setBookedDates] = useState([]); // Danh sách ngày đã được book (cho booking theo ngày)
-  const [bookedTimeSlots, setBookedTimeSlots] = useState([]); // Danh sách time slots đã được book (cho booking theo giờ)
+  const [bookedDates, setBookedDates] = useState([]); // Danh sách ngày đã được book
   const [loadingBookedDates, setLoadingBookedDates] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [profile, setProfile] = useState(performerProfile);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [timeConflict, setTimeConflict] = useState(null); // Thông tin conflict nếu có
+  // Validation errors cho từng field
+  const [fieldErrors, setFieldErrors] = useState({
+    date: "",
+    province: "",
+    district: "",
+    ward: "",
+    addressDetail: ""
+  });
 
   // Cọc cố định 100.000 VND
   const DEPOSIT_AMOUNT = 100000;
@@ -126,7 +129,7 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
     }
   };
 
-  // Tính giá tự động
+  // Tính giá tự động (chỉ theo ngày)
   const calculatedPrice = useMemo(() => {
     // Nếu chưa load profile, trả về null để hiển thị "Đang tải..."
     if (!profile && loadingProfile) return null;
@@ -137,83 +140,27 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
     const pricePerSession = profile.pricePerSession || 0;
     
     console.log("[RequestBookingModal] Calculating price:", {
-      bookingType,
       pricePerHours,
       pricePerSession,
-      startTime,
-      endTime,
       date
     });
     
-    if (bookingType === "day") {
-      // Ưu tiên pricePerSession (giá theo buổi/cả ngày)
-      if (pricePerSession > 0) {
-        console.log("[RequestBookingModal] Using pricePerSession:", pricePerSession);
-        return pricePerSession;
-      }
-      
-      // Nếu không có pricePerSession, tính từ pricePerHours * 24 (cả ngày)
-      if (pricePerHours > 0) {
-        const calculated = pricePerHours * 24;
-        console.log("[RequestBookingModal] Using pricePerHours * 24:", calculated);
-        return calculated;
-      }
-    } else if (bookingType === "hour") {
-      // Tính theo giờ: cần startTime và endTime
-      if (!startTime || !endTime) {
-        return null; // Chưa chọn thời gian, chưa thể tính giá
-      }
-      
-      if (pricePerHours <= 0) {
-        console.warn("[RequestBookingModal] No pricePerHours available");
-        return 0; // Không có giá theo giờ
-      }
-      
-      // Tính số giờ
-      const start = new Date(`${date}T${startTime}`);
-      const end = new Date(`${date}T${endTime}`);
-      
-      // Nếu endTime < startTime, có thể là qua ngày hôm sau
-      if (end < start) {
-        end.setDate(end.getDate() + 1);
-      }
-      
-      const diffMs = end - start;
-      const diffHours = diffMs / (1000 * 60 * 60);
-      
-      // Làm tròn lên (ví dụ: 2.5 giờ = 3 giờ)
-      const hours = Math.ceil(diffHours);
-      const calculated = pricePerHours * hours;
-      
-      console.log("[RequestBookingModal] Calculated hourly price:", {
-        hours,
-        pricePerHours,
-        calculated
-      });
-      
+    // Ưu tiên pricePerSession (giá theo buổi/cả ngày)
+    if (pricePerSession > 0) {
+      console.log("[RequestBookingModal] Using pricePerSession:", pricePerSession);
+      return pricePerSession;
+    }
+    
+    // Nếu không có pricePerSession, tính từ pricePerHours * 24 (cả ngày)
+    if (pricePerHours > 0) {
+      const calculated = pricePerHours * 24;
+      console.log("[RequestBookingModal] Using pricePerHours * 24:", calculated);
       return calculated;
     }
     
     console.warn("[RequestBookingModal] No price available");
     return 0;
-  }, [profile, bookingType, date, startTime, endTime, loadingProfile]);
-  
-  // Tính số giờ khi booking theo giờ
-  const calculatedHours = useMemo(() => {
-    if (bookingType !== "hour" || !startTime || !endTime) return 0;
-    
-    const start = new Date(`${date}T${startTime}`);
-    const end = new Date(`${date}T${endTime}`);
-    
-    if (end < start) {
-      end.setDate(end.getDate() + 1);
-    }
-    
-    const diffMs = end - start;
-    const diffHours = diffMs / (1000 * 60 * 60);
-    
-    return Math.ceil(diffHours);
-  }, [bookingType, date, startTime, endTime]);
+  }, [profile, date, loadingProfile]);
   
   // Fetch booked dates khi modal mở
   useEffect(() => {
@@ -237,10 +184,7 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
       }
     } else {
       // Reset khi đóng modal
-      setBookingType("day");
       setDate("");
-      setStartTime("");
-      setEndTime("");
       setSelectedProvinceId("");
       setSelectedDistrictId("");
       setSelectedWardId("");
@@ -248,22 +192,17 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
       setLocation("");
       setNote("");
       setBookedDates([]);
-      setBookedTimeSlots([]);
-      setTimeConflict(null);
+      setFieldErrors({
+        date: "",
+        province: "",
+        district: "",
+        ward: "",
+        addressDetail: ""
+      });
       // Không reset profile vì có thể được truyền từ props
       // setProfile(null);
     }
   }, [open, performerEntityAccountId, performerProfile]);
-
-  // Fetch booked time slots khi chọn date và bookingType === "hour"
-  useEffect(() => {
-    if (open && performerEntityAccountId && bookingType === "hour" && date) {
-      fetchBookedTimeSlots();
-    } else {
-      setBookedTimeSlots([]);
-      setTimeConflict(null);
-    }
-  }, [open, performerEntityAccountId, bookingType, date]);
 
   const fetchBookedDates = async () => {
     if (!performerEntityAccountId) return;
@@ -274,13 +213,27 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
       const res = await bookingApi.getDJBookingsByReceiver(performerEntityAccountId, { limit: 1000 });
       const bookings = res.data?.data || res.data || [];
       
-      // Lọc các booking đã confirmed và lấy danh sách ngày
-      const confirmedBookings = bookings.filter(b => 
-        (b.scheduleStatus || b.ScheduleStatus) === "Confirmed"
-      );
+      // Lọc các booking đã confirmed HOẶC pending nhưng đã thanh toán cọc (Paid)
+      // Khi PaymentStatus = Paid và ScheduleStatus = Pending, ngày đó cũng bị block
+      const blockedBookings = bookings.filter(b => {
+        const scheduleStatus = b.scheduleStatus || b.ScheduleStatus;
+        const paymentStatus = b.paymentStatus || b.PaymentStatus;
+        
+        // Block nếu đã confirmed
+        if (scheduleStatus === "Confirmed") {
+          return true;
+        }
+        
+        // Block nếu pending nhưng đã thanh toán cọc (Paid)
+        if (scheduleStatus === "Pending" && paymentStatus === "Paid") {
+          return true;
+        }
+        
+        return false;
+      });
       
       // Extract dates từ bookings
-      const dates = confirmedBookings.map(booking => {
+      const dates = blockedBookings.map(booking => {
         const bookingDate = booking.bookingDate || booking.BookingDate || booking.StartTime;
         if (bookingDate) {
           const date = new Date(bookingDate);
@@ -297,101 +250,48 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
     }
   };
 
-  const fetchBookedTimeSlots = async () => {
-    if (!performerEntityAccountId || !date) return;
+  // Validate từng field
+  const validateField = (fieldName, value) => {
+    const newErrors = { ...fieldErrors };
     
-    try {
-      // Lấy bookings của performer (tất cả, sau đó filter theo date ở frontend)
-      const res = await bookingApi.getDJBookingsByReceiver(performerEntityAccountId, { 
-        limit: 1000
-      });
-      const bookings = res.data?.data || res.data || [];
-      
-      // Lọc các booking đã confirmed trong ngày này
-      const confirmedBookings = bookings.filter(b => {
-        const status = b.scheduleStatus || b.ScheduleStatus;
-        if (status !== "Confirmed") return false;
-        
-        // Kiểm tra booking có trong ngày đã chọn không
-        // Có thể check qua bookingDate, BookingDate, hoặc StartTime
-        const bookingDate = b.bookingDate || b.BookingDate || b.StartTime;
-        if (bookingDate) {
-          const bookingDateObj = new Date(bookingDate);
-          const selectedDateObj = new Date(date);
-          // So sánh theo ngày (bỏ qua giờ)
-          return bookingDateObj.toISOString().split('T')[0] === selectedDateObj.toISOString().split('T')[0];
+    switch (fieldName) {
+      case "date":
+        if (!value) {
+          newErrors.date = "Vui lòng chọn ngày";
+        } else if (isDateBooked(value)) {
+          newErrors.date = "Ngày này đã được đặt. Vui lòng chọn ngày khác.";
+        } else {
+          newErrors.date = "";
         }
-        return false;
-      });
-      
-      // Extract time slots từ bookings
-      const timeSlots = confirmedBookings.map(booking => {
-        const start = booking.startTime || booking.StartTime;
-        const end = booking.endTime || booking.EndTime;
-        if (!start || !end) return null;
-        
-        const startDate = new Date(start);
-        const endDate = new Date(end);
-        
-        return {
-          startTime: startDate,
-          endTime: endDate,
-        };
-      }).filter(slot => slot !== null && slot.startTime && slot.endTime);
-      
-      setBookedTimeSlots(timeSlots);
-    } catch (error) {
-      console.error("[RequestBookingModal] Error fetching booked time slots:", error);
-      setBookedTimeSlots([]);
+        break;
+      case "province":
+        newErrors.province = !value ? "Vui lòng chọn Tỉnh/Thành phố" : "";
+        break;
+      case "district":
+        newErrors.district = !value ? "Vui lòng chọn Huyện/Quận" : "";
+        break;
+      case "ward":
+        newErrors.ward = !value ? "Vui lòng chọn Xã/Phường" : "";
+        break;
+      case "addressDetail":
+        newErrors.addressDetail = !value?.trim() ? "Vui lòng nhập địa chỉ chi tiết (số nhà, tên đường, ...)" : "";
+        break;
     }
+    
+    setFieldErrors(newErrors);
+    return !newErrors[fieldName];
   };
-
-  // Kiểm tra conflict thời gian
-  const checkTimeConflict = useMemo(() => {
-    if (bookingType !== "hour" || !startTime || !endTime || !date || bookedTimeSlots.length === 0) {
-      return null;
-    }
+  
+  // Validate tất cả các field bắt buộc
+  const validateAllFields = () => {
+    const dateValid = validateField("date", date);
+    const provinceValid = validateField("province", selectedProvinceId);
+    const districtValid = validateField("district", selectedDistrictId);
+    const wardValid = validateField("ward", selectedWardId);
+    const addressDetailValid = validateField("addressDetail", addressDetail);
     
-    const newStart = new Date(`${date}T${startTime}`);
-    const newEnd = new Date(`${date}T${endTime}`);
-    
-    // Nếu endTime < startTime, có thể là qua ngày hôm sau
-    if (newEnd < newStart) {
-      newEnd.setDate(newEnd.getDate() + 1);
-    }
-    
-    // Kiểm tra overlap với các time slots đã book
-    for (const slot of bookedTimeSlots) {
-      const existingStart = new Date(slot.startTime);
-      const existingEnd = new Date(slot.endTime);
-      
-      // Overlap xảy ra khi: (newStart < existingEnd && newEnd > existingStart)
-      if (newStart < existingEnd && newEnd > existingStart) {
-        // Format thời gian để hiển thị
-        const formatTime = (date) => {
-          return date.toLocaleTimeString('vi-VN', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: false 
-          });
-        };
-        
-        return {
-          conflict: true,
-          message: `Thời gian này đã được đặt (${formatTime(existingStart)} - ${formatTime(existingEnd)})`,
-          existingStart: formatTime(existingStart),
-          existingEnd: formatTime(existingEnd),
-        };
-      }
-    }
-    
-    return null;
-  }, [bookingType, date, startTime, endTime, bookedTimeSlots]);
-
-  // Update timeConflict khi checkTimeConflict thay đổi
-  useEffect(() => {
-    setTimeConflict(checkTimeConflict);
-  }, [checkTimeConflict]);
+    return dateValid && provinceValid && districtValid && wardValid && addressDetailValid;
+  };
 
   const isDateBooked = (dateString) => {
     return bookedDates.includes(dateString);
@@ -399,11 +299,8 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
 
   const handleDateChange = (e) => {
     const selectedDate = e.target.value;
-    if (isDateBooked(selectedDate)) {
-      alert("Ngày này đã được đặt. Vui lòng chọn ngày khác.");
-      return;
-    }
     setDate(selectedDate);
+    validateField("date", selectedDate);
   };
   
   if (!open) return null;
@@ -411,88 +308,19 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
   const submit = async () => {
     setError("");
     
-    if (!date) {
-      setError("Vui lòng chọn ngày");
+    // Validate tất cả các field bắt buộc
+    if (!validateAllFields()) {
+      setError("Vui lòng điền đầy đủ thông tin bắt buộc");
       return;
     }
 
-    if (isDateBooked(date)) {
-      setError("Ngày này đã được đặt. Vui lòng chọn ngày khác.");
+    // Kiểm tra giá - chỉ block nếu đang load
+    if (loadingProfile) {
+      setError("Đang tải thông tin giá, vui lòng đợi...");
       return;
-    }
-
-    if (bookingType === "hour") {
-      if (!startTime) {
-        setError("Vui lòng chọn giờ bắt đầu");
-        return;
-      }
-      if (!endTime) {
-        setError("Vui lòng chọn giờ kết thúc");
-        return;
-      }
-      
-      // Kiểm tra endTime phải sau startTime
-      const start = new Date(`${date}T${startTime}`);
-      const end = new Date(`${date}T${endTime}`);
-      
-      // Nếu endTime < startTime, có thể là qua ngày hôm sau (cho phép)
-      // Nhưng nếu endTime === startTime thì không hợp lệ
-      if (end <= start && endTime === startTime) {
-        setError("Giờ kết thúc phải sau giờ bắt đầu");
-        return;
-      }
-      
-      // Kiểm tra số giờ tối thiểu (ít nhất 1 giờ)
-      const diffMs = end < start ? (end.getTime() + 24 * 60 * 60 * 1000) - start.getTime() : end.getTime() - start.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-      if (diffHours < 1) {
-        setError("Thời gian booking phải ít nhất 1 giờ");
-        return;
-      }
-      
-      // Kiểm tra conflict thời gian
-      if (timeConflict && timeConflict.conflict) {
-        setError(timeConflict.message);
-        return;
-      }
-    }
-
-    if (!selectedProvinceId || !selectedDistrictId || !selectedWardId) {
-      setError("Vui lòng chọn đầy đủ Tỉnh/Thành phố, Huyện/Quận và Xã/Phường");
-      return;
-    }
-
-    if (!addressDetail.trim()) {
-      setError("Vui lòng nhập địa chỉ chi tiết (số nhà, tên đường, ...)");
-      return;
-    }
-
-    // Log để debug
-    console.log("[RequestBookingModal] Submit validation:", {
-      bookingType,
-      profile,
-      calculatedPrice,
-      startTime,
-      endTime,
-      date,
-      loadingProfile
-    });
-
-    // Kiểm tra giá - chỉ block nếu đang load hoặc chưa chọn đủ thông tin
-    if (calculatedPrice === null) {
-      // Đang load hoặc chưa chọn đủ thông tin
-      if (bookingType === "hour" && (!startTime || !endTime)) {
-        setError("Vui lòng chọn giờ bắt đầu và kết thúc để tính giá");
-        return;
-      }
-      if (loadingProfile) {
-        setError("Đang tải thông tin giá, vui lòng đợi...");
-        return;
-      }
     }
 
     // Cho phép booking ngay cả khi giá = 0 (performer có thể đã set giá nhưng = 0)
-    // Không block submit
 
     try {
       setSubmitting(true);
@@ -516,29 +344,14 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
         return;
       }
       
-      // Tính startTime và endTime
-      let finalStartTime, finalEndTime;
-      
-      if (bookingType === "day") {
-        // Cả ngày: từ 00:00:00 đến 23:59:59
-        const selectedDate = new Date(date);
-        const startOfDay = new Date(selectedDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(selectedDate);
-        endOfDay.setHours(23, 59, 59, 999);
-        finalStartTime = startOfDay.toISOString();
-        finalEndTime = endOfDay.toISOString();
-      } else {
-        // Theo giờ: sử dụng startTime và endTime đã chọn
-        const start = new Date(`${date}T${startTime}`);
-        const end = new Date(`${date}T${endTime}`);
-        // Nếu endTime < startTime, có thể là qua ngày hôm sau
-        if (end < start) {
-          end.setDate(end.getDate() + 1);
-        }
-        finalStartTime = start.toISOString();
-        finalEndTime = end.toISOString();
-      }
+      // Tính startTime và endTime (cả ngày: từ 00:00:00 đến 23:59:59)
+      const selectedDate = new Date(date);
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      const finalStartTime = startOfDay.toISOString();
+      const finalEndTime = endOfDay.toISOString();
 
       // Sử dụng endpoint /booking/request hoặc tạo booking trực tiếp
       const payload = {
@@ -656,171 +469,54 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
 
           {/* Form */}
           <div className={cn("grid grid-cols-1 gap-4", success && "opacity-50 pointer-events-none")}>
-          {/* Booking Type Selection */}
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Calendar size={16} />
-              Loại booking
-            </span>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setBookingType("day");
-                  setStartTime("");
-                  setEndTime("");
-                }}
-                className={cn(
-                  "flex-1 px-4 py-2.5 rounded-lg font-semibold transition-colors",
-                  bookingType === "day"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                Theo ngày
-              </button>
-              <button
-                type="button"
-                onClick={() => setBookingType("hour")}
-                className={cn(
-                  "flex-1 px-4 py-2.5 rounded-lg font-semibold transition-colors",
-                  bookingType === "hour"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                )}
-              >
-                Theo giờ
-              </button>
-            </div>
-          </div>
-
           {/* Date */}
           <label className="flex flex-col gap-2">
             <span className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Calendar size={16} />
-              Ngày
+              Ngày <span className="text-danger">*</span>
             </span>
             <div className="relative">
               <input
                 type="date"
                 value={date}
                 onChange={handleDateChange}
+                onBlur={() => validateField("date", date)}
                 min={new Date().toISOString().split('T')[0]} // Không cho chọn ngày quá khứ
                 className={cn(
-                  "w-full rounded-lg bg-background border border-border/30",
-                  "px-4 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20",
+                  "w-full rounded-lg bg-background border",
+                  "px-4 py-2.5 outline-none focus:ring-2 focus:ring-primary/20",
                   "text-foreground",
-                  isDateBooked(date) && "border-danger bg-danger/10"
+                  fieldErrors.date || isDateBooked(date)
+                    ? "border-danger bg-danger/10 focus:border-danger"
+                    : "border-border/30 focus:border-primary"
                 )}
                 disabled={loadingBookedDates}
               />
-              {isDateBooked(date) && (
-                <div className="mt-2 flex items-center gap-2 text-sm text-danger">
-                  <AlertCircle size={16} />
+              {fieldErrors.date && (
+                <div className="mt-1 flex items-center gap-2 text-sm text-danger">
+                  <AlertCircle size={14} />
+                  <span>{fieldErrors.date}</span>
+                </div>
+              )}
+              {!fieldErrors.date && isDateBooked(date) && (
+                <div className="mt-1 flex items-center gap-2 text-sm text-danger">
+                  <AlertCircle size={14} />
                   <span>Ngày này đã được đặt</span>
                 </div>
               )}
               {loadingBookedDates && (
-                <div className="mt-2 text-sm text-muted-foreground">
+                <div className="mt-1 text-sm text-muted-foreground">
                   Đang tải danh sách ngày đã đặt...
                 </div>
               )}
             </div>
           </label>
 
-          {/* Time Selection (chỉ hiện khi chọn "theo giờ") */}
-          {bookingType === "hour" && (
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Clock size={16} />
-                    Giờ bắt đầu
-                  </span>
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => {
-                      setStartTime(e.target.value);
-                      setTimeConflict(null); // Reset conflict khi thay đổi
-                    }}
-                    className={cn(
-                      "w-full rounded-lg bg-background border border-border/30",
-                      "px-4 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20",
-                      "text-foreground",
-                      timeConflict && timeConflict.conflict && "border-danger bg-danger/10"
-                    )}
-                  />
-                </label>
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Clock size={16} />
-                    Giờ kết thúc
-                  </span>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => {
-                      setEndTime(e.target.value);
-                      setTimeConflict(null); // Reset conflict khi thay đổi
-                    }}
-                    min={startTime || undefined}
-                    className={cn(
-                      "w-full rounded-lg bg-background border border-border/30",
-                      "px-4 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20",
-                      "text-foreground",
-                      timeConflict && timeConflict.conflict && "border-danger bg-danger/10"
-                    )}
-                  />
-                </label>
-              </div>
-              
-              {/* Hiển thị conflict warning */}
-              {timeConflict && timeConflict.conflict && (
-                <div className={cn(
-                  "p-3 rounded-lg bg-danger/10 border border-danger/30",
-                  "flex items-center gap-2 text-danger text-sm"
-                )}>
-                  <AlertCircle size={16} />
-                  <span>{timeConflict.message}</span>
-                </div>
-              )}
-              
-              {/* Hiển thị danh sách time slots đã book trong ngày */}
-              {bookedTimeSlots.length > 0 && (
-                <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
-                  <div className="text-xs font-semibold text-foreground mb-2">
-                    Thời gian đã được đặt trong ngày này:
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {bookedTimeSlots.map((slot, index) => {
-                      const formatTime = (date) => {
-                        return new Date(date).toLocaleTimeString('vi-VN', { 
-                          hour: '2-digit', 
-                          minute: '2-digit',
-                          hour12: false 
-                        });
-                      };
-                      return (
-                        <span
-                          key={index}
-                          className="px-2 py-1 rounded bg-danger/20 text-danger text-xs font-medium"
-                        >
-                          {formatTime(slot.startTime)} - {formatTime(slot.endTime)}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Address Selector */}
           <div className="flex flex-col gap-2">
             <span className="text-sm font-semibold text-foreground flex items-center gap-2">
               <MapPin size={16} />
-              Địa chỉ
+              Địa chỉ <span className="text-danger">*</span>
             </span>
             <AddressSelector
               selectedProvinceId={selectedProvinceId}
@@ -831,16 +527,49 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                 setSelectedProvinceId(id);
                 setSelectedDistrictId(""); // Reset district khi đổi province
                 setSelectedWardId(""); // Reset ward khi đổi province
+                validateField("province", id);
               }}
               onDistrictChange={(id) => {
                 setSelectedDistrictId(id);
                 setSelectedWardId(""); // Reset ward khi đổi district
+                validateField("district", id);
               }}
-              onWardChange={setSelectedWardId}
-              onAddressDetailChange={setAddressDetail}
+              onWardChange={(id) => {
+                setSelectedWardId(id);
+                validateField("ward", id);
+              }}
+              onAddressDetailChange={(value) => {
+                setAddressDetail(value);
+                validateField("addressDetail", value);
+              }}
               onAddressChange={setLocation} // Update full address string
               disabled={success}
             />
+            {/* Hiển thị lỗi cho từng phần của địa chỉ */}
+            {fieldErrors.province && (
+              <div className="flex items-center gap-2 text-sm text-danger mt-1">
+                <AlertCircle size={14} />
+                <span>{fieldErrors.province}</span>
+              </div>
+            )}
+            {fieldErrors.district && (
+              <div className="flex items-center gap-2 text-sm text-danger mt-1">
+                <AlertCircle size={14} />
+                <span>{fieldErrors.district}</span>
+              </div>
+            )}
+            {fieldErrors.ward && (
+              <div className="flex items-center gap-2 text-sm text-danger mt-1">
+                <AlertCircle size={14} />
+                <span>{fieldErrors.ward}</span>
+              </div>
+            )}
+            {fieldErrors.addressDetail && (
+              <div className="flex items-center gap-2 text-sm text-danger mt-1">
+                <AlertCircle size={14} />
+                <span>{fieldErrors.addressDetail}</span>
+              </div>
+            )}
           </div>
 
           {/* Deposit Amount (Cọc cố định) */}
@@ -871,17 +600,11 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
             )}
             {profile && calculatedPrice !== null && (
               <p className="text-xs text-muted-foreground">
-                {bookingType === "day" ? (
-                  profile.pricePerSession && Number(profile.pricePerSession) > 0
-                    ? `Giá theo buổi: ${Number(profile.pricePerSession).toLocaleString('vi-VN')} đ`
-                    : profile.pricePerHours && Number(profile.pricePerHours) > 0
-                    ? `Giá theo giờ: ${Number(profile.pricePerHours).toLocaleString('vi-VN')} đ/giờ × 24 giờ = ${calculatedPrice.toLocaleString('vi-VN')} đ`
-                    : "Performer chưa thiết lập giá. Có thể thỏa thuận sau khi booking được xác nhận."
-                ) : (
-                  bookingType === "hour" && calculatedHours > 0 && profile.pricePerHours && Number(profile.pricePerHours) > 0 ? (
-                    `Giá theo giờ: ${Number(profile.pricePerHours).toLocaleString('vi-VN')} đ/giờ × ${calculatedHours} giờ = ${calculatedPrice.toLocaleString('vi-VN')} đ`
-                  ) : "Performer chưa thiết lập giá. Có thể thỏa thuận sau khi booking được xác nhận."
-                )}
+                {profile.pricePerSession && Number(profile.pricePerSession) > 0
+                  ? `Giá theo buổi: ${Number(profile.pricePerSession).toLocaleString('vi-VN')} đ`
+                  : profile.pricePerHours && Number(profile.pricePerHours) > 0
+                  ? `Giá theo giờ: ${Number(profile.pricePerHours).toLocaleString('vi-VN')} đ/giờ × 24 giờ = ${calculatedPrice.toLocaleString('vi-VN')} đ`
+                  : "Performer chưa thiết lập giá. Có thể thỏa thuận sau khi booking được xác nhận."}
               </p>
             )}
           </div>

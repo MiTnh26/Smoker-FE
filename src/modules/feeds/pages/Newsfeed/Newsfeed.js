@@ -90,8 +90,7 @@ export default function NewsfeedPage() {
       <FeedHeader />
 
       {/* Tạo Story + StoryBar */}
-      <div className="story-section ">
-
+      <div className="story-section">
         <StoryBar 
           stories={stories} 
           onStoryClick={setActiveStory} 
@@ -99,7 +98,6 @@ export default function NewsfeedPage() {
           entityAccountId={entityAccountId}
         />
       </div>
-
 
       <main className="newsfeed-main">
         {/* PostFeed now includes livestreams merged with posts */}

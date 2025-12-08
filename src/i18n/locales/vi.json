@@ -657,7 +657,8 @@
     "blockSuccess": "Đã chặn hồ sơ. Bạn sẽ không còn thấy cập nhật từ người dùng này.",
     "blockError": "Tạm thời không thể chặn hồ sơ. Vui lòng thử lại sau.",
     "reportSubmitted": "Cảm ơn bạn. Báo cáo đã được gửi.",
-    "thisUser": "người dùng này"
+    "thisUser": "người dùng này",
+    "requestBooking": "Yêu cầu đặt lịch"
   },
   "notifications": {
     "likedYourPost": "{{name}} đã thích bài viết của bạn",

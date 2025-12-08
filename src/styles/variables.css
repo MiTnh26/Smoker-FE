@@ -40,6 +40,8 @@
   --accent: 249 115 22;  /* Cam - tinh tế hơn một chút */
   --highlight: 236 72 153; /* Hồng - mềm mại hơn */
   --primary-hover: 79 70 229; /* Hover đậm hơn một chút */
+  --primary-light: 224 231 255; /* Primary nhạt nhưng rõ ràng cho hover nền sáng */
+  --card-hover: 241 245 249; /* Card hover - slate-100 rõ ràng */
 }
 
 /* ===== 🌙 DARK MODE ===== */
@@ -77,6 +79,8 @@
   --accent: 249 115 22; /* Cam tinh tế hơn */
   --highlight: 236 72 153; /* Hồng mềm mại hơn */
   --primary-hover: 126 34 206; /* Hover đậm hơn một chút */
+  --primary-light: 67 56 202; /* Primary nhạt nhưng rõ ràng cho hover nền tối */
+  --card-hover: 51 65 85; /* Card hover - slate-700 rõ ràng */
 }
 [data-theme='dj'] {
   --primary: 244 114 182; /* Hồng sáng tinh tế hơn */

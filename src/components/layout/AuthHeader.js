@@ -35,13 +35,19 @@ export default function AuthHeader() {
           type="button"
           onClick={goHome}
           className={cn(
-            "text-2xl font-bold text-primary cursor-pointer",
-            "transition-all duration-200",
-            "hover:text-primary/90",
-            "bg-transparent border-none"
+            "cursor-pointer",
+            "transition-opacity duration-200",
+            "hover:opacity-90",
+            "bg-transparent border-none",
+            "flex items-center gap-2"
           )}
         >
-          {t('layout.brand')}
+          <img
+              src="/13.png"
+              alt="Smoker Page"
+              className="h-12 w-auto sm:h-6 md:h-12"
+            />
+       
         </button>
       </div>
     </header>

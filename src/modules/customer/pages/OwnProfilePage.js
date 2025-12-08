@@ -32,8 +32,21 @@ const useProfileData = (profileType, entityId) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const fetchingRef = React.useRef(false); // Prevent duplicate calls
 
   const fetchProfile = useCallback(async () => {
+    // Prevent duplicate calls
+    if (fetchingRef.current) {
+      console.log('[OwnProfilePage] Already fetching, skipping duplicate call');
+      return;
+    }
+    
+    if (!entityId) {
+      setLoading(false);
+      return;
+    }
+    
+    fetchingRef.current = true;
     setLoading(true);
     try {
       let res;
@@ -132,6 +145,29 @@ const useProfileData = (profileType, entityId) => {
         normalizedData.EntityAccountId = entityId;
         normalizedData.entityAccountId = entityId;
         
+        // Parse address string to object if needed (for userApi.me() response)
+        if (normalizedData.address && typeof normalizedData.address === 'string' && normalizedData.address.trim().startsWith('{')) {
+          try {
+            const parsedAddress = JSON.parse(normalizedData.address);
+            normalizedData.addressObject = parsedAddress;
+            // Extract IDs for address resolution
+            if (parsedAddress.provinceId || parsedAddress.ProvinceId) {
+              normalizedData.provinceId = parsedAddress.provinceId || parsedAddress.ProvinceId;
+            }
+            if (parsedAddress.districtId || parsedAddress.DistrictId) {
+              normalizedData.districtId = parsedAddress.districtId || parsedAddress.DistrictId;
+            }
+            if (parsedAddress.wardId || parsedAddress.WardId) {
+              normalizedData.wardId = parsedAddress.wardId || parsedAddress.WardId;
+            }
+            if (parsedAddress.detail || parsedAddress.Detail || parsedAddress.addressDetail || parsedAddress.AddressDetail) {
+              normalizedData.addressDetail = parsedAddress.detail || parsedAddress.Detail || parsedAddress.addressDetail || parsedAddress.AddressDetail;
+            }
+          } catch (e) {
+            console.warn('[OwnProfilePage] Failed to parse address JSON:', e);
+          }
+        }
+        
         // For BarPage, ensure BarPageId is set correctly
         // res.data should have BarPageId field from barPageApi.getBarPageById()
         if (profileType === 'BarPage' && res.data && res.data.BarPageId) {
@@ -154,14 +190,19 @@ const useProfileData = (profileType, entityId) => {
       setError(e.message || 'Failed to load profile');
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   }, [profileType, entityId]);
 
   useEffect(() => {
-    if (entityId) {
+    if (entityId && profileType) {
       fetchProfile();
     }
-  }, [entityId, fetchProfile]);
+    // Reset fetching ref when entityId or profileType changes
+    return () => {
+      fetchingRef.current = false;
+    };
+  }, [entityId, profileType]); // Remove fetchProfile from dependencies to prevent re-renders
 
   return { profile, loading, error, fetchProfile };
 };
@@ -543,27 +584,6 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
               </button>
             )}
 
-            {/* Tables Tab - Bar only */}
-            {isBarProfile && (
-              <button
-                onClick={() => setActiveTab("tables")}
-                className={cn(
-                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
-                  "transition-all duration-200 relative whitespace-nowrap",
-                  activeTab === "tables"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {t('profile.tablesTab')}
-                {activeTab === "tables" && (
-                  <span className={cn(
-                    "absolute bottom-0 left-0 right-0 h-0.5",
-                    "bg-primary"
-                  )} />
-                )}
-              </button>
-            )}
             
             {/* Ads Tab - Bar only (for bar owners) */}
             {isBarProfile && (

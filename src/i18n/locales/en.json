@@ -655,7 +655,8 @@
     "blockSuccess": "Profile blocked. You will no longer see updates from this user.",
     "blockError": "Unable to block this profile right now. Please try again later.",
     "reportSubmitted": "Thanks. Your report has been submitted.",
-    "thisUser": "this user"
+    "thisUser": "this user",
+    "requestBooking": "Request booking"
   },
   "notifications": {
     "likedYourPost": "{{name}} liked your post",

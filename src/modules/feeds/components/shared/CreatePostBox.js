@@ -65,7 +65,7 @@ export default function CreatePostBox({ onCreate, onGoLive, onMediaClick, onMusi
   return (
     <div className={cn(
       "create-post-box",
-      "bg-card border-[0.5px] border-border/20 rounded-lg p-4 mb-4",
+      "bg-card border-[0.5px] border-border/20 rounded-lg p-4",
       "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
       "relative overflow-hidden",
       "transition-all duration-200 ease-out",

@@ -36,6 +36,11 @@ const adminApi = {
   approveResumeRequest: (resumeRequestId, data) => axiosClient.post(`/admin/ads/resume-requests/${resumeRequestId}/approve`, data),
   rejectResumeRequest: (resumeRequestId, data) => axiosClient.post(`/admin/ads/resume-requests/${resumeRequestId}/reject`, data),
   completeResumeRequest: (resumeRequestId) => axiosClient.post(`/admin/ads/resume-requests/${resumeRequestId}/complete`),
+
+  // Refund Requests Management
+  getRefundRequests: (params) => axiosClient.get("/admin/refund-requests", { params }),
+  updateRefundStatus: (bookedScheduleId, refundStatus) => 
+    axiosClient.patch(`/admin/refund-requests/${bookedScheduleId}/status`, { refundStatus }),
 };
 
 export default adminApi;

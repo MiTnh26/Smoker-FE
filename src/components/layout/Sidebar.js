@@ -5,7 +5,7 @@ import { sidebarConfig } from "../../config/sidebarConfig.js";
 import barPageApi from "../../api/barPageApi.js";
 import { cn } from "../../utils/cn";
 import { useTranslation } from "react-i18next"; // i18n
-import { X } from "lucide-react";
+import { X, Table, LayoutGrid, Ticket, Package } from "lucide-react";
 
 export default function Sidebar({ isOpen, onClose }) {
   const { t } = useTranslation();
@@ -196,6 +196,15 @@ export default function Sidebar({ isOpen, onClose }) {
       "Quản lý combo": "combosManage",
     };
     const kSub = labelKeyMap[subLabel] || subLabel;
+    
+    // Map icons for submenu items
+    const iconMap = {
+      "Quản lý loại bàn": LayoutGrid,
+      "Quản lý bàn": Table,
+      "Quản lý voucher": Ticket,
+      "Quản lý combo": Package,
+    };
+    const SubIcon = iconMap[subLabel] || null;
     let resolvedSubPath = subPath;
     if (subPath.includes(":barPageId") && resolvedBarPageId) {
       resolvedSubPath = subPath.replace(":barPageId", resolvedBarPageId);
@@ -227,10 +236,11 @@ export default function Sidebar({ isOpen, onClose }) {
           to={resolvedSubPath}
           onClick={handleClick}
           className={cn(
-            "px-2.5 py-1 rounded-lg text-xs transition-colors",
-            "text-muted-foreground no-underline block truncate",
+            "px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+            "text-muted-foreground no-underline",
+            "flex items-center gap-3",
             isSubActive 
-              ? "bg-border text-foreground" 
+              ? "bg-primary/10 text-primary" 
               : "hover:bg-muted hover:text-foreground",
             isDisabled && "opacity-50 cursor-not-allowed",
             !isDisabled && "cursor-pointer"
@@ -241,7 +251,8 @@ export default function Sidebar({ isOpen, onClose }) {
           }}
           title={isDisabled ? t('bar.needTableTypes') : subLabel}
         >
-          {t(`sidebar.${kSub}`, { defaultValue: subLabel })}
+          {SubIcon && <SubIcon size={22} className="flex-shrink-0" />}
+          <span className="truncate">{t(`sidebar.${kSub}`, { defaultValue: subLabel })}</span>
         </Link>
       </li>
     );
@@ -290,16 +301,16 @@ export default function Sidebar({ isOpen, onClose }) {
           // Menu cha có submenu
           <div
             className={cn(
-              "block px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              "block px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
               "text-muted-foreground no-underline cursor-pointer",
-              "flex items-center gap-2.5",
+              "flex items-center gap-3",
               isActive 
                 ? "bg-primary/10 text-primary" 
                 : "hover:bg-muted hover:text-foreground"
             )}
             onClick={() => toggleSubMenu(label)}
           >
-            {Icon && <Icon size={18} className="flex-shrink-0" />}
+            {Icon && <Icon size={22} className="flex-shrink-0" />}
             <span className={cn("flex-1 truncate")}>
               {t(`sidebar.${k}`, { defaultValue: label })}
             </span>
@@ -331,22 +342,22 @@ export default function Sidebar({ isOpen, onClose }) {
               navigate(resolvedPath);
             }}
             className={cn(
-              "block px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              "block px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
               "text-muted-foreground no-underline",
-              "flex items-center gap-2.5",
+              "flex items-center gap-3",
               isActive 
                 ? "bg-primary/10 text-primary" 
                 : "hover:bg-muted hover:text-foreground"
             )}
           >
-            {Icon && <Icon size={18} className="flex-shrink-0" />}
+            {Icon && <Icon size={22} className="flex-shrink-0" />}
             <span className="truncate">{t(`sidebar.${k}`, { defaultValue: label })}</span>
           </Link>
         )}
 
         {subMenu && isOpen && (
           <ul className={cn(
-            "flex flex-col gap-1 mt-1 ml-5 pl-1 border-l-2",
+            "flex flex-col gap-1.5 mt-2 ml-5 pl-1 border-l-2",
             "border-border/30"
           )}>
             {subMenu.map((sub) => renderSubMenuItem(sub))}
@@ -380,7 +391,8 @@ export default function Sidebar({ isOpen, onClose }) {
         "sticky p-4 rounded-lg",
         "bg-card",
         "border-[0.5px] border-border/20",
-        "top-[4.5rem] max-h-[calc(100vh-5.5rem)]",
+        "top-[calc(3.5rem+0.375rem)] sm:top-[calc(3.5rem+0.375rem)] md:top-[calc(4rem+0.375rem)]",
+        "max-h-[calc(100vh-5.5rem)]",
         "overflow-y-auto overflow-x-hidden",
         // Width được set bởi CSS của customer-body/bar-body (300px)
         // Mobile styles
@@ -400,9 +412,9 @@ export default function Sidebar({ isOpen, onClose }) {
             "flex items-center gap-2.5 flex-1 min-w-0"
           )}>
             <div className={cn(
-              "flex items-center justify-center rounded-full p-1.5",
-              "bg-gradient-to-br from-primary to-secondary",
-              "text-primary-foreground w-10 h-10 flex-shrink-0"
+              "flex items-center justify-center rounded-full",
+              "text-primary-foreground w-10 h-10 flex-shrink-0",
+              "border border-border/20 overflow-hidden"
             )}>
               {activeEntity.avatar ? (
                 <img
@@ -446,7 +458,7 @@ export default function Sidebar({ isOpen, onClose }) {
           </button>
         </div>
 
-        <nav className={cn("flex flex-col gap-0.5")}>
+        <nav className={cn("flex flex-col gap-2")}>
           {menus.map((menu) => (
             <div key={menu.label + menu.path} onClick={handleMenuItemClick}>
               {renderMenuItem(menu)}

@@ -15,6 +15,10 @@ const businessApi = {
   },
   getBusinessById(businessId) {
     return axiosClient.get(`/business/${businessId}`);
+  },
+  // Update business account
+  updateBusiness(entityAccountId, payload) {
+    return axiosClient.put(`/business/${entityAccountId}`, payload);
   }
 };
 

@@ -1,14 +1,16 @@
 import PropTypes from "prop-types";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Star, MapPin, Music } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../../utils/cn";
+import { locationApi } from "../../../api/locationApi";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1516455590571-18256e5bb9ff?w=800";
 const skeletonItems = ["one", "two", "three", "four", "five", "six"];
 
 export function FeaturedVenues({ venues = [], loading = false, error = null }) {
   const [hoveredId, setHoveredId] = useState(null);
+  const [formattedAddresses, setFormattedAddresses] = useState({});
   const navigate = useNavigate();
 
   const handleVenueClick = (venue) => {
@@ -16,6 +18,101 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
       navigate(`/bar/${venue.barPageId}`);
     }
   };
+
+  // Fetch address names from IDs
+  const fetchAddressFromIds = async (addressObj) => {
+    const { detail, provinceId, districtId, wardId } = addressObj;
+    const parts = [];
+
+    if (detail) {
+      parts.push(detail);
+    }
+
+    try {
+      // Fetch province name
+      if (provinceId) {
+        const provinces = await locationApi.getProvinces();
+        const province = provinces.find(p => p.id === provinceId);
+        if (province) parts.push(province.name);
+      }
+
+      // Fetch district name
+      if (districtId && provinceId) {
+        const districts = await locationApi.getDistricts(provinceId);
+        const district = districts.find(d => d.id === districtId);
+        if (district) parts.push(district.name);
+      }
+
+      // Fetch ward name
+      if (wardId && districtId) {
+        const wards = await locationApi.getWards(districtId);
+        const ward = wards.find(w => w.id === wardId);
+        if (ward) parts.push(ward.name);
+      }
+
+      return parts.length > 0 ? parts.join(', ') : "Đang cập nhật địa chỉ";
+    } catch (error) {
+      console.error('Failed to fetch address:', error);
+      return "Đang cập nhật địa chỉ";
+    }
+  };
+
+  // Fetch addresses for venues that have JSON address
+  useEffect(() => {
+    if (!venues || venues.length === 0) return;
+
+    const fetchAddresses = async () => {
+      const addressPromises = venues.map(async (venue) => {
+        const key = venue.barPageId || venue.id || venue.entityAccountId || venue.accountId;
+        
+        // Skip if has addressData.fullAddress (already formatted)
+        if (venue.addressData?.fullAddress) {
+          return { key, address: null };
+        }
+
+        // Check if address is JSON string
+        if (venue.address && typeof venue.address === 'string') {
+          try {
+            const parsed = JSON.parse(venue.address);
+            if (parsed.provinceId || parsed.districtId || parsed.wardId) {
+              const formatted = await fetchAddressFromIds(parsed);
+              return { key, address: formatted };
+            }
+          } catch (e) {
+            // Not JSON string, skip - will use address as-is
+            return { key, address: null };
+          }
+        }
+
+        return { key, address: null };
+      });
+
+      const results = await Promise.all(addressPromises);
+      const newAddresses = {};
+      
+      results.forEach(({ key, address }) => {
+        if (address) {
+          newAddresses[key] = address;
+        }
+      });
+
+      if (Object.keys(newAddresses).length > 0) {
+        setFormattedAddresses(prev => {
+          // Only update if not already exists to avoid unnecessary re-renders
+          const updated = { ...prev };
+          Object.keys(newAddresses).forEach(k => {
+            if (!updated[k]) {
+              updated[k] = newAddresses[k];
+            }
+          });
+          return updated;
+        });
+      }
+    };
+
+    fetchAddresses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venues]);
 
   const renderSkeletonCard = (key) => (
     <div
@@ -35,17 +132,42 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
     </div>
   );
 
+  const formatAddress = (venue) => {
+    const key = venue.barPageId || venue.id || venue.entityAccountId || venue.accountId;
+    
+    // Ưu tiên sử dụng addressData.fullAddress nếu có
+    if (venue.addressData?.fullAddress) {
+      return venue.addressData.fullAddress;
+    }
+    
+    // Nếu đã có địa chỉ đã format từ API
+    if (formattedAddresses[key]) {
+      return formattedAddresses[key];
+    }
+    
+    // Nếu address là chuỗi JSON, hiển thị "Đang tải..." hoặc "Đang cập nhật địa chỉ"
+    if (venue.address && typeof venue.address === 'string') {
+      try {
+        // Thử parse JSON, nếu thành công thì đây là JSON string
+        JSON.parse(venue.address);
+        return "Đang tải địa chỉ...";
+      } catch (e) {
+        // Nếu không parse được, đây là chuỗi địa chỉ bình thường
+        return venue.address;
+      }
+    }
+    
+    return venue.address || "Đang cập nhật địa chỉ";
+  };
+
   const renderVenueCard = (venue) => {
     const key = venue.barPageId || venue.id || venue.entityAccountId || venue.accountId || venue.name;
     const image = venue.background || venue.avatar || FALLBACK_IMAGE;
     const rating = venue.averageRating;
     const reviewCount = venue.reviewCount || 0;
     const type = venue.role || "Bar";
-    const description =
-      venue.description ||
-      venue.address ||
-      "Địa điểm giải trí nổi bật trong hệ thống Smoker";
-    const location = venue.address || "Đang cập nhật địa chỉ";
+    const phoneNumber = venue.phoneNumber || "Đang cập nhật";
+    const location = formatAddress(venue);
 
     return (
       <div
@@ -127,7 +249,7 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
           </div>
 
           <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-            {description}
+            {phoneNumber}
           </p>
 
           <div className="flex items-center gap-4 text-xs text-muted-foreground">

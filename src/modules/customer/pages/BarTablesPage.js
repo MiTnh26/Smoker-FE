@@ -512,8 +512,11 @@ const BarTablesPage = ({ barId: propBarId }) => {
       const enhancedTables = tablesData.map(table => {
         // Find bookings for this table in the selected date
         const tableBookings = bookings.filter(booking => {
-          // 1. Kiểm tra scheduleStatus phải là "Confirmed"
+          // 1. Kiểm tra scheduleStatus phải là "Confirmed" và không phải "Ended"
           const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
+          if (scheduleStatus === "Ended") {
+            return false; // Bỏ qua booking đã ended - có thể đặt lại
+          }
           if (scheduleStatus !== "Confirmed") {
             return false; // Bỏ qua booking chưa confirmed
           }
@@ -897,11 +900,11 @@ const BarTablesPage = ({ barId: propBarId }) => {
         </div>
       )}
 
-      {/* Tables Grid - 3 bàn 1 hàng */}
+      {/* Tables Grid - 4 bàn 1 hàng */}
       <div className="bar-tables-grid" style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: '24px'
+        gridTemplateColumns: 'repeat(4, 1fr)',
+        gap: '20px'
       }}>
         <AnimatePresence>
           {filteredTables.map((table) => {
@@ -918,7 +921,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
                 onClick={() => handleTableClick(table)}
                 style={{
                   background: isSelected ? 'rgba(var(--success), 0.1)' : 'rgb(var(--card))',
-                  borderRadius: isSelected ? '0' : '12px', // Hình vuông khi được chọn
+                  borderRadius: '12px',
                   padding: '24px',
                   boxShadow: isDisabled 
                     ? '0 2px 8px rgba(0, 0, 0, 0.1)'
@@ -991,7 +994,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
                 {/* Table Info */}
                 {table.TableTypeName && (
                   <p style={{
-                    color: table.Color || '#6b7280',
+                    color: '#6b7280',
                     fontSize: '0.9rem',
                     fontWeight: '600',
                     margin: '0 0 8px 0'
@@ -999,17 +1002,16 @@ const BarTablesPage = ({ barId: propBarId }) => {
                     {table.TableTypeName}
                   </p>
                 )}
-                <p style={{
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  color: 'rgb(var(--success))',
-                  margin: '8px 0 0 0'
-                }}>
-                  {table.DepositPrice 
-                    ? table.DepositPrice.toLocaleString('vi-VN') + ' đ'
-                    : 'Miễn phí đặt cọc'
-                  }
-                </p>
+                {table.DepositPrice !== null && table.DepositPrice !== undefined && Number(table.DepositPrice) > 0 && (
+                  <p style={{
+                    fontSize: '1rem',
+                    fontWeight: '600',
+                    color: 'rgb(var(--success))',
+                    margin: '8px 0 0 0'
+                  }}>
+                    {Number(table.DepositPrice).toLocaleString('vi-VN')} đ
+                  </p>
+                )}
 
                 {/* Disabled Overlay */}
                 {isDisabled && (
