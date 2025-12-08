@@ -248,13 +248,15 @@ export default function Sidebar({ isOpen, onClose }) {
   };
 
   // Hàm render menu item
-  const renderMenuItem = ({ label, icon: Icon, path, subMenu }) => {
+  const renderMenuItem = ({ label, icon: Icon, path, subMenu, external }) => {
     let resolvedPath = path;
     if (path.includes(":barPageId") && resolvedBarPageId) {
       resolvedPath = path.replace(":barPageId", resolvedBarPageId);
     }
 
-    const isActive = location.pathname === resolvedPath;
+    // Check if this is an external link
+    const isExternal = external || resolvedPath.startsWith('http://') || resolvedPath.startsWith('https://');
+    const isActive = !isExternal && location.pathname === resolvedPath;
     const isOpen = openSubMenu === label;
 
     // Map Vietnamese labels to stable keys
@@ -279,6 +281,7 @@ export default function Sidebar({ isOpen, onClose }) {
       "Báo cáo & thống kê": "adminReports",
       "Cài đặt hệ thống": "adminSettings",
       "Đăng ký tài khoản kinh doanh": "registerBusiness",
+      "Cài Đặt Quảng Cáo": "adSettings",
     };
     const k = labelKeyMap[label] || label;
     return (
@@ -302,8 +305,24 @@ export default function Sidebar({ isOpen, onClose }) {
             </span>
             <span className="text-xs flex-shrink-0">{isOpen ? "▾" : "▸"}</span>
           </div>
+        ) : isExternal ? (
+          // External link (open in new tab)
+          <a
+            href={resolvedPath}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "block px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+              "text-muted-foreground no-underline",
+              "flex items-center gap-2.5",
+              "hover:bg-muted hover:text-foreground"
+            )}
+          >
+            {Icon && <Icon size={18} className="flex-shrink-0" />}
+            <span className="truncate">{t(`sidebar.${k}`, { defaultValue: label })}</span>
+          </a>
         ) : (
-          // Menu bình thường
+          // Menu bình thường (internal link)
           <Link
             to={resolvedPath}
             onClick={(e) => {

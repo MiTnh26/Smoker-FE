@@ -16,7 +16,8 @@ import {
   Package,
   CheckCircle2,
   Pause,
-  Play
+  Play,
+  Megaphone
 } from "lucide-react";
 
 /**
@@ -103,5 +104,6 @@ export const sidebarConfig = {
     { label: "Yêu cầu tiếp tục QC", icon: Play, path: "/admin/resume-requests" },
     { label: "Báo cáo & thống kê", icon: BarChart3, path: "/admin/reports" },
     { label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },
+    { label: "Cài Đặt Quảng Cáo", icon: Megaphone, path: "https://smoker-revive.onrender.com/revive/www/admin/index.php", external: true },
   ],
 };
