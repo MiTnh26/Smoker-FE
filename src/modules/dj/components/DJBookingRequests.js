@@ -6,6 +6,27 @@ import { Calendar, Clock, MapPin, DollarSign, CheckCircle, XCircle, Eye, AlertCi
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
 
+// Slot configuration
+const TOTAL_SLOTS = 12;
+const SLOT_DURATION = 2;
+
+// Tạo danh sách slot với thời gian
+const generateSlots = () => {
+  const slots = [];
+  for (let i = 1; i <= TOTAL_SLOTS; i++) {
+    const startHour = (i - 1) * SLOT_DURATION;
+    const endHour = i * SLOT_DURATION;
+    slots.push({
+      id: i,
+      label: `SL${i}`,
+      timeRange: `${startHour}h-${endHour}h`,
+    });
+  }
+  return slots;
+};
+
+const SLOTS = generateSlots();
+
 // Booking Detail Modal
 const BookingDetailModal = ({ open, onClose, booking }) => {
   if (!open || !booking) return null;
@@ -31,6 +52,13 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
   };
 
   const detailSchedule = booking.detailSchedule || booking.DetailSchedule;
+  
+  // Lấy slots đã đặt
+  const bookedSlots = detailSchedule?.Slots || detailSchedule?.slots || [];
+  const slotInfo = bookedSlots
+    .map(slotId => SLOTS.find(s => s.id === slotId))
+    .filter(Boolean)
+    .sort((a, b) => a.id - b.id);
 
   return (
     <div
@@ -72,15 +100,28 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
                 </p>
               </div>
             </div>
-            <div className="flex items-start gap-3">
-              <Clock className="mt-1 text-muted-foreground" size={20} />
-              <div>
-                <p className="text-sm text-muted-foreground">Thời gian</p>
-                <p className="font-semibold text-foreground">
-                  {formatTime(booking.startTime || booking.StartTime)} - {formatTime(booking.endTime || booking.EndTime)}
-                </p>
+            {slotInfo.length > 0 && (
+              <div className="flex items-start gap-3">
+                <Clock className="mt-1 text-muted-foreground" size={20} />
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground mb-2">Các slot đã đặt</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {slotInfo.map((slot) => (
+                      <span
+                        key={slot.id}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-sm font-medium",
+                          "bg-muted/50 text-foreground",
+                          "border border-border/30"
+                        )}
+                      >
+                        {slot.label} ({slot.timeRange})
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {detailSchedule?.Location && (
@@ -109,7 +150,7 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
               Tổng tiền
             </span>
             <span className="text-2xl font-bold" style={{ color: "rgb(var(--success))" }}>
-              {(booking.totalAmount || booking.TotalAmount || 0).toLocaleString('vi-VN')} đ
+              {Math.max(0, (booking.totalAmount || booking.TotalAmount || 0) - 50000).toLocaleString('vi-VN')} đ
             </span>
           </div>
 
@@ -400,6 +441,64 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
                       <span>{formatTime(booking.startTime || booking.StartTime)} - {formatTime(booking.endTime || booking.EndTime)}</span>
                     </div>
                   )}
+                  {/* Slots */}
+                  {(() => {
+                    const bookedSlots = detailSchedule?.Slots || detailSchedule?.slots || [];
+                    const slotInfo = bookedSlots
+                      .map(slotId => SLOTS.find(s => s.id === slotId))
+                      .filter(Boolean)
+                      .sort((a, b) => a.id - b.id);
+                    
+                    if (slotInfo.length > 0) {
+                      return (
+                        <div style={{
+                          fontSize: '0.75rem',
+                          color: '#374151',
+                          marginBottom: '8px',
+                          padding: '6px 8px',
+                          background: 'rgba(var(--primary), 0.05)',
+                          borderRadius: '6px',
+                          border: '1px solid rgba(var(--primary), 0.15)'
+                        }}>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            marginBottom: '4px',
+                            fontWeight: '600',
+                            color: '#1f2937'
+                          }}>
+                            <Clock size={14} style={{ color: 'rgb(var(--primary))' }} />
+                            <span>Slots đã đặt:</span>
+                          </div>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            flexWrap: 'wrap'
+                          }}>
+                            {slotInfo.map((slot) => (
+                              <span
+                                key={slot.id}
+                                style={{
+                                  padding: '3px 8px',
+                                  borderRadius: '4px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: '600',
+                                  background: 'rgb(var(--primary))',
+                                  color: '#ffffff',
+                                  border: '1px solid rgb(var(--primary))'
+                                }}
+                              >
+                                {slot.label} ({slot.timeRange})
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   {detailSchedule?.Location && (
                     <div style={{
                       fontSize: '0.75rem',
@@ -457,7 +556,7 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
                     gap: '4px'
                   }}>
                     <DollarSign size={14} />
-                    {(booking.totalAmount || booking.TotalAmount || 0).toLocaleString('vi-VN')} đ
+                    {Math.max(0, (booking.totalAmount || booking.TotalAmount || 0) - 50000).toLocaleString('vi-VN')} đ
                   </span>
                 </div>
 
