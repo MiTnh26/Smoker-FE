@@ -21,7 +21,7 @@ import {
   unlikeMediaReply,
 } from "../../../../../api/postApi";
 import ReadMoreText from "../../comment/ReadMoreText";
-import {
+import { 
   isValidObjectId,
   getCurrentUser,
   createNavigateToProfile,
@@ -30,11 +30,15 @@ import {
   parseComments,
   parseReplies,
   getSessionData,
-  getMediaIdForApi as getMediaIdForApiUtil
+  getMediaIdForApi as getMediaIdForApiUtil,
+  getAvatarForAccount,
+  getNameForAccount,
+  formatTimeDisplay
 } from "./utils";
 import MediaStatsBar from "./MediaStatsBar";
 import MediaImageViewer from "./MediaImageViewer";
 import MediaCommentSection from "./MediaCommentSection";
+import CommentInputForm from "../../comment/CommentInputForm";
 
 export default function ImageDetailModal({ 
   open, 
@@ -71,6 +75,7 @@ export default function ImageDetailModal({
   const replyInputRef = useRef(null);
   const navigate = useNavigate();
   const handleNavigateToProfile = createNavigateToProfile(navigate);
+  const sessionData = useMemo(() => getSessionData(), []);
 
   // Track previous imageUrl/mediaId to detect changes
   const prevImageRef = useRef({ imageUrl: null, mediaId: null });
@@ -202,9 +207,96 @@ export default function ImageDetailModal({
     return parseComments(media, "newest");
   }, [media]);
 
+  // Author info for media (fallback to session if missing)
+  const {
+    authorAvatar,
+    authorName,
+    authorEntityAccountId,
+    authorEntityId,
+    authorEntityType,
+  } = useMemo(() => {
+    const mediaAuthor = media?.author || {};
+    const entityAccountId =
+      media?.authorEntityAccountId ||
+      media?.entityAccountId ||
+      mediaAuthor?.entityAccountId ||
+      mediaAuthor?.EntityAccountId ||
+      media?.authorEntityAccountId ||
+      null;
+    const entityId =
+      media?.authorEntityId ||
+      media?.entityId ||
+      mediaAuthor?.entityId ||
+      mediaAuthor?.id ||
+      null;
+    const entityType =
+      media?.authorEntityType ||
+      media?.entityType ||
+      mediaAuthor?.entityType ||
+      null;
+    const accountId = media?.accountId || mediaAuthor?.id || null;
+
+    return {
+      authorAvatar: getAvatarForAccount(accountId, entityAccountId, media?.authorAvatar || mediaAuthor?.avatar),
+      authorName: getNameForAccount(accountId, entityAccountId, media?.authorName || mediaAuthor?.name || mediaAuthor?.userName),
+      authorEntityAccountId: entityAccountId,
+      authorEntityId: entityId,
+      authorEntityType: entityType,
+    };
+  }, [media]);
+
+  const handleAuthorClick = () => {
+    if (!authorEntityAccountId && !authorEntityId) return;
+    const viewer =
+      sessionData?.activeEntity ||
+      sessionData?.account ||
+      sessionData?.currentUser ||
+      null;
+    const viewerEntityAccountId =
+      viewer?.EntityAccountId || viewer?.entityAccountId || viewer?.entity_account_id || null;
+
+    if (
+      viewerEntityAccountId &&
+      authorEntityAccountId &&
+      String(viewerEntityAccountId).toLowerCase() === String(authorEntityAccountId).toLowerCase()
+    ) {
+      navigate("/own/profile");
+      return;
+    }
+
+    handleNavigateToProfile(authorEntityId || authorEntityAccountId, authorEntityType, authorEntityAccountId);
+  };
+
   // Get media ID for API calls
   const getMediaIdForApi = () => {
     return getMediaIdForApiUtil(media, mediaId);
+  };
+
+  const handleAddCommentViaForm = async (content) => {
+    const mediaIdForApi = getMediaIdForApi();
+    if (!mediaIdForApi || !content?.trim()) return false;
+    const sessionData = getSessionData();
+    if (!sessionData) return false;
+
+    const { activeEntity, typeRole, entityAccountId, entityId, entityType } = sessionData;
+
+    setSubmitting(true);
+    try {
+      await addMediaComment(mediaIdForApi, {
+        content: content.trim(),
+        typeRole: typeRole,
+        entityAccountId: entityAccountId || activeEntity?.EntityAccountId || activeEntity?.entityAccountId,
+        entityId: entityId || activeEntity?.id,
+        entityType: entityType || typeRole
+      });
+      await loadMediaDetails(false);
+      return true;
+    } catch (err) {
+      console.error("[IMAGE_MODAL] Error adding comment:", err);
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Like/Unlike Media
@@ -564,14 +656,14 @@ export default function ImageDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-[1000] bg-black/90 flex items-center justify-center p-0 md:p-4 lg:p-8 overflow-auto"
+      className="fixed inset-0 z-[1000] bg-black/90 flex items-stretch justify-center p-0 overflow-auto"
       role="dialog"
       aria-modal="true"
       onClick={handleClose}
       tabIndex={-1}
     >
       <div
-        className="bg-card rounded-none md:rounded-2xl max-w-full md:max-w-[90vw] max-h-full md:max-h-[90vh] w-full h-full md:h-auto flex flex-col relative overflow-hidden shadow-2xl"
+        className="bg-card rounded-none w-full h-full max-w-[100vw] max-h-[100vh] flex flex-col relative overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -582,9 +674,9 @@ export default function ImageDetailModal({
           ×
         </button>
 
-        <div className="flex flex-col md:flex-row h-full max-h-full md:max-h-[90vh] overflow-hidden">
-          {/* Left: Image Section (60%) */}
-          <div className="flex-1 flex items-center justify-center bg-black min-w-0 max-w-full md:max-w-[60%] max-h-[50vh] md:max-h-none relative z-[1]">
+        <div className="flex flex-col md:flex-row h-full max-h-full overflow-hidden gap-0">
+          {/* Left: Image Section */}
+          <div className="w-full h-[60vh] md:h-full md:flex-1 flex items-center justify-center bg-black min-w-0 max-w-full relative z-[1]">
             {/* Previous Button */}
             {hasPrevious && (
               <button
@@ -628,14 +720,38 @@ export default function ImageDetailModal({
             )}
           </div>
 
-          {/* Right: Info Section (40%) */}
-          <div className="w-full md:w-[420px] max-w-full md:max-w-[40%] flex flex-col overflow-y-auto overflow-x-hidden bg-card min-w-0 max-h-[50vh] md:max-h-none relative">
+          {/* Right: Info Section */}
+          <div className="w-full md:w-[360px] max-w-full md:max-w-[360px] min-w-0 md:min-w-[320px] flex flex-col overflow-y-auto overflow-x-hidden bg-card border-l border-border/40 max-h-[40vh] md:max-h-full relative">
             {loading ? (
               <div className="p-8 text-center text-muted-foreground">Đang tải thông tin...</div>
             ) : error && !media ? (
               <div className="p-8 text-center text-destructive">{error}</div>
             ) : (
               <>
+                {/* Author block */}
+                <div className="p-6 border-b border-border/50 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleAuthorClick}
+                    className="bg-transparent border-none p-0 flex items-center gap-3 cursor-pointer text-left"
+                    aria-label="Author profile"
+                  >
+                    <img
+                      src={authorAvatar}
+                      alt={authorName}
+                      className="w-11 h-11 rounded-full object-cover flex-shrink-0"
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-foreground leading-tight">{authorName}</span>
+                      {media?.createdAt && (
+                        <span className="text-xs text-muted-foreground">
+                          {formatTimeDisplay(media.createdAt)}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                </div>
+
                 {/* Caption Header - Chỉ hiển thị nếu media có caption riêng (không phải từ post.content) */}
                 {media?.caption && media.caption.trim() && (
                   <div className="p-6 border-b border-border/50">
@@ -661,6 +777,7 @@ export default function ImageDetailModal({
                 {/* Comments Section */}
                 <MediaCommentSection
                   comments={parsedComments}
+                  commentsCount={commentsCount}
                   commentText={commentText}
                   setCommentText={setCommentText}
                   replyText={replyText}
@@ -686,6 +803,15 @@ export default function ImageDetailModal({
                   replyInputRef={replyInputRef}
                   onAddReply={handleAddReply}
                   getMediaIdForApi={getMediaIdForApi}
+                  customInput={
+                    <CommentInputForm
+                      postId={postId || ""}
+                      onCommentAdded={() => loadMediaDetails(false)}
+                      onSubmitOverride={handleAddCommentViaForm}
+                      placeholder="Viết bình luận..."
+                      disabled={!getMediaIdForApi()}
+                    />
+                  }
                 />
               </>
             )}

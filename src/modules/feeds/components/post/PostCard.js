@@ -28,7 +28,8 @@ export default function PostCard({
   onReport,
   onImageClick,
   onShared,
-  disableCommentButton = false
+  disableCommentButton = false,
+  hideMenu = false
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -400,6 +401,7 @@ export default function PostCard({
             </div>
           </div>
         </div>
+        {!hideMenu && (
         <div className="relative flex-shrink-0">
           <button
             className={cn(
@@ -483,6 +485,7 @@ export default function PostCard({
           </div>
         )}
         </div>
+        )}
       </div>
 
       <div>
@@ -859,18 +862,15 @@ export default function PostCard({
             className="w-full text-left"
           >
             {post.topComments.map((comment, index) => {
-              const isAnonymousComment = Boolean(comment.isAnonymous);
+              // Anonymous temporarily disabled
+              const isAnonymousComment = false;
               const anonymousIndex = comment.anonymousIndex;
               // Read from new DTO schema: author.name or legacy authorName
               const authorName = comment.author?.name || comment.authorName;
-              const displayName = isAnonymousComment
-                ? `Người ẩn danh${anonymousIndex ? ` ${anonymousIndex}` : ""}`
-                : (authorName || "Người dùng");
+              const displayName = authorName || "Người dùng";
               // Read avatar from new DTO schema: author.avatar or legacy authorAvatar
               const authorAvatar = comment.author?.avatar || comment.authorAvatar;
-              const displayAvatar = isAnonymousComment
-                ? "/images/an-danh.png"
-                : getAvatarUrl(authorAvatar, 32);
+              const displayAvatar = getAvatarUrl(authorAvatar, 32);
 
               return (
               <div key={comment.id || index} className="mb-2 last:mb-0">

@@ -5,6 +5,7 @@ import { cn } from "../../../../../utils/cn";
 
 export default function MediaCommentSection({
   comments,
+  commentsCount,
   commentText,
   setCommentText,
   replyText,
@@ -25,14 +26,21 @@ export default function MediaCommentSection({
   onViewImage,
   replyInputRef,
   onAddReply,
-  getMediaIdForApi
+  getMediaIdForApi,
+  customInput
 }) {
   return (
     <div className={cn(
-      "flex-1 flex flex-col overflow-hidden",
-      "min-w-0 max-w-full min-h-0"
+      "flex-1 flex flex-col overflow-hidden bg-card",
+      "min-w-0 max-w-full min-h-0 rounded-none"
     )}>
-      {/* Header removed per design: keep section minimal in modal */}
+      <div className={cn(
+        "px-6 py-4 border-b border-border/50",
+        "flex items-center justify-between"
+      )}>
+        <span className="font-semibold text-foreground">Bình luận</span>
+        <span className="text-sm text-muted-foreground">{commentsCount}</span>
+      </div>
       
       {comments.length === 0 ? (
         <p className={cn(
@@ -44,7 +52,7 @@ export default function MediaCommentSection({
       ) : (
         <div className={cn(
           "flex-1 overflow-y-auto overflow-x-hidden",
-          "py-2 min-w-0 max-w-full"
+          "py-2 min-w-0 max-w-full px-4 md:px-6 space-y-2"
         )}>
           {comments.map((comment) => {
             const isEditing = editingComment?.type === 'comment' && editingComment.id === comment.id;
@@ -81,19 +89,25 @@ export default function MediaCommentSection({
       )}
 
       {/* Add Comment Input - Fixed at bottom */}
-      <MediaCommentInput
-        commentText={commentText}
-        setCommentText={setCommentText}
-        onSubmit={onAddComment}
-        submitting={submitting}
-        disabled={!getMediaIdForApi()}
-      />
+      {customInput ? (
+        customInput
+      ) : (
+        <MediaCommentInput
+          className="px-4 md:px-6 pb-4"
+          commentText={commentText}
+          setCommentText={setCommentText}
+          onSubmit={onAddComment}
+          submitting={submitting}
+          disabled={!getMediaIdForApi()}
+        />
+      )}
     </div>
   );
 }
 
 MediaCommentSection.propTypes = {
   comments: PropTypes.array.isRequired,
+  commentsCount: PropTypes.number,
   commentText: PropTypes.string.isRequired,
   setCommentText: PropTypes.func.isRequired,
   replyText: PropTypes.string.isRequired,
@@ -114,6 +128,7 @@ MediaCommentSection.propTypes = {
   onViewImage: PropTypes.func.isRequired,
   replyInputRef: PropTypes.object,
   onAddReply: PropTypes.func.isRequired,
-  getMediaIdForApi: PropTypes.func.isRequired
+  getMediaIdForApi: PropTypes.func.isRequired,
+  customInput: PropTypes.node
 };
 
