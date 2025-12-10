@@ -827,7 +827,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
             const identity = resolveViewerIdentity();
             const commentEntityAccountId = normalizeId(comment.entityAccountId || comment.authorEntityAccountId);
             const isCurrentUser = commentEntityAccountId === normalizeId(viewerEntityAccountId || identity.entityAccountId);
-            const isAnonymousComment = Boolean(comment.isAnonymous);
+            // Anonymous temporarily disabled
+            const isAnonymousComment = false;
             const anonymousIndex = comment.anonymousIndex;
 
             // Get isLikedByMe from stats if available
@@ -849,14 +850,9 @@ export default function CommentSection({ postId, onClose, inline = false, always
               updatedAt: comment.updatedAt,
               isAnonymous: isAnonymousComment,
               anonymousIndex: anonymousIndex,
-              // Author info: ưu tiên flat fields (authorName, authorAvatar), fallback nested author object
-              // Nếu ẩn danh thì luôn hiển thị Người ẩn danh #n và không dùng avatar thật
-              authorName: isAnonymousComment
-                ? `Người ẩn danh${anonymousIndex ? ` ${anonymousIndex}` : ""}`
-                : (comment.authorName || comment.author?.name || (isCurrentUser ? (viewerName || identity.name || "User") : "Người dùng")),
-              authorAvatar: isAnonymousComment
-                ? ANONYMOUS_AVATAR_URL
-                : (comment.authorAvatar || comment.author?.avatar || (isCurrentUser ? (viewerAvatar || identity.avatar) : null)),
+              // Author info: always show real identity while anonymous is disabled
+              authorName: comment.authorName || comment.author?.name || (isCurrentUser ? (viewerName || identity.name || "User") : "Người dùng"),
+              authorAvatar: comment.authorAvatar || comment.author?.avatar || (isCurrentUser ? (viewerAvatar || identity.avatar) : null),
               authorEntityAccountId: comment.authorEntityAccountId || comment.author?.entityAccountId || comment.entityAccountId,
               authorEntityType: comment.authorEntityType || comment.author?.entityType || comment.entityType,
               authorEntityId: comment.authorEntityId || comment.author?.entityId || comment.entityId

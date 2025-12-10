@@ -24,7 +24,7 @@ export default function MediaImageViewer({
     <img
       src={media?.url || imageUrl}
       alt={media?.caption || "Image"}
-      className="max-w-full max-h-[90vh] object-contain w-full h-auto"
+      className="w-auto h-full max-h-full max-w-full object-contain mx-auto"
       onError={onImageError}
     />
   );
