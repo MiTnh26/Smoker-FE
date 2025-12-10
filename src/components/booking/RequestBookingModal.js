@@ -317,16 +317,83 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
         }
         break;
       case "province":
-        newErrors.province = !value ? "Vui lòng chọn Tỉnh/Thành phố" : "";
+        if (!value) {
+          newErrors.province = "Vui lòng chọn Tỉnh/Thành phố";
+        } else {
+          newErrors.province = "";
+          // Nếu đã chọn tỉnh, kiểm tra huyện
+          if (!selectedDistrictId) {
+            newErrors.district = "Vui lòng chọn Huyện/Quận";
+          } else {
+            newErrors.district = "";
+            // Nếu đã chọn huyện, kiểm tra xã
+            if (!selectedWardId) {
+              newErrors.ward = "Vui lòng chọn Xã/Phường";
+            } else {
+              newErrors.ward = "";
+              // Nếu đã chọn xã, kiểm tra chi tiết
+              if (!addressDetail?.trim()) {
+                newErrors.addressDetail = "Vui lòng nhập địa chỉ chi tiết";
+              } else {
+                newErrors.addressDetail = "";
+              }
+            }
+          }
+        }
         break;
       case "district":
-        newErrors.district = !value ? "Vui lòng chọn Huyện/Quận" : "";
+        if (!value) {
+          // Chỉ bắt lỗi nếu đã chọn tỉnh
+          if (selectedProvinceId) {
+            newErrors.district = "Vui lòng chọn Huyện/Quận";
+          } else {
+            newErrors.district = "";
+          }
+        } else {
+          newErrors.district = "";
+          // Nếu đã chọn huyện, kiểm tra xã
+          if (!selectedWardId) {
+            newErrors.ward = "Vui lòng chọn Xã/Phường";
+          } else {
+            newErrors.ward = "";
+            // Nếu đã chọn xã, kiểm tra chi tiết
+            if (!addressDetail?.trim()) {
+              newErrors.addressDetail = "Vui lòng nhập địa chỉ chi tiết";
+            } else {
+              newErrors.addressDetail = "";
+            }
+          }
+        }
         break;
       case "ward":
-        newErrors.ward = !value ? "Vui lòng chọn Xã/Phường" : "";
+        if (!value) {
+          // Chỉ bắt lỗi nếu đã chọn huyện
+          if (selectedDistrictId) {
+            newErrors.ward = "Vui lòng chọn Xã/Phường";
+          } else {
+            newErrors.ward = "";
+          }
+        } else {
+          newErrors.ward = "";
+          // Nếu đã chọn xã, kiểm tra chi tiết
+          if (!addressDetail?.trim()) {
+            newErrors.addressDetail = "Vui lòng nhập địa chỉ chi tiết";
+          } else {
+            newErrors.addressDetail = "";
+          }
+        }
         break;
       case "addressDetail":
-        newErrors.addressDetail = !value?.trim() ? "Vui lòng nhập địa chỉ chi tiết" : "";
+        if (!value?.trim()) {
+          // Chỉ bắt lỗi nếu đã chọn xã
+          if (selectedWardId) {
+            newErrors.addressDetail = "Vui lòng nhập địa chỉ chi tiết";
+          } else {
+            newErrors.addressDetail = "";
+          }
+        } else {
+          newErrors.addressDetail = "";
+        }
         break;
     }
     
@@ -334,16 +401,27 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
     return !newErrors[fieldName];
   };
   
-  // Validate tất cả các field bắt buộc
+  // Validate tất cả các field bắt buộc theo thứ tự
   const validateAllFields = () => {
     const dateValid = validateField("date", date);
     const slotsValid = validateField("slots", selectedSlots);
-    const provinceValid = validateField("province", selectedProvinceId);
-    const districtValid = validateField("district", selectedDistrictId);
-    const wardValid = validateField("ward", selectedWardId);
-    const addressDetailValid = validateField("addressDetail", addressDetail);
     
-    return dateValid && slotsValid && provinceValid && districtValid && wardValid && addressDetailValid;
+    // Validate địa chỉ theo thứ tự: tỉnh → huyện → xã → chi tiết
+    const provinceValid = validateField("province", selectedProvinceId);
+    if (selectedProvinceId) {
+      const districtValid = validateField("district", selectedDistrictId);
+      if (selectedDistrictId) {
+        const wardValid = validateField("ward", selectedWardId);
+        if (selectedWardId) {
+          const addressDetailValid = validateField("addressDetail", addressDetail);
+          return dateValid && slotsValid && provinceValid && districtValid && wardValid && addressDetailValid;
+        }
+        return dateValid && slotsValid && provinceValid && districtValid && wardValid;
+      }
+      return dateValid && slotsValid && provinceValid && districtValid;
+    }
+    
+    return dateValid && slotsValid && provinceValid;
   };
 
   const isSlotBooked = (slotId) => {
@@ -545,16 +623,28 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
 
             <div className={cn("grid grid-cols-1 gap-4")}>
               {/* Date */}
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Calendar size={16} />
-                  Ngày <span className="text-danger">*</span>
-                </span>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Calendar size={16} />
+                    Ngày <span className="text-danger">*</span>
+                  </span>
+                  {fieldErrors.date && (
+                    <div className="flex items-center gap-1 text-sm text-danger">
+                      <AlertCircle size={14} />
+                      <span>{fieldErrors.date}</span>
+                    </div>
+                  )}
+                </label>
                 <input
                   type="date"
                   value={date}
                   onChange={handleDateChange}
                   onBlur={() => validateField("date", date)}
+                  onKeyDown={(e) => {
+                    // Cho phép nhập từ bàn phím
+                    e.stopPropagation();
+                  }}
                   min={(() => {
                     const tomorrow = new Date();
                     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -566,30 +656,33 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                     "text-foreground",
                     fieldErrors.date
                       ? "border-danger bg-danger/10 focus:border-danger"
-                      : "border-border/30 focus:border-primary"
+                      : "border-border/30 focus:border-primary",
+                    loadingBookedSlots && "opacity-50 cursor-wait"
                   )}
                   disabled={loadingBookedSlots}
                 />
-                {fieldErrors.date && (
-                  <div className="mt-1 flex items-center gap-2 text-sm text-danger">
-                    <AlertCircle size={14} />
-                    <span>{fieldErrors.date}</span>
-                  </div>
-                )}
-              </label>
+              </div>
 
               {/* Slot Selection */}
               {date && (
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Clock size={16} />
-                    Chọn slot <span className="text-danger">*</span>
-                    {selectedSlots.length > 0 && (
-                      <span className="text-xs text-muted-foreground ml-2">
-                        (Đã chọn: {selectedSlots.length} slot)
-                      </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <Clock size={16} />
+                      Chọn slot <span className="text-danger">*</span>
+                      {selectedSlots.length > 0 && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          (Đã chọn: {selectedSlots.length} slot)
+                        </span>
+                      )}
+                    </span>
+                    {fieldErrors.slots && (
+                      <div className="flex items-center gap-1 text-sm text-danger">
+                        <AlertCircle size={14} />
+                        <span>{fieldErrors.slots}</span>
+                      </div>
                     )}
-                  </span>
+                  </div>
                   <div className="grid grid-cols-4 gap-3">
                     {SLOTS.map(slot => {
                       const isSelected = selectedSlots.includes(slot.id);
@@ -624,12 +717,6 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                       );
                     })}
                   </div>
-                  {fieldErrors.slots && (
-                    <div className="flex items-center gap-2 text-sm text-danger">
-                      <AlertCircle size={14} />
-                      <span>{fieldErrors.slots}</span>
-                    </div>
-                  )}
                   {loadingBookedSlots && (
                     <div className="text-sm text-muted-foreground">
                       Đang tải danh sách slot đã đặt...
@@ -640,10 +727,20 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
 
               {/* Address Selector */}
               <div className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <MapPin size={16} />
-                  Địa chỉ <span className="text-danger">*</span>
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <MapPin size={16} />
+                    Địa chỉ <span className="text-danger">*</span>
+                  </span>
+                  {(fieldErrors.province || fieldErrors.district || fieldErrors.ward || fieldErrors.addressDetail) && (
+                    <div className="flex items-center gap-1 text-sm text-danger">
+                      <AlertCircle size={14} />
+                      <span>
+                        {fieldErrors.province || fieldErrors.district || fieldErrors.ward || fieldErrors.addressDetail}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <AddressSelector
                   selectedProvinceId={selectedProvinceId}
                   selectedDistrictId={selectedDistrictId}
@@ -651,18 +748,54 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                   addressDetail={addressDetail}
                   onProvinceChange={(id) => {
                     setSelectedProvinceId(id);
-                    setSelectedDistrictId("");
-                    setSelectedWardId("");
-                    validateField("province", id);
+                    if (!id) {
+                      // Nếu bỏ chọn tỉnh, clear tất cả các field phía sau
+                      setSelectedDistrictId("");
+                      setSelectedWardId("");
+                      setAddressDetail("");
+                      setFieldErrors(prev => ({
+                        ...prev,
+                        province: "",
+                        district: "",
+                        ward: "",
+                        addressDetail: ""
+                      }));
+                    } else {
+                      setSelectedDistrictId("");
+                      setSelectedWardId("");
+                      validateField("province", id);
+                    }
                   }}
                   onDistrictChange={(id) => {
                     setSelectedDistrictId(id);
-                    setSelectedWardId("");
-                    validateField("district", id);
+                    if (!id) {
+                      // Nếu bỏ chọn huyện, clear các field phía sau
+                      setSelectedWardId("");
+                      setAddressDetail("");
+                      setFieldErrors(prev => ({
+                        ...prev,
+                        district: "",
+                        ward: "",
+                        addressDetail: ""
+                      }));
+                    } else {
+                      setSelectedWardId("");
+                      validateField("district", id);
+                    }
                   }}
                   onWardChange={(id) => {
                     setSelectedWardId(id);
-                    validateField("ward", id);
+                    if (!id) {
+                      // Nếu bỏ chọn xã, clear chi tiết
+                      setAddressDetail("");
+                      setFieldErrors(prev => ({
+                        ...prev,
+                        ward: "",
+                        addressDetail: ""
+                      }));
+                    } else {
+                      validateField("ward", id);
+                    }
                   }}
                   onAddressDetailChange={(value) => {
                     setAddressDetail(value);
@@ -670,30 +803,6 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                   }}
                   onAddressChange={setLocation}
                 />
-                {fieldErrors.province && (
-                  <div className="flex items-center gap-2 text-sm text-danger mt-1">
-                    <AlertCircle size={14} />
-                    <span>{fieldErrors.province}</span>
-                  </div>
-                )}
-                {fieldErrors.district && (
-                  <div className="flex items-center gap-2 text-sm text-danger mt-1">
-                    <AlertCircle size={14} />
-                    <span>{fieldErrors.district}</span>
-                  </div>
-                )}
-                {fieldErrors.ward && (
-                  <div className="flex items-center gap-2 text-sm text-danger mt-1">
-                    <AlertCircle size={14} />
-                    <span>{fieldErrors.ward}</span>
-                  </div>
-                )}
-                {fieldErrors.addressDetail && (
-                  <div className="flex items-center gap-2 text-sm text-danger mt-1">
-                    <AlertCircle size={14} />
-                    <span>{fieldErrors.addressDetail}</span>
-                  </div>
-                )}
               </div>
 
               {/* Price Summary */}

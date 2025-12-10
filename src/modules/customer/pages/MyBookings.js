@@ -327,6 +327,27 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
   );
 };
 
+// Slot configuration
+const TOTAL_SLOTS = 12;
+const SLOT_DURATION = 2;
+
+// Tạo danh sách slot với thời gian
+const generateSlots = () => {
+  const slots = [];
+  for (let i = 1; i <= TOTAL_SLOTS; i++) {
+    const startHour = (i - 1) * SLOT_DURATION;
+    const endHour = i * SLOT_DURATION;
+    slots.push({
+      id: i,
+      label: `SL${i}`,
+      timeRange: `${startHour}h-${endHour}h`,
+    });
+  }
+  return slots;
+};
+
+const SLOTS = generateSlots();
+
 // Review Modal Component
 const ReviewModal = ({ open, onClose, booking, receiverInfo, onReviewSubmitted, existingReview = null }) => {
   const { user } = useAuth();
@@ -345,6 +366,14 @@ const ReviewModal = ({ open, onClose, booking, receiverInfo, onReviewSubmitted, 
   const bookingType = booking?.type || booking?.Type || "";
   const isBarBooking = bookingType === "BarTable";
   const detailSchedule = booking?.detailSchedule || booking?.DetailSchedule || {};
+  
+  // Lấy slots đã đặt cho DJ/Dancer bookings
+  const isDJBooking = bookingType?.toUpperCase() === "DJ" || bookingType?.toUpperCase() === "DANCER" || bookingType?.toUpperCase() === "PERFORMER";
+  const bookedSlots = isDJBooking ? (detailSchedule?.Slots || detailSchedule?.slots || []) : [];
+  const slotInfo = bookedSlots
+    .map(slotId => SLOTS.find(s => s.id === slotId))
+    .filter(Boolean)
+    .sort((a, b) => a.id - b.id);
 
   // Load existing review when modal opens
   useEffect(() => {
@@ -711,6 +740,26 @@ const ReviewModal = ({ open, onClose, booking, receiverInfo, onReviewSubmitted, 
                 Ngày: {formatDate(booking.bookingDate || booking.BookingDate)}
               </span>
             </div>
+            {/* Slots cho DJ/Dancer bookings */}
+            {isDJBooking && slotInfo.length > 0 && (
+              <div className="mt-2">
+                <p className="text-muted-foreground mb-2 text-sm">Các slot đã đặt:</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {slotInfo.map((slot) => (
+                    <span
+                      key={slot.id}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-sm font-medium",
+                        "bg-muted/50 text-foreground",
+                        "border border-border/30"
+                      )}
+                    >
+                      {slot.label} ({slot.timeRange})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             {isBarBooking && detailSchedule?.Table && (
               <div className="mt-2">
                 <p className="text-muted-foreground mb-1">Bàn đã đặt:</p>

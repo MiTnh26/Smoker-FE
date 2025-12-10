@@ -18,9 +18,6 @@ import { CustomerTabs, BarTabs, DJTabs, DancerTabs } from '../../../components/p
 import ProfileEditModal from '../../../components/profile/ProfileEditModal';
 import { normalizeProfileData } from '../../../utils/profileDataMapper';
 import bookingApi from '../../../api/bookingApi';
-import DJBookingRequests from '../../dj/components/DJBookingRequests';
-import DancerBookingRequests from '../../dancer/components/DancerBookingRequests';
-import PerformerSchedule from '../../dj/components/PerformerSchedule';
 
 // A new hook to fetch profile data based on type
 const unwrapProfileResponse = (response) => {
@@ -303,52 +300,6 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
   }, [isDJProfile, profileEntityAccountId]);
 
   const renderTabContent = () => {
-    // Special tabs for DJ/Dancer schedule & bookings
-    if (isDJProfile && activeTab === "schedule") {
-      return (
-        <section className={cn("mt-4")}>
-          <div className={cn("bg-card rounded-lg border-[0.5px] border-border/20 p-4 md:p-6")}>
-            <PerformerSchedule 
-              performerEntityAccountId={profileEntityAccountId}
-              isOwnProfile={true}
-            />
-          </div>
-        </section>
-      );
-    }
-
-    if (isDJProfile && activeTab === "bookings") {
-      return (
-        <section className={cn("mt-4")}>
-          <div className={cn("bg-card rounded-lg border-[0.5px] border-border/20 p-4 md:p-6")}>
-            <DJBookingRequests performerEntityAccountId={profileEntityAccountId} />
-          </div>
-        </section>
-      );
-    }
-
-    if (isDancerProfile && activeTab === "schedule") {
-      return (
-        <section className={cn("mt-4")}>
-          <div className={cn("bg-card rounded-lg border-[0.5px] border-border/20 p-4 md:p-6")}>
-            <PerformerSchedule 
-              performerEntityAccountId={profileEntityAccountId}
-              isOwnProfile={true}
-            />
-          </div>
-        </section>
-      );
-    }
-
-    if (isDancerProfile && activeTab === "bookings") {
-      return (
-        <section className={cn("mt-4")}>
-          <div className={cn("bg-card rounded-lg border-[0.5px] border-border/20 p-4 md:p-6")}>
-            <DancerBookingRequests performerEntityAccountId={profileEntityAccountId} />
-          </div>
-        </section>
-      );
-    }
 
     const props = {
       profile,
@@ -540,49 +491,6 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
               </button>
             )}
 
-            {/* Schedule Tab - DJ & Dancer */}
-            {(isDJProfile || isDancerProfile) && (
-              <button
-                onClick={() => setActiveTab("schedule")}
-                className={cn(
-                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
-                  "transition-all duration-200 relative whitespace-nowrap",
-                  activeTab === "schedule"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {t('profile.scheduleTab')}
-                {activeTab === "schedule" && (
-                  <span className={cn(
-                    "absolute bottom-0 left-0 right-0 h-0.5",
-                    "bg-primary"
-                  )} />
-                )}
-              </button>
-            )}
-
-            {/* Bookings Tab - DJ & Dancer */}
-            {(isDJProfile || isDancerProfile) && (
-              <button
-                onClick={() => setActiveTab("bookings")}
-                className={cn(
-                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
-                  "transition-all duration-200 relative whitespace-nowrap",
-                  activeTab === "bookings"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {t('profile.bookingsTab')}
-                {activeTab === "bookings" && (
-                  <span className={cn(
-                    "absolute bottom-0 left-0 right-0 h-0.5",
-                    "bg-primary"
-                  )} />
-                )}
-              </button>
-            )}
 
             
             {/* Ads Tab - Bar only (for bar owners) */}
