@@ -17,7 +17,8 @@ import {
   CheckCircle2,
   Pause,
   Play,
-  DollarSign
+  DollarSign,
+  Megaphone
 } from "lucide-react";
 
 /**
@@ -105,5 +106,6 @@ export const sidebarConfig = {
     { label: "Yêu cầu hoàn tiền", icon: DollarSign, path: "/admin/refund-requests" },
     { label: "Báo cáo & thống kê", icon: BarChart3, path: "/admin/reports" },
     { label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },
+    { label: "Cài Đặt Quảng Cáo", icon: Megaphone, path: "https://smoker-revive.onrender.com/revive/www/admin/index.php", external: true },
   ],
 };

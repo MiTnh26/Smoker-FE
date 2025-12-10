@@ -1108,6 +1108,31 @@ export default function ProfilePage() {
               </button>
             )}
             
+            {/* Tables Tab - Bar only */}
+            {isBarProfile && (
+              <button
+                onClick={() => {
+                  setActiveTab("tables");
+                  setShowBookingView(false); // Reset booking view when switching to tables tab
+                }}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "tables"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t('profile.tablesTab') || 'Tables'}
+                {activeTab === "tables" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+            )}
+            
             </div>
           
             {/* Tab Content */}
