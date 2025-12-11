@@ -18,6 +18,10 @@ export const CustomerTabs = ({
   sharedIsPlaying,
   handleSeek,
   setActivePlayer,
+  onEdit,
+  onDelete,
+  isOwnProfile,
+  onImageClick,
 }) => {
   const { t } = useTranslation();
 
@@ -41,6 +45,10 @@ export const CustomerTabs = ({
                 <PostCard
                   key={post._id || post.id}
                   post={post}
+                  isOwnProfile={isOwnProfile}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onImageClick={onImageClick}
                   playingPost={playingPost}
                   setPlayingPost={(id) => {
                     setPlayingPost?.(id);
@@ -88,6 +96,10 @@ export const CustomerTabs = ({
                 <PostCard
                   key={post._id || post.id}
                   post={post}
+                  isOwnProfile={isOwnProfile}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onImageClick={onImageClick}
                   playingPost={playingPost}
                   setPlayingPost={(id) => {
                     setPlayingPost?.(id);

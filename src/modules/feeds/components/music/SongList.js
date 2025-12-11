@@ -134,7 +134,7 @@ export default function SongList({ refreshKey, onSongDeleted, title, scope = 'mi
           </p>
         </div>
       ) : (
-        <div className="song-list-grid">
+        <div className="song-list-grid song-list-grid--single">
           {songs.map((song) => (
             <SongItem
               key={song._id || song.id}

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
-import { X, Image as ImageIcon, Trash2, Plus, Edit2 } from "lucide-react";
-import { updatePost, uploadPostMedia } from "../../../../api/postApi";
+import { X, Image as ImageIcon, Trash2, Plus, Pencil } from "lucide-react";
+import { updatePost, uploadPostMedia, getPostById } from "../../../../api/postApi";
 import { cn } from "../../../../utils/cn";
 
 export default function PostEditModal({ open, post, onClose, onUpdated }) {
@@ -11,37 +11,66 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
   const [currentImages, setCurrentImages] = useState([]); // Images hiện có từ post
   const [newImages, setNewImages] = useState([]); // Images mới upload
   const [uploadingImages, setUploadingImages] = useState([]); // Images đang upload
-  const [editingCaption, setEditingCaption] = useState(null); // { id, isNew, value }
   const [submitting, setSubmitting] = useState(false);
+  const [loadingPost, setLoadingPost] = useState(false);
+  const [isMusicPost, setIsMusicPost] = useState(false);
+  const [hasVideo, setHasVideo] = useState(false);
+  const [hasImage, setHasImage] = useState(false);
   const fileInputRef = useRef(null);
   const formRef = useRef(null);
-  const captionInputRef = useRef(null);
-  
   const MAX_CONTENT_LENGTH = 5000;
   const MAX_IMAGES = 10;
   const MAX_CAPTION_LENGTH = 500;
 
-  useEffect(() => {
-    if (open && post) {
-      setContent(post.content || post.caption || post.description || "");
-      // Load current images with caption
-      const images = Array.isArray(post?.medias?.images) ? post.medias.images : [];
-      setCurrentImages(images.map(img => ({
-        ...img,
-        caption: img.caption || ""
-      })));
-      setNewImages([]);
-      setUploadingImages([]);
-      setEditingCaption(null);
-    }
-  }, [open, post]);
+  // Normalize medias from a post object
+  const hydratePostMedias = (p) => {
+    const images = Array.isArray(p?.medias?.images)
+      ? p.medias.images
+      : Array.isArray(p?.medias)
+        ? p.medias
+        : [];
+    return images.map((img) => ({
+      ...img,
+      caption: img?.caption || "",
+      url: img?.url || img?.path || "",
+      id: img?.id || img?._id,
+      type: img?.type || "image",
+    }));
+  };
 
-  // Focus caption input when editing starts
   useEffect(() => {
-    if (editingCaption && captionInputRef.current) {
-      captionInputRef.current.focus();
-    }
-  }, [editingCaption]);
+    if (!open || !post) return;
+
+    const loadPostDetail = async () => {
+      setLoadingPost(true);
+      try {
+        const res = await getPostById(post.id || post._id, { includeMedias: true, includeMusic: true });
+        const detailed = res?.data?.data || res?.data || res;
+        const target = detailed || post;
+
+        setContent(target.content || target.caption || target.description || "");
+        setIsMusicPost(Boolean(target.musicId || target.songId || (target.type || "").toLowerCase() === "music"));
+        const hydrated = hydratePostMedias(target);
+        setCurrentImages(hydrated);
+        setHasVideo(hydrated.some((m) => (m.type || "").toLowerCase() === "video"));
+        setHasImage(hydrated.some((m) => (m.type || "image").toLowerCase() === "image"));
+      } catch (err) {
+        console.warn("[EDIT] Could not load post detail, fallback to passed post", err);
+        setContent(post.content || post.caption || post.description || "");
+        const hydrated = hydratePostMedias(post);
+        setCurrentImages(hydrated);
+        setHasVideo(hydrated.some((m) => (m.type || "").toLowerCase() === "video"));
+        setHasImage(hydrated.some((m) => (m.type || "image").toLowerCase() === "image"));
+        setIsMusicPost(Boolean(post.musicId || post.songId || (post.type || "").toLowerCase() === "music"));
+      } finally {
+        setNewImages([]);
+        setUploadingImages([]);
+        setLoadingPost(false);
+      }
+    };
+
+    loadPostDetail();
+  }, [open, post]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -60,16 +89,12 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
     if (!open) return;
     const handleEsc = (e) => {
       if (e.key === 'Escape' && !submitting) {
-        if (editingCaption) {
-          setEditingCaption(null);
-        } else {
-          onClose?.();
-        }
+        onClose?.();
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [open, submitting, onClose, editingCaption]);
+  }, [open, submitting, onClose]);
 
   if (!open) return null;
 
@@ -86,35 +111,40 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
       files.splice(remainingSlots);
     }
 
-    // Validate image files
-    const imageFiles = files.filter(file => {
-      if (!file.type.startsWith('image/')) {
-        alert(`File ${file.name} không phải là ảnh.`);
+    // Validate media files (image or video)
+    const mediaFiles = files.filter(file => {
+      if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+        alert(`File ${file.name} không phải là ảnh hoặc video.`);
         return false;
       }
       return true;
     });
 
-    if (imageFiles.length === 0) return;
+    if (mediaFiles.length === 0) return;
 
     // Create preview URLs
-    const previewImages = imageFiles.map(file => ({
+    const previewImages = mediaFiles.map(file => {
+      const isVideo = file.type.startsWith('video/');
+      return ({
       id: `preview-${Date.now()}-${Math.random()}`,
       file,
       url: URL.createObjectURL(file),
       isNew: true,
       uploading: true,
-      caption: ""
-    }));
+      caption: "",
+      type: isVideo ? "video" : "image"
+    });
+    });
 
     setUploadingImages(prev => [...prev, ...previewImages]);
 
     // Upload images
     try {
-      const uploadPromises = imageFiles.map(async (file, index) => {
+      const uploadPromises = mediaFiles.map(async (file, index) => {
         const formData = new FormData();
-        // Backend expects "images" field name, not "files"
-        formData.append('images', file);
+        // Backend expects "images" for images, "videos" for videos
+        const isVideo = file.type.startsWith('video/');
+        formData.append(isVideo ? 'videos' : 'images', file);
 
         const response = await uploadPostMedia(formData);
         const responseData = response?.data || response;
@@ -128,7 +158,8 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
           id: uploadedFile?.id || uploadedFile?._id || previewImages[index].id,
           url: uploadedFile?.url || uploadedFile?.secure_url || uploadedFile?.path || previewImages[index].url,
           uploading: false,
-          caption: ""
+          caption: "",
+          type: isVideo ? "video" : "image"
         };
       });
 
@@ -175,44 +206,21 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
     } else {
       setCurrentImages(prev => prev.filter(img => (img.id || img._id) !== imageId));
     }
-    // Cancel editing if removing the image being edited
-    if (editingCaption && editingCaption.id === imageId && !editingCaption.isNew) {
-      setEditingCaption(null);
-    }
   };
-
-  // Start editing caption
-  const handleStartEditCaption = (imageId, isNew, currentCaption) => {
-    setEditingCaption({ id: imageId, isNew, value: currentCaption || "" });
-  };
-
-  // Save caption
-  const handleSaveCaption = (imageId, isNew) => {
-    if (!editingCaption || editingCaption.id !== imageId) return;
-    
-    const newCaption = editingCaption.value.trim();
-    
+  
+  // Update caption inline (applies when saving the post)
+  const handleCaptionChange = (imageId, isNew, value) => {
+    const nextVal = value.slice(0, MAX_CAPTION_LENGTH);
     if (isNew) {
-      setNewImages(prev => prev.map(img => 
-        img.id === imageId ? { ...img, caption: newCaption } : img
-      ));
+      setNewImages(prev => prev.map(img => img.id === imageId ? { ...img, caption: nextVal } : img));
     } else {
-      setCurrentImages(prev => prev.map(img => 
-        (img.id || img._id) === imageId ? { ...img, caption: newCaption } : img
-      ));
+      setCurrentImages(prev => prev.map(img => (img.id || img._id) === imageId ? { ...img, caption: nextVal } : img));
     }
-    
-    setEditingCaption(null);
-  };
-
-  // Cancel editing caption
-  const handleCancelEditCaption = () => {
-    setEditingCaption(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!content.trim() && currentImages.length === 0 && newImages.length === 0) {
+    if (!content.trim() && !isMusicPost && currentImages.length === 0 && newImages.length === 0) {
       alert('Vui lòng nhập nội dung hoặc thêm ảnh.');
       return;
     }
@@ -220,36 +228,37 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
     try {
       setSubmitting(true);
       const payload = {};
-      
       if (content.trim()) {
         payload.content = content.trim();
       }
-      
-      // Prepare media data with captions
-      const mediaData = [];
-      
-      // Add current images with updated captions
-      currentImages.forEach(img => {
-        mediaData.push({
-          id: img.id || img._id,
-          caption: img.caption || ""
-        });
-      });
-      
-      // Add new images with captions
-      newImages.forEach(img => {
-        mediaData.push({
-          id: img.id || img._id,
-          caption: img.caption || ""
-        });
-      });
 
-      // If images changed, send media data
-      if (mediaData.length > 0) {
-        payload.medias = mediaData;
-      } else if (currentImages.length === 0 && newImages.length === 0) {
-        // If all images removed, send empty array
-        payload.medias = [];
+      if (hasMedia) {
+        // Prepare media data with captions (image/video)
+        const mediaData = [];
+        
+        currentImages.forEach(img => {
+          mediaData.push({
+            id: img.id || img._id,
+            url: img.url || img.path,
+            caption: img.caption || "",
+            type: (img.type || "").toLowerCase() || "image"
+          });
+        });
+        
+        newImages.forEach(img => {
+          mediaData.push({
+            id: img.id || img._id,
+            url: img.url || img.path,
+            caption: img.caption || "",
+            type: (img.type || "").toLowerCase() || "image"
+          });
+        });
+
+        if (mediaData.length > 0) {
+          payload.medias = mediaData;
+        } else if (currentImages.length === 0 && newImages.length === 0) {
+          payload.medias = [];
+        }
       }
       
       const res = await updatePost(post.id, payload);
@@ -275,6 +284,8 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
   const contentLength = content.length;
   const totalImages = currentImages.length + newImages.length + uploadingImages.length;
   const canAddMore = totalImages < MAX_IMAGES;
+  const isSaving = submitting || uploadingImages.length > 0 || loadingPost;
+  const hasMedia = (hasImage || hasVideo) && !isMusicPost;
 
   return (
     <div 
@@ -306,7 +317,7 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
             "text-xl font-semibold m-0 text-foreground",
             "flex items-center gap-2"
           )}>
-            <span className="text-2xl">✏️</span>
+            <Pencil size={20} className="text-primary" />
             {t('feed.edit') || 'Chỉnh sửa bài viết'}
           </h2>
           <button
@@ -330,7 +341,8 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto min-h-0">
           <form ref={formRef} onSubmit={handleSubmit} className={cn("p-5 flex flex-col gap-4")}>
-            {/* Images Section */}
+            {/* Media Section: show when post has media (image/video) and not music */}
+            {hasMedia && (
             <div>
               <div className={cn("flex items-center justify-between mb-3")}>
                 <label className={cn(
@@ -338,7 +350,7 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
                   "flex items-center gap-2"
                 )}>
                   <ImageIcon size={16} />
-                  Ảnh ({totalImages}/{MAX_IMAGES})
+                  Ảnh/Video ({totalImages}/{MAX_IMAGES})
                 </label>
                 {canAddMore && (
                   <button
@@ -363,7 +375,7 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 multiple
                 onChange={handleFileSelect}
                 className="hidden"
@@ -374,14 +386,12 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
                 <div className={cn("flex flex-col gap-4")}>
                   {/* Current Images */}
                   {currentImages.map((img, idx) => {
-                    const imageId = img.id || img._id;
-                    const isEditing = editingCaption && editingCaption.id === imageId && !editingCaption.isNew;
-                    
+                    const imageId = img.id || img._id || idx;
                     return (
                       <div
-                        key={imageId || idx}
+                        key={imageId}
                         className={cn(
-                          "relative rounded-lg overflow-hidden",
+                          "relative rounded-lg overflow-hidden group",
                           "border border-border/20 shadow-sm",
                           "bg-muted/10"
                         )}
@@ -391,21 +401,29 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
                             "relative rounded-lg overflow-hidden",
                             "w-32 h-32 flex-shrink-0"
                           )}>
-                            <img
-                              src={img.url}
-                              alt={img.caption || `Ảnh ${idx + 1}`}
-                              className="w-full h-full object-cover"
-                            />
+                            { (img.type || "").toLowerCase() === "video" ? (
+                              <video
+                                src={img.url}
+                                className="w-full h-full object-cover"
+                                controls
+                              />
+                            ) : (
+                              <img
+                                src={img.url}
+                                alt={img.caption || `Ảnh ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
                             <button
                               type="button"
                               onClick={() => handleRemoveImage(imageId, false)}
                               disabled={submitting}
                               className={cn(
-                                "absolute top-2 right-2",
+                                "absolute top-2 right-2 z-20",
                                 "w-7 h-7 rounded-full bg-black/70 text-white",
                                 "flex items-center justify-center",
-                                "opacity-0 group-hover:opacity-100",
-                                "transition-opacity duration-200",
+                                "opacity-80 hover:opacity-100",
+                                "transition-all duration-200",
                                 "hover:bg-black/90",
                                 "disabled:opacity-50 disabled:cursor-not-allowed"
                               )}
@@ -416,105 +434,37 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
                           </div>
                           
                           <div className={cn("flex-1 flex flex-col gap-2 min-w-0")}>
-                            {isEditing ? (
-                              <>
-                                <textarea
-                                  ref={captionInputRef}
-                                  value={editingCaption.value}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val.length <= MAX_CAPTION_LENGTH) {
-                                      setEditingCaption(prev => prev ? { ...prev, value: val } : null);
-                                    }
-                                  }}
-                                  placeholder="Nhập mô tả cho ảnh..."
-                                  maxLength={MAX_CAPTION_LENGTH}
-                                  rows={3}
-                                  className={cn(
-                                    "w-full resize-none bg-background text-foreground",
-                                    "border border-border/20 rounded-lg p-2 text-sm",
-                                    "outline-none focus:border-primary focus:ring-1 focus:ring-primary/10"
-                                  )}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && e.ctrlKey) {
-                                      handleSaveCaption(imageId, false);
-                                    } else if (e.key === 'Escape') {
-                                      handleCancelEditCaption();
-                                    }
-                                  }}
-                                />
-                                <div className={cn("flex items-center justify-between")}>
-                                  <span className={cn("text-xs text-muted-foreground")}>
-                                    {editingCaption.value.length}/{MAX_CAPTION_LENGTH}
-                                  </span>
-                                  <div className={cn("flex gap-2")}>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSaveCaption(imageId, false)}
-                                      className={cn(
-                                        "px-3 py-1 text-xs rounded",
-                                        "bg-primary text-primary-foreground",
-                                        "hover:opacity-90"
-                                      )}
-                                    >
-                                      Lưu
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={handleCancelEditCaption}
-                                      className={cn(
-                                        "px-3 py-1 text-xs rounded",
-                                        "bg-muted/30 text-foreground",
-                                        "hover:bg-muted/50"
-                                      )}
-                                    >
-                                      Hủy
-                                    </button>
-                                  </div>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div className={cn("flex items-start justify-between gap-2")}>
-                                  <p className={cn(
-                                    "text-sm text-foreground flex-1",
-                                    !img.caption && "text-muted-foreground italic"
-                                  )}>
-                                    {img.caption || "Chưa có mô tả"}
-                                  </p>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleStartEditCaption(imageId, false, img.caption)}
-                                    disabled={submitting}
-                                    className={cn(
-                                      "flex-shrink-0 p-1.5 rounded",
-                                      "text-muted-foreground hover:text-foreground",
-                                      "hover:bg-muted/50",
-                                      "transition-colors",
-                                      "disabled:opacity-50 disabled:cursor-not-allowed"
-                                    )}
-                                    aria-label="Chỉnh sửa mô tả"
-                                  >
-                                    <Edit2 size={14} />
-                                  </button>
-                                </div>
-                              </>
-                            )}
+                            <label className="text-xs text-muted-foreground">
+                              Mô tả ảnh
+                            </label>
+                            <textarea
+                              value={img.caption || ""}
+                              onChange={(e) => handleCaptionChange(imageId, false, e.target.value)}
+                              placeholder="Nhập mô tả cho ảnh..."
+                              maxLength={MAX_CAPTION_LENGTH}
+                              rows={3}
+                              className={cn(
+                                "w-full resize-none bg-background text-foreground",
+                                "border border-border/20 rounded-lg p-2 text-sm",
+                                "outline-none focus:border-primary focus:ring-1 focus:ring-primary/10"
+                              )}
+                            />
+                            <span className="text-xs text-muted-foreground self-end">
+                              {(img.caption || "").length}/{MAX_CAPTION_LENGTH}
+                            </span>
                           </div>
-                  </div>
-                </div>
+                        </div>
+                      </div>
                     );
                   })}
 
                   {/* New Images */}
                   {newImages.map((img, idx) => {
-                    const isEditing = editingCaption && editingCaption.id === img.id && editingCaption.isNew;
-                    
                     return (
                       <div
                         key={img.id || idx}
                         className={cn(
-                          "relative rounded-lg overflow-hidden",
+                          "relative rounded-lg overflow-hidden group",
                           "border border-border/20 shadow-sm",
                           "bg-muted/10"
                         )}
@@ -524,21 +474,29 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
                             "relative rounded-lg overflow-hidden",
                             "w-32 h-32 flex-shrink-0"
                           )}>
-                            <img
-                              src={img.url}
-                              alt={`Ảnh mới ${idx + 1}`}
-                              className="w-full h-full object-cover"
-                            />
+                            { (img.type || "").toLowerCase() === "video" ? (
+                              <video
+                                src={img.url}
+                                className="w-full h-full object-cover"
+                                controls
+                              />
+                            ) : (
+                              <img
+                                src={img.url}
+                                alt={`Ảnh mới ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                            )}
                             <button
                               type="button"
                               onClick={() => handleRemoveImage(img.id, true)}
                               disabled={submitting}
                               className={cn(
-                                "absolute top-2 right-2",
+                                "absolute top-2 right-2 z-20",
                                 "w-7 h-7 rounded-full bg-black/70 text-white",
                                 "flex items-center justify-center",
-                                "opacity-0 group-hover:opacity-100",
-                                "transition-opacity duration-200",
+                                "opacity-80 hover:opacity-100",
+                                "transition-all duration-200",
                                 "hover:bg-black/90",
                                 "disabled:opacity-50 disabled:cursor-not-allowed"
                               )}
@@ -549,90 +507,24 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
                           </div>
                           
                           <div className={cn("flex-1 flex flex-col gap-2 min-w-0")}>
-                            {isEditing ? (
-                              <>
-                                <textarea
-                                  ref={captionInputRef}
-                                  value={editingCaption.value}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val.length <= MAX_CAPTION_LENGTH) {
-                                      setEditingCaption(prev => prev ? { ...prev, value: val } : null);
-                                    }
-                                  }}
-                                  placeholder="Nhập mô tả cho ảnh..."
-                                  maxLength={MAX_CAPTION_LENGTH}
-                                  rows={3}
-                                  className={cn(
-                                    "w-full resize-none bg-background text-foreground",
-                                    "border border-border/20 rounded-lg p-2 text-sm",
-                                    "outline-none focus:border-primary focus:ring-1 focus:ring-primary/10"
-                                  )}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && e.ctrlKey) {
-                                      handleSaveCaption(img.id, true);
-                                    } else if (e.key === 'Escape') {
-                                      handleCancelEditCaption();
-                                    }
-                                  }}
-                                />
-                                <div className={cn("flex items-center justify-between")}>
-                                  <span className={cn("text-xs text-muted-foreground")}>
-                                    {editingCaption.value.length}/{MAX_CAPTION_LENGTH}
-                                  </span>
-                                  <div className={cn("flex gap-2")}>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSaveCaption(img.id, true)}
-                                      className={cn(
-                                        "px-3 py-1 text-xs rounded",
-                                        "bg-primary text-primary-foreground",
-                                        "hover:opacity-90"
-                                      )}
-                                    >
-                                      Lưu
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={handleCancelEditCaption}
-                                      className={cn(
-                                        "px-3 py-1 text-xs rounded",
-                                        "bg-muted/30 text-foreground",
-                                        "hover:bg-muted/50"
-                                      )}
-                                    >
-                                      Hủy
-                                    </button>
-                                  </div>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div className={cn("flex items-start justify-between gap-2")}>
-                                  <p className={cn(
-                                    "text-sm text-foreground flex-1",
-                                    !img.caption && "text-muted-foreground italic"
-                                  )}>
-                                    {img.caption || "Chưa có mô tả"}
-                                  </p>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleStartEditCaption(img.id, true, img.caption)}
-                                    disabled={submitting}
-                                    className={cn(
-                                      "flex-shrink-0 p-1.5 rounded",
-                                      "text-muted-foreground hover:text-foreground",
-                                      "hover:bg-muted/50",
-                                      "transition-colors",
-                                      "disabled:opacity-50 disabled:cursor-not-allowed"
-                                    )}
-                                    aria-label="Chỉnh sửa mô tả"
-                                  >
-                                    <Edit2 size={14} />
-                                  </button>
-                                </div>
-                              </>
-                            )}
+                            <label className="text-xs text-muted-foreground">
+                              Mô tả video
+                            </label>
+                            <textarea
+                              value={img.caption || ""}
+                              onChange={(e) => handleCaptionChange(img.id, true, e.target.value)}
+                              placeholder="Nhập mô tả cho video..."
+                              maxLength={MAX_CAPTION_LENGTH}
+                              rows={3}
+                              className={cn(
+                                "w-full resize-none bg-background text-foreground",
+                                "border border-border/20 rounded-lg p-2 text-sm",
+                                "outline-none focus:border-primary focus:ring-1 focus:ring-primary/10"
+                              )}
+                            />
+                            <span className="text-xs text-muted-foreground self-end">
+                              {(img.caption || "").length}/{MAX_CAPTION_LENGTH}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -681,6 +573,7 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
                 </div>
               )}
             </div>
+            )}
 
             {/* Content Textarea */}
             <div>
@@ -740,17 +633,19 @@ export default function PostEditModal({ open, post, onClose, onUpdated }) {
             </button>
             <button 
               type="submit" 
-                disabled={submitting || (!content.trim() && totalImages === 0)}
+              disabled={isSaving || (!content.trim() && totalImages === 0)}
               className={cn(
                   "px-6 py-2.5 rounded-lg text-sm font-medium",
                 "cursor-pointer transition-all duration-200 border-none",
                 "bg-primary text-primary-foreground",
                 "hover:opacity-90",
                 "active:scale-95",
-                "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                "disabled:cursor-not-allowed disabled:transform-none",
+                // Làm mờ nền khi đang lưu
+                isSaving ? "opacity-70" : "disabled:opacity-50"
               )}
             >
-                {submitting ? (t('action.saving') || 'Đang lưu...') : (t('action.save') || 'Lưu')}
+                {isSaving ? (t('action.saving') || 'Đang lưu...') : (t('action.save') || 'Lưu')}
             </button>
           </div>
         </form>
