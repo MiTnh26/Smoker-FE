@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import businessApi from "../../../api/businessApi";
 import { userApi } from "../../../api/userApi";
 import AddressSelector from "../../../components/common/AddressSelector";
 import { fetchAllEntities } from "../../../utils/sessionHelper";
 import "../../../styles/modules/businessRegister.css";
+import ProfilePreviewCard from "../components/ProfilePreviewCard";
 
 export default function DancerRegister() {
   const navigate = useNavigate();
@@ -37,6 +38,8 @@ export default function DancerRegister() {
   // Step 2: files + preview
   const [files, setFiles] = useState({ avatar: null, background: null });
   const [previews, setPreviews] = useState({ avatar: "", background: "" });
+  const avatarInputRef = useRef(null);
+  const bgInputRef = useRef(null);
 
   useEffect(() => {
     // Check if user already has a Dancer entity from session
@@ -94,9 +97,16 @@ export default function DancerRegister() {
     setStep(2);
   };
 
+  const triggerAvatar = () => avatarInputRef.current?.click();
+  const triggerBackground = () => bgInputRef.current?.click();
+
   // Submit tất cả ở bước cuối
   const handleSubmitAll = async (e) => {
     e.preventDefault();
+    if (!files.avatar || !files.background) {
+      alert("Vui lòng thêm đủ ảnh đại diện và ảnh bìa trước khi hoàn thành.");
+      return;
+    }
     setIsLoading(true);
     setMessage("");
 
@@ -178,7 +188,7 @@ export default function DancerRegister() {
       <div className="business-register-container text-center">
         <h2>Đăng ký thành công</h2>
         <p className="business-register-message">{message}</p>
-        <button onClick={() => navigate('/')} className="btn-primary mt-4">
+        <button onClick={() => navigate('/customer/newsfeed')} className="btn-primary mt-4">
           Về trang chủ
         </button>
       </div>
@@ -255,23 +265,54 @@ export default function DancerRegister() {
       )}
 
       {step === 2 && (
-        <form onSubmit={handleSubmitAll} className="business-register-form">
-          <div className="form-group">
-            <label>Ảnh đại diện (Avatar)</label>
-            <input type="file" name="avatar" accept="image/*" onChange={handleFileChange} />
-            {previews.avatar && <img src={previews.avatar} alt="avatar preview" className="preview-image" />}
+        <div className="register-vertical-layout">
+          <div className="register-form-section">
+            <form onSubmit={handleSubmitAll} className="business-register-form">
+              <input
+                ref={avatarInputRef}
+                type="file"
+                name="avatar"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="file-input-hidden"
+              />
+              <input
+                ref={bgInputRef}
+                type="file"
+                name="background"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="file-input-hidden"
+              />
+              <p className="form-hint">
+                Nhấn trực tiếp vào avatar hoặc ảnh bìa bên dưới để chọn ảnh. Ảnh được cập nhật ngay trong phần xem trước.
+              </p>
+
+              <button type="submit" className="business-register-btn" disabled={isLoading}>
+                {isLoading ? "Đang đăng ký..." : "Hoàn tất đăng ký"}
+              </button>
+              {message && <p className="business-register-message">{message}</p>}
+            </form>
           </div>
 
-          <div className="form-group">
-            <label>Ảnh bìa (Background)</label>
-            <input type="file" name="background" accept="image/*" onChange={handleFileChange} />
-            {previews.background && <img src={previews.background} alt="background preview" className="preview-image" />}
+          <div className="register-preview-section">
+            <div className="preview-section-header">
+              <h3>Xem trước hồ sơ</h3>
+              <p className="preview-section-subtitle">Đây là cách hồ sơ của bạn sẽ hiển thị</p>
+            </div>
+            <ProfilePreviewCard
+              name={info.userName}
+              roleLabel="Dancer"
+              address={info.address}
+              bio={info.bio}
+              avatar={previews.avatar}
+              background={previews.background}
+              phone={info.phone}
+              onSelectAvatar={triggerAvatar}
+              onSelectBackground={triggerBackground}
+            />
           </div>
-
-          <button type="submit" className="business-register-btn" disabled={isLoading}>
-            {isLoading ? "Đang đăng ký..." : "Hoàn tất đăng ký"}
-          </button>
-        </form>
+        </div>
       )}
 
       {message && !isSuccess && <p className="business-register-message">{message}</p>}

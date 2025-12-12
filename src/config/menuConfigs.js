@@ -253,7 +253,6 @@ export function getThemeLabel(theme, t) {
       light: "🌞 Sáng",
       dark: "🌙 Tối",
       bw: "⚫⚪ Đen trắng",
-      liquidglass: "🪟 LiquidGlass",
     };
     return fallback[theme] || fallback.light;
   }
@@ -262,7 +261,6 @@ export function getThemeLabel(theme, t) {
     light: `🌞 ${t('menu.themeLight')}`,
     dark: `🌙 ${t('menu.themeDark')}`,
     bw: `⚫⚪ ${t('menu.themeBW')}`,
-    liquidglass: `🪟 ${t('menu.themeLiquidGlass')}`,
   };
   return labels[theme] || labels.light;
 }
@@ -273,7 +271,7 @@ export function getThemeLabel(theme, t) {
  * @returns {string} Next theme
  */
 export function getNextTheme(currentTheme) {
-  const themes = ["light", "dark", "bw", "liquidglass"];
+  const themes = ["light", "dark", "bw"];
   const currentIndex = themes.indexOf(currentTheme);
   const nextIndex = (currentIndex + 1) % themes.length;
   return themes[nextIndex];

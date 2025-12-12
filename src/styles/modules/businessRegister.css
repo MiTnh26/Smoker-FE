@@ -3,38 +3,64 @@
    ========================================================= */
 
 .business-register-container {
-  max-width: 880px;
-  margin: 36px auto;
-  background: rgb(var(--card) / 0.9);
-  border: 1px solid rgb(var(--border) / 0.3);
-  border-radius: var(--radius);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-  padding: 22px 20px;
+  max-width: 1200px;
+  margin: 28px auto;
+  padding: 0 16px;
   color: rgb(var(--foreground));
-  backdrop-filter: blur(8px);
-  transition: all 0.3s ease;
-}
-
-.business-register-container:hover {
-  border-color: rgb(var(--primary) / 0.5);
 }
 
 /* --- Tiêu đề form --- */
 .business-register-container h2 {
   text-align: center;
-  font-size: 1.3rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  margin-bottom: 16px;
-  background: linear-gradient(90deg, rgb(var(--primary)), rgb(var(--primary) / 0.7));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  margin-bottom: 24px;
+  color: rgb(var(--foreground));
+  letter-spacing: -0.02em;
+}
+
+/* --- Two-column layout for form + preview (horizontal) --- */
+.register-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .register-two-col {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  .register-preview-section {
+    order: -1;
+  }
+}
+
+/* --- Vertical layout: preview on top, form below --- */
+.register-vertical-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* --- Form section --- */
+.register-form-section {
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--border) / 0.3);
+  border-radius: calc(var(--radius) + 4px);
+  padding: 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 /* --- Form chính --- */
 .business-register-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 16px;
 }
 
 /* --- Lưới 2 cột --- */
@@ -51,37 +77,126 @@
 }
 
 /* --- Label --- */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .form-group label {
   display: block;
   font-weight: 600;
-  font-size: 0.85rem;
-  margin-bottom: 3px;
+  font-size: 0.9rem;
+  color: rgb(var(--foreground));
+  letter-spacing: 0.01em;
+}
+
+.form-label-required::after {
+  content: " *";
+  color: rgb(var(--danger));
+}
+
+.form-hint {
+  font-size: 0.75rem;
   color: rgb(var(--muted-foreground));
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* --- File Upload --- */
+.file-upload-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.file-upload-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 2px dashed rgb(var(--border));
+  border-radius: calc(var(--radius) - 2px);
+  background: rgb(var(--muted) / 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.file-upload-label:hover {
+  border-color: rgb(var(--primary) / 0.5);
+  background: rgb(var(--primary) / 0.05);
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.file-upload-button {
+  padding: 8px 16px;
+  background: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  border-radius: calc(var(--radius) - 4px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.file-upload-label:hover .file-upload-button {
+  background: rgb(var(--primary) / 0.9);
+  transform: translateY(-1px);
+}
+
+.file-upload-text {
+  flex: 1;
+  font-size: 0.875rem;
+  color: rgb(var(--muted-foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-preview-thumbnail {
+  width: 100%;
+  max-width: 200px;
+  aspect-ratio: 1;
+  border-radius: calc(var(--radius) - 2px);
+  overflow: hidden;
+  border: 2px solid rgb(var(--border));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.file-preview-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* --- Input & Textarea --- */
-.form-group input,
+.form-group input:not(.file-input-hidden),
 .form-group textarea {
   width: 100%;
-  border: 1px solid rgb(var(--border));
-  background: rgb(var(--muted) / 0.3);
+  border: 1.5px solid rgb(var(--border));
+  background: rgb(var(--card));
   color: rgb(var(--foreground));
-  padding: 6px 8px;
+  padding: 12px 16px;
   border-radius: calc(var(--radius) - 2px);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   outline: none;
-  transition: border 0.2s ease, background 0.2s ease;
+  transition: all 0.2s ease;
 }
 
-.form-group input:focus,
+.form-group input:not(.file-input-hidden):focus,
 .form-group textarea:focus {
   border-color: rgb(var(--primary));
   background: rgb(var(--card));
+  box-shadow: 0 0 0 3px rgb(var(--primary) / 0.1);
 }
 
 textarea {
   resize: vertical;
-  min-height: 60px;
+  min-height: 100px;
+  font-family: inherit;
 }
 
 /* --- Nút đăng ký --- */
@@ -91,8 +206,8 @@ textarea {
   color: rgb(var(--primary-foreground));
   font-weight: 600;
   border: none;
-  border-radius: var(--radius);
-  padding: 10px 14px;
+  border-radius: 999px;
+  padding: 9px 14px;
   cursor: pointer;
   box-shadow: 0 5px 16px rgba(var(--primary) / 0.25);
   transition: transform 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
@@ -111,45 +226,275 @@ textarea {
   box-shadow: none;
 }
 
+/* --- Preview section --- */
+.register-preview-section {
+  width: 100%;
+}
+
+.register-vertical-layout .register-preview-section {
+  position: relative;
+}
+
+.preview-section-header {
+  margin-bottom: 16px;
+}
+
+.preview-section-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: rgb(var(--foreground));
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+
+.preview-section-subtitle {
+  font-size: 0.875rem;
+  color: rgb(var(--muted-foreground));
+  margin: 0;
+}
+
+/* --- Preview card --- */
+.register-preview-card {
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--border) / 0.3);
+  border-radius: calc(var(--radius) + 4px);
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+.register-preview-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.register-preview-cover-wrapper {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+}
+
+.preview-cover-action {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgb(var(--background) / 0.85);
+  color: rgb(var(--foreground));
+  border: 1px solid rgb(var(--border) / 0.4);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+.preview-cover-action:hover {
+  background: rgb(var(--background));
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.register-preview-cover {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.register-preview-cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.1) 100%);
+}
+
+.register-preview-content {
+  position: relative;
+  padding: 20px 24px 24px;
+}
+
+.register-preview-avatar-wrapper {
+  position: absolute;
+  top: -60px;
+  left: 24px;
+}
+
+.register-preview-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid rgb(var(--card));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  background: rgb(var(--muted));
+  position: relative;
+}
+
+.register-preview-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.preview-avatar-action {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.25) 100%);
+  color: #fff;
+  font-size: 1.1rem;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.register-preview-avatar:hover .preview-avatar-action {
+  opacity: 1;
+}
+
+.register-preview-info {
+  margin-top: 68px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.register-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.register-preview-name {
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: rgb(var(--foreground));
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.register-preview-role {
+  display: inline-flex;
+  align-items: center;
+  background: rgb(var(--primary) / 0.15);
+  color: rgb(var(--primary));
+  border: 1px solid rgb(var(--primary) / 0.3);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.register-preview-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: rgb(var(--muted-foreground));
+}
+
+.register-preview-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.register-preview-text {
+  font-size: 0.9rem;
+  color: rgb(var(--muted-foreground));
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.register-preview-bio {
+  margin-top: 4px;
+}
+
+.register-preview-bio .register-preview-text {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: rgb(var(--foreground) / 0.8);
+}
+
 /* --- Điều hướng --- */
 .form-navigation {
   display: flex;
   justify-content: space-between;
-  margin-top: 24px;
+  margin-top: 20px;
   gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid rgb(var(--border) / 0.3);
 }
 
 .back-btn,
 .next-btn {
   flex: 1;
-  padding: 10px 16px;
-  font-size: 15px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 999px;
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 /* --- Nút quay lại --- */
 .back-btn {
   background-color: rgb(var(--muted));
   color: rgb(var(--foreground));
-  border: 1px solid rgb(var(--border));
+  border: 1.5px solid rgb(var(--border));
 }
 
 .back-btn:hover {
   background-color: rgb(var(--muted) / 0.8);
+  border-color: rgb(var(--border) / 0.8);
+  transform: translateY(-1px);
+}
+
+.back-btn:active {
+  transform: translateY(0);
 }
 
 /* --- Nút tiếp tục --- */
 .next-btn {
-  background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--primary) / 0.8));
+  background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--primary) / 0.9));
   color: rgb(var(--primary-foreground));
-  box-shadow: 0 4px 14px rgba(var(--primary) / 0.3);
+  box-shadow: 0 4px 12px rgba(var(--primary) / 0.25);
 }
 
-.next-btn:hover {
+.next-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(var(--primary) / 0.4);
+  box-shadow: 0 6px 16px rgba(var(--primary) / 0.35);
+}
+
+.next-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.next-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* --- Message --- */
+.business-register-message {
+  padding: 12px 16px;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.875rem;
+  margin-top: 16px;
+  background: rgb(var(--muted) / 0.5);
+  color: rgb(var(--foreground));
+  border-left: 3px solid rgb(var(--primary));
 }
