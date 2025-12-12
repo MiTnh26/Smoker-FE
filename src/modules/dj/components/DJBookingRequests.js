@@ -1,8 +1,9 @@
 // src/modules/dj/components/DJBookingRequests.js
 import React, { useState, useEffect, useCallback } from "react";
 import bookingApi from "../../../api/bookingApi";
+import publicProfileApi from "../../../api/publicProfileApi";
 import { cn } from "../../../utils/cn";
-import { Calendar, Clock, MapPin, DollarSign, CheckCircle, XCircle, Eye, AlertCircle, Loader2, X } from "lucide-react";
+import { Calendar, Clock, MapPin, DollarSign, CheckCircle, XCircle, Eye, AlertCircle, Loader2, X, Phone, User } from "lucide-react";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
 
@@ -28,7 +29,137 @@ const generateSlots = () => {
 const SLOTS = generateSlots();
 
 // Booking Detail Modal
-const BookingDetailModal = ({ open, onClose, booking }) => {
+const BookingDetailModal = ({ open, onClose, booking, performerEntityAccountId }) => {
+  const [hasRiskWarning, setHasRiskWarning] = useState(false);
+  const [loadingRiskCheck, setLoadingRiskCheck] = useState(false);
+  const [bookerInfo, setBookerInfo] = useState(null);
+  const [loadingBooker, setLoadingBooker] = useState(false);
+
+  useEffect(() => {
+    const checkRiskWarning = async () => {
+      if (!open || !booking || !performerEntityAccountId) {
+        setHasRiskWarning(false);
+        return;
+      }
+
+      const detailSchedule = booking.detailSchedule || booking.DetailSchedule;
+      const bookedSlots = detailSchedule?.Slots || detailSchedule?.slots || [];
+      
+      if (bookedSlots.length === 0) {
+        setHasRiskWarning(false);
+        return;
+      }
+
+      // Lấy slot nhỏ nhất (slot đầu tiên) trong booking hiện tại
+      const minBookedSlot = Math.min(...bookedSlots);
+      
+      // Lấy ngày booking
+      const bookingDate = booking.bookingDate || booking.BookingDate;
+      if (!bookingDate) {
+        setHasRiskWarning(false);
+        return;
+      }
+
+      setLoadingRiskCheck(true);
+      try {
+        // Fetch tất cả bookings đã confirmed cho cùng ngày
+        const dateStr = new Date(bookingDate).toISOString().split('T')[0];
+        const res = await bookingApi.getDJBookingsByReceiver(performerEntityAccountId, { 
+          limit: 100,
+          date: dateStr 
+        });
+        const bookingsData = res.data?.data || res.data || [];
+        
+        // Lọc các booking đã confirmed (loại trừ booking hiện tại)
+        const currentBookingId = booking.BookedScheduleId || booking.bookedScheduleId;
+        const confirmedBookings = bookingsData.filter(b => {
+          const status = b.scheduleStatus || b.ScheduleStatus;
+          const bookingId = b.BookedScheduleId || b.bookedScheduleId;
+          return (status === "Confirmed" || status === "Completed") && bookingId !== currentBookingId;
+        });
+
+        // Kiểm tra xem có slot nào trước slot đã book đã được confirm chưa
+        let hasConfirmedSlotBefore = false;
+        
+        for (const confirmedBooking of confirmedBookings) {
+          const confirmedDetailSchedule = confirmedBooking.detailSchedule || confirmedBooking.DetailSchedule;
+          const confirmedSlots = confirmedDetailSchedule?.Slots || confirmedDetailSchedule?.slots || [];
+          
+          if (confirmedSlots.length > 0) {
+            // Tính slot từ startTime và endTime nếu không có Slots trong detailSchedule
+            let calculatedSlots = [...confirmedSlots];
+            
+            if (calculatedSlots.length === 0 && confirmedBooking.startTime && confirmedBooking.endTime) {
+              const startTime = new Date(confirmedBooking.startTime || confirmedBooking.StartTime);
+              const endTime = new Date(confirmedBooking.endTime || confirmedBooking.EndTime);
+              
+              const startHour = startTime.getHours();
+              const endHour = endTime.getHours();
+              
+              const startSlot = Math.floor(startHour / SLOT_DURATION) + 1;
+              const endSlot = Math.ceil(endHour / SLOT_DURATION);
+              
+              for (let i = startSlot; i <= endSlot && i <= TOTAL_SLOTS; i++) {
+                calculatedSlots.push(i);
+              }
+            }
+            
+            // Kiểm tra xem có slot nào trước minBookedSlot đã được confirm chưa
+            const hasSlotBefore = calculatedSlots.some(slot => slot < minBookedSlot);
+            if (hasSlotBefore) {
+              hasConfirmedSlotBefore = true;
+              break;
+            }
+          }
+        }
+
+        setHasRiskWarning(hasConfirmedSlotBefore);
+      } catch (error) {
+        console.error("[BookingDetailModal] Error checking risk warning:", error);
+        setHasRiskWarning(false);
+      } finally {
+        setLoadingRiskCheck(false);
+      }
+    };
+
+    checkRiskWarning();
+  }, [open, booking, performerEntityAccountId]);
+
+  // Fetch booker info
+  useEffect(() => {
+    const fetchBookerInfo = async () => {
+      if (!open || !booking) {
+        setBookerInfo(null);
+        return;
+      }
+
+      const bookerId = booking.bookerId || booking.BookerId;
+      if (!bookerId) {
+        setBookerInfo(null);
+        return;
+      }
+
+      setLoadingBooker(true);
+      try {
+        const res = await publicProfileApi.getByEntityId(bookerId);
+        const data = res?.data?.data || res?.data || {};
+        
+        setBookerInfo({
+          name: data.name || data.Name || data.userName || data.UserName || data.BarName || data.BusinessName || "Unknown",
+        });
+      } catch (error) {
+        console.error("[BookingDetailModal] Error fetching booker info:", error);
+        setBookerInfo({
+          name: "Unknown",
+        });
+      } finally {
+        setLoadingBooker(false);
+      }
+    };
+
+    fetchBookerInfo();
+  }, [open, booking]);
+
   if (!open || !booking) return null;
 
   const formatDate = (dateString) => {
@@ -90,6 +221,21 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
         </div>
 
         <div className={cn("space-y-4")}>
+          {/* Booker Info */}
+          {(bookerInfo || loadingBooker) && (
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/30 border border-border/30">
+              <User className="mt-1 text-muted-foreground" size={20} />
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Người đặt</p>
+                {loadingBooker ? (
+                  <p className="font-semibold text-foreground">Đang tải...</p>
+                ) : (
+                  <p className="font-semibold text-foreground">{bookerInfo?.name || "Unknown"}</p>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-start gap-3">
               <Calendar className="mt-1 text-muted-foreground" size={20} />
@@ -134,12 +280,40 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
             </div>
           )}
 
+          <div className="flex items-start gap-3">
+            <Phone className="mt-1 text-muted-foreground" size={20} />
+            <div className="flex-1">
+              <p className="text-sm text-muted-foreground">Số điện thoại</p>
+              <p className="font-semibold text-foreground">
+                {detailSchedule?.Phone || detailSchedule?.phone || "Chưa có"}
+              </p>
+            </div>
+          </div>
+
           {detailSchedule?.Note && (
             <div className="flex items-start gap-3">
               <AlertCircle className="mt-1 text-muted-foreground" size={20} />
               <div className="flex-1">
                 <p className="text-sm text-muted-foreground">Ghi chú</p>
                 <p className="font-semibold text-foreground">{detailSchedule.Note}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Risk Warning */}
+          {loadingRiskCheck ? (
+            <div className="flex items-center gap-2 p-4 rounded-lg bg-muted/30 border border-border/30">
+              <Loader2 className="animate-spin text-muted-foreground" size={16} />
+              <span className="text-sm text-muted-foreground">Đang kiểm tra rủi ro...</span>
+            </div>
+          ) : hasRiskWarning && (
+            <div className="flex items-start gap-3 p-4 rounded-lg bg-warning/10 border border-warning/30">
+              <AlertCircle className="mt-0.5 text-warning flex-shrink-0" size={20} />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-warning mb-1">Cảnh báo rủi ro</p>
+                <p className="text-sm text-foreground">
+                  Có slot trước slot đã đặt trong booking này đã được xác nhận. Có thể trùng lịch trình hoặc có thể gặp sự cố nếu xác nhận booking này.
+                </p>
               </div>
             </div>
           )}
@@ -172,6 +346,8 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [filterDate, setFilterDate] = useState(""); // Filter theo ngày
+  const [bookerNames, setBookerNames] = useState({}); // Cache booker names
 
   const addToast = useCallback((message, type = "info", duration = 3000) => {
     const id = Date.now() + Math.random();
@@ -196,9 +372,19 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
       const bookingsData = res.data?.data || res.data || [];
       
       // Chỉ lấy các booking Pending
-      const pendingBookings = bookingsData.filter(b => 
+      let pendingBookings = bookingsData.filter(b => 
         (b.scheduleStatus || b.ScheduleStatus) === "Pending"
       );
+      
+      // Filter theo ngày nếu có
+      if (filterDate) {
+        pendingBookings = pendingBookings.filter(b => {
+          const bookingDate = b.bookingDate || b.BookingDate;
+          if (!bookingDate) return false;
+          const bookingDateStr = new Date(bookingDate).toISOString().split('T')[0];
+          return bookingDateStr === filterDate;
+        });
+      }
       
       // Sắp xếp theo ngày (mới nhất trước)
       const sorted = pendingBookings.sort((a, b) => {
@@ -208,6 +394,26 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
       });
 
       setBookings(sorted);
+      
+      // Fetch booker names for all bookings
+      const bookerIds = [...new Set(sorted.map(b => b.bookerId || b.BookerId).filter(Boolean))];
+      const namesMap = {};
+      
+      await Promise.all(
+        bookerIds.map(async (bookerId) => {
+          try {
+            const res = await publicProfileApi.getByEntityId(bookerId);
+            const data = res?.data?.data || res?.data || {};
+            const name = data.name || data.Name || data.userName || data.UserName || data.BarName || data.BusinessName || "Unknown";
+            namesMap[bookerId] = name;
+          } catch (err) {
+            console.error(`Error fetching booker info for ${bookerId}:`, err);
+            namesMap[bookerId] = "Unknown";
+          }
+        })
+      );
+      
+      setBookerNames(namesMap);
     } catch (err) {
       console.error("Error fetching bookings:", err);
       setError("Không thể tải danh sách yêu cầu booking. Vui lòng thử lại sau.");
@@ -215,7 +421,7 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
     } finally {
       setLoading(false);
     }
-  }, [performerEntityAccountId, addToast]);
+  }, [performerEntityAccountId, addToast, filterDate]);
 
   useEffect(() => {
     fetchBookings();
@@ -310,12 +516,47 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
 
       {/* Header */}
       <div className="mb-6">
-        <h2 className={cn("text-2xl font-bold text-foreground mb-2")}>
-          Yêu cầu booking
-        </h2>
-        <p className="text-muted-foreground">
-          Xác nhận hoặc từ chối các yêu cầu booking từ khách hàng
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className={cn("text-2xl font-bold text-foreground mb-2")}>
+              Yêu cầu booking
+            </h2>
+            <p className="text-muted-foreground">
+              Xác nhận hoặc từ chối các yêu cầu booking từ khách hàng
+            </p>
+          </div>
+        </div>
+        
+        {/* Date Filter */}
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Calendar size={16} />
+            Lọc theo ngày:
+          </label>
+          <input
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className={cn(
+              "px-3 py-2 rounded-lg border transition-colors",
+              "bg-background text-foreground",
+              "border-border/30 focus:border-primary focus:ring-2 focus:ring-primary/20",
+              "focus:outline-none"
+            )}
+          />
+          {filterDate && (
+            <button
+              onClick={() => setFilterDate("")}
+              className={cn(
+                "px-3 py-2 rounded-lg text-sm font-medium",
+                "bg-muted hover:bg-muted/80 text-foreground",
+                "border border-border/30 transition-colors"
+              )}
+            >
+              Xóa lọc
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Error State */}
@@ -350,11 +591,7 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
           </p>
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-          gap: '16px'
-        }}>
+        <div className="flex flex-col gap-3">
           {bookings.map((booking) => {
             const detailSchedule = booking.detailSchedule || booking.DetailSchedule;
             const scheduleStatus = booking.ScheduleStatus || booking.scheduleStatus;
@@ -406,41 +643,39 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
                   e.currentTarget.style.boxShadow = '0 1px 4px rgba(0, 0, 0, 0.08)';
                 }}
               >
-                <div style={{ marginBottom: '10px' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px',
+                  flexWrap: 'wrap'
+                }}>
+                  {/* Booker Name */}
                   <div style={{
-                    fontSize: '0.7rem',
-                    color: '#9ca3af',
-                    marginBottom: '6px',
-                    fontFamily: 'monospace',
-                    wordBreak: 'break-all',
-                    lineHeight: '1.2'
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    color: '#1f2937',
+                    minWidth: '120px'
                   }}>
-                    {booking.BookedScheduleId || booking.bookedScheduleId || 'N/A'}
+                    <User size={16} style={{ color: '#6b7280' }} />
+                    <span>{bookerNames[booking.bookerId || booking.BookerId] || "Đang tải..."}</span>
                   </div>
+                  
+                  {/* Date */}
                   <div style={{
                     fontSize: '0.8rem',
                     color: '#6b7280',
-                    marginBottom: '8px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '6px',
+                    minWidth: '100px'
                   }}>
                     <Calendar size={14} style={{ color: '#9ca3af' }} />
                     <span>{formatDate(booking.bookingDate || booking.BookingDate)}</span>
                   </div>
-                  {booking.startTime && booking.endTime && (
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      marginBottom: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}>
-                      <Clock size={14} style={{ color: '#9ca3af' }} />
-                      <span>{formatTime(booking.startTime || booking.StartTime)} - {formatTime(booking.endTime || booking.EndTime)}</span>
-                    </div>
-                  )}
+                  
                   {/* Slots */}
                   {(() => {
                     const bookedSlots = detailSchedule?.Slots || detailSchedule?.slots || [];
@@ -452,116 +687,71 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
                     if (slotInfo.length > 0) {
                       return (
                         <div style={{
-                          fontSize: '0.75rem',
-                          color: '#374151',
-                          marginBottom: '8px',
-                          padding: '6px 8px',
-                          background: 'rgba(var(--primary), 0.05)',
-                          borderRadius: '6px',
-                          border: '1px solid rgba(var(--primary), 0.15)'
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          flexWrap: 'wrap',
+                          flex: '1'
                         }}>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            marginBottom: '4px',
-                            fontWeight: '600',
-                            color: '#1f2937'
-                          }}>
-                            <Clock size={14} style={{ color: 'rgb(var(--primary))' }} />
-                            <span>Slots đã đặt:</span>
-                          </div>
-                          <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            flexWrap: 'wrap'
-                          }}>
-                            {slotInfo.map((slot) => (
-                              <span
-                                key={slot.id}
-                                style={{
-                                  padding: '3px 8px',
-                                  borderRadius: '4px',
-                                  fontSize: '0.7rem',
-                                  fontWeight: '600',
-                                  background: 'rgb(var(--primary))',
-                                  color: '#ffffff',
-                                  border: '1px solid rgb(var(--primary))'
-                                }}
-                              >
-                                {slot.label} ({slot.timeRange})
-                              </span>
-                            ))}
-                          </div>
+                          <Clock size={14} style={{ color: 'rgb(var(--primary))' }} />
+                          {slotInfo.map((slot) => (
+                            <span
+                              key={slot.id}
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: '4px',
+                                fontSize: '0.7rem',
+                                fontWeight: '600',
+                                background: 'rgb(var(--primary))',
+                                color: '#ffffff',
+                                border: '1px solid rgb(var(--primary))'
+                              }}
+                            >
+                              {slot.label} ({slot.timeRange})
+                            </span>
+                          ))}
                         </div>
                       );
                     }
                     return null;
                   })()}
-                  {detailSchedule?.Location && (
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      marginBottom: '8px',
+                  
+                  {/* Status and Price */}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {statusBadge && (
+                      <span
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          fontSize: '0.7rem',
+                          fontWeight: '600',
+                          background: statusBadge.bg,
+                          color: statusBadge.color,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        {StatusIcon && <StatusIcon size={12} />}
+                        {statusBadge.label}
+                      </span>
+                    )}
+                    <span style={{
+                      fontSize: '0.8rem',
+                      fontWeight: '600',
+                      color: 'rgb(var(--success))',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '4px'
                     }}>
-                      <MapPin size={14} style={{ color: '#9ca3af' }} />
-                      <span style={{ wordBreak: 'break-word' }}>{detailSchedule.Location}</span>
-                    </div>
-                  )}
-                  {detailSchedule?.Note && (
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: '#6b7280',
-                      marginTop: '8px',
-                      padding: '6px 8px',
-                      background: 'rgba(var(--muted), 0.2)',
-                      borderRadius: '4px',
-                      borderLeft: '2px solid rgb(var(--primary))'
-                    }}>
-                      <span style={{ fontWeight: '500', color: '#374151' }}>📝 </span>
-                      {detailSchedule.Note}
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                  {statusBadge && (
-                    <span
-                      style={{
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.7rem',
-                        fontWeight: '600',
-                        background: statusBadge.bg,
-                        color: statusBadge.color,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}
-                    >
-                      {StatusIcon && <StatusIcon size={12} />}
-                      {statusBadge.label}
+                      <DollarSign size={14} />
+                      {Math.max(0, (booking.totalAmount || booking.TotalAmount || 0) - 50000).toLocaleString('vi-VN')} đ
                     </span>
-                  )}
-                  <span style={{
-                    fontSize: '0.8rem',
-                    fontWeight: '600',
-                    color: 'rgb(var(--success))',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    <DollarSign size={14} />
-                    {Math.max(0, (booking.totalAmount || booking.TotalAmount || 0) - 50000).toLocaleString('vi-VN')} đ
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <button
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginLeft: 'auto' }}>
+                    <button
                     onClick={() => {
                       setSelectedBooking(booking);
                       setDetailModalOpen(true);
@@ -658,6 +848,7 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
                       Hoàn thành
                     </button>
                   )}
+                  </div>
                 </div>
               </div>
             );
@@ -665,7 +856,6 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
         </div>
       )}
 
-      {/* Detail Modal */}
       <BookingDetailModal
         open={detailModalOpen}
         onClose={() => {
@@ -673,6 +863,7 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
           setSelectedBooking(null);
         }}
         booking={selectedBooking}
+        performerEntityAccountId={performerEntityAccountId}
       />
     </div>
   );
