@@ -179,16 +179,24 @@ export default function ManageUsers() {
             ) : users.length === 0 ? (
               <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">{t("admin.users.empty", { defaultValue: "No users found." })}</td></tr>
             ) : (
-              users.map(u => (
+              users.map(u => {
+                const rawRole = u.Role || u.role || "";
+                const normalizedRole = rawRole.toLowerCase() === "admin"
+                  ? "Admin"
+                  : rawRole.toLowerCase() === "customer"
+                  ? "Customer"
+                  : "";
+                return (
                 <tr key={u.AccountId} className="border-t border-border/20">
                   <td className="p-3">{u.Email}</td>
                   <td className="p-3">{u.UserName}</td>
                   <td className="p-3">
                     <select
                       className="bg-transparent border rounded px-2 py-1"
-                      value={u.Role}
+                      value={normalizedRole}
                       onChange={(e) => handleRoleChange(u, e.target.value)}
                     >
+                      <option value="">{t("admin.users.selectRole", { defaultValue: "Select role" })}</option>
                       {ACCOUNT_ROLE_OPTIONS.map((r) => (
                         <option key={r} value={r}>{r}</option>
                       ))}
@@ -207,7 +215,8 @@ export default function ManageUsers() {
                     </button>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
