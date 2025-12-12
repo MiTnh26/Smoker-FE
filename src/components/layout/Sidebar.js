@@ -97,17 +97,24 @@ export default function Sidebar({ isOpen, onClose }) {
   useEffect(() => {
     loadSession();
     
-    // Listen for profile updates
+    // Listen for profile updates and session updates
     const handleProfileUpdate = () => {
       console.log("[Sidebar] Profile updated event received");
       loadSession();
     };
     
+    const handleSessionUpdate = () => {
+      console.log("[Sidebar] Session updated event received");
+      loadSession();
+    };
+    
     window.addEventListener('profileUpdated', handleProfileUpdate);
+    window.addEventListener('sessionUpdated', handleSessionUpdate);
     window.addEventListener('storage', handleProfileUpdate);
     
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('sessionUpdated', handleSessionUpdate);
       window.removeEventListener('storage', handleProfileUpdate);
     };
   }, []);
@@ -444,9 +451,14 @@ export default function Sidebar({ isOpen, onClose }) {
           "border-b border-border/30",
           "max-md:mb-3"
         )}>
-          <div className={cn(
-            "flex items-center gap-2.5 flex-1 min-w-0"
-          )}>
+          <Link
+            to="/own/profile"
+            className={cn(
+              "flex items-center gap-2.5 flex-1 min-w-0",
+              "hover:opacity-80 transition-opacity cursor-pointer"
+            )}
+            onClick={handleMenuItemClick}
+          >
             <div className={cn(
               "flex items-center justify-center rounded-full",
               "text-primary-foreground w-10 h-10 flex-shrink-0",
@@ -478,7 +490,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 </p>
               )}
             </div>
-          </div>
+          </Link>
           {/* Close button for mobile */}
           <button
             onClick={onClose}

@@ -16,6 +16,7 @@ import { ProfileHeader } from "../../../components/profile/ProfileHeader";
 import { ProfileStats } from "../../../components/profile/ProfileStats";
 import FollowersModal from "../../../components/profile/FollowersModal";
 import BannedAccountOverlay from "../../../components/common/BannedAccountOverlay";
+import PendingApprovalOverlay from "../../../components/common/PendingApprovalOverlay";
 import { getSession } from "../../../utils/sessionManager";
 import { userApi } from "../../../api/userApi";
 import { normalizeProfileData } from "../../../utils/profileDataMapper";
@@ -68,6 +69,7 @@ export default function ProfilePage() {
   const menuRef = useRef(null);
   const [activeTab, setActiveTab] = useState("info");
   const [isBanned, setIsBanned] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [showBookingView, setShowBookingView] = useState(false);
 
   // Shared audio player for profile pages (used when playing music posts)
@@ -210,8 +212,14 @@ export default function ProfilePage() {
     };
   }, [actionMenuOpen]);
 
-  // Check if current user's Account is banned
+  // Check if current user's Account is banned (chỉ khi không có flag skip)
   useEffect(() => {
+    const skipBannedCheck = sessionStorage.getItem("skipAccountBannedCheck") === "true";
+    if (skipBannedCheck) {
+      // Skip check Account banned khi đang quay lại từ BusinessAccount banned
+      return;
+    }
+    
     const checkBannedStatus = async () => {
       try {
         const session = getSession();
@@ -228,6 +236,34 @@ export default function ProfilePage() {
     };
     checkBannedStatus();
   }, []);
+
+  // Check if profile is banned or pending approval
+  useEffect(() => {
+    if (!profile) return;
+    
+    const status = profile.status || profile.Status;
+    const skipBannedCheck = sessionStorage.getItem("skipAccountBannedCheck") === "true";
+    
+    // Nếu đang quay lại từ BusinessAccount banned và đây là Account profile
+    if (skipBannedCheck && (profileType.isCustomer || (!profileType.isBar && !profileType.isPerformer))) {
+      // Chỉ check pending, không check banned
+      setIsPending(status === 'pending');
+      setIsBanned(false); // Đảm bảo không hiển thị banned overlay
+      // Clear flag sau khi đã xử lý
+      sessionStorage.removeItem("skipAccountBannedCheck");
+      return;
+    }
+    
+    // Check if profile is banned
+    if (status === 'banned') {
+      setIsBanned(true);
+    } else {
+      setIsBanned(false);
+    }
+    
+    // Check if profile is pending
+    setIsPending(status === 'pending');
+  }, [profile, profileType]);
 
   const targetType = profileType.type;
   const isBarProfile = profileType.isBar;
@@ -861,7 +897,7 @@ export default function ProfilePage() {
 
   return (
     <>
-    <div className={cn("min-h-screen bg-background", isBanned && "opacity-30 pointer-events-none")}>
+    <div className={cn("min-h-screen bg-background", (isBanned || isPending) && "opacity-30 pointer-events-none")}>
       <ProfileHeader
         background={profile.background}
         avatar={profile.avatar}
@@ -1244,9 +1280,15 @@ export default function ProfilePage() {
 
     {isBanned && (
       <BannedAccountOverlay 
-        userRole="Customer"
-        entityType="Account"
-        entityName={profile?.userName || profile?.UserName}
+        userRole={isBarProfile ? "Bar" : isDJProfile ? "DJ" : isDancerProfile ? "Dancer" : "Customer"}
+        entityType={isBarProfile ? "BarPage" : isPerformerProfile ? "BusinessAccount" : "Account"}
+        entityName={profile?.userName || profile?.UserName || profile?.BarName || profile?.barName || profile?.name || profile?.Name}
+      />
+    )}
+    {isPending && (
+      <PendingApprovalOverlay 
+        userRole={isBarProfile ? "Bar" : isDJProfile ? "DJ" : isDancerProfile ? "Dancer" : "Customer"}
+        entityType={isBarProfile ? "BarPage" : isPerformerProfile ? "BusinessAccount" : "Account"}
       />
     )}
     </>

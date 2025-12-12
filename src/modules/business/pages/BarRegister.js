@@ -6,6 +6,7 @@ import { fetchAllEntities } from "../../../utils/sessionHelper";
 import BarRegisterStep1 from "../components/BarRegisterStep1";
 import BarRegisterStep2 from "../components/BarRegisterStep2";
 import "../../../styles/modules/businessRegister.css";
+import ProfilePreviewCard from "../components/ProfilePreviewCard";
 
 export default function BarRegister() {
   const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -167,7 +168,7 @@ export default function BarRegister() {
       <div className="business-register-container text-center">
         <h2>Đăng ký thành công</h2>
         <p className="business-register-message">{message}</p>
-        <button onClick={() => navigate('/')} className="btn-primary mt-4">
+        <button onClick={() => navigate('/customer/newsfeed')} className="btn-primary mt-4">
           Về trang chủ
         </button>
       </div>
@@ -208,6 +209,7 @@ export default function BarRegister() {
 
       {step === 2 && (
         <BarRegisterStep2
+          info={info}
           files={files}
           previews={previews}
           handleFileChange={handleFileChange}
@@ -215,6 +217,7 @@ export default function BarRegister() {
           isLoading={isLoading}
           prevStep={prevStep}
           message={message}
+          Preview={ProfilePreviewCard}
         />
       )}
 
