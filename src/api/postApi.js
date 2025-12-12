@@ -9,6 +9,13 @@ import axiosClient from "./axiosClient";
 // Returns: { success, data, nextCursor, hasMore, pagination }
 export const getPosts = (params) => axiosClient.get("/posts", { params });
 
+// Admin: Lấy tất cả posts (kể cả deleted, trashed, private)
+export const getAllPostsForAdmin = (params) => axiosClient.get("/posts/admin/all", { params });
+
+// Admin: Cập nhật post status
+export const updatePostStatusForAdmin = (postId, status) => 
+  axiosClient.patch(`/posts/admin/${postId}/status`, { status });
+
 // Lấy feed tổng hợp (posts + livestreams đã được merge ngẫu nhiên)
 // params can include:
 //   - limit: số lượng items (default: 10)

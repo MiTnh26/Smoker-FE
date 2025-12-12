@@ -25,7 +25,7 @@ export default function Reports() {
   const [loading, setLoading] = useState(false);
   const [reports, setReports] = useState([]);
   const [page, setPage] = useState(1);
-  const [limit] = useState(20);
+  const [limit] = useState(10);
   const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState({
     status: "",
@@ -554,7 +554,7 @@ export default function Reports() {
               <div className="pt-4 border-t border-border/20">
                 <div className="font-semibold mb-3 text-foreground">Thao tác:</div>
                 <div className="flex flex-wrap gap-2">
-                  {detail.TargetType === "post" && detail.Status !== "Resolved" && (
+                  {(detail.TargetType === "post" || detail.TargetType === "Post") && detail.Status !== "Resolved" && (
                     <button
                       type="button"
                       className={cn(
