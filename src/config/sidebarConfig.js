@@ -19,7 +19,9 @@ import {
   Pause,
   Play,
   DollarSign,
-  Megaphone
+  Megaphone,
+  AlertCircle,
+  FileText
 } from "lucide-react";
 
 /**
@@ -107,7 +109,8 @@ export const sidebarConfig = {
     { label: "Yêu cầu tạm dừng QC", icon: Pause, path: "/admin/pause-requests" },
     { label: "Yêu cầu tiếp tục QC", icon: Play, path: "/admin/resume-requests" },
     { label: "Yêu cầu hoàn tiền", icon: DollarSign, path: "/admin/refund-requests" },
-    { label: "Báo cáo & thống kê", icon: BarChart3, path: "/admin/reports" },
+    { label: "Quản lý báo cáo", icon: AlertCircle, path: "/admin/reports" },
+    { label: "Quản lý bài viết", icon: FileText, path: "/admin/posts" },
     { label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },
     { label: "Cài Đặt Quảng Cáo", icon: Megaphone, path: "https://smoker-revive.onrender.com/revive/www/admin/index.php", external: true },
   ],

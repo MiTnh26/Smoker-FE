@@ -32,6 +32,8 @@ import PerformerReviews from "../../business/components/PerformerReviews";
 import { ProfileInfoSection } from "../../../components/profile/ProfileInfoSection";
 import AudioPlayerBar from "../../feeds/components/audio/AudioPlayerBar";
 import { useSharedAudioPlayer } from "../../../hooks/useSharedAudioPlayer";
+import ImageDetailModal from "../../feeds/components/media/mediasOfPost/ImageDetailModal";
+import ReportPostModal from "../../feeds/components/modals/ReportPostModal";
 
 const getWindow = () => (typeof globalThis !== "undefined" ? globalThis : undefined);
 
@@ -46,6 +48,8 @@ export default function ProfilePage() {
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsPagination, setPostsPagination] = useState({ nextCursor: null, hasMore: false });
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [reportingPost, setReportingPost] = useState(null);
   
   // Get current user entity ID using shared hook
   const currentUserEntityId = useCurrentUserEntity();
@@ -354,6 +358,8 @@ export default function ProfilePage() {
                     sharedDuration={sharedDuration}
                     sharedIsPlaying={sharedIsPlaying && playingPost === (post.id)}
                     onSeek={handleSeek}
+                    onImageClick={(data) => setSelectedImage(data)}
+                    onReport={(p) => setReportingPost(p)}
                   />
                 ))}
               </div>
@@ -381,14 +387,15 @@ export default function ProfilePage() {
               </div>
             ) : videoPosts && videoPosts.length > 0 ? (
               <div className={cn("space-y-4 -mx-4 md:-mx-6")}>
-                {videoPosts.map(post => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    playingPost={null}
-                    setPlayingPost={() => {}}
-                  />
-                ))}
+              {videoPosts.map(post => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  playingPost={null}
+                  setPlayingPost={() => {}}
+                  onImageClick={(data) => setSelectedImage(data)}
+                />
+              ))}
               </div>
             ) : (
               <div className={cn(
@@ -542,19 +549,21 @@ export default function ProfilePage() {
               </div>
             ) : posts && posts.length > 0 ? (
               <div className={cn("space-y-4")}>
-                {posts.map(post => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    playingPost={playingPost}
-                    setPlayingPost={setPlayingPost}
-                    sharedAudioRef={sharedAudioRef}
-                    sharedCurrentTime={sharedCurrentTime}
-                    sharedDuration={sharedDuration}
-                    sharedIsPlaying={sharedIsPlaying && playingPost === (post.id)}
-                    onSeek={handleSeek}
-                  />
-                ))}
+              {posts.map(post => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  playingPost={playingPost}
+                  setPlayingPost={setPlayingPost}
+                  sharedAudioRef={sharedAudioRef}
+                  sharedCurrentTime={sharedCurrentTime}
+                  sharedDuration={sharedDuration}
+                  sharedIsPlaying={sharedIsPlaying && playingPost === (post.id)}
+                  onSeek={handleSeek}
+                  onImageClick={(data) => setSelectedImage(data)}
+                    onReport={(p) => setReportingPost(p)}
+                />
+              ))}
               </div>
             ) : (
               <div className={cn(
@@ -593,6 +602,7 @@ export default function ProfilePage() {
                     sharedDuration={sharedDuration}
                     sharedIsPlaying={sharedIsPlaying && playingPost === (post.id)}
                     onSeek={handleSeek}
+                    onReport={(p) => setReportingPost(p)}
                   />
                 ))}
               </div>
@@ -721,6 +731,8 @@ export default function ProfilePage() {
                   <PostCard
                     key={post._id || post.id}
                     post={post}
+                    onImageClick={(data) => setSelectedImage(data)}
+                    onReport={(p) => setReportingPost(p)}
                   />
                 ))}
               </div>
@@ -776,6 +788,8 @@ export default function ProfilePage() {
                   <PostCard
                     key={post._id || post.id}
                     post={post}
+                    onImageClick={(data) => setSelectedImage(data)}
+                    onReport={(p) => setReportingPost(p)}
                   />
                 ))}
               </div>
@@ -807,6 +821,8 @@ export default function ProfilePage() {
                   <PostCard
                     key={post._id || post.id}
                     post={post}
+                    onImageClick={(data) => setSelectedImage(data)}
+                    onReport={(p) => setReportingPost(p)}
                   />
                 ))}
               </div>
@@ -1150,6 +1166,35 @@ export default function ProfilePage() {
             pricePerHours: profile.pricePerHours || profile.PricePerHours || profile.pricePerHour || profile.PricePerHour || 0,
             pricePerSession: profile.pricePerSession || profile.PricePerSession || 0,
           }}
+        />
+      )}
+      {selectedImage && (
+        <ImageDetailModal
+          open={!!selectedImage}
+          onClose={() => setSelectedImage(null)}
+          imageUrl={selectedImage?.imageUrl}
+          postId={selectedImage?.postId}
+          mediaId={selectedImage?.mediaId}
+          allImages={selectedImage?.allImages}
+          currentIndex={selectedImage?.currentIndex}
+          onNavigateImage={(newIndex) => {
+            if (!selectedImage?.allImages || !selectedImage.allImages[newIndex]) return;
+            const newImage = selectedImage.allImages[newIndex];
+            setSelectedImage({
+              ...selectedImage,
+              imageUrl: newImage.url,
+              mediaId: newImage._id || newImage.id || newImage.mediaId || null,
+              currentIndex: newIndex
+            });
+          }}
+        />
+      )}
+      {reportingPost && (
+        <ReportPostModal
+          open={!!reportingPost}
+          post={reportingPost}
+          onClose={() => setReportingPost(null)}
+          onSubmitted={() => setReportingPost(null)}
         />
       )}
       {reportModalOpen && (

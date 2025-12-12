@@ -106,11 +106,18 @@ export default function SongItem({ song, onDelete, deletingId }) {
             controls
             preload="metadata"
             className="song-list-item-audio"
-            src={(song.file ? songApi.getSongStreamUrlById(song.file) : songApi.getSongStreamUrl(song.song)) + `?_t=${Date.now()}` }
+            src={(song.file || song._id || song.id
+              ? songApi.getSongStreamUrlById(song.file || song._id || song.id)
+              : song.song
+                ? songApi.getSongStreamUrl(song.song)
+                : "") + `?_t=${Date.now()}` }
             onError={(e) => {
-              // Fallback to filename stream if id stream fails
-              if (song.song && e.currentTarget.src.indexOf('/stream/') === -1) {
-                e.currentTarget.src = songApi.getSongStreamUrl(song.song);
+              // Fallback chain: filename -> raw url
+              if (song.song) {
+                e.currentTarget.src = songApi.getSongStreamUrl(song.song) + `?_t=${Date.now()}`;
+                e.currentTarget.load();
+              } else if (song.url) {
+                e.currentTarget.src = song.url;
                 e.currentTarget.load();
               }
             }}

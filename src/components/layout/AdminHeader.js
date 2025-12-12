@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
 import { Bell, UserCog, Home, LogOut, Settings, User as UserIcon, Palette, Languages } from "lucide-react";
 import { cn } from "../../utils/cn";
-import GlobalSearch from "./common/GlobalSearch";
 import DropdownPanel from "../common/DropdownPanel";
 import { getNextTheme, getThemeLabel } from "../../config/menuConfigs";
 import { clearSession } from "../../utils/sessionManager";
@@ -72,11 +71,7 @@ export default function AdminHeader() {
           {t("layout.admin", { defaultValue: "Admin" })}
         </Link>
 
-        <div className={cn("flex items-center flex-1 max-w-lg mx-4")}> 
-          <GlobalSearch />
-        </div>
-
-        <div className={cn("relative flex items-center gap-2")}> 
+        <div className={cn("relative flex items-center gap-2 ml-auto")}> 
           <Link to="/admin/dashboard" className={cn(
             "rounded-lg p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary"
           )}>
