@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../../../api/userApi';
 import { Input } from "../../../components/common/Input";
@@ -15,6 +15,31 @@ const ChangePassword = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    const checkAuth = () => {
+      try {
+        const session = localStorage.getItem('session');
+        const token = localStorage.getItem('token');
+        if (!session && !token) {
+          navigate('/auth/login');
+          return;
+        }
+
+        if (session) {
+          const sessionData = JSON.parse(session);
+          if (!sessionData.token && !token) {
+            navigate('/auth/login');
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error checking auth:', err);
+        navigate('/auth/login');
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,6 +58,12 @@ const ChangePassword = () => {
     try {
       const { currentPassword, newPassword, confirmPassword } = formData;
       await authApi.changePassword(currentPassword, newPassword, confirmPassword);
+      
+      // Clear session after password change to force re-login
+      localStorage.removeItem("session");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("token");
+      
       setSuccess('Đổi mật khẩu thành công');
       
       // Reset form

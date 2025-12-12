@@ -29,7 +29,8 @@ export default function PostCard({
   onImageClick,
   onShared,
   disableCommentButton = false,
-  hideMenu = false
+  hideMenu = false,
+  isOwnProfile = false
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -432,7 +433,7 @@ export default function PostCard({
                 "backdrop-saturate-180"
               )}
             >
-            {post.canManage ? (
+            {post.canManage || isOwnProfile ? (
               <>
                 <button
                   className={cn(

@@ -10,7 +10,7 @@ import BarReview from '../../../modules/bar/components/BarReview';
 import BarTables from '../../../modules/bar/components/BarTables';
 import BarAdDashboard from '../../../modules/bar/components/BarAdDashboard';
 
-export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, isOwnProfile, currentUserRole }) => {
+export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, isOwnProfile, currentUserRole, onEdit, onDelete, onImageClick }) => {
   const { t } = useTranslation();
   
   // Debug log
@@ -52,6 +52,10 @@ export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, is
                 <PostCard
                   key={post.id}
                   post={post}
+                  isOwnProfile={isOwnProfile}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onImageClick={onImageClick}
                 />
               ))}
             </div>

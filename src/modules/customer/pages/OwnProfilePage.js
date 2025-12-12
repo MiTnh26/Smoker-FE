@@ -18,6 +18,9 @@ import { CustomerTabs, BarTabs, DJTabs, DancerTabs } from '../../../components/p
 import ProfileEditModal from '../../../components/profile/ProfileEditModal';
 import { normalizeProfileData } from '../../../utils/profileDataMapper';
 import bookingApi from '../../../api/bookingApi';
+import PostEditModal from '../../feeds/components/modals/PostEditModal';
+import { trashPost } from '../../../api/postApi';
+import ImageDetailModal from '../../feeds/components/media/mediasOfPost/ImageDetailModal';
 
 // A new hook to fetch profile data based on type
 const unwrapProfileResponse = (response) => {
@@ -219,6 +222,21 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
   const [pendingBookingsCount, setPendingBookingsCount] = useState(0);
   const [showFollowersModal, setShowFollowersModal] = useState(false);
   const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [editingPost, setEditingPost] = useState(null);
+  const [trashingPost, setTrashingPost] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  const getCurrentEntityAccountId = () => {
+    try {
+      const session = localStorage.getItem("session");
+      const parsed = session ? JSON.parse(session) : null;
+      const active = parsed?.activeEntity || parsed?.account;
+      return active?.EntityAccountId || active?.entityAccountId || active?.id || null;
+    } catch (err) {
+      console.warn("Cannot parse session for entityAccountId", err);
+      return null;
+    }
+  };
 
   // Shared audio player for own profile (Customer, DJ, etc.)
   const {
@@ -251,6 +269,8 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
   const isDJProfile = profileType.isDJ;
   const isDancerProfile = profileType.isDancer;
   const isCustomerProfile = profileType.isCustomer;
+  const onEditPost = (p) => setEditingPost(p);
+  const onImageClick = (imageData) => setSelectedImage(imageData);
   
   const performerTargetId = (profileType.isPerformer)
     ? profile?.targetId || profile?.targetID || profile?.businessAccountId || profile?.BusinessAccountId || currentUserEntityId
@@ -299,6 +319,22 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
     };
   }, [isDJProfile, profileEntityAccountId]);
 
+  const handleDeletePost = async (p) => {
+    if (!window.confirm(t('feed.confirmTrash') || 'Bạn có chắc muốn bỏ vào thùng rác?')) return;
+    try {
+      const entityAccountId = getCurrentEntityAccountId();
+      if (!entityAccountId) {
+        alert(t('feed.errorTrash') || 'Không xác định được entityAccountId');
+        return;
+      }
+      await trashPost(p.id || p._id, { entityAccountId });
+      window.location.reload();
+    } catch (err) {
+      console.error("[OwnProfile] Trash post failed", err);
+      alert(t('feed.errorTrash') || 'Không thể bỏ thùng rác');
+    }
+  };
+
   const renderTabContent = () => {
 
     const props = {
@@ -316,6 +352,9 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
       sharedIsPlaying,
       handleSeek,
       setActivePlayer,
+      onEdit: onEditPost,
+    onDelete: handleDeletePost,
+    onImageClick,
     };
     if (isBarProfile) return <BarTabs {...props} barPageId={barPageId} currentUserRole={profile?.role || profile?.Role} />;
     if (isDJProfile) return <DJTabs {...props} performerTargetId={performerTargetId} />;
@@ -530,6 +569,38 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
           onSuccess={handleProfileUpdate}
         />
       )}
+
+      {selectedImage && (
+        <ImageDetailModal
+          open={!!selectedImage}
+          onClose={() => setSelectedImage(null)}
+          imageUrl={selectedImage?.imageUrl}
+          postId={selectedImage?.postId}
+          mediaId={selectedImage?.mediaId}
+          allImages={selectedImage?.allImages}
+          currentIndex={selectedImage?.currentIndex}
+          onNavigateImage={(newIndex) => {
+            if (!selectedImage?.allImages || !selectedImage.allImages[newIndex]) return;
+            const newImage = selectedImage.allImages[newIndex];
+            setSelectedImage({
+              ...selectedImage,
+              imageUrl: newImage.url,
+              mediaId: newImage._id || newImage.id || newImage.mediaId || null,
+              currentIndex: newIndex
+            });
+          }}
+        />
+      )}
+
+      <PostEditModal
+        open={!!editingPost}
+        post={editingPost}
+        onClose={() => setEditingPost(null)}
+        onUpdated={() => {
+          setEditingPost(null);
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

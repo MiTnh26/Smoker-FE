@@ -48,12 +48,22 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
     return isGuid(trimmed) ? trimmed.toLowerCase() : null;
   };
 
-  const reporterRole =
+  // Normalize reporter role to match backend schema: Customer/DJ/Dancer/Bar
+  const rawReporterRole =
     user?.role ||
     session?.account?.role ||
     session?.account?.Role ||
     session?.activeEntity?.role ||
     "customer";
+  
+  // Map lowercase roles to capitalized format required by backend
+  const roleMap = {
+    "customer": "Customer",
+    "dj": "DJ",
+    "dancer": "Dancer",
+    "bar": "Bar"
+  };
+  const reporterRole = roleMap[String(rawReporterRole).toLowerCase()] || "Customer";
 
   const reporterEntityAccountId =
     (session?.activeEntity?.EntityAccountId ||
@@ -151,19 +161,38 @@ export default function ReportPostModal({ open, post, onClose, onSubmitted }) {
       }
 
       setSubmitting(true);
+      
+      // Get post ID - can be id, _id, or postId
+      const postId = post?.id || post?._id || post?.postId;
+      if (!postId) {
+        throw new Error("Không tìm thấy ID của bài viết");
+      }
+      
+      // Ensure postId is string
+      const postIdStr = String(postId).trim();
+      if (!postIdStr) {
+        throw new Error("ID bài viết không hợp lệ");
+      }
+      
       // Call API to create report
       const payload = {
         ReporterId: reporterGuid,
         ReporterRole: reporterRole,
-        TargetType: targetType,
-        TargetId: post?.id,
+        TargetType: targetType, // "post" - backend will normalize to "Post"
+        TargetId: postIdStr, // Post ObjectId (24 hex chars)
         TargetOwnerId: targetOwnerGuid || undefined,
         Reason: selectedReason || reasonKey,
-        Description: details.trim(),
+        Description: details.trim(), // User description - backend will wrap in JSON with originalPostId
         Status: "Pending",
-        CreatedAt: new Date().toISOString(),
-        UpdatedAt: new Date().toISOString(),
       };
+      
+      console.log("[ReportPostModal] Creating report with payload:", {
+        ...payload,
+        TargetId: postIdStr,
+        TargetIdLength: postIdStr.length,
+        TargetIdFormat: /^[0-9a-fA-F]{24}$/.test(postIdStr) ? "Valid ObjectId" : "Invalid ObjectId"
+      });
+      
       await reportApi.createReport(payload);
       onSubmitted?.({ postId: post?.id, reason: selectedReason || reasonKey, details: details.trim() });
       onClose?.();

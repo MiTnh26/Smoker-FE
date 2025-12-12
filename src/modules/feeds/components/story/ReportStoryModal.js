@@ -36,12 +36,22 @@ export default function ReportStoryModal({ open, story, onClose, onSubmitted }) 
     return isGuid(trimmed) ? trimmed.toLowerCase() : null;
   };
 
-  const reporterRole =
+  // Normalize reporter role to match backend schema: Customer/DJ/Dancer/Bar
+  const rawReporterRole =
     user?.role ||
     session?.account?.role ||
     session?.account?.Role ||
     session?.activeEntity?.role ||
     "customer";
+  
+  // Map lowercase roles to capitalized format required by backend
+  const roleMap = {
+    "customer": "Customer",
+    "dj": "DJ",
+    "dancer": "Dancer",
+    "bar": "Bar"
+  };
+  const reporterRole = roleMap[String(rawReporterRole).toLowerCase()] || "Customer";
 
   const reporterEntityAccountId =
     (session?.activeEntity?.EntityAccountId ||
