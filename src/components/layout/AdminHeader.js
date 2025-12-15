@@ -122,7 +122,7 @@ export default function AdminHeader() {
                 <span className="w-6 h-6 inline-flex items-center justify-center rounded-md bg-primary/10 text-primary">
                   <UserIcon size={16} />
                 </span>
-                <span className="flex-1">{t("admin.manageUsers", { defaultValue: "Quản lý người dùng" })}</span>
+                <span className="flex-1">{t("sidebar.adminUsers", { defaultValue: "Quản lý người dùng" })}</span>
               </Link>
 
               <Link
@@ -133,7 +133,7 @@ export default function AdminHeader() {
                 <span className="w-6 h-6 inline-flex items-center justify-center rounded-md bg-secondary/10 text-secondary">
                   <Settings size={16} />
                 </span>
-                <span className="flex-1">{t("admin.manageMusic", { defaultValue: "Quản lý nhạc" })}</span>
+                <span className="flex-1">{t("sidebar.adminMusic", { defaultValue: "Quản lý nhạc" })}</span>
               </Link>
 
               <button

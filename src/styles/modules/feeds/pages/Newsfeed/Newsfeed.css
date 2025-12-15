@@ -421,7 +421,7 @@
 }
 
 .post-card:hover {
-  border-color: rgb(var(--primary));
+  /* Only add subtle shadow on hover, không đổi màu viền */
   box-shadow: 0 8px 24px rgba(var(--primary) / 0.2);
 }
 

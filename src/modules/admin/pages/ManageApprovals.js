@@ -138,11 +138,11 @@ export default function ManageApprovals() {
         <table className="w-full text-sm">
           <thead className="bg-muted/60 text-foreground">
             <tr>
-              <th className="text-left p-3">Name</th>
-              <th className="text-left p-3">Type</th>
-              <th className="text-left p-3">Owner</th>
-              <th className="text-left p-3">Registered At</th>
-              <th className="text-right p-3">Actions</th>
+              <th className="text-left p-3">{t("admin.approvals.table.name", { defaultValue: "Name" })}</th>
+              <th className="text-left p-3">{t("admin.approvals.table.type", { defaultValue: "Type" })}</th>
+              <th className="text-left p-3">{t("admin.approvals.table.owner", { defaultValue: "Owner" })}</th>
+              <th className="text-left p-3">{t("admin.approvals.table.registeredAt", { defaultValue: "Registered At" })}</th>
+              <th className="text-right p-3">{t("admin.approvals.table.actions", { defaultValue: "Actions" })}</th>
             </tr>
           </thead>
           <tbody>
@@ -169,7 +169,7 @@ export default function ManageApprovals() {
                 <tr key={`${item.type}-${item.id}`} className="border-t border-border/20">
                   <td className="p-3 font-medium">{item.name}</td>
                   <td className="p-3">{item.role}</td>
-                  <td className="p-3">{item.ownerEmail} ({item.ownerName})</td>
+                  <td className="p-3">{t("admin.approvals.ownerDisplay", { defaultValue: "{{email}} ({{name}})", email: item.ownerEmail, name: item.ownerName })}</td>
                   <td className="p-3">{new Date(item.createdAt).toLocaleString()}</td>
                   <td className="p-3 text-right space-x-2">
                     <button onClick={() => handleApproval(item, 'active')} className="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700">

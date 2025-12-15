@@ -30,6 +30,7 @@
     "react-i18next": "^16.2.4",
     "react-router-dom": "^7.9.3",
     "react-scripts": "5.0.1",
+    "recharts": "^3.5.1",
     "shadcn-ui": "^0.9.5",
     "socket.io-client": "^4.8.1",
     "swiper": "^12.0.3",
@@ -38,9 +39,9 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "react-app-rewired start",
+    "build": "react-app-rewired build",
+    "test": "react-app-rewired test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -64,6 +65,7 @@
   "devDependencies": {
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
+    "react-app-rewired": "^2.2.1",
     "tailwindcss": "^3.4.18"
   }
 }
