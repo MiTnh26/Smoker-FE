@@ -29,6 +29,9 @@ export const getPostById = (id, params) => axiosClient.get(`/posts/${id}`, { par
 // Alias cho backward compatibility - giờ dùng chung endpoint với getPostById
 export const getPostDetail = (id, params) => axiosClient.get(`/posts/${id}`, { params });
 
+// Admin: lấy post (kể cả deleted/private) theo id
+export const getPostDetailAdmin = (id, params) => axiosClient.get(`/posts/admin/${id}`, { params });
+
 // Tạo post mới
 export const createPost = (data) => axiosClient.post("/posts", data);
 

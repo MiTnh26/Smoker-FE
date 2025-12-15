@@ -22,7 +22,11 @@
     "cancel": "Cancel",
     "saving": "Saving...",
     "saveChanges": "Save changes",
-    "search": "Search"
+    "search": "Search",
+    "pagination": "Page {{page}} / {{totalPages}}",
+    "all": "All",
+    "retry": "Retry",
+    "notFound": "Not found"
   },
   "sidebar": {
     "home": "Home",
@@ -46,9 +50,17 @@
     "combosManage": "Manage combos",
     "registerBusiness": "Register business account",
     "adminUsers": "Manage users",
+    "adminApprovals": "Manage approvals",
+    "adminMusic": "Music library",
+    "adminAdPackages": "Ad packages",
+    "adminEventAdApprovals": "Review event ads",
+    "adminPauseRequests": "Pause ad requests",
+    "adminResumeRequests": "Resume ad requests",
+    "adminRefundRequests": "Refund requests",
     "adminBars": "Manage bars",
     "adminReports": "Reports & statistics",
-    "adminSettings": "System settings"
+    "adminSettings": "System settings",
+    "adSettings": "Ad settings"
   },
   "feed": {
     "newsfeed": "Newsfeed",
@@ -87,6 +99,7 @@
     "themeLiquidGlass": "LiquidGlass",
     "language": "Language",
     "logout": "Logout",
+    "account": "Account",
     "viewPersonal": "View your profile",
     "viewBusiness": "View your business page",
     "backToAccount": "Back to personal profile"
@@ -197,6 +210,7 @@
   "layout": {
     "brand": "Smoker",
     "brandPage": "Smoker - Page",
+    "admin": "Admin",
     "searchPlaceholder": "Search...",
     "userMenu": "User Menu",
     "businessMenu": "Business Menu",
@@ -499,7 +513,8 @@
     "update": "Update",
     "close": "Close",
     "discard": "Discard",
-    "remove": "Remove"
+    "remove": "Remove",
+    "retry": "Retry"
   },
   "comment": {
     "header": "Comments",
@@ -682,6 +697,122 @@
     "sectionDancers": "Dancers",
     "sectionPosts": "Posts",
     "viewAll": "View all"
+  },
+  "admin": {
+    "manageUsers": "Manage users",
+    "manageMusic": "Manage music",
+    "reports": {
+      "status": {
+        "pending": "Pending",
+        "review": "Review",
+        "resolve": "Resolved"
+      },
+      "filters": {
+        "status": "Status",
+        "type": "Type"
+      },
+      "table": {
+        "target": "Target",
+        "reporter": "Reporter",
+        "type": "Type",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "detail": {
+        "targetTitle": "Reported target:",
+        "type": "Type:",
+        "status": "Status:",
+        "reporterTitle": "Reporter:",
+        "name": "Name:",
+        "role": "Role:",
+        "reason": "Report reason:",
+        "description": "User description:",
+        "statusLabel": "Status:",
+        "createdAt": "Created at:",
+        "historyTitle": "Report history:",
+        "historyText": "{{count}} other reports for this target"
+      },
+      "actions": {
+        "deletePost": "Delete post",
+        "banAccount": "Ban account",
+        "markResolved": "Mark as resolved",
+        "ignore": "Ignore"
+      },
+      "targetStatus": {
+        "active": "Active",
+        "banned": "Banned",
+        "deleted": "Deleted",
+        "pending": "Pending",
+        "private": "Private"
+      }
+    },
+    "dashboard": {
+      "title": "Admin Dashboard",
+      "totalUsers": "Total users",
+      "totalBars": "Total bars",
+      "totalEvents": "Total events",
+      "songs": "Songs",
+      "pendingReports": "Pending reports",
+      "statistics": "Overview statistics",
+      "distribution": "Data distribution",
+      "activity": "Recent activity",
+      "labels": {
+        "users": "Users",
+        "bars": "Bars",
+        "events": "Events",
+        "songs": "Songs",
+        "pendingReports": "Pending reports",
+        "week": "Week"
+      }
+    },
+    "users": {
+      "title": "Manage Users",
+      "search": "Search by email or username...",
+      "allRoles": "All roles",
+      "allStatus": "All status",
+      "empty": "No users found.",
+      "selectRole": "Select role",
+      "view": "View detail",
+      "unban": "Unban",
+      "ban": "Ban",
+      "detail": "User details",
+      "businessList": "Business accounts of this user",
+      "noBusiness": "No business accounts.",
+      "status": {
+        "active": "Active",
+        "banned": "Banned"
+      },
+      "table": {
+        "email": "Email",
+        "username": "Username",
+        "role": "Role",
+        "status": "Status",
+        "actions": "Actions"
+      }
+    },
+    "approvals": {
+      "title": "Manage Approvals",
+      "searchPlaceholder": "Search by name or owner...",
+      "type": {
+        "all": "All types",
+        "bar": "Bar Page",
+        "business": "Business Account"
+      },
+      "role": {
+        "all": "All roles"
+      },
+      "empty": "No pending registrations.",
+      "approve": "Approve",
+      "reject": "Reject",
+      "ownerDisplay": "{{email}} ({{name}})",
+      "table": {
+        "name": "Name",
+        "type": "Type",
+        "owner": "Owner",
+        "registeredAt": "Registered at",
+        "actions": "Actions"
+      }
+    }
   }
 }
 
