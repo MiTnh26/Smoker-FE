@@ -100,11 +100,28 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
         data.address = JSON.stringify(addressObj);
       }
       
-      // Remove empty fields
+      // Preserve avatar and background URLs even if they're empty strings (to allow clearing)
+      // But don't send them if they're null/undefined
+      const avatarToSend = data.avatar !== undefined && data.avatar !== null ? data.avatar : undefined;
+      const backgroundToSend = data.background !== undefined && data.background !== null ? data.background : undefined;
+      
+      // Remove empty fields (but keep avatar/background if they were explicitly set)
       for (const key of Object.keys(data)) {
+        if (key === 'avatar' || key === 'background') {
+          // Keep avatar/background if they were explicitly set (even if empty string)
+          continue;
+        }
         if (data[key] === '' || data[key] === null || data[key] === undefined) {
           delete data[key];
         }
+      }
+      
+      // Re-add avatar/background if they were set
+      if (avatarToSend !== undefined) {
+        data.avatar = avatarToSend;
+      }
+      if (backgroundToSend !== undefined) {
+        data.background = backgroundToSend;
       }
       
       // Remove bio for BarPage since table doesn't have Bio column
@@ -129,6 +146,11 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
           // Map userName to BarName for BarPage API
           if (barData.userName && !barData.BarName) {
             barData.BarName = barData.userName;
+          }
+          // Map phone to phoneNumber for BarPage API
+          if (barData.phone && !barData.phoneNumber) {
+            barData.phoneNumber = barData.phone;
+            delete barData.phone; // Remove phone field to avoid confusion
           }
           res = await barPageApi.updateBarPage(barEntityAccountId, barData);
           break;

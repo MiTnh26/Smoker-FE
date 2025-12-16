@@ -566,7 +566,7 @@ export default function PostCard({
         {audioMedia && (
           <AudioWaveform
             audioSrc={audioMedia.url}
-            isPlaying={sharedIsPlaying || isPlaying}
+            isPlaying={sharedIsPlaying ? (playingPost === post.id) : isPlaying}
             onTogglePlay={togglePlay}
             audioTitle={audioTitle}
             artistName={artistName}

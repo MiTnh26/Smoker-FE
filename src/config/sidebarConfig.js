@@ -78,10 +78,10 @@ export const sidebarConfig = {
   ],
   dj: [
     { label: "Newsfeed", icon: Home, path: "/dj/newsfeed" },
-    { label: "Dashboard", icon: BarChart3, path: "/dj/dashboard" },
+ 
     { label: "Schedule", icon: Calendar, modalType: "schedule" },
     { label: "Booking", icon: ClipboardList, modalType: "booking" },
-    { label: "Khách hàng / Bar hợp tác", icon: Users, path: "/dj/partners" },
+   
     { label: "Đánh giá & sao", icon: Star, modalType: "reviews" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/dj/messages" },
     { label: "Hồ sơ", icon: User, path: "/dj/profile" },
@@ -89,10 +89,10 @@ export const sidebarConfig = {
 
   dancer: [
     { label: "Newsfeed", icon: Home, path: "/dancer/newsfeed" },
-    { label: "Dashboard", icon: BarChart3, path: "/dancer/dashboard" },
+ 
     { label: "Schedule", icon: Calendar, modalType: "schedule" },
     { label: "Booking", icon: ClipboardList, modalType: "booking" },
-    { label: "Đối tác / Bar", icon: Users, path: "/dancer/partners" },
+  
     { label: "Đánh giá & sao", icon: Star, modalType: "reviews" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/dancer/messages" },
     { label: "Hồ sơ", icon: User, path: "/dancer/profile" },
