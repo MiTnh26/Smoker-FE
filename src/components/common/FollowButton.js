@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useFollow, useUnfollow, useCheckFollowing } from "../../hooks/useFollow";
 import { useAuth } from "../../hooks/useAuth";
 import { useCurrentUserEntity } from "../../hooks/useCurrentUserEntity";
-import notificationApi from "../../api/notificationApi";
 
 /**
  * FollowButton component
@@ -84,35 +83,8 @@ export default function FollowButton({ followingId, followingType, onChange, com
       setInternalFollowing(true);
       onChange && onChange(true);
       
-      // Create follow notification for the followed user (like Facebook)
-      // Use EntityAccountId of current active role for sender
-      if (senderEntityAccountId) {
-        try {
-          // Get current user info for notification
-          const sessionRaw = localStorage.getItem("session");
-          const session = sessionRaw ? JSON.parse(sessionRaw) : null;
-          const active = session?.activeEntity || {};
-          const followerName = active.name || active.BarName || active.BusinessName || active.userName || "Người dùng";
-          const followerAvatar = active.avatar || active.Avatar || null;
-          
-          // Create notification for the followed user
-          // receiverEntityAccountId: followingId (EntityAccountId của người được follow)
-          // senderEntityAccountId: senderEntityAccountId (EntityAccountId của người follow)
-          await notificationApi.createNotification({
-            type: "Follow",
-            receiverEntityAccountId: followingId, // EntityAccountId của người nhận notification
-            senderEntityAccountId: senderEntityAccountId, // EntityAccountId của người gửi
-            content: `${followerName} đã theo dõi bạn`, // Nội dung notification
-            link: `/profile/${senderEntityAccountId}`, // Link đến profile của người follow
-          });
-          console.log("✅ FollowButton - Notification created with senderEntityAccountId:", senderEntityAccountId);
-        } catch (notifError) {
-          console.warn("[FollowButton] Error creating notification (backend may handle it):", notifError);
-          // Continue even if notification creation fails - backend might handle it
-        }
-      } else {
-        console.warn("[FollowButton] No senderEntityAccountId available, skipping notification creation");
-      }
+      // Notification is created by backend (followService.js) - no need to create here
+      // This prevents duplicate notifications
       
       // Trigger notification refresh event for the followed user
       try {
