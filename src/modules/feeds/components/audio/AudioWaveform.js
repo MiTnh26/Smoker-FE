@@ -25,6 +25,7 @@ export default function AudioWaveform({
   const [duration, setDuration] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [waveformData, setWaveformData] = useState([]);
+  const [isPurchaseHovered, setIsPurchaseHovered] = useState(false);
   
   // Use shared audio if provided, otherwise use local audio
   const useSharedAudio = sharedAudioRef && onSeek;
@@ -250,15 +251,26 @@ export default function AudioWaveform({
             
             {/* Purchase Link Button */}
             {purchaseLink && (
-              <div className="audio-purchase-wrapper">
+              <div className="mt-3">
                 <a
                   href={purchaseLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="audio-purchase-button"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold no-underline cursor-pointer shadow-sm transition-all hover:bg-gray-200 hover:shadow-md active:scale-95"
                   onClick={(e) => e.stopPropagation()}
+                  onMouseEnter={() => setIsPurchaseHovered(true)}
+                  onMouseLeave={() => setIsPurchaseHovered(false)}
+                  style={{ color: isPurchaseHovered ? "rgb(var(--primary))" : "#9CA3AF" }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="shrink-0"
+                  >
                     <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
                     <line x1="3" y1="6" x2="21" y2="6" />
                     <path d="M16 10a4 4 0 0 1-8 0" />

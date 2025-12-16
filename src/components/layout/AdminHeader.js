@@ -1,7 +1,18 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
-import { Bell, UserCog, Home, LogOut, Settings, User as UserIcon, Palette, Languages } from "lucide-react";
+import {
+  Bell,
+  UserCog,
+  Home,
+  LogOut,
+  Settings,
+  User as UserIcon,
+  SunMedium,
+  MoonStar,
+  Contrast,
+  Languages,
+} from "lucide-react";
 import { cn } from "../../utils/cn";
 import DropdownPanel from "../common/DropdownPanel";
 import { getNextTheme, getThemeLabel } from "../../config/menuConfigs";
@@ -19,6 +30,12 @@ export default function AdminHeader() {
   });
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+
+  const ThemeIcon = ({ size = 16 }) => {
+    if (theme === "dark") return <MoonStar size={size} />;
+    if (theme === "bw") return <Contrast size={size} />;
+    return <SunMedium size={size} />;
+  };
 
   useEffect(() => {
     const handleProfileUpdate = () => {
@@ -141,11 +158,12 @@ export default function AdminHeader() {
                 onClick={handleToggleTheme}
               >
                 <span className="w-6 h-6 inline-flex items-center justify-center rounded-md bg-amber-500/10 text-amber-500">
-                  <Palette size={16} />
+                  <ThemeIcon />
                 </span>
                 <span className="flex-1">{t("menu.theme", { defaultValue: "Chế độ giao diện" })}</span>
-                <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-muted/70 text-muted-foreground">
-                  {getThemeLabel(theme, t)}
+                <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-muted/70 text-muted-foreground inline-flex items-center gap-1">
+                  <ThemeIcon size={12} />
+                  <span>{getThemeLabel(theme, t)}</span>
                 </span>
               </button>
 
