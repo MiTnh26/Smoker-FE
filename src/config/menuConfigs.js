@@ -248,19 +248,19 @@ export function getEntityRoute(entity) {
  */
 export function getThemeLabel(theme, t) {
   if (!t) {
-    // Fallback if t is not provided
+    // Fallback if t is not provided (text only, icon được xử lý bởi component)
     const fallback = {
-      light: "🌞 Sáng",
-      dark: "🌙 Tối",
-      bw: "⚫⚪ Đen trắng",
+      light: "Chế độ sáng",
+      dark: "Chế độ tối",
+      bw: "Đen trắng",
     };
     return fallback[theme] || fallback.light;
   }
   
   const labels = {
-    light: `🌞 ${t('menu.themeLight')}`,
-    dark: `🌙 ${t('menu.themeDark')}`,
-    bw: `⚫⚪ ${t('menu.themeBW')}`,
+    light: t('menu.themeLight'),
+    dark: t('menu.themeDark'),
+    bw: t('menu.themeBW'),
   };
   return labels[theme] || labels.light;
 }

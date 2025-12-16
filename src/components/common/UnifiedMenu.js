@@ -6,7 +6,14 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next"; // i18n
 import { Link, useNavigate } from "react-router-dom";
-import { User, ChevronDown, ChevronUp } from "lucide-react";      
+import {
+  User,
+  ChevronDown,
+  ChevronUp,
+  SunMedium,
+  MoonStar,
+  Contrast,
+} from "lucide-react";
 import {
   normalizeSession,
   normalizeEntity,
@@ -27,6 +34,12 @@ export default function UnifiedMenu({
   const [session, setSession] = useState(null);
   const [showAll, setShowAll] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+
+  const ThemeIcon = ({ size = 18 }) => {
+    if (theme === "dark") return <MoonStar size={size} />;
+    if (theme === "bw") return <Contrast size={size} />;
+    return <SunMedium size={size} />;
+  };
 
   // Get configuration
   const config = menuConfigs[menuConfig] || menuConfigs.customer;
@@ -370,7 +383,10 @@ export default function UnifiedMenu({
                   onClick={() => handleMenuItemClick(item)}
                 >
                   <span>{t(`menu.${item.id}`, { defaultValue: item.label })}</span>
-                  <span className="theme-label">{getThemeLabel(theme, t)}</span>
+                  <span className="theme-label inline-flex items-center gap-1">
+                    <ThemeIcon size={14} />
+                    <span>{getThemeLabel(theme, t)}</span>
+                  </span>
                 </button>
               ) : item.href ? (
                 <Link
