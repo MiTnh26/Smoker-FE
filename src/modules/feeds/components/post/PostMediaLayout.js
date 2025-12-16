@@ -24,12 +24,12 @@ const MediaItem = ({
   remainingCount,
 }) => {
   const itemClasses = (() => {
-    if (totalCount === 3 && index === 0) return "row-span-2";
+    if (totalCount === 3 && index === 0) return "col-span-2 aspect-[2/1]";
     if (totalCount >= 5) {
       if (index <= 1) return "col-span-3";
       if (index >= 2) return "col-span-2";
     }
-    return "";
+    return "aspect-square";
   })();
 
   const isVideo = (media.type || "").toLowerCase() === "video";
@@ -158,7 +158,13 @@ export default function PostMediaLayout({ images = [], videos = [], onImageClick
   }
 
   return (
-    <div className={cn("mt-3", getImageGridClasses(totalCount))}>
+    <div
+      className={cn(
+        "gap-px overflow-hidden w-full",
+        "max-h-[70vh]",
+        getImageGridClasses(totalCount)
+      )}
+    >
       {medias.slice(0, displayedCount).map((media, index) => (
         <MediaItem
           key={media.id || media._id || index}

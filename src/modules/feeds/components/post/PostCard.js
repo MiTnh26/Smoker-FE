@@ -604,7 +604,7 @@ export default function PostCard({
 
         {/* Display medias using PostMediaLayout component */}
         {!post.repostedFromId && !audioMedia && (medias.images.length > 0 || medias.videos.length > 0) && (
-          <div className="-mx-4">
+          <div className="w-[calc(100%+2.99rem)] -mx-[1.47rem] -mb-4">
           <PostMediaLayout
             images={medias.images}
             videos={medias.videos}
@@ -615,7 +615,7 @@ export default function PostCard({
 
         {/* Fallback: Display single image for backward compatibility */}
         {!post.repostedFromId && !audioMedia && !post.medias && post.image && (
-          <div className="-mx-4">
+          <div className="w-[calc(100%+2.99rem)] -mx-[1.47rem] -mb-4">
           <PostMediaLayout
             images={[{ url: post.image, id: 'fallback-image' }]}
             videos={[]}
@@ -626,7 +626,7 @@ export default function PostCard({
         
         {/* Fallback: Display single video for backward compatibility */}
         {!post.repostedFromId && !audioMedia && !post.medias && post.videoSrc && !post.image && (
-          <div className="-mx-4">
+          <div className="w-[calc(100%+2.99rem)] -mx-[1.47rem] -mb-4">
           <PostMediaLayout
             images={[]}
             videos={[{ url: post.videoSrc, id: 'fallback-video', poster: post.poster }]}

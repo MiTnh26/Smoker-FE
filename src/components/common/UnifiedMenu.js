@@ -50,8 +50,7 @@ export default function UnifiedMenu({
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // Load session data
-  useEffect(() => {
+  const loadSession = () => {
     try {
       const storedSession = JSON.parse(localStorage.getItem("session"));
       console.log("[UnifiedMenu] Raw session from localStorage:", storedSession);
@@ -61,10 +60,34 @@ export default function UnifiedMenu({
         setSession(normalized);
       } else {
         console.warn("[UnifiedMenu] No session found in localStorage");
+        setSession(null);
       }
     } catch (error) {
       console.error("[UnifiedMenu] Error loading session:", error);
     }
+  };
+
+  // Load session data
+  useEffect(() => {
+    loadSession();
+  }, []);
+
+  // Refresh when profile/session updates are dispatched
+  useEffect(() => {
+    const handleSessionChange = () => loadSession();
+    // Use window only to avoid no-undef in non-browser lint configs
+    const win = typeof window !== "undefined" ? window : null;
+    if (!win) return;
+
+    win.addEventListener("profileUpdated", handleSessionChange);
+    win.addEventListener("sessionUpdated", handleSessionChange);
+    win.addEventListener("storage", handleSessionChange);
+
+    return () => {
+      win.removeEventListener("profileUpdated", handleSessionChange);
+      win.removeEventListener("sessionUpdated", handleSessionChange);
+      win.removeEventListener("storage", handleSessionChange);
+    };
   }, []);
 
   console.log("[UnifiedMenu] Render - session:", session, "userData:", userData, "entities:", entities);
