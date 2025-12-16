@@ -150,6 +150,122 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
       }
 
       if (res?.status === 'success') {
+        // After successful save, update session so headers/menus reflect new name & avatar
+        try {
+          const { getSession, updateSession } = await import("../../utils/sessionManager");
+          const session = getSession();
+
+          if (session) {
+            let updatedProfileData = null;
+
+            // For Account profile, refetch current user to get freshest data
+            if (profileType === "Account") {
+              try {
+                const meRes = await userApi.me();
+                if (meRes?.status === "success" && meRes.data) {
+                  updatedProfileData = meRes.data;
+                }
+              } catch (fetchErr) {
+                console.error("[ProfileEditModal] Failed to refetch user after update:", fetchErr);
+              }
+            } else {
+              // For BarPage/BusinessAccount, use formData merged over existing profile
+              updatedProfileData = {
+                ...(profile || {}),
+                ...formData,
+              };
+            }
+
+            if (updatedProfileData) {
+              const currentAccount = session.account || {};
+              const currentActive = session.activeEntity || null;
+              const entities = Array.isArray(session.entities) ? session.entities : [];
+
+              // Preserve EntityAccountId for account
+              const accountEntityAccountId =
+                currentAccount.EntityAccountId ||
+                currentAccount.entityAccountId ||
+                null;
+
+              const updatedAccount =
+                profileType === "Account"
+                  ? {
+                      ...currentAccount,
+                      avatar: updatedProfileData.avatar || currentAccount.avatar,
+                      userName: updatedProfileData.userName || currentAccount.userName,
+                      name: updatedProfileData.userName || currentAccount.name,
+                      phone: updatedProfileData.phone || currentAccount.phone,
+                      bio: updatedProfileData.bio || currentAccount.bio,
+                      address: updatedProfileData.address || currentAccount.address,
+                      EntityAccountId: accountEntityAccountId,
+                    }
+                  : currentAccount;
+
+              // Helper to decide if an entity is the one we just edited
+              const isSameEntity = (entity) => {
+                if (!entity) return false;
+                const entityEaId = entity.EntityAccountId || entity.entityAccountId || null;
+                const profileEaId =
+                  updatedProfileData.EntityAccountId ||
+                  updatedProfileData.entityAccountId ||
+                  profile?.EntityAccountId ||
+                  profile?.entityAccountId ||
+                  null;
+
+                // Prefer matching by EntityAccountId; fallback to id
+                if (entityEaId && profileEaId && String(entityEaId) === String(profileEaId)) {
+                  return true;
+                }
+
+                const entityId = entity.id;
+                const profileId = updatedProfileData.id || profile?.id;
+                return entityId && profileId && String(entityId) === String(profileId);
+              };
+
+              // Update activeEntity (Account / BarPage / BusinessAccount)
+              const updatedActiveEntity = currentActive && isSameEntity(currentActive)
+                ? {
+                    ...currentActive,
+                    avatar: updatedProfileData.avatar || currentActive.avatar,
+                    name:
+                      updatedProfileData.userName ||
+                      updatedProfileData.BarName ||
+                      updatedProfileData.barName ||
+                      currentActive.name,
+                  }
+                : currentActive;
+
+              // Update matching entity in entities array
+              const updatedEntities = entities.map((entity) => {
+                if (!isSameEntity(entity)) return entity;
+                return {
+                  ...entity,
+                  avatar: updatedProfileData.avatar || entity.avatar,
+                  name:
+                    updatedProfileData.userName ||
+                    updatedProfileData.BarName ||
+                    updatedProfileData.barName ||
+                    entity.name,
+                };
+              });
+
+              updateSession({
+                account: updatedAccount,
+                activeEntity: updatedActiveEntity,
+                entities: updatedEntities,
+              });
+
+              // Notify other components (headers, menus, sidebars, etc.)
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new Event("profileUpdated"));
+                window.dispatchEvent(new Event("sessionUpdated"));
+              }
+            }
+          }
+        } catch (sessionErr) {
+          console.error("[ProfileEditModal] Error updating session after profile save:", sessionErr);
+        }
+
         onSuccess();
         onClose();
       } else {
