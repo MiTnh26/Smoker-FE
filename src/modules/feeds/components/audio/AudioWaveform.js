@@ -77,8 +77,13 @@ export default function AudioWaveform({
   // Only control local audio if not using shared audio (shared audio is controlled by parent)
   useEffect(() => {
     if (useSharedAudio) {
-      // Waveform updates when shared audio time changes
-      drawWaveform();
+      // Waveform updates when shared audio time changes, but only if this specific audio is playing
+      if (isPlaying) {
+        drawWaveform();
+      } else {
+        // If not playing, reset waveform to show no progress
+        drawWaveform();
+      }
       return;
     }
     
@@ -118,7 +123,8 @@ export default function AudioWaveform({
     const width = canvas.width;
     const height = canvas.height;
     const barWidth = width / waveformData.length;
-    const progress = actualDuration > 0 ? actualCurrentTime / actualDuration : 0;
+    // Only show progress if this specific audio is playing
+    const progress = (isPlaying && actualDuration > 0) ? actualCurrentTime / actualDuration : 0;
 
     // Use explicit colors to avoid CSS variable issues
     const primaryColor = '#7c3aed';        // purple-600
@@ -142,7 +148,7 @@ export default function AudioWaveform({
     if (isLoaded && waveformData.length) {
       drawWaveform();
     }
-  }, [actualCurrentTime, isLoaded, waveformData, actualDuration]);
+  }, [actualCurrentTime, isLoaded, waveformData, actualDuration, isPlaying]);
 
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return "0:00";
@@ -292,7 +298,7 @@ export default function AudioWaveform({
           />
           
           <div className="time-display">
-            <span className="current-time">{formatTime(actualCurrentTime)}</span>
+            <span className="current-time">{formatTime(isPlaying ? actualCurrentTime : 0)}</span>
             <span className="duration">{formatTime(actualDuration)}</span>
           </div>
         </div>

@@ -198,25 +198,45 @@ export const ProfileInfoSection = ({ profile }) => {
           ) : primaryAddress ? (
             <div className="flex items-center gap-3">
               <i className="bx bx-map text-lg w-5 text-center"></i>
-              <span>{primaryAddress}</span>
+              <span>
+                <strong className="mr-1">
+                  {t('profile.address') || 'Địa chỉ'}:
+                </strong>
+                {primaryAddress}
+              </span>
             </div>
           ) : null}
           {profile.phone && (
             <div className="flex items-center gap-3">
               <i className="bx bx-phone text-lg w-5 text-center"></i>
-              <span>{profile.phone}</span>
+              <span>
+                <strong className="mr-1">
+                  {t('profile.phone') || 'Liên hệ'}:
+                </strong>
+                {profile.phone}
+              </span>
             </div>
           )}
           {profile.email && (
             <div className="flex items-center gap-3">
               <i className="bx bx-envelope text-lg w-5 text-center"></i>
-              <span>{profile.email}</span>
+              <span>
+                <strong className="mr-1">
+                  {t('profile.email') || 'Gmail'}:
+                </strong>
+                {profile.email}
+              </span>
             </div>
           )}
           {profile.gender && (
             <div className="flex items-center gap-3">
               <i className="bx bx-user text-lg w-5 text-center"></i>
-              <span>{displayGender(profile.gender)}</span>
+              <span>
+                <strong className="mr-1">
+                  {t('profile.gender') || 'Giới tính'}:
+                </strong>
+                {displayGender(profile.gender)}
+              </span>
             </div>
           )}
         </div>
