@@ -341,8 +341,7 @@ export default function PostCard({
       /* Transitions */
       "transition-all duration-200 ease-out",
       /* Hover States - Subtle, no movement */
-      "hover:shadow-[0_2px_4px_rgba(0,0,0,0.08)]",
-      "hover:border-border/30"
+      "hover:shadow-[0_2px_4px_rgba(0,0,0,0.08)]"
     )}>
       {/* Header */}
       <div className="flex justify-between items-start mb-1.5 relative">
@@ -359,8 +358,7 @@ export default function PostCard({
                 "w-10 h-10 rounded-2xl object-cover",
                 "border-2 border-primary/20 ring-2 ring-primary/5",
                 "transition-all duration-500 ease-out",
-                "hover:border-primary/50 hover:ring-primary/20",
-                "hover:shadow-[0_8px_24px_rgba(var(--primary),0.25)]",
+                "hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]",
                 "hover:scale-110 hover:rotate-3",
                 "shadow-[0_4px_12px_rgba(0,0,0,0.12)]",
                 "cursor-pointer"
@@ -568,7 +566,7 @@ export default function PostCard({
         {audioMedia && (
           <AudioWaveform
             audioSrc={audioMedia.url}
-            isPlaying={sharedIsPlaying || isPlaying}
+            isPlaying={sharedIsPlaying ? (playingPost === post.id) : isPlaying}
             onTogglePlay={togglePlay}
             audioTitle={audioTitle}
             artistName={artistName}
@@ -604,36 +602,36 @@ export default function PostCard({
         )}
 
 
-        {/* Display medias using PostMediaLayout component */}
+        {/* Display medias using PostMediaLayout component - full width equal to post card */}
         {!post.repostedFromId && !audioMedia && (medias.images.length > 0 || medias.videos.length > 0) && (
-          <div className="-mx-4">
-          <PostMediaLayout
-            images={medias.images}
-            videos={medias.videos}
-            onImageClick={handleImageClick}
-          />
+          <div className="w-[calc(100%+1.8rem)] -mx-[0.9rem] mt-3 -mb-4">
+            <PostMediaLayout
+              images={medias.images}
+              videos={medias.videos}
+              onImageClick={handleImageClick}
+            />
           </div>
         )}
 
-        {/* Fallback: Display single image for backward compatibility */}
+        {/* Fallback: Display single image for backward compatibility - full width equal to post card */}
         {!post.repostedFromId && !audioMedia && !post.medias && post.image && (
-          <div className="-mx-4">
-          <PostMediaLayout
-            images={[{ url: post.image, id: 'fallback-image' }]}
-            videos={[]}
-            onImageClick={handleImageClick}
-          />
+          <div className="w-[calc(100%+1.8rem)] -mx-[0.9rem] mt-3 -mb-4">
+            <PostMediaLayout
+              images={[{ url: post.image, id: 'fallback-image' }]}
+              videos={[]}
+              onImageClick={handleImageClick}
+            />
           </div>
         )}
         
-        {/* Fallback: Display single video for backward compatibility */}
+        {/* Fallback: Display single video for backward compatibility - full width equal to post card */}
         {!post.repostedFromId && !audioMedia && !post.medias && post.videoSrc && !post.image && (
-          <div className="-mx-4">
-          <PostMediaLayout
-            images={[]}
-            videos={[{ url: post.videoSrc, id: 'fallback-video', poster: post.poster }]}
-            onImageClick={handleImageClick}
-          />
+          <div className="w-[calc(100%+1.8rem)] -mx-[0.9rem] mt-3 -mb-4">
+            <PostMediaLayout
+              images={[]}
+              videos={[{ url: post.videoSrc, id: 'fallback-video', poster: post.poster }]}
+              onImageClick={handleImageClick}
+            />
           </div>
         )}
 

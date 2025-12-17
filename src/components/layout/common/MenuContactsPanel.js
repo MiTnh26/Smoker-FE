@@ -103,11 +103,17 @@ export default function MenuContactsPanel({ isOpen, onClose }) {
       loadSession();
     };
     
+    const handleSessionUpdate = () => {
+      loadSession();
+    };
+    
     window.addEventListener('profileUpdated', handleProfileUpdate);
+    window.addEventListener('sessionUpdated', handleSessionUpdate);
     window.addEventListener('storage', handleProfileUpdate);
     
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('sessionUpdated', handleSessionUpdate);
       window.removeEventListener('storage', handleProfileUpdate);
     };
   }, []);

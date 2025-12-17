@@ -416,12 +416,12 @@
   background: rgb(var(--card));
   border: 1px solid rgb(var(--border));
   border-radius: 16px;
-  padding: 1.5rem;
+  padding: 0.9rem;
   transition: all 0.2s;
 }
 
 .post-card:hover {
-  border-color: rgb(var(--primary));
+  /* Only add subtle shadow on hover, không đổi màu viền */
   box-shadow: 0 8px 24px rgba(var(--primary) / 0.2);
 }
 
@@ -670,7 +670,7 @@
   }
 
   .post-card {
-    padding: 1.25rem !important;
+    padding: 0.9rem !important;
     border-radius: 0 !important;
     box-shadow: 0 18px 30px rgba(15, 23, 42, 0.08) !important;
     margin-left: 0;
@@ -777,7 +777,7 @@
   }
 
   .post-card {
-    padding: 1.1rem !important;
+    padding: 0.9rem !important;
     border-radius: 0 !important;
     margin-left: 0;
     margin-right: 0;
@@ -855,7 +855,7 @@
   }
   
   .post-card {
-    padding: 1rem !important;
+    padding: 0.9rem !important;
     border-radius: 0 !important;
     margin-left: 0;
     margin-right: 0;

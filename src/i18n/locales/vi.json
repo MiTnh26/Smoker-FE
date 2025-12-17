@@ -11,7 +11,6 @@
     "comment": "Bình luận",
     "share": "Chia sẻ",
     "loading": "Đang tải...",
-    "retry": "Thử lại",
     "empty": "Chưa có mục nào.",
     "refreshing": "Đang làm mới...",
     "user": "Người dùng",
@@ -22,7 +21,11 @@
     "cancel": "Hủy",
     "saving": "Đang lưu...",
     "saveChanges": "Lưu thay đổi",
-    "search": "Tìm kiếm"
+    "search": "Tìm kiếm",
+    "pagination": "Trang {{page}} / {{totalPages}}",
+    "all": "Tất cả",
+    "notFound": "Không tìm thấy",
+    "retry": "Thử lại"
   },
   "sidebar": {
     "home": "Trang chủ",
@@ -46,9 +49,17 @@
     "combosManage": "Quản lý combo",
     "registerBusiness": "Đăng ký tài khoản kinh doanh",
     "adminUsers": "Quản lý người dùng",
+    "adminApprovals": "Quản lý duyệt",
+    "adminMusic": "Thư viện nhạc",
+    "adminAdPackages": "Gói quảng cáo",
+    "adminEventAdApprovals": "Duyệt QC Event",
+    "adminPauseRequests": "Yêu cầu tạm dừng QC",
+    "adminResumeRequests": "Yêu cầu tiếp tục QC",
+    "adminRefundRequests": "Yêu cầu hoàn tiền",
     "adminBars": "Quản lý quán / Bar",
     "adminReports": "Báo cáo & thống kê",
-    "adminSettings": "Cài đặt hệ thống"
+    "adminSettings": "Cài đặt hệ thống",
+    "adSettings": "Cài Đặt Quảng Cáo"
   },
   "feed": {
     "newsfeed": "Bảng tin",
@@ -87,6 +98,7 @@
     "themeLiquidGlass": "LiquidGlass",
     "language": "Ngôn ngữ",
     "logout": "Đăng xuất",
+    "account": "Tài khoản",
     "viewPersonal": "Xem trang cá nhân của bạn",
     "viewBusiness": "Xem trang doanh nghiệp của bạn",
     "backToAccount": "Trở lại trang cá nhân"
@@ -197,6 +209,7 @@
   "layout": {
     "brand": "Smoker",
     "brandPage": "Smoker - Page",
+    "admin": "Admin",
     "searchPlaceholder": "Tìm kiếm...",
     "userMenu": "User Menu",
     "businessMenu": "Business Menu",
@@ -405,6 +418,13 @@
     "errorDeletingTable": "Lỗi khi xóa bàn",
     "tableNamePlaceholder": "Tên bàn",
     "selectTableType": "Chọn loại bàn",
+    "editTable": "Chỉnh sửa bàn",
+    "editTableDescription": "Cập nhật thông tin bàn",
+    "tableName": "Tên bàn",
+    "tableType": "Loại bàn",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "saving": "Đang lưu...",
     "defaultTable": "Bàn mặc định",
     "tableLayoutPreview": "Không gian quán",
     "tableLayoutDescription": "Xem trước bố cục bàn trong quán",
@@ -441,38 +461,118 @@
     }
   },
   "admin": {
+    "manageUsers": "Quản lý người dùng",
+    "manageMusic": "Quản lý nhạc",
+    "reports": {
+      "status": {
+        "pending": "Đang chờ",
+        "review": "Đang xem xét",
+        "resolve": "Đã xử lý"
+      },
+      "filters": {
+        "status": "Trạng thái",
+        "type": "Loại"
+      },
+      "table": {
+        "target": "Đối tượng",
+        "reporter": "Người báo cáo",
+        "type": "Loại",
+        "status": "Trạng thái",
+        "actions": "Thao tác"
+      },
+      "detail": {
+        "targetTitle": "Đối tượng bị báo cáo:",
+        "type": "Loại:",
+        "status": "Trạng thái:",
+        "reporterTitle": "Người báo cáo:",
+        "name": "Tên:",
+        "role": "Vai trò:",
+        "reason": "Lý do báo cáo:",
+        "description": "Mô tả từ người dùng:",
+        "statusLabel": "Trạng thái:",
+        "createdAt": "Tạo lúc:",
+        "historyTitle": "Lịch sử báo cáo:",
+        "historyText": "Có {{count}} báo cáo khác cho cùng đối tượng này"
+      },
+      "actions": {
+        "deletePost": "Xóa bài viết",
+        "banAccount": "Cấm tài khoản",
+        "markResolved": "Đánh dấu đã xử lý",
+        "ignore": "Bỏ qua"
+      },
+      "targetStatus": {
+        "active": "Đang hoạt động",
+        "banned": "Đã bị cấm",
+        "deleted": "Đã xóa",
+        "pending": "Đang chờ",
+        "private": "Riêng tư"
+      }
+    },
     "dashboard": {
-      "title": "Bảng điều khiển",
+      "title": "Bảng điều khiển Admin",
       "totalUsers": "Tổng người dùng",
-      "totalBars": "Tổng số quán",
+      "totalBars": "Tổng quán/Bar",
       "totalEvents": "Tổng sự kiện",
-      "pendingReports": "Báo cáo chờ xử lý",
+      "songs": "Bài hát",
+      "pendingReports": "Báo cáo chờ",
+      "statistics": "Thống kê tổng quan",
+      "distribution": "Phân bổ dữ liệu",
       "activity": "Hoạt động gần đây",
-      "activityHint": "Biểu đồ và log hoạt động sẽ hiển thị tại đây."
+      "labels": {
+        "users": "Người dùng",
+        "bars": "Quán/Bar",
+        "events": "Sự kiện",
+        "songs": "Bài hát",
+        "pendingReports": "Báo cáo chờ",
+        "week": "Tuần"
+      }
     },
     "users": {
       "title": "Quản lý người dùng",
       "search": "Tìm theo email hoặc username...",
       "allRoles": "Tất cả vai trò",
       "allStatus": "Tất cả trạng thái",
-      "empty": "Chưa có người dùng.",
-      "view": "Xem",
-      "ban": "Cấm"
+      "empty": "Không tìm thấy người dùng.",
+      "selectRole": "Chọn vai trò",
+      "view": "Xem chi tiết",
+      "unban": "Mở cấm",
+      "ban": "Cấm",
+      "detail": "Chi tiết người dùng",
+      "businessList": "Tài khoản kinh doanh của người dùng",
+      "noBusiness": "Chưa có tài khoản kinh doanh.",
+      "status": {
+        "active": "Hoạt động",
+        "banned": "Đã cấm"
+      },
+      "table": {
+        "email": "Email",
+        "username": "Tên người dùng",
+        "role": "Vai trò",
+        "status": "Trạng thái",
+        "actions": "Hành động"
+      }
     },
-    "music": {
-      "title": "Thư viện nhạc",
-      "hint": "Upload và quản lý nhạc dùng cho Stories.",
-      "upload": "Tải lên",
-      "uploading": "Đang tải...",
-      "uploadFailed": "Tải lên thất bại",
-      "confirmDelete": "Xóa bài nhạc này?",
-      "deleteFailed": "Xóa thất bại",
-      "empty": "Chưa có bài nhạc nào.",
-      "columns": {
+    "approvals": {
+      "title": "Quản lý duyệt",
+      "searchPlaceholder": "Tìm theo tên hoặc chủ sở hữu...",
+      "type": {
+        "all": "Tất cả loại",
+        "bar": "Trang Bar",
+        "business": "Tài khoản kinh doanh"
+      },
+      "role": {
+        "all": "Tất cả vai trò"
+      },
+      "empty": "Không có yêu cầu chờ duyệt.",
+      "approve": "Duyệt",
+      "reject": "Từ chối",
+      "ownerDisplay": "{{email}} ({{name}})",
+      "table": {
         "name": "Tên",
-        "size": "Kích thước",
-        "created": "Tạo lúc",
-        "actions": "Thao tác"
+        "type": "Loại",
+        "owner": "Chủ sở hữu",
+        "registeredAt": "Ngày đăng ký",
+        "actions": "Hành động"
       }
     }
   },
@@ -497,7 +597,8 @@
     "update": "Cập nhật",
     "close": "Đóng",
     "discard": "Hủy bỏ",
-    "remove": "Xóa"
+    "remove": "Xóa",
+    "retry": "Thử lại"
   },
   "comment": {
     "header": "Bình luận",

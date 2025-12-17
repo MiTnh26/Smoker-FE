@@ -16,6 +16,8 @@ export default function BannedAccountOverlay({ userRole, entityType }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  // Chỉ hiển thị nút "Quay lại" cho BusinessAccount (Bar, DJ, Dancer)
+  // Account (Customer) sẽ hiển thị nút "Đăng xuất"
   const isBusinessEntity = ["Bar", "DJ", "Dancer"].includes(userRole) || 
                           ["BarPage", "BusinessAccount"].includes(entityType);
 
@@ -52,6 +54,19 @@ export default function BannedAccountOverlay({ userRole, entityType }) {
               type: "Account"
             }
           });
+        }
+        
+        // Set flag để không hiển thị overlay banned của Account khi navigate
+        // Lưu vào session để OwnProfilePage biết không check banned
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("skipAccountBannedCheck", "true");
+        }
+        
+        // Trigger session update event để các component khác cập nhật (Sidebar, Header, etc.)
+        if (typeof window !== "undefined" && window.dispatchEvent) {
+          window.dispatchEvent(new Event("sessionUpdated"));
+          // Also trigger storage event để các component lắng nghe storage event cũng cập nhật
+          window.dispatchEvent(new StorageEvent("storage", { key: "session" }));
         }
       }
     } catch (err) {
@@ -95,18 +110,26 @@ export default function BannedAccountOverlay({ userRole, entityType }) {
   };
 
   return (
-    <div className={cn(
-      "fixed inset-0 z-[99999]",
-      "flex items-center justify-center",
-      "bg-black/60 backdrop-blur-sm",
-      "px-4"
-    )}>
-      <div className={cn(
-        "relative z-10",
-        "max-w-xl w-full",
-        "bg-card border border-destructive/40 rounded-2xl p-8 shadow-lg",
-        "text-center"
-      )}>
+    <div 
+      className={cn(
+        "fixed inset-0 z-[99999]",
+        "flex items-center justify-center",
+        "bg-black/60 backdrop-blur-sm",
+        "px-4",
+        "pointer-events-auto"
+      )}
+      style={{ pointerEvents: 'auto' }}
+    >
+      <div 
+        className={cn(
+          "relative z-10",
+          "max-w-xl w-full",
+          "bg-card border border-destructive/40 rounded-2xl p-8 shadow-lg",
+          "text-center",
+          "pointer-events-auto"
+        )}
+        style={{ pointerEvents: 'auto' }}
+      >
         <h2 className={cn(
           "text-2xl font-semibold mb-3",
           "text-destructive"
@@ -124,6 +147,7 @@ export default function BannedAccountOverlay({ userRole, entityType }) {
         <div className={cn("flex items-center justify-center gap-3")}>
           {isBusinessEntity ? (
             <button
+              type="button"
               onClick={handleBack}
               className={cn(
                 "flex items-center gap-2",
@@ -131,14 +155,18 @@ export default function BannedAccountOverlay({ userRole, entityType }) {
                 "bg-primary text-primary-foreground",
                 "rounded-lg font-medium",
                 "hover:bg-primary/90",
-                "transition-colors"
+                "transition-colors",
+                "cursor-pointer",
+                "pointer-events-auto"
               )}
+              style={{ pointerEvents: 'auto' }}
             >
               <ArrowLeft size={18} />
               <span>{t('common.back', { defaultValue: "Quay lại" })}</span>
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleLogout}
               className={cn(
                 "flex items-center gap-2",
@@ -146,8 +174,11 @@ export default function BannedAccountOverlay({ userRole, entityType }) {
                 "bg-destructive text-destructive-foreground",
                 "rounded-lg font-medium",
                 "hover:bg-destructive/90",
-                "transition-colors"
+                "transition-colors",
+                "cursor-pointer",
+                "pointer-events-auto"
               )}
+              style={{ pointerEvents: 'auto' }}
             >
               <LogOut size={18} />
               <span>{t('menu.logout', { defaultValue: "Đăng xuất" })}</span>

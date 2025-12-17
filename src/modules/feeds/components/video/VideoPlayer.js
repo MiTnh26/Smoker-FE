@@ -10,7 +10,7 @@ export default function VideoPlayer({ src, poster, className = "" }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -19,6 +19,10 @@ export default function VideoPlayer({ src, poster, className = "" }) {
   const [isPortrait, setIsPortrait] = useState(false);
   const hideControlsTimeoutRef = useRef(null);
   const isDraggingRef = useRef(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [autoPlayMuted, setAutoPlayMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const observerRef = useRef(null);
 
   // Validate src - check after hooks
   const isValidSrc = src && typeof src === 'string' && src.trim() !== '';
@@ -37,6 +41,12 @@ export default function VideoPlayer({ src, poster, className = "" }) {
       if (isPlaying) {
         videoRef.current.pause();
       } else if (!isPlaying) {
+        // When user manually plays, allow unmute
+        if (autoPlayMuted && videoRef.current.muted) {
+          setAutoPlayMuted(false);
+          videoRef.current.muted = false;
+          setIsMuted(false);
+        }
         videoRef.current.play();
       }
       setIsPlaying(!isPlaying);
@@ -49,6 +59,18 @@ export default function VideoPlayer({ src, poster, className = "" }) {
     setVolume(clampedVolume);
     if (videoRef.current) {
       videoRef.current.volume = clampedVolume;
+      // If user sets volume > 0, disable auto-mute and unmute
+      if (clampedVolume > 0) {
+        if (autoPlayMuted) {
+          setAutoPlayMuted(false);
+        }
+        videoRef.current.muted = false;
+        setIsMuted(false);
+      } else {
+        // If volume is set to 0, mute the video
+        videoRef.current.muted = true;
+        setIsMuted(true);
+      }
     }
   };
 
@@ -108,14 +130,63 @@ export default function VideoPlayer({ src, poster, className = "" }) {
     if (hideControlsTimeoutRef.current) {
       clearTimeout(hideControlsTimeoutRef.current);
     }
+    // Khi không hover thì ẩn controls. Nếu đang phát, cho phép hiện trong thời gian ngắn sau tương tác.
+    if (!isPlaying) {
+      setShowControls(false);
+      return;
+    }
     if (isPlaying && !isHovering) {
       hideControlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
-      }, 3000);
-    } else {
-      setShowControls(true);
+      }, 2000);
     }
   };
+
+  // Intersection Observer for auto-play on scroll (Facebook-style)
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = containerRef.current;
+    if (!video || !container) return;
+
+    // Create Intersection Observer
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const isIntersecting = entry.isIntersecting;
+          setIsVisible(isIntersecting);
+
+          if (isIntersecting) {
+            // Video is in viewport - auto play (muted)
+            if (autoPlayMuted && video.paused) {
+              video.muted = true;
+              setIsMuted(true);
+              video.play().catch((err) => {
+                console.log('[VideoPlayer] Auto-play prevented:', err);
+              });
+            }
+          } else {
+            // Video is out of viewport - pause
+            if (!video.paused) {
+              video.pause();
+            }
+          }
+        });
+      },
+      {
+        threshold: 0.5, // Video must be at least 50% visible
+        rootMargin: '0px',
+      }
+    );
+
+    observer.observe(container);
+    observerRef.current = observer;
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [autoPlayMuted]);
 
   // Event handlers
   useEffect(() => {
@@ -139,6 +210,8 @@ export default function VideoPlayer({ src, poster, className = "" }) {
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
       setIsLoaded(true);
+      // Sync muted state with video element
+      setIsMuted(video.muted);
       // Đảm bảo video hiển thị đúng kích thước sau khi load metadata
       if (video.videoWidth && video.videoHeight) {
         // Kiểm tra xem video có phải portrait (dọc) không
@@ -179,6 +252,11 @@ export default function VideoPlayer({ src, poster, className = "" }) {
 
     const handleVolumeChange = () => {
       setVolume(video.volume);
+      setIsMuted(video.muted);
+      // If user unmutes, disable auto-mute
+      if (!video.muted && autoPlayMuted) {
+        setAutoPlayMuted(false);
+      }
     };
 
     const handleError = (e) => {
@@ -302,7 +380,7 @@ export default function VideoPlayer({ src, poster, className = "" }) {
       }}
       onMouseLeave={() => {
         setIsHovering(false);
-        resetControlsTimer();
+        setShowControls(false);
       }}
       onMouseMove={() => {
         if (isHovering) {
@@ -343,6 +421,7 @@ export default function VideoPlayer({ src, poster, className = "" }) {
           playsInline
           data-playsinline="true"
           crossOrigin="anonymous"
+          muted={autoPlayMuted}
           style={{
             maxWidth: '100%',
             maxHeight: isPortrait ? '80vh' : 'none',
@@ -434,11 +513,21 @@ export default function VideoPlayer({ src, poster, className = "" }) {
             <div className="video-volume-control">
               <button
                 className="video-control-btn"
-                onClick={() => handleVolumeChange(volume > 0 ? 0 : 0.5)}
-                aria-label={volume > 0 ? 'Mute' : 'Unmute'}
+                onClick={() => {
+                  if (isMuted || volume === 0) {
+                    // Unmute and set to previous volume or 0.5
+                    handleVolumeChange(volume > 0 ? volume : 0.5);
+                  } else {
+                    // Mute
+                    handleVolumeChange(0);
+                  }
+                }}
+                aria-label={isMuted || volume === 0 ? 'Unmute' : 'Mute'}
               >
                 {(() => {
-                  if (volume === 0) {
+                  // Check muted state first, then volume
+                  const displayVolume = isMuted ? 0 : volume;
+                  if (displayVolume === 0) {
                     return (
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M11 5L6 9H2v6h4l5 4V5z" />
@@ -447,7 +536,7 @@ export default function VideoPlayer({ src, poster, className = "" }) {
                       </svg>
                     );
                   }
-                  if (volume < 0.5) {
+                  if (displayVolume < 0.5) {
                     return (
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M11 5L6 9H2v6h4l5 4V5z" />
@@ -468,8 +557,11 @@ export default function VideoPlayer({ src, poster, className = "" }) {
                 min="0"
                 max="1"
                 step="0.01"
-                value={volume}
-                onChange={(e) => handleVolumeChange(Number.parseFloat(e.target.value))}
+                value={isMuted ? 0 : volume}
+                onChange={(e) => {
+                  const newVolume = Number.parseFloat(e.target.value);
+                  handleVolumeChange(newVolume);
+                }}
                 className="video-volume-slider"
                 aria-label="Volume"
               />
@@ -501,6 +593,17 @@ export default function VideoPlayer({ src, poster, className = "" }) {
           </div>
         </div>
       </div>
+
+      {/* Mute indicator khi auto-play (chỉ hiển thị khi controls ẩn) */}
+      {(autoPlayMuted || isMuted) && !showControls && !hasError && (
+        <div className="video-muted-indicator" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M11 5L6 9H2v6h4l5 4V5z" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+        </div>
+      )}
 
       {/* Loading indicator */}
       {!isLoaded && (

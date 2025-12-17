@@ -100,11 +100,28 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
         data.address = JSON.stringify(addressObj);
       }
       
-      // Remove empty fields
+      // Preserve avatar and background URLs even if they're empty strings (to allow clearing)
+      // But don't send them if they're null/undefined
+      const avatarToSend = data.avatar !== undefined && data.avatar !== null ? data.avatar : undefined;
+      const backgroundToSend = data.background !== undefined && data.background !== null ? data.background : undefined;
+      
+      // Remove empty fields (but keep avatar/background if they were explicitly set)
       for (const key of Object.keys(data)) {
+        if (key === 'avatar' || key === 'background') {
+          // Keep avatar/background if they were explicitly set (even if empty string)
+          continue;
+        }
         if (data[key] === '' || data[key] === null || data[key] === undefined) {
           delete data[key];
         }
+      }
+      
+      // Re-add avatar/background if they were set
+      if (avatarToSend !== undefined) {
+        data.avatar = avatarToSend;
+      }
+      if (backgroundToSend !== undefined) {
+        data.background = backgroundToSend;
       }
       
       // Remove bio for BarPage since table doesn't have Bio column
@@ -130,6 +147,11 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
           if (barData.userName && !barData.BarName) {
             barData.BarName = barData.userName;
           }
+          // Map phone to phoneNumber for BarPage API
+          if (barData.phone && !barData.phoneNumber) {
+            barData.phoneNumber = barData.phone;
+            delete barData.phone; // Remove phone field to avoid confusion
+          }
           res = await barPageApi.updateBarPage(barEntityAccountId, barData);
           break;
         }
@@ -150,6 +172,122 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
       }
 
       if (res?.status === 'success') {
+        // After successful save, update session so headers/menus reflect new name & avatar
+        try {
+          const { getSession, updateSession } = await import("../../utils/sessionManager");
+          const session = getSession();
+
+          if (session) {
+            let updatedProfileData = null;
+
+            // For Account profile, refetch current user to get freshest data
+            if (profileType === "Account") {
+              try {
+                const meRes = await userApi.me();
+                if (meRes?.status === "success" && meRes.data) {
+                  updatedProfileData = meRes.data;
+                }
+              } catch (fetchErr) {
+                console.error("[ProfileEditModal] Failed to refetch user after update:", fetchErr);
+              }
+            } else {
+              // For BarPage/BusinessAccount, use formData merged over existing profile
+              updatedProfileData = {
+                ...(profile || {}),
+                ...formData,
+              };
+            }
+
+            if (updatedProfileData) {
+              const currentAccount = session.account || {};
+              const currentActive = session.activeEntity || null;
+              const entities = Array.isArray(session.entities) ? session.entities : [];
+
+              // Preserve EntityAccountId for account
+              const accountEntityAccountId =
+                currentAccount.EntityAccountId ||
+                currentAccount.entityAccountId ||
+                null;
+
+              const updatedAccount =
+                profileType === "Account"
+                  ? {
+                      ...currentAccount,
+                      avatar: updatedProfileData.avatar || currentAccount.avatar,
+                      userName: updatedProfileData.userName || currentAccount.userName,
+                      name: updatedProfileData.userName || currentAccount.name,
+                      phone: updatedProfileData.phone || currentAccount.phone,
+                      bio: updatedProfileData.bio || currentAccount.bio,
+                      address: updatedProfileData.address || currentAccount.address,
+                      EntityAccountId: accountEntityAccountId,
+                    }
+                  : currentAccount;
+
+              // Helper to decide if an entity is the one we just edited
+              const isSameEntity = (entity) => {
+                if (!entity) return false;
+                const entityEaId = entity.EntityAccountId || entity.entityAccountId || null;
+                const profileEaId =
+                  updatedProfileData.EntityAccountId ||
+                  updatedProfileData.entityAccountId ||
+                  profile?.EntityAccountId ||
+                  profile?.entityAccountId ||
+                  null;
+
+                // Prefer matching by EntityAccountId; fallback to id
+                if (entityEaId && profileEaId && String(entityEaId) === String(profileEaId)) {
+                  return true;
+                }
+
+                const entityId = entity.id;
+                const profileId = updatedProfileData.id || profile?.id;
+                return entityId && profileId && String(entityId) === String(profileId);
+              };
+
+              // Update activeEntity (Account / BarPage / BusinessAccount)
+              const updatedActiveEntity = currentActive && isSameEntity(currentActive)
+                ? {
+                    ...currentActive,
+                    avatar: updatedProfileData.avatar || currentActive.avatar,
+                    name:
+                      updatedProfileData.userName ||
+                      updatedProfileData.BarName ||
+                      updatedProfileData.barName ||
+                      currentActive.name,
+                  }
+                : currentActive;
+
+              // Update matching entity in entities array
+              const updatedEntities = entities.map((entity) => {
+                if (!isSameEntity(entity)) return entity;
+                return {
+                  ...entity,
+                  avatar: updatedProfileData.avatar || entity.avatar,
+                  name:
+                    updatedProfileData.userName ||
+                    updatedProfileData.BarName ||
+                    updatedProfileData.barName ||
+                    entity.name,
+                };
+              });
+
+              updateSession({
+                account: updatedAccount,
+                activeEntity: updatedActiveEntity,
+                entities: updatedEntities,
+              });
+
+              // Notify other components (headers, menus, sidebars, etc.)
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new Event("profileUpdated"));
+                window.dispatchEvent(new Event("sessionUpdated"));
+              }
+            }
+          }
+        } catch (sessionErr) {
+          console.error("[ProfileEditModal] Error updating session after profile save:", sessionErr);
+        }
+
         onSuccess();
         onClose();
       } else {

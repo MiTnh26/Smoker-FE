@@ -355,18 +355,23 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
       formData.append('userName', form.userName.trim());
       formData.append('bio', (form.bio || '').slice(0, 500));
       
-      // Build address from selected location
-      const fullAddress = buildAddress() || form.address || '';
-      formData.append('address', fullAddress);
-      
-      // Also send structured address data as JSON string for easier parsing later
-      if (selectedProvinceId || selectedDistrictId || selectedWardId) {
-        formData.append('addressData', JSON.stringify({
-          provinceId: selectedProvinceId,
-          districtId: selectedDistrictId,
-          wardId: selectedWardId,
-          fullAddress: fullAddress
-        }));
+      // Build structured address similar to ProfileEditModal so edit modal can read it
+      const detail = (form.address || '').trim();
+      const addressObj = {};
+      if (detail) addressObj.detail = detail;
+      if (selectedProvinceId) addressObj.provinceId = selectedProvinceId;
+      if (selectedDistrictId) addressObj.districtId = selectedDistrictId;
+      if (selectedWardId) addressObj.wardId = selectedWardId;
+      const fullAddress = buildAddress();
+      if (fullAddress) addressObj.fullAddress = fullAddress;
+
+      if (Object.keys(addressObj).length > 0) {
+        // Store as JSON string in "address" to match edit profile saving scheme
+        formData.append('address', JSON.stringify(addressObj));
+        // Keep addressData for backward compatibility
+        formData.append('addressData', JSON.stringify(addressObj));
+      } else {
+        formData.append('address', detail);
       }
       
       formData.append('phone', sanitizePhone(form.phone));

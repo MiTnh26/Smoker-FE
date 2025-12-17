@@ -248,7 +248,7 @@
     border: 1px solid rgb(var(--border));
   }
   .post-card:hover {
-    border-color: rgb(var(--primary));
+    /* Giữ hiệu ứng bóng, bỏ đổi màu viền */
     box-shadow: 0 8px 24px rgba(var(--primary) / 0.2);
   }
 

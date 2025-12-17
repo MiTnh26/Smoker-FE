@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { X } from "lucide-react";
-import { getPostDetail } from "../../../../api/postApi";
+import { getPostDetail, getPostDetailAdmin } from "../../../../api/postApi";
 import PostCard from "../post/PostCard";
 import CommentSection from "../comment/CommentSection";
 import { cn } from "../../../../utils/cn";
@@ -111,27 +111,45 @@ export default function PostDetailModalForAdmin({
   }, [open, postId, initialPost]);
 
   const fetchPost = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
+      // Try public endpoint first
       const response = await getPostDetail(postId, { includeMedias: true, includeMusic: true });
-      
-      let post = null;
-      if (response?.success && response.data) {
-        post = response.data;
-      } else if (response?._id) {
-        post = response;
-      } else {
-        setError("Post not found");
-        return;
-      }
+      let post = response?.data ?? response;
+      if (post?.success && post.data) post = post.data;
+      const postIdCandidate = post?._id || post?.id || post?.Id || post?.postId || post?.PostId;
+      if (!postIdCandidate) throw new Error("Post not found");
 
-      // Transform post data using the same logic as PostFeed
       const transformedPost = transformPostData(post);
       setPostData(transformedPost);
+      return;
     } catch (err) {
+      const status = err?.response?.status;
+      // Fallback: try admin endpoint for deleted/private posts
+      if (status === 404) {
+        try {
+          const adminRes = await getPostDetailAdmin(postId, { includeMedias: true, includeMusic: true });
+          let post = adminRes?.data ?? adminRes;
+          if (post?.success && post.data) post = post.data;
+          const postIdCandidate = post?._id || post?.id || post?.Id || post?.postId || post?.PostId;
+          if (!postIdCandidate) throw new Error("Post not found");
+
+          const transformedPost = transformPostData(post);
+          setPostData(transformedPost);
+          return;
+        } catch (errAdmin) {
+          console.error("[PostDetailModalForAdmin] Admin fetch post 404/failed:", errAdmin);
+          setError(t("common.notFound") || "Post not found");
+          return;
+        }
+      }
+
       console.error("[PostDetailModalForAdmin] Error fetching post:", err);
-      setError(err.message || "Failed to load post");
+      const msg = status === 404
+        ? (t("common.notFound") || "Post not found")
+        : (err.message || "Failed to load post");
+      setError(msg);
     } finally {
       setLoading(false);
     }

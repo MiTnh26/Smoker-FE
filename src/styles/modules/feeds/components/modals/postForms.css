@@ -195,9 +195,12 @@
 /* Media Grid */
 .post-form-media-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 0.75rem;
   margin-top: 0.5rem;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding-right: 6px; /* space for scrollbar */
 }
 
 /* Media Chip/Card */

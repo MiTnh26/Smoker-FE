@@ -239,8 +239,8 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-6">
             {/* Main Content Area */}
-            <div className="flex flex-col lg:flex-row gap-6">
-              {/* Left Panel: Form Fields */}
+            <div className="flex flex-col gap-6">
+              {/* Form Fields */}
               <div className="flex-1 flex flex-col gap-4">
                 <div className="post-form-field-wrapper">
                   <textarea
@@ -285,9 +285,9 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
                 )}
               </div>
               
-              {/* Right Panel: Media Preview/Info */}
+              {/* Media Preview/Info */}
               {mediaFiles.length > 0 && (
-                <aside className="w-full lg:w-80 flex-shrink-0">
+                <aside className="w-full">
                   <div className="post-form-media-grid">
                     {mediaFiles.map((file, index) => {
                       const isImage = file.type?.startsWith('image') || file.resource_type === 'image';
