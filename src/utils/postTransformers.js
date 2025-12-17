@@ -190,52 +190,23 @@ const extractLikeEntityId = (like) => {
   return null;
 };
 
-const extractLikeAccountId = (like) => {
-  if (!like) return null;
-  if (typeof like === "object") {
-    return normalizeGuid(
-      like.accountId ||
-      like.AccountId
-    );
-  }
-  return null;
-};
+// Chỉ dùng EntityAccountId để xác định likedByViewer
+const isLikedByViewer = (likes, viewerEntityAccountId) => {
+  if (!likes || !viewerEntityAccountId) return false;
+  const viewer = normalizeEntityAccountId(viewerEntityAccountId);
+  if (!viewer) return false;
 
-const isLikedByViewer = (likes, viewerEntityAccountId, viewerAccountId) => {
-  if (!likes) return false;
-  const normalizedViewerEntity = normalizeEntityAccountId(viewerEntityAccountId);
-  const normalizedViewerAccount = normalizeGuid(viewerAccountId);
-
-  const matches = (like) => {
-    const likeEntityId = extractLikeEntityId(like);
-    if (normalizedViewerEntity && likeEntityId) {
-      return likeEntityId === normalizedViewerEntity;
-    }
-    // Legacy fallback: nếu like hoặc viewer không có entityAccountId thì so sánh accountId
-    if (!normalizedViewerEntity && normalizedViewerAccount) {
-      return extractLikeAccountId(like) === normalizedViewerAccount;
-    }
-    if (normalizedViewerEntity && !likeEntityId && normalizedViewerAccount) {
-      return extractLikeAccountId(like) === normalizedViewerAccount;
-    }
-    return false;
+  const match = (like, key) => {
+    if (normalizeEntityAccountId(key) === viewer) return true;
+    return extractLikeEntityId(like) === viewer;
   };
 
-  if (Array.isArray(likes)) {
-    return likes.some(matches);
-  }
-
+  if (Array.isArray(likes)) return likes.some(like => extractLikeEntityId(like) === viewer);
   if (likes instanceof Map) {
-    for (const value of likes.values()) {
-      if (matches(value)) return true;
-    }
+    for (const [k, v] of likes.entries()) if (match(v, k)) return true;
     return false;
   }
-
-  if (typeof likes === "object") {
-    return Object.values(likes).some(matches);
-  }
-
+  if (typeof likes === "object") return Object.entries(likes).some(([k, v]) => match(v, k));
   return false;
 };
 
@@ -304,8 +275,18 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
   const likes = stats.likeCount !== undefined ? stats.likeCount : countCollection(post.likes);
   const comments = stats.commentCount !== undefined ? stats.commentCount : countCollection(post.comments);
   const shares = stats.shareCount !== undefined ? stats.shareCount : (post.shares || 0);
-  const likedByCurrentUser = stats.isLikedByMe !== undefined ? stats.isLikedByMe : 
-                             isLikedByViewer(post.likes, resolvedViewerEntityId, null);
+  const views =
+    stats.viewCount !== undefined
+      ? stats.viewCount
+      : (typeof post.views === "number" ? post.views : 0);
+  const trendingScore =
+    typeof stats.trendingScore === "number"
+      ? stats.trendingScore
+      : (typeof post.trendingScore === "number" ? post.trendingScore : 0);
+  const likedByCurrentUser =
+    stats.isLikedByMe !== undefined
+      ? stats.isLikedByMe
+      : isLikedByViewer(post.likes, resolvedViewerEntityId, null);
 
   // Read author info from new DTO schema
   const ownerEntityAccountId = normalizeEntityAccountId(
@@ -363,7 +344,9 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
       likeCount: likes,
       commentCount: comments,
       shareCount: shares,
-      isLikedByMe: likedByCurrentUser
+      viewCount: views,
+      trendingScore,
+      isLikedByMe: likedByCurrentUser,
     },
     comments,
     topComments,

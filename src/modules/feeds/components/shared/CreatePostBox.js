@@ -6,6 +6,7 @@ import { cn } from "../../../../utils/cn";
 export default function CreatePostBox({ onCreate, onGoLive, onMediaClick, onMusicClick }) {
   const { t } = useTranslation();
   const [avatar, setAvatar] = useState("https://media.techz.vn/resize_x700x/media2019/source/01TRAMY/2024MY1/mckanhnong.png");
+  const [isDJ, setIsDJ] = useState(false);
   
   // Function to get avatar from session (prioritize activeEntity/role avatar)
   const getAvatar = () => {
@@ -23,14 +24,29 @@ export default function CreatePostBox({ onCreate, onGoLive, onMediaClick, onMusi
       return avatar
     }
   }
+
+  const getIsDJ = () => {
+    try {
+      const raw = localStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      if (!session) return false;
+
+      const activeEntityRole = session?.activeEntity?.role || session?.account?.role || "";
+      return String(activeEntityRole).toLowerCase() === "dj";
+    } catch (e) {
+      return false;
+    }
+  };
   
   // Update avatar when component mounts and when localStorage changes
   useEffect(() => {
     setAvatar(getAvatar());
+    setIsDJ(getIsDJ());
     
     // Listen for storage changes (when profile is updated)
     const handleStorageChange = () => {
       setAvatar(getAvatar());
+      setIsDJ(getIsDJ());
     };
     
     window.addEventListener('storage', handleStorageChange);
@@ -124,19 +140,21 @@ export default function CreatePostBox({ onCreate, onGoLive, onMediaClick, onMusi
         >
           <i className="fa-solid fa-image text-base"></i> {t('feed.photoVideo')}
         </button>
-        <button 
-          className={cn(
-            "flex items-center gap-2 text-sm font-semibold",
-            "text-muted-foreground bg-transparent border-none",
-            "rounded-xl px-3 py-2",
-            "cursor-pointer transition-all duration-300",
-            "hover:text-primary",
-            "active:scale-95"
-          )}
-          onClick={handleMusicClick}
-        >
-          <i className="fa-solid fa-music text-base"></i> {t('feed.music')}
-        </button>
+        {isDJ && (
+          <button 
+            className={cn(
+              "flex items-center gap-2 text-sm font-semibold",
+              "text-muted-foreground bg-transparent border-none",
+              "rounded-xl px-3 py-2",
+              "cursor-pointer transition-all duration-300",
+              "hover:text-primary",
+              "active:scale-95"
+            )}
+            onClick={handleMusicClick}
+          >
+            <i className="fa-solid fa-music text-base"></i> {t('feed.music')}
+          </button>
+        )}
       </div>
     </div>
   )
