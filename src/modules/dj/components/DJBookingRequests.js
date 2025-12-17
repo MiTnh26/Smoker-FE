@@ -371,9 +371,10 @@ export default function DJBookingRequests({ performerEntityAccountId }) {
       const res = await bookingApi.getBookingsByReceiver(performerEntityAccountId, { limit: 100 });
       const bookingsData = res.data?.data || res.data || [];
       
-      // Chỉ lấy các booking Pending
+      // Chỉ lấy các booking Pending và đã thanh toán (Paid)
       let pendingBookings = bookingsData.filter(b => 
-        (b.scheduleStatus || b.ScheduleStatus) === "Pending"
+        (b.scheduleStatus || b.ScheduleStatus) === "Pending" &&
+        (b.paymentStatus || b.PaymentStatus) === "Paid"
       );
       
       // Filter theo ngày nếu có

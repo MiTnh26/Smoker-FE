@@ -123,22 +123,53 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
 
   if (!open) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!customerName.trim() || !phone.trim()) {
-      alert("Vui lòng nhập đầy đủ thông tin");
+
+    const nameTrimmed = customerName.trim();
+    const phoneTrimmed = phone.trim();
+
+    // Clear error mỗi lần submit lại
+    setPhoneError("");
+
+    // Không cho để trống tên và số điện thoại
+    if (!nameTrimmed || !phoneTrimmed) {
+      alert("Vui lòng nhập đầy đủ Tên khách hàng và Số điện thoại");
+      return;
+    }
+
+    // Validate số điện thoại (giống logic phần booking DJ/Dancer)
+    const rawPhone = phoneTrimmed.replace(/\s/g, "");
+
+    // Chuẩn hoá về dạng số điện thoại Việt Nam bắt đầu bằng 0
+    let normalizedPhone = rawPhone;
+    if (normalizedPhone.startsWith("+84")) {
+      normalizedPhone = "0" + normalizedPhone.substring(3);
+    } else if (normalizedPhone.startsWith("84") && normalizedPhone.length >= 10) {
+      normalizedPhone = "0" + normalizedPhone.substring(2);
+    }
+
+    // Chỉ chấp nhận số điện thoại Việt Nam: 10–11 số, bắt đầu bằng 0
+    const isVietnameseFormat = /^0\d{9,10}$/.test(normalizedPhone);
+
+    if (!isVietnameseFormat) {
+      setPhoneError(
+        "Số điện thoại Việt Nam không hợp lệ. Ví dụ hợp lệ: 0987654321 hoặc 0912345678"
+      );
       return;
     }
 
     setSubmitting(true);
     try {
       await onConfirm({
-        customerName: customerName.trim(),
-        phone: phone.trim(),
-        note: note.trim()
+        customerName: nameTrimmed,
+        // Luôn lưu số điện thoại đã chuẩn hoá dạng Việt Nam (bắt đầu bằng 0)
+        phone: normalizedPhone,
+        note: note.trim(),
       });
       setCustomerName("");
       setPhone("");
@@ -254,7 +285,7 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
-              marginBottom: '8px',
+              marginBottom: '4px',
               fontWeight: '600',
               color: '#374151'
             }}>
@@ -263,7 +294,10 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
             <input
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                if (phoneError) setPhoneError("");
+              }}
               required
               style={{
                 width: '100%',
@@ -272,8 +306,17 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
                 borderRadius: '8px',
                 fontSize: '1rem'
               }}
-              placeholder="Nhập số điện thoại"
+              placeholder="Ví dụ: 0987654321 hoặc 0912345678"
             />
+            {phoneError && (
+              <div style={{
+                marginTop: '4px',
+                fontSize: '0.85rem',
+                color: '#b91c1c'
+              }}>
+                {phoneError}
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: '20px' }}>
@@ -283,21 +326,20 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
               fontWeight: '600',
               color: '#374151'
             }}>
-              Ghi chú (tùy chọn)
+              Giờ có thể đến để chuẩn bị (tùy chọn)
             </label>
-            <textarea
+            <input
+              type="time"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              rows={3}
               style={{
                 width: '100%',
                 padding: '12px',
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
-                fontSize: '1rem',
-                resize: 'vertical'
+                fontSize: '1rem'
               }}
-              placeholder="Ghi chú thêm (nếu có)"
+              placeholder="Chọn giờ"
             />
           </div>
 
@@ -512,15 +554,16 @@ const BarTablesPage = ({ barId: propBarId }) => {
       const enhancedTables = tablesData.map(table => {
         // Find bookings for this table in the selected date
         const tableBookings = bookings.filter(booking => {
-          // 1. Kiểm tra scheduleStatus phải là "Confirmed" và không phải "Ended"
+          // 1. Kiểm tra scheduleStatus:
+          //    - Confirmed: luôn khoá bàn (đã khóa bàn)
+          //    - Pending: luôn khoá bàn (đã khóa bàn, đang chờ xác nhận)
+          //    - Ended/Canceled/Rejected: bỏ qua (có thể đặt lại)
           const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
-          if (scheduleStatus === "Ended") {
-            return false; // Bỏ qua booking đã ended - có thể đặt lại
+          
+          if (scheduleStatus === "Ended" || scheduleStatus === "Canceled" || scheduleStatus === "Rejected") {
+            return false; // Bỏ qua booking đã ended/canceled/rejected - có thể đặt lại
           }
-          if (scheduleStatus !== "Confirmed") {
-            return false; // Bỏ qua booking chưa confirmed
-          }
-
+          
           // 2. Kiểm tra booking có trong ngày đã chọn không
           const bookingDate = booking.bookingDate || booking.BookingDate || booking.StartTime;
           if (bookingDate) {
@@ -560,7 +603,13 @@ const BarTablesPage = ({ barId: propBarId }) => {
             return tableId === currentTableId;
           });
 
-          return isTableInBooking;
+          // Chỉ block nếu bàn này có trong booking VÀ booking có trạng thái Pending hoặc Confirmed
+          if (isTableInBooking && (scheduleStatus === "Confirmed" || scheduleStatus === "Pending")) {
+            return true; // Khóa bàn này
+          }
+          
+          // Các trường hợp khác không block
+          return false;
         });
         
         // Bàn được coi là "booked" nếu có ít nhất 1 booking confirmed trong ngày đó

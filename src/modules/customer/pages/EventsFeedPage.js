@@ -19,8 +19,9 @@ export default function EventsFeedPage() {
 
   const [bars, setBars] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState(168); // Mặc định 7 ngày
+  const [timeRange, setTimeRange] = useState(24); // Mặc định 24 giờ
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState(null);
 
   const timeRangeOptions = [
     { value: 24, label: "24 giờ tới" },
@@ -33,6 +34,7 @@ export default function EventsFeedPage() {
   const fetchBarsWithNewEvents = async () => {
     try {
       setLoading(true);
+      setError(null);
       const res = await barEventApi.getBarsWithNewEvents({
         hours: timeRange,
         skip: 0,
@@ -41,16 +43,39 @@ export default function EventsFeedPage() {
 
       if (res?.data?.status === "success" || res?.status === "success") {
         const data = res?.data?.data || res?.data || {};
-        setBars(data.items || []);
-        setTotal(data.total || 0);
+        const items = data.items || [];
+        
+        // Map data để đảm bảo đúng structure
+        const mappedBars = items.map(bar => ({
+          barPageId: bar.barPageId || bar.BarPageId,
+          entityAccountId: bar.entityAccountId || bar.EntityAccountId,
+          barName: bar.barName || bar.BarName || "Unknown",
+          avatar: bar.avatar || bar.Avatar,
+          background: bar.background || bar.Background,
+          address: bar.address || bar.Address,
+          phoneNumber: bar.phoneNumber || bar.PhoneNumber,
+          email: bar.email || bar.Email,
+          reviewCount: bar.reviewCount || bar.ReviewCount || 0,
+          averageRating: bar.averageRating !== null && bar.averageRating !== undefined 
+            ? bar.averageRating 
+            : (bar.AverageRating !== null && bar.AverageRating !== undefined ? bar.AverageRating : null),
+          eventCount: bar.eventCount || bar.EventCount || 0,
+          nearestEventStartTime: bar.nearestEventStartTime || bar.NearestEventStartTime || bar.latestEventStartTime || bar.LatestEventStartTime,
+          latestEventStartTime: bar.latestEventStartTime || bar.LatestEventStartTime || bar.nearestEventStartTime || bar.NearestEventStartTime
+        }));
+        
+        setBars(mappedBars);
+        setTotal(data.total || mappedBars.length);
       } else {
         setBars([]);
         setTotal(0);
+        setError("Không thể tải dữ liệu sự kiện");
       }
     } catch (err) {
       console.error("Lỗi tải bars:", err);
       setBars([]);
       setTotal(0);
+      setError(err.response?.data?.message || "Đã xảy ra lỗi khi tải danh sách sự kiện");
     } finally {
       setLoading(false);
     }
@@ -58,6 +83,7 @@ export default function EventsFeedPage() {
 
   useEffect(() => {
     fetchBarsWithNewEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
   const formatDate = (dateStr) => {
@@ -96,9 +122,15 @@ export default function EventsFeedPage() {
     }
   };
 
-  const handleBarClick = (barPageId) => {
+  const handleBarClick = (bar) => {
+    const barPageId = bar.barPageId || bar.BarPageId;
+    const entityAccountId = bar.entityAccountId || bar.EntityAccountId;
+    
+    // Ưu tiên navigate đến bar page nếu có barPageId
     if (barPageId) {
-      navigate(`/profile/${barPageId}`);
+      navigate(`/bar/${barPageId}`);
+    } else if (entityAccountId) {
+      navigate(`/profile/${entityAccountId}`);
     }
   };
 
@@ -144,6 +176,19 @@ export default function EventsFeedPage() {
         </div>
       )}
 
+      {/* Error State */}
+      {error && !loading && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-700 text-sm">{error}</p>
+          <button
+            onClick={fetchBarsWithNewEvents}
+            className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
+
       {/* Loading State */}
       {loading ? (
         <div className="flex justify-center items-center py-20">
@@ -161,8 +206,8 @@ export default function EventsFeedPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {bars.map((bar) => (
             <div
-              key={bar.barPageId}
-              onClick={() => handleBarClick(bar.barPageId)}
+              key={bar.barPageId || bar.entityAccountId || Math.random()}
+              onClick={() => handleBarClick(bar)}
               className={cn(
                 "bg-white rounded-lg border border-gray-200 shadow-sm",
                 "hover:shadow-lg transition-all duration-300 overflow-hidden",
@@ -236,17 +281,17 @@ export default function EventsFeedPage() {
               {/* Content Section */}
               <div className="p-4">
                 {/* Nearest Event Info */}
-                {bar.nearestEventStartTime && (
+                {(bar.nearestEventStartTime || bar.latestEventStartTime) && (
                   <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <div className="flex items-center gap-2 text-blue-700 mb-1">
                       <Calendar size={14} />
                       <span className="text-xs font-medium">Sự kiện sắp tới</span>
                     </div>
                     <div className="text-sm text-gray-700 font-medium">
-                      {formatDate(bar.nearestEventStartTime)}
+                      {formatDate(bar.nearestEventStartTime || bar.latestEventStartTime)}
                     </div>
                     <div className="text-xs text-blue-600 mt-1">
-                      {formatTimeUntil(bar.nearestEventStartTime)}
+                      {formatTimeUntil(bar.nearestEventStartTime || bar.latestEventStartTime)}
                     </div>
                   </div>
                 )}

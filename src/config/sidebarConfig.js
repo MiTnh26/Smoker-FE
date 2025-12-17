@@ -70,7 +70,6 @@ export const sidebarConfig = {
       subMenu: [
         { label: "Quản lý loại bàn", path: "/bar/settings/:barPageId/table-types" },
         { label: "Quản lý bàn", path: "/bar/settings/:barPageId" },
-        { label: "Danh sách bàn", path: "/bar/settings/:barPageId/tables" },
         { label: "Quản lý voucher", path: "/bar/settings/:barPageId/vouchers" },
         { label: "Quản lý combo", path: "/bar/settings/:barPageId/combos" },
       ],
