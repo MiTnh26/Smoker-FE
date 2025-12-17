@@ -193,7 +193,7 @@
   box-shadow: 0 0 0 3px rgb(var(--primary) / 0.1);
 }
 
-textarea {
+.form-group textarea {
   resize: vertical;
   min-height: 100px;
   font-family: inherit;

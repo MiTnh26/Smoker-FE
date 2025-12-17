@@ -180,6 +180,19 @@ export default function PostCard({
       setLiked(nextLiked)
       setLikeCount((c) => Math.max(0, c + (nextLiked ? 1 : -1)))
 
+      // Debug: log entityAccountId và session để kiểm tra phân biệt like giữa các role
+      try {
+        const rawSession = localStorage.getItem("session")
+        console.log("[PostCard] toggleLike", {
+          postId: post.id,
+          nextLiked,
+          viewerEntityAccountId,
+          session: rawSession
+        })
+      } catch {
+        console.warn("[PostCard] Failed to read session for debug logging")
+      }
+
       const response = nextLiked
         ? await likePost(post.id, { typeRole, entityAccountId: viewerEntityAccountId })
         : await unlikePost(post.id, { entityAccountId: viewerEntityAccountId })
@@ -331,6 +344,16 @@ export default function PostCard({
     }
   }
 
+  // Debug / analytics: trending score & view count (from stats or fallback fields)
+  const trendingScore =
+    typeof post.stats?.trendingScore === "number"
+      ? post.stats.trendingScore
+      : (typeof post.trendingScore === "number" ? post.trendingScore : 0);
+  const viewCount =
+    typeof post.stats?.viewCount === "number"
+      ? post.stats.viewCount
+      : (typeof post.views === "number" ? post.views : 0);
+
   return (
     <article className={cn(
       "post-card",
@@ -399,6 +422,26 @@ export default function PostCard({
               )}
             </div>
           </div>
+          {/* Small badge: trending score & views */}
+          {(trendingScore > 0 || viewCount > 0) && (
+            <div
+              className={cn(
+                "ml-2 px-2 py-1 rounded-full",
+                "bg-muted/70 text-[0.7rem] text-muted-foreground",
+                "flex flex-col items-start justify-center",
+                "min-w-[3.5rem]"
+              )}
+            >
+              {trendingScore > 0 && (
+                <span className="leading-tight">
+                  TS: {Math.round(trendingScore)}
+                </span>
+              )}
+              <span className="leading-tight">
+                👁 {viewCount}
+              </span>
+            </div>
+          )}
         </div>
         {!hideMenu && (
         <div className="relative flex-shrink-0">

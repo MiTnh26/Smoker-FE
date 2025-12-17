@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "../../../components/common/Input";
 import { Link, useNavigate } from "react-router-dom";
-import { Checkbox } from "../../../components/common/Checkbox";
 import { authApi } from "../../../api/userApi";
 import AuthHeader from "../../../components/layout/AuthHeader";
 import { Modal } from "../../../components/common/Modal";
@@ -16,9 +15,7 @@ export function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,26 +25,31 @@ export function Register() {
   const [googleEmail, setGoogleEmail] = useState("");
   const [googleError, setGoogleError] = useState("");
 
+  // 18+ age confirmation modal
+  const [showAgeConfirm, setShowAgeConfirm] = useState(false);
+  // Lưu thông tin đăng ký tạm thời, chỉ gọi API khi user đồng ý 18+
+  const [pendingAction, setPendingAction] = useState(null);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
-    if (!agreed) return;
-    
     setIsLoading(true);
+
     try {
-      const res = await authApi.register(email, password, confirmPassword);
-      if (res && res.message) {
-        setSuccess(t('auth.registerSuccess'));
-        setTimeout(() => navigate("/login"), 5000);
-      } else {
-        setError(res?.message || t('auth.registerFailed'));
-      }
+      // Gọi API pre-check: validate + kiểm tra email đã tồn tại
+      await authApi.checkRegister(email, password, confirmPassword);
+
+      // Nếu không lỗi -> lưu thông tin và yêu cầu xác nhận 18+
+      setPendingAction({
+        type: "email",
+        payload: { email, password, confirmPassword },
+      });
+      setShowAgeConfirm(true);
     } catch (err) {
       const msg =
         err?.response?.status === 409
-          ? t('auth.emailExists')
-          : err?.response?.data?.message || t('auth.registerFailed');
+          ? t("auth.emailExists", "Email đã tồn tại")
+          : err?.response?.data?.message || err?.message || t("auth.registerFailed", "Đăng ký thất bại");
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -74,62 +76,29 @@ export function Register() {
       return;
     }
 
-    setIsLoading(true);
-    setGoogleError("");
-    
-    try {
-      const response = await authApi.googleRegister({ email: googleEmail });
-      if (response.status === "NEW_USER") {
-        setSuccess(response.message);
-        setShowGoogleModal(false);
-        setTimeout(() => navigate("/login"), 5000);
-      } else if (response.status === "EXISTING_USER") {
-        setGoogleError(response.message);
-      } else {
-        setGoogleError(t('auth.registerFailed'));
-      }
-    } catch (err) {
-      const msg =
-        err?.response?.status === 409
-          ? t('auth.emailExists', "Email đã tồn tại")
-          : err?.response?.data?.message || t('auth.registerFailed', "Đăng ký thất bại");
-      console.error("Google register failed:", err);
-      setGoogleError(msg);
-    } finally {
-      setIsLoading(false);
-    }
+    // Không gọi API ngay, lưu pending action và hiển thị xác nhận 18+
+    setPendingAction({
+      type: "google",
+      payload: { email: googleEmail },
+    });
+    setShowGoogleModal(false);
+    setShowAgeConfirm(true);
   };
 
   const handleFacebookRegister = async (e) => {
     e.preventDefault();
     setError("");
-    setSuccess("");
     if (!email) {
       setError(t('auth.pleaseEnterEmail'));
       return;
     }
     
-    setIsLoading(true);
-    try {
-      const response = await authApi.facebookRegister(email);
-      if (response.status === "NEW_USER") {
-        setSuccess(response.message);
-        setTimeout(() => navigate("/login"), 5000);
-      } else if (response.status === "EXISTING_USER") {
-        setError(response.message);
-      } else {
-        setError(t('auth.registerFailed'));
-      }
-    } catch (err) {
-      const msg =
-        err?.response?.status === 409
-          ? t('auth.emailExists')
-          : err?.response?.data?.message || t('auth.registerFailed');
-      console.error("Facebook register failed:", err);
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
+    // Không gọi API ngay, lưu pending action và hiển thị xác nhận 18+
+    setPendingAction({
+      type: "facebook",
+      payload: { email },
+    });
+    setShowAgeConfirm(true);
   };
 
   return (
@@ -311,39 +280,22 @@ export function Register() {
                 </div>
               </div>
 
-              {/* Error/Success Messages */}
+              {/* Error Messages */}
               {error && (
                 <div className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
                   {error}
                 </div>
               )}
-              {success && (
-                <div className="rounded-lg bg-success/10 px-3 py-2 text-sm text-success">
-                  {success}
-                </div>
-              )}
-
-              {/* Terms Checkbox */}
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  checked={agreed}
-                  onChange={(e) => setAgreed(e.target.checked)}
-                  id="terms"
-                />
-                <label htmlFor="terms" className="text-xs text-muted-foreground cursor-pointer sm:text-sm">
-                  {t("auth.termsAgree")}
-                </label>
-              </div>
 
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={!agreed || isLoading}
+                disabled={isLoading}
                 className={cn(
                   "w-full bg-primary text-primary-foreground border-none rounded-lg py-2.5 text-base font-semibold",
                   "sm:rounded-xl sm:py-3",
                   "transition-all duration-200 hover:bg-primary/90 active:scale-95",
-                  (!agreed || isLoading) && "opacity-60 cursor-not-allowed"
+                  isLoading && "opacity-60 cursor-not-allowed"
                 )}
               >
                 {isLoading
@@ -497,6 +449,104 @@ export function Register() {
                   {t("auth.continue", "Tiếp tục")}
                 </>
               )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Age confirmation modal (18+) */}
+      <Modal
+        isOpen={showAgeConfirm}
+        onClose={() => {
+          setShowAgeConfirm(false);
+          setPendingAction(null);
+        }}
+        size="lg"
+        className="p-6 sm:p-8"
+      >
+        <div className="flex flex-col gap-4 sm:gap-5">
+          {/* Header */}
+          <div className="space-y-2">
+            <h2 className="text-xl sm:text-2xl font-semibold text-foreground">
+              Để tiếp tục, bạn cần xác nhận đủ 18 tuổi
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Bằng việc sử dụng SMOKER, bạn đồng ý chỉ tham gia nền tảng khi đã đủ 18 tuổi
+              và đã đọc kỹ Điều khoản, Chính sách quyền riêng tư và Chính sách cookie của chúng tôi.
+            </p>
+          </div>
+
+          {/* Main content */}
+          <div className="space-y-3 text-xs sm:text-sm text-muted-foreground">
+            <p>
+              - Nền tảng có thể hiển thị nội dung liên quan đến nightlife, quán bar, sự kiện
+              và các hoạt động giải trí về đêm. Đây không phải là dịch vụ dành cho người dưới 18 tuổi.
+            </p>
+            <p>
+              - Chúng tôi sử dụng thông tin của bạn để cá nhân hoá trải nghiệm, phân tích và cải thiện dịch vụ.
+              Chi tiết được mô tả trong Điều khoản sử dụng và Chính sách quyền riêng tư.
+            </p>
+            <p className="rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2 text-destructive text-xs sm:text-sm">
+              Để sử dụng dịch vụ này, bạn xác nhận rằng mình đã đủ 18 tuổi trở lên.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-2">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setShowAgeConfirm(false);
+                setPendingAction(null);
+                navigate("/");
+              }}
+            >
+              Tôi chưa đủ 18 tuổi
+            </Button>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={async () => {
+                if (!pendingAction) {
+                  setShowAgeConfirm(false);
+                  return;
+                }
+                setShowAgeConfirm(false);
+                setIsLoading(true);
+                setError("");
+                try {
+                  let res;
+                  if (pendingAction.type === "email") {
+                    const { email: em, password: pw, confirmPassword: cpw } = pendingAction.payload;
+                    res = await authApi.register(em, pw, cpw);
+                    if (!res || !res.message) {
+                      throw new Error(res?.message || t("auth.registerFailed"));
+                    }
+                  } else if (pendingAction.type === "google") {
+                    res = await authApi.googleRegister({ email: pendingAction.payload.email });
+                    if (res.status !== "NEW_USER") {
+                      throw new Error(res.message || t("auth.registerFailed"));
+                    }
+                  } else if (pendingAction.type === "facebook") {
+                    res = await authApi.facebookRegister(pendingAction.payload.email);
+                    if (res.status !== "NEW_USER") {
+                      throw new Error(res.message || t("auth.registerFailed"));
+                    }
+                  }
+                  navigate("/login");
+                } catch (err) {
+                  const msg =
+                    err?.response?.status === 409
+                      ? t("auth.emailExists")
+                      : err?.response?.data?.message || err?.message || t("auth.registerFailed");
+                  setError(msg);
+                } finally {
+                  setIsLoading(false);
+                  setPendingAction(null);
+                }
+              }}
+            >
+              Tôi đồng ý và tiếp tục
             </Button>
           </div>
         </div>
