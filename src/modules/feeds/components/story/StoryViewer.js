@@ -176,8 +176,10 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
           });
           
           // Mark as viewed ngay lập tức (không đợi đến khi đóng)
-          // Chỉ mark nếu không phải story của bản thân
-          if (entityAccountId) {
+          // Chỉ mark nếu không phải story của bản thân và có entityAccountId hợp lệ
+          const isValidEntityAccountId = entityAccountId && 
+            (typeof entityAccountId === 'string' ? entityAccountId.trim() !== '' : String(entityAccountId).trim() !== '');
+          if (isValidEntityAccountId) {
             const storyEntityId = story.entityAccountId || story.authorEntityAccountId || story.EntityAccountId;
             const isOwnStory = storyEntityId && String(storyEntityId).trim().toLowerCase() === String(entityAccountId).trim().toLowerCase();
             
@@ -189,9 +191,12 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
                 })
                 .catch((error) => {
                   console.error('[StoryViewer] Error marking story as viewed immediately:', error);
-                  // Continue - will retry on close with batch API
+                  // Continue - story vẫn có thể play được dù API lỗi
+                  // Will retry on close with batch API
                 });
             }
+          } else {
+            console.warn('[StoryViewer] Cannot mark story as viewed - entityAccountId is missing or invalid:', entityAccountId);
           }
         }
       }
@@ -237,7 +242,10 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
     }
     
     // Call API to mark stories as viewed (chỉ story của người khác)
-    if (otherUserStoryIds.length > 0 && entityAccountId) {
+    // Chỉ gọi API nếu có entityAccountId hợp lệ và có story IDs để mark
+    const isValidEntityAccountId = entityAccountId && 
+      (typeof entityAccountId === 'string' ? entityAccountId.trim() !== '' : String(entityAccountId).trim() !== '');
+    if (otherUserStoryIds.length > 0 && isValidEntityAccountId) {
       try {
         console.log('[StoryViewer] Calling markStoriesAsViewed API (excluding own stories):', {
           storyIds: otherUserStoryIds,
@@ -263,12 +271,14 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
           status: error?.response?.status,
           data: error?.response?.data
         });
-        // Continue even if API call fails
+        // Continue even if API call fails - story vẫn có thể play được
       }
     } else {
       console.warn('[StoryViewer] Cannot mark as viewed - missing data:', {
         viewedIdsLength: viewedIds.length,
-        hasEntityAccountId: !!entityAccountId
+        otherUserStoryIdsLength: otherUserStoryIds.length,
+        hasEntityAccountId: !!entityAccountId,
+        entityAccountIdValue: entityAccountId
       });
     }
     
@@ -321,48 +331,73 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
     handleReport,
   } = useStoryControls(story, openReportModal);
 
-  // Auto focus reply input for non-own stories when story changes and auto pause
-  useEffect(() => {
-    if (!isOwnStory && replyInputRef.current) {
-      // Auto pause story when input is shown
-      if (!isPaused) {
-        setIsPaused(true);
-      }
-      // Pause audio if exists
-      if (audioRef.current && !audioRef.current.paused) {
-        audioRef.current.pause();
-      }
-      // Auto focus after a short delay
-      const timer = setTimeout(() => {
-        replyInputRef.current?.focus();
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [story, isOwnStory, isPaused, setIsPaused, audioRef]);
+  // KHÔNG tự động focus input khi story mở
+  // Chỉ focus khi user thực sự click vào input để reply
+  // Điều này đảm bảo story không bị pause không mong muốn
 
-  // Auto pause story and audio when reply input is focused (additional safety)
+  // Auto pause story and audio when reply input is focused (chỉ khi user thực sự click vào input)
   useEffect(() => {
     if (!isOwnStory && replyInputRef.current) {
-      const handleFocus = () => {
-        // Ensure story is paused
-        if (!isPaused) {
-          setIsPaused(true);
+      let userClickedInput = false;
+      let focusTimeout = null;
+      
+      // Track khi user click vào input (user interaction)
+      const handleMouseDown = (e) => {
+        // Chỉ set flag nếu click trực tiếp vào input, không phải vào container
+        if (e.target === replyInputRef.current || replyInputRef.current.contains(e.target)) {
+          userClickedInput = true;
+          console.log('[StoryViewer] User clicked on input');
         }
-        // Pause audio if exists
-        if (audioRef.current && !audioRef.current.paused) {
-          audioRef.current.pause();
+      };
+      
+      const handleFocus = () => {
+        // Chỉ pause khi user thực sự click vào input (không phải auto-focus)
+        // Sử dụng timeout nhỏ để đảm bảo flag được set trước khi focus
+        focusTimeout = setTimeout(() => {
+          if (userClickedInput && !isPaused) {
+            console.log('[StoryViewer] User clicked input, pausing story');
+            setIsPaused(true);
+            // Pause audio if exists
+            if (audioRef.current && !audioRef.current.paused) {
+              audioRef.current.pause();
+            }
+          }
+          // Reset flag sau khi xử lý
+          userClickedInput = false;
+        }, 10);
+      };
+
+      const handleBlur = () => {
+        // Reset flag khi blur
+        userClickedInput = false;
+        if (focusTimeout) {
+          clearTimeout(focusTimeout);
+          focusTimeout = null;
         }
       };
       
       const input = replyInputRef.current;
+      const container = input.closest('form') || input.parentElement;
+      
+      // Listen trên container để catch click vào input
+      if (container) {
+        container.addEventListener('mousedown', handleMouseDown);
+      }
       input.addEventListener('focus', handleFocus);
+      input.addEventListener('blur', handleBlur);
       
       return () => {
+        if (container) {
+          container.removeEventListener('mousedown', handleMouseDown);
+        }
         input.removeEventListener('focus', handleFocus);
+        input.removeEventListener('blur', handleBlur);
+        if (focusTimeout) {
+          clearTimeout(focusTimeout);
+        }
       };
     }
-  }, [isOwnStory, isPaused, setIsPaused, audioRef, story]);
+  }, [isOwnStory, isPaused, setIsPaused, audioRef]);
 
   // Handle delete story
   const handleDelete = useCallback(async () => {
@@ -539,29 +574,165 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
     return (story._id || story.id || storyIndex) + (audioUrl || '');
   }, [story?._id, story?.id, storyIndex, audioUrl]);
 
-  // Reset progress and resume audio when story changes
+  // State để track audio loading
+  const [audioReady, setAudioReady] = useState(false);
+
+  // Reset progress and audio state when story changes
   useEffect(() => {
+    console.log('[StoryViewer] Story changed, resetting audio state', {
+      storyId: story?._id || story?.id,
+      storyIndex,
+      userIndex,
+      hasAudio: !!audioUrl,
+      isOwnStory
+    });
+    
     setIsPaused(false);
-    // Resume audio khi story thay đổi
-    if (audioRef.current && audioUrl) {
-      audioRef.current.play().catch(error => {
-        console.error('Error playing audio on story change:', error);
-      });
+    setAudioReady(false);
+    
+    // Reset audio khi story thay đổi
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
-  }, [storyIndex, userIndex, story, setIsPaused, audioUrl]);
-  
-  // Pause/play audio khi isPaused thay đổi
+  }, [storyIndex, userIndex, story?._id, setIsPaused, audioUrl, isOwnStory]);
+
+  // Handle audio loading - chỉ play khi audio đã sẵn sàng
   useEffect(() => {
-    if (audioRef.current && audioUrl) {
-      if (isPaused) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play().catch(error => {
-          console.error('Error playing audio:', error);
+    if (!audioRef.current || !audioUrl) {
+      // Nếu không có audio, đảm bảo story vẫn chạy
+      setAudioReady(true);
+      return;
+    }
+
+    const audio = audioRef.current;
+    let timeoutId = null;
+    let isReady = false;
+    
+    const markReady = () => {
+      if (!isReady) {
+        isReady = true;
+        setAudioReady(true);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      }
+    };
+    
+    const handleCanPlay = () => {
+      console.log('[StoryViewer] Audio canplay event', {
+        readyState: audio.readyState,
+        isPaused,
+        audioUrl
+      });
+      markReady();
+      // Chỉ play nếu không bị pause và audio đã ready
+      if (!isPaused && audio.readyState >= 2) {
+        console.log('[StoryViewer] Attempting to play audio after canplay');
+        audio.play().catch(error => {
+          console.error('[StoryViewer] Error playing audio after load:', error);
+          // Nếu không thể play (do browser policy), vẫn tiếp tục story
+          markReady();
         });
       }
+    };
+
+    const handleLoadedData = () => {
+      console.log('[StoryViewer] Audio loadeddata event', {
+        readyState: audio.readyState,
+        isPaused,
+        audioUrl
+      });
+      markReady();
+      if (!isPaused && audio.readyState >= 2) {
+        console.log('[StoryViewer] Attempting to play audio after loadeddata');
+        audio.play().catch(error => {
+          console.error('[StoryViewer] Error playing audio after loaded:', error);
+          markReady();
+        });
+      }
+    };
+
+    const handleError = (e) => {
+      console.error('Audio loading error:', e);
+      markReady(); // Đánh dấu ready để story vẫn chạy dù audio lỗi
+    };
+
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('loadeddata', handleLoadedData);
+    audio.addEventListener('error', handleError);
+
+    // Load audio
+    audio.load();
+
+    // Timeout fallback: nếu audio không load trong 3 giây, vẫn cho story chạy
+    timeoutId = setTimeout(() => {
+      if (!isReady) {
+        console.warn('Audio loading timeout, continuing story without audio');
+        markReady();
+      }
+    }, 3000);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('loadeddata', handleLoadedData);
+      audio.removeEventListener('error', handleError);
+    };
+  }, [audioUrl, audioKey, isPaused]);
+  
+  // Pause/play audio khi isPaused thay đổi (chỉ khi audio đã ready)
+  useEffect(() => {
+    if (!audioRef.current || !audioUrl || !audioReady) {
+      console.log('[StoryViewer] Audio pause/play effect skipped', {
+        hasAudioRef: !!audioRef.current,
+        hasAudioUrl: !!audioUrl,
+        audioReady
+      });
+      return;
     }
-  }, [isPaused, audioUrl]);
+    
+    const audio = audioRef.current;
+    console.log('[StoryViewer] Audio pause/play effect', {
+      isPaused,
+      audioReady,
+      readyState: audio.readyState,
+      currentTime: audio.currentTime
+    });
+    
+    if (isPaused) {
+      audio.pause();
+    } else {
+      // Chỉ play nếu audio đã sẵn sàng
+      if (audio.readyState >= 2) {
+        console.log('[StoryViewer] Attempting to play audio (isPaused changed to false)');
+        audio.play().catch(error => {
+          console.error('[StoryViewer] Error playing audio:', error);
+        });
+      } else {
+        console.warn('[StoryViewer] Audio not ready to play, readyState:', audio.readyState);
+      }
+    }
+  }, [isPaused, audioUrl, audioReady]);
+
+  // Đảm bảo audio được play khi story thay đổi và audio đã ready
+  useEffect(() => {
+    if (!audioRef.current || !audioUrl || !audioReady || isPaused) return;
+    
+    const audio = audioRef.current;
+    // Nếu audio đã ready và không bị pause, đảm bảo nó đang play
+    if (audio.readyState >= 2 && audio.paused) {
+      console.log('[StoryViewer] Ensuring audio is playing after story change', {
+        readyState: audio.readyState,
+        paused: audio.paused,
+        currentTime: audio.currentTime
+      });
+      audio.play().catch(error => {
+        console.error('[StoryViewer] Error ensuring audio plays:', error);
+      });
+    }
+  }, [audioReady, story?._id, audioUrl, isPaused]);
 
   if (!story || !currentUserGroup) return null;
 
@@ -612,8 +783,9 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
             ref={audioRef}
             key={audioKey} 
             src={audioUrl} 
-            autoPlay 
+            preload="auto"
             muted={isMuted}
+            loop={false}
             style={{ display: 'none' }}
           >
             Trình duyệt của bạn không hỗ trợ audio.
@@ -672,11 +844,7 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
               >
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
               </svg>
-              {likeCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#ff3040] px-1 text-xs font-semibold text-white">
-                  {likeCount}
-                </span>
-              )}
+              {/* Không hiển thị số đếm cho người xem */}
             </button>
 
             {/* Reply input form - auto open */}

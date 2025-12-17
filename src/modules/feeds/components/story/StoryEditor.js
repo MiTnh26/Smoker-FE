@@ -437,19 +437,24 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
               <button
                 type="button"
                 className="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-                onClick={() => setShowMusicModal(false)}
+                onClick={() => {
+                  // Dừng audio khi đóng modal
+                  // SelectSong sẽ tự cleanup khi unmount, nhưng đảm bảo dừng ngay lập tức
+                  setShowMusicModal(false);
+                }}
               >
                 ×
               </button>
             </div>
             <div className="max-h-[60vh] overflow-y-auto p-4">
+              {/* SelectSong sẽ tự cleanup audio khi component unmount (khi modal đóng) */}
               <SelectSong 
                 value={selectedSongId} 
                 onChange={(songId, song) => {
                   setSelectedSongId(songId);
                   setSelectedSongMeta(song ? { title: song.title, artistName: song.artistName } : null);
                   setShowMusicModal(false);
-                }} 
+                }}
               />
             </div>
           </div>
