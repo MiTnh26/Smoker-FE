@@ -238,10 +238,9 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
       const res = await bookingApi.getDJBookingsByReceiver(performerEntityAccountId, { limit: 1000 });
       const bookings = res.data?.data || res.data || [];
       
-      // Lọc các booking đã confirmed hoặc pending nhưng đã thanh toán cọc
+      // Lọc các booking đã confirmed hoặc pending (cả hai đều đã khóa slot)
       const blockedBookings = bookings.filter(b => {
         const scheduleStatus = b.scheduleStatus || b.ScheduleStatus;
-        const paymentStatus = b.paymentStatus || b.PaymentStatus;
         const bookingDate = b.bookingDate || b.BookingDate || b.StartTime;
         
         if (!bookingDate) return false;
@@ -249,16 +248,12 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
         const bookingDateStr = new Date(bookingDate).toISOString().split('T')[0];
         if (bookingDateStr !== targetDate) return false;
         
-        // Block nếu đã confirmed
-        if (scheduleStatus === "Confirmed") {
+        // Block nếu đã confirmed hoặc pending (cả hai đều đã khóa slot)
+        if (scheduleStatus === "Confirmed" || scheduleStatus === "Pending") {
           return true;
         }
         
-        // Block nếu pending nhưng đã thanh toán cọc (Paid)
-        if (scheduleStatus === "Pending" && paymentStatus === "Paid") {
-          return true;
-        }
-        
+        // Bỏ qua các trạng thái khác (Ended, Canceled, Rejected) - có thể đặt lại
         return false;
       });
       

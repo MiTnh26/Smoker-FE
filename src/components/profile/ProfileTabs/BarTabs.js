@@ -9,6 +9,7 @@ import BarVideo from '../../../modules/bar/components/BarVideo';
 import BarReview from '../../../modules/bar/components/BarReview';
 import BarTables from '../../../modules/bar/components/BarTables';
 import BarAdDashboard from '../../../modules/bar/components/BarAdDashboard';
+import BarBookingList from '../../../modules/bar/components/BarBookingList';
 
 export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, isOwnProfile, currentUserRole, onEdit, onDelete, onImageClick }) => {
   const { t } = useTranslation();
@@ -83,11 +84,10 @@ export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, is
           <BarReview barPageId={barPageId} />
         </div>
       );
-    case 'tables':
-      const canCreateTables = isOwnProfile && currentUserRole === 'BAR';
+    case 'bookings':
       return (
         <div className="profile-section">
-          <BarTables barPageId={barPageId} readOnly={!canCreateTables} />
+          <BarBookingList barPageId={barPageId} isOwnProfile={isOwnProfile} />
         </div>
       );
     case 'ads':

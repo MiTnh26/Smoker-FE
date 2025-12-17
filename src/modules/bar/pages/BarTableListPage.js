@@ -232,11 +232,23 @@ export default function BarTableListPage() {
       const enhancedTables = tablesData.map(table => {
         const tableBookings = bookings.filter(booking => {
           const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
+          const paymentStatus = booking.paymentStatus || booking.PaymentStatus;
+          
           // Bỏ qua bookings có status "Ended"
           if (scheduleStatus === "Ended") {
             return false;
           }
-          if (scheduleStatus !== "Confirmed") {
+          
+          // Block nếu đã confirmed
+          if (scheduleStatus === "Confirmed") {
+            // Không cần check paymentStatus vì đã confirmed
+          }
+          // Block nếu pending nhưng đã thanh toán cọc (Paid)
+          else if (scheduleStatus === "Pending" && paymentStatus === "Paid") {
+            // Block slot này
+          }
+          // Không block nếu pending nhưng chưa thanh toán (sẽ bị reject sau 5 phút)
+          else {
             return false;
           }
 
