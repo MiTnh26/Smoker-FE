@@ -10,7 +10,7 @@ export default function VideoPlayer({ src, poster, className = "" }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -130,12 +130,15 @@ export default function VideoPlayer({ src, poster, className = "" }) {
     if (hideControlsTimeoutRef.current) {
       clearTimeout(hideControlsTimeoutRef.current);
     }
+    // Khi không hover thì ẩn controls. Nếu đang phát, cho phép hiện trong thời gian ngắn sau tương tác.
+    if (!isPlaying) {
+      setShowControls(false);
+      return;
+    }
     if (isPlaying && !isHovering) {
       hideControlsTimeoutRef.current = setTimeout(() => {
         setShowControls(false);
-      }, 3000);
-    } else {
-      setShowControls(true);
+      }, 2000);
     }
   };
 
@@ -377,7 +380,7 @@ export default function VideoPlayer({ src, poster, className = "" }) {
       }}
       onMouseLeave={() => {
         setIsHovering(false);
-        resetControlsTimer();
+        setShowControls(false);
       }}
       onMouseMove={() => {
         if (isHovering) {
@@ -590,6 +593,17 @@ export default function VideoPlayer({ src, poster, className = "" }) {
           </div>
         </div>
       </div>
+
+      {/* Mute indicator khi auto-play (chỉ hiển thị khi controls ẩn) */}
+      {(autoPlayMuted || isMuted) && !showControls && !hasError && (
+        <div className="video-muted-indicator" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M11 5L6 9H2v6h4l5 4V5z" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
+        </div>
+      )}
 
       {/* Loading indicator */}
       {!isLoaded && (
