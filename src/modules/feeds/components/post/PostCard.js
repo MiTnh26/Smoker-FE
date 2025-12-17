@@ -602,36 +602,36 @@ export default function PostCard({
         )}
 
 
-        {/* Display medias using PostMediaLayout component */}
+        {/* Display medias using PostMediaLayout component - full width equal to post card */}
         {!post.repostedFromId && !audioMedia && (medias.images.length > 0 || medias.videos.length > 0) && (
-          <div className="w-[calc(100%+2.99rem)] -mx-[1.47rem] -mb-4">
-          <PostMediaLayout
-            images={medias.images}
-            videos={medias.videos}
-            onImageClick={handleImageClick}
-          />
+          <div className="w-[calc(100%+1.8rem)] -mx-[0.9rem] mt-3 -mb-4">
+            <PostMediaLayout
+              images={medias.images}
+              videos={medias.videos}
+              onImageClick={handleImageClick}
+            />
           </div>
         )}
 
-        {/* Fallback: Display single image for backward compatibility */}
+        {/* Fallback: Display single image for backward compatibility - full width equal to post card */}
         {!post.repostedFromId && !audioMedia && !post.medias && post.image && (
-          <div className="w-[calc(100%+2.99rem)] -mx-[1.47rem] -mb-4">
-          <PostMediaLayout
-            images={[{ url: post.image, id: 'fallback-image' }]}
-            videos={[]}
-            onImageClick={handleImageClick}
-          />
+          <div className="w-[calc(100%+1.8rem)] -mx-[0.9rem] mt-3 -mb-4">
+            <PostMediaLayout
+              images={[{ url: post.image, id: 'fallback-image' }]}
+              videos={[]}
+              onImageClick={handleImageClick}
+            />
           </div>
         )}
         
-        {/* Fallback: Display single video for backward compatibility */}
+        {/* Fallback: Display single video for backward compatibility - full width equal to post card */}
         {!post.repostedFromId && !audioMedia && !post.medias && post.videoSrc && !post.image && (
-          <div className="w-[calc(100%+2.99rem)] -mx-[1.47rem] -mb-4">
-          <PostMediaLayout
-            images={[]}
-            videos={[{ url: post.videoSrc, id: 'fallback-video', poster: post.poster }]}
-            onImageClick={handleImageClick}
-          />
+          <div className="w-[calc(100%+1.8rem)] -mx-[0.9rem] mt-3 -mb-4">
+            <PostMediaLayout
+              images={[]}
+              videos={[{ url: post.videoSrc, id: 'fallback-video', poster: post.poster }]}
+              onImageClick={handleImageClick}
+            />
           </div>
         )}
 

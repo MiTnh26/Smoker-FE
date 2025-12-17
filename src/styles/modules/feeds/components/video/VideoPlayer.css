@@ -2,7 +2,7 @@
   position: relative;
   width: 100%;
   background: rgb(var(--black));
-  border-radius: 0.875rem;
+  border-radius: 0;
   overflow: hidden;
   cursor: pointer;
   user-select: none;
@@ -97,6 +97,23 @@
 .video-controls.hidden {
   opacity: 0;
   transform: translateY(10px);
+  pointer-events: none;
+}
+
+/* Mute indicator khi auto-play, chỉ hiện khi controls ẩn */
+.video-muted-indicator {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 0.75rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+  z-index: 18;
   pointer-events: none;
 }
 
