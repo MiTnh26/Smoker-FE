@@ -248,21 +248,19 @@ export function getEntityRoute(entity) {
  */
 export function getThemeLabel(theme, t) {
   if (!t) {
-    // Fallback if t is not provided
+    // Fallback if t is not provided (text only, icon được xử lý bởi component)
     const fallback = {
-      light: "🌞 Sáng",
-      dark: "🌙 Tối",
-      bw: "⚫⚪ Đen trắng",
-      liquidglass: "🪟 LiquidGlass",
+      light: "Chế độ sáng",
+      dark: "Chế độ tối",
+      bw: "Đen trắng",
     };
     return fallback[theme] || fallback.light;
   }
   
   const labels = {
-    light: `🌞 ${t('menu.themeLight')}`,
-    dark: `🌙 ${t('menu.themeDark')}`,
-    bw: `⚫⚪ ${t('menu.themeBW')}`,
-    liquidglass: `🪟 ${t('menu.themeLiquidGlass')}`,
+    light: t('menu.themeLight'),
+    dark: t('menu.themeDark'),
+    bw: t('menu.themeBW'),
   };
   return labels[theme] || labels.light;
 }
@@ -273,7 +271,7 @@ export function getThemeLabel(theme, t) {
  * @returns {string} Next theme
  */
 export function getNextTheme(currentTheme) {
-  const themes = ["light", "dark", "bw", "liquidglass"];
+  const themes = ["light", "dark", "bw"];
   const currentIndex = themes.indexOf(currentTheme);
   const nextIndex = (currentIndex + 1) % themes.length;
   return themes[nextIndex];

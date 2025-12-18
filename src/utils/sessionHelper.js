@@ -133,7 +133,7 @@ export function getEntityMapFromSession() {
 
     const map = new Map();
     for (const entity of list) {
-      const key = String(entity.EntityAccountId || entity.entityAccountId || entity.id).toLowerCase();
+      const key = String(entity.EntityAccountId || entity.entityAccountId || entity.id).trim();
       if (!key) return;
       map.set(key, {
         name: entity.name || entity.BarName || entity.BusinessName || entity.displayName || entity.UserName || entity.userName,

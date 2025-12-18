@@ -1,11 +1,12 @@
 import React from "react";
 import { Button } from "../../common/Button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../utils/cn";
 
 export default function AuthHeader() {
  const navigate = useNavigate();
+ const { pathname } = useLocation();
  const { t } = useTranslation();
 
   const goHome = () => {
@@ -45,6 +46,7 @@ export default function AuthHeader() {
               className="h-12 w-auto sm:h-6 md:h-12"
             />
         </button>
+        {pathname !== "/change-password" && (
         <div className={cn("flex items-center gap-3")}>
           <Button
             size="default"
@@ -69,6 +71,7 @@ export default function AuthHeader() {
             {t('auth.signUp')}
           </Button>
         </div>
+        )}
       </div>
     </header>
   );

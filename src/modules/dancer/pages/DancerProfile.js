@@ -19,7 +19,7 @@ import { useCurrentUserEntity } from "../../../hooks/useCurrentUserEntity";
 import { ProfileHeader } from "../../../components/profile/ProfileHeader";
 import { ProfileStats } from "../../../components/profile/ProfileStats";
 import { ImageUploadField } from "../../../components/profile/ImageUploadField";
-import BannedAccountOverlay from "../../../components/common/BannedAccountOverlay";
+// Overlay banned và pending được xử lý bởi ProfilePage và OwnProfilePage
 import PerformerSchedule from "../../dj/components/PerformerSchedule";
 import DancerBookingRequests from "../components/DancerBookingRequests";
 import bookingApi from "../../../api/bookingApi";
@@ -238,23 +238,9 @@ export default function DancerProfile() {
     if (loading) return <div className="pp-container">{t('profile.loadingProfile')}</div>;
     if (error) return <div className="pp-container">{error}</div>;
 
-    const isPending = profile.status === "pending";
-    if (isPending) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center px-4">
-                <div className="max-w-xl text-center bg-card border border-border/30 rounded-2xl p-8 shadow-sm">
-                    <h2 className="text-2xl font-semibold mb-3">{t('profile.pendingTitle', { defaultValue: "Hồ sơ đang chờ duyệt" })}</h2>
-                    <p className="text-muted-foreground mb-4">
-                        {t('profile.pendingDescription', {
-                            defaultValue: "Hồ sơ Dancer của bạn đang được quản trị viên xem xét. Các chức năng sẽ mở lại sau khi hồ sơ được phê duyệt."
-                        })}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{t('profile.contactSupport', { defaultValue: "Liên hệ smokerteam@gmail.com nếu bạn cần được trợ giúp." })}</p>
-                </div>
-            </div>
-        );
-    }
-    const isBanned = profile.status === "banned";
+    // Check banned/pending được xử lý bởi ProfilePage và OwnProfilePage
+    // const isBanned = profile.status === "banned" || profile.Status === "banned";
+    // const isPendingStatus = profile.status === "pending" || profile.Status === "pending";
     
     // Check if this is own profile: compare businessId (from URL) with activeBusinessId (businessId of current role)
     // Similar to how BarProfile checks activeBarPageId
@@ -412,7 +398,7 @@ export default function DancerProfile() {
 
     return (
         <>
-        <div className={cn("min-h-screen bg-background", isBanned && "opacity-30 pointer-events-none")}>
+        <div className={cn("min-h-screen bg-background")}>
             <ProfileHeader
                 background={profile.background}
                 avatar={profile.avatar}
@@ -942,13 +928,7 @@ export default function DancerProfile() {
                 </div>
             )}
         </div>
-        {isBanned && (
-            <BannedAccountOverlay 
-                userRole="Dancer"
-                entityType="BusinessAccount"
-                entityName={profile?.userName || profile?.UserName}
-            />
-        )}
+        {/* Overlay banned và pending được xử lý bởi ProfilePage và OwnProfilePage */}
         </>
     );
 }

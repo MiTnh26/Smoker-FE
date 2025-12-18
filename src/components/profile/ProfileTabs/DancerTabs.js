@@ -7,7 +7,7 @@ import PerformerReviews from '../../../modules/business/components/PerformerRevi
 import BarVideo from '../../../modules/bar/components/BarVideo';
 import { ProfileInfoSection } from '../ProfileInfoSection';
 
-export const DancerTabs = ({ profile, posts, postsLoading, activeTab, performerTargetId, isOwnProfile, entityId }) => {
+export const DancerTabs = ({ profile, posts, postsLoading, activeTab, performerTargetId, isOwnProfile, entityId, onEdit, onDelete, onImageClick }) => {
   const { t } = useTranslation();
 
   switch (activeTab) {
@@ -61,9 +61,9 @@ export const DancerTabs = ({ profile, posts, postsLoading, activeTab, performerT
               {t('common.loading')}
             </div>
           ) : posts && posts.length > 0 ? (
-            <div className={cn('space-y-4')}>
+            <div className={cn('space-y-4 -mx-4 md:-mx-6')}>
               {posts.map(post => (
-                <PostCard key={post.id} post={post} />
+                <PostCard key={post.id} post={post} isOwnProfile={isOwnProfile} onEdit={onEdit} onDelete={onDelete} onImageClick={onImageClick} />
               ))}
             </div>
           ) : (
@@ -91,9 +91,9 @@ export const DancerTabs = ({ profile, posts, postsLoading, activeTab, performerT
               {t('common.loading')}
             </div>
           ) : videoPosts && videoPosts.length > 0 ? (
-            <div className={cn('space-y-4')}>
+            <div className={cn('space-y-4 -mx-4 md:-mx-6')}>
               {videoPosts.map(post => (
-                <PostCard key={post.id} post={post} />
+                <PostCard key={post.id} post={post} isOwnProfile={isOwnProfile} onEdit={onEdit} onDelete={onDelete} onImageClick={onImageClick} />
               ))}
             </div>
           ) : (

@@ -11,6 +11,19 @@ export default function SelectSong({ value, onChange }) {
   const [playingId, setPlayingId] = useState(null);
   const [search, setSearch] = useState("");
   const audioRef = useRef(null);
+
+  // Hàm để dừng audio
+  const stopAudio = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      // Cleanup audio object
+      audioRef.current.src = '';
+      audioRef.current.load();
+      audioRef.current = null;
+    }
+    setPlayingId(null);
+  };
   
   // Get API base URL from environment
   const getBaseUrl = () => {
@@ -35,6 +48,14 @@ export default function SelectSong({ value, onChange }) {
   useEffect(() => {
     fetchSongs();
   }, []);
+
+  // Cleanup: dừng audio khi component unmount hoặc khi onClose được gọi
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, []);
+
 
   const handlePlayPause = (item) => {
     // Nếu đang play bài này thì pause

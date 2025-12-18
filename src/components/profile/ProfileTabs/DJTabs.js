@@ -6,7 +6,7 @@ import PostCard from '../../../modules/feeds/components/post/PostCard';
 import PerformerReviews from '../../../modules/business/components/PerformerReviews';
 import { ProfileInfoSection } from '../ProfileInfoSection';
 
-export const DJTabs = ({ profile, posts, postsLoading, activeTab, performerTargetId, isOwnProfile }) => {
+export const DJTabs = ({ profile, posts, postsLoading, activeTab, performerTargetId, isOwnProfile, onEdit, onDelete, onImageClick }) => {
   const { t } = useTranslation();
 
   switch (activeTab) {
@@ -60,11 +60,15 @@ export const DJTabs = ({ profile, posts, postsLoading, activeTab, performerTarge
               {t('common.loading')}
             </div>
           ) : posts && posts.length > 0 ? (
-            <div className={cn('space-y-4')}>
+            <div className={cn('space-y-4 -mx-4 md:-mx-6')}>
               {posts.map(post => (
                 <PostCard
                   key={post.id}
                   post={post}
+                  isOwnProfile={isOwnProfile}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onImageClick={onImageClick}
                   playingPost={null}
                   setPlayingPost={() => {}}
                 />
@@ -96,11 +100,15 @@ export const DJTabs = ({ profile, posts, postsLoading, activeTab, performerTarge
               {t('common.loading')}
             </div>
           ) : musicPosts && musicPosts.length > 0 ? (
-            <div className={cn('space-y-4')}>
+            <div className={cn('space-y-4 -mx-4 md:-mx-6')}>
               {musicPosts.map(post => (
                 <PostCard
                   key={post.id}
                   post={post}
+                  isOwnProfile={isOwnProfile}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onImageClick={onImageClick}
                   playingPost={null}
                   setPlayingPost={() => {}}
                 />

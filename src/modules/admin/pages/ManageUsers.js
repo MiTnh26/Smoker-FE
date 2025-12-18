@@ -166,11 +166,11 @@ export default function ManageUsers() {
         <table className="w-full text-sm">
           <thead className="bg-muted/60 text-foreground">
             <tr>
-              <th className="text-left p-3">Email</th>
-              <th className="text-left p-3">Username</th>
-              <th className="text-left p-3">Role</th>
-              <th className="text-left p-3">Status</th>
-              <th className="text-right p-3">Actions</th>
+              <th className="text-left p-3">{t("admin.users.table.email", { defaultValue: "Email" })}</th>
+              <th className="text-left p-3">{t("admin.users.table.username", { defaultValue: "Username" })}</th>
+              <th className="text-left p-3">{t("admin.users.table.role", { defaultValue: "Role" })}</th>
+              <th className="text-left p-3">{t("admin.users.table.status", { defaultValue: "Status" })}</th>
+              <th className="text-right p-3">{t("admin.users.table.actions", { defaultValue: "Actions" })}</th>
             </tr>
           </thead>
           <tbody>
@@ -179,16 +179,24 @@ export default function ManageUsers() {
             ) : users.length === 0 ? (
               <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">{t("admin.users.empty", { defaultValue: "No users found." })}</td></tr>
             ) : (
-              users.map(u => (
+              users.map(u => {
+                const rawRole = u.Role || u.role || "";
+                const normalizedRole = rawRole.toLowerCase() === "admin"
+                  ? "Admin"
+                  : rawRole.toLowerCase() === "customer"
+                  ? "Customer"
+                  : "";
+                return (
                 <tr key={u.AccountId} className="border-t border-border/20">
                   <td className="p-3">{u.Email}</td>
                   <td className="p-3">{u.UserName}</td>
                   <td className="p-3">
                     <select
                       className="bg-transparent border rounded px-2 py-1"
-                      value={u.Role}
+                      value={normalizedRole}
                       onChange={(e) => handleRoleChange(u, e.target.value)}
                     >
+                      <option value="">{t("admin.users.selectRole", { defaultValue: "Select role" })}</option>
                       {ACCOUNT_ROLE_OPTIONS.map((r) => (
                         <option key={r} value={r}>{r}</option>
                       ))}
@@ -198,7 +206,7 @@ export default function ManageUsers() {
                     <span className={cn("px-2 py-1 rounded text-xs",
                       u.Status === 'active' ? 'bg-green-100 text-green-700' :
                       u.Status === 'banned' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                    )}>{u.Status}</span>
+                    )}>{t(`admin.users.status.${u.Status}`, { defaultValue: u.Status })}</span>
                   </td>
                   <td className="p-3 text-right">
                     <button onClick={() => openDetail(u)} className="px-3 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 mr-2">{t("admin.users.view", { defaultValue: "View detail" })}</button>
@@ -207,7 +215,8 @@ export default function ManageUsers() {
                     </button>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -232,10 +241,10 @@ export default function ManageUsers() {
             <div className="p-4">
               {selectedUser && (
                 <div className="mb-4 text-sm">
-                  <div><span className="font-medium">Email:</span> {selectedUser.Email}</div>
-                  <div><span className="font-medium">Username:</span> {selectedUser.UserName}</div>
-                  <div><span className="font-medium">Role:</span> {selectedUser.Role}</div>
-                  <div><span className="font-medium">Status:</span> {selectedUser.Status}</div>
+                  <div><span className="font-medium">{t('admin.users.table.email', { defaultValue: 'Email' })}:</span> {selectedUser.Email}</div>
+                  <div><span className="font-medium">{t('admin.users.table.username', { defaultValue: 'Username' })}:</span> {selectedUser.UserName}</div>
+                  <div><span className="font-medium">{t('admin.users.table.role', { defaultValue: 'Role' })}:</span> {selectedUser.Role}</div>
+                  <div><span className="font-medium">{t('admin.users.table.status', { defaultValue: 'Status' })}:</span> {t(`admin.users.status.${selectedUser.Status}`, { defaultValue: selectedUser.Status })}</div>
                 </div>
               )}
 
@@ -252,7 +261,7 @@ export default function ManageUsers() {
                         <img src={b.avatar || ''} alt="" className="w-10 h-10 rounded object-cover bg-muted" />
                         <div>
                           <div className="font-medium">{b.name} <span className="text-xs text-muted-foreground">({b.role})</span></div>
-                          <div className="text-xs">Status: <span className={cn('px-1 rounded', b.status === 'active' ? 'bg-green-100 text-green-700' : b.status === 'banned' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700')}>{b.status || 'active'}</span></div>
+                          <div className="text-xs">{t('admin.users.table.status', { defaultValue: 'Status' })}: <span className={cn('px-1 rounded', b.status === 'active' ? 'bg-green-100 text-green-700' : b.status === 'banned' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700')}>{t(`admin.users.status.${b.status}`, { defaultValue: b.status || 'active' })}</span></div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

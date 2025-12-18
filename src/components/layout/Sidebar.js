@@ -6,6 +6,11 @@ import barPageApi from "../../api/barPageApi.js";
 import { cn } from "../../utils/cn";
 import { useTranslation } from "react-i18next"; // i18n
 import { X, Table, LayoutGrid, Ticket, Package } from "lucide-react";
+import PerformerSchedule from "../../modules/dj/components/PerformerSchedule";
+import DJBookingRequests from "../../modules/dj/components/DJBookingRequests";
+import DancerBookingRequests from "../../modules/dancer/components/DancerBookingRequests";
+import PerformerReviews from "../../modules/business/components/PerformerReviews";
+import { useCurrentUserEntity } from "../../hooks/useCurrentUserEntity";
 
 export default function Sidebar({ isOpen, onClose }) {
   const { t } = useTranslation();
@@ -20,6 +25,10 @@ export default function Sidebar({ isOpen, onClose }) {
   const [openSubMenu, setOpenSubMenu] = useState(null);
   const [tableTypes, setTableTypes] = useState([]); // Track table types
   const [loadingTableTypes, setLoadingTableTypes] = useState(false);
+  const [modalType, setModalType] = useState(null); // 'schedule' or 'booking'
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  const currentUserEntityId = useCurrentUserEntity();
 
   const loadSession = () => {
     const session = JSON.parse(localStorage.getItem("session")) || {};
@@ -88,17 +97,24 @@ export default function Sidebar({ isOpen, onClose }) {
   useEffect(() => {
     loadSession();
     
-    // Listen for profile updates
+    // Listen for profile updates and session updates
     const handleProfileUpdate = () => {
       console.log("[Sidebar] Profile updated event received");
       loadSession();
     };
     
+    const handleSessionUpdate = () => {
+      console.log("[Sidebar] Session updated event received");
+      loadSession();
+    };
+    
     window.addEventListener('profileUpdated', handleProfileUpdate);
+    window.addEventListener('sessionUpdated', handleSessionUpdate);
     window.addEventListener('storage', handleProfileUpdate);
     
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('sessionUpdated', handleSessionUpdate);
       window.removeEventListener('storage', handleProfileUpdate);
     };
   }, []);
@@ -185,6 +201,8 @@ export default function Sidebar({ isOpen, onClose }) {
       "Dashboard": "dashboard",
       "Nhân sự (DJ, Dancer)": "staff",
       "Lịch diễn": "schedule",
+      "Schedule": "schedule",
+      "Booking": "booking",
       "Khách hàng / Bar hợp tác": "partners",
       "Đối tác / Bar": "partners",
       "Đánh giá & sao": "reviewsStars",
@@ -259,16 +277,23 @@ export default function Sidebar({ isOpen, onClose }) {
   };
 
   // Hàm render menu item
-  const renderMenuItem = ({ label, icon: Icon, path, subMenu, external }) => {
+  const renderMenuItem = ({ label, icon: Icon, path, subMenu, external, modalType: menuModalType }) => {
     let resolvedPath = path;
-    if (path.includes(":barPageId") && resolvedBarPageId) {
+    if (path && path.includes(":barPageId") && resolvedBarPageId) {
       resolvedPath = path.replace(":barPageId", resolvedBarPageId);
     }
 
     // Check if this is an external link
-    const isExternal = external || resolvedPath.startsWith('http://') || resolvedPath.startsWith('https://');
-    const isActive = !isExternal && location.pathname === resolvedPath;
+    const isExternal = external || (resolvedPath && (resolvedPath.startsWith('http://') || resolvedPath.startsWith('https://')));
+    const isActive = !isExternal && !menuModalType && resolvedPath && location.pathname === resolvedPath;
     const isOpen = openSubMenu === label;
+    
+    // Handle modal click
+    const handleModalClick = () => {
+      setModalType(menuModalType);
+      setIsModalOpen(true);
+      if (onClose) onClose(); // Close sidebar on mobile
+    };
 
     // Map Vietnamese labels to stable keys
     const labelKeyMap = {
@@ -284,12 +309,22 @@ export default function Sidebar({ isOpen, onClose }) {
       "Bar page": "barPage",
       "Cài đặt quán": "barSettings",
       "Lịch diễn": "schedule",
+      "Schedule": "schedule",
+      "Booking": "booking",
       "Khách hàng / Bar hợp tác": "partners",
       "Đối tác / Bar": "partners",
       "Đánh giá & sao": "reviewsStars",
       "Quản lý người dùng": "adminUsers",
+      "Quản lý duyệt": "adminApprovals",
+      "Thư viện nhạc": "adminMusic",
+      "Gói quảng cáo": "adminAdPackages",
+      "Duyệt QC Event": "adminEventAdApprovals",
+      "Yêu cầu tạm dừng QC": "adminPauseRequests",
+      "Yêu cầu tiếp tục QC": "adminResumeRequests",
+      "Yêu cầu hoàn tiền": "adminRefundRequests",
       "Quản lý quán / Bar": "adminBars",
       "Báo cáo & thống kê": "adminReports",
+      "Quản lý báo cáo": "adminReports",
       "Cài đặt hệ thống": "adminSettings",
       "Đăng ký tài khoản kinh doanh": "registerBusiness",
       "Cài Đặt Quảng Cáo": "adSettings",
@@ -316,6 +351,20 @@ export default function Sidebar({ isOpen, onClose }) {
             </span>
             <span className="text-xs flex-shrink-0">{isOpen ? "▾" : "▸"}</span>
           </div>
+        ) : menuModalType ? (
+          // Modal menu item
+          <button
+            onClick={handleModalClick}
+            className={cn(
+              "w-full block px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
+              "text-muted-foreground no-underline text-left",
+              "flex items-center gap-3",
+              "hover:bg-muted hover:text-foreground"
+            )}
+          >
+            {Icon && <Icon size={22} className="flex-shrink-0" />}
+            <span className="truncate">{t(`sidebar.${k}`, { defaultValue: label })}</span>
+          </button>
         ) : isExternal ? (
           // External link (open in new tab)
           <a
@@ -335,11 +384,13 @@ export default function Sidebar({ isOpen, onClose }) {
         ) : (
           // Menu bình thường (internal link)
           <Link
-            to={resolvedPath}
+            to={resolvedPath || "#"}
             onClick={(e) => {
               // Ensure navigation always happens (prevent any interference)
-              e.preventDefault();
-              navigate(resolvedPath);
+              if (resolvedPath) {
+                e.preventDefault();
+                navigate(resolvedPath);
+              }
             }}
             className={cn(
               "block px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
@@ -408,9 +459,14 @@ export default function Sidebar({ isOpen, onClose }) {
           "border-b border-border/30",
           "max-md:mb-3"
         )}>
-          <div className={cn(
-            "flex items-center gap-2.5 flex-1 min-w-0"
-          )}>
+          <Link
+            to="/own/profile"
+            className={cn(
+              "flex items-center gap-2.5 flex-1 min-w-0",
+              "hover:opacity-80 transition-opacity cursor-pointer"
+            )}
+            onClick={handleMenuItemClick}
+          >
             <div className={cn(
               "flex items-center justify-center rounded-full",
               "text-primary-foreground w-10 h-10 flex-shrink-0",
@@ -442,7 +498,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 </p>
               )}
             </div>
-          </div>
+          </Link>
           {/* Close button for mobile */}
           <button
             onClick={onClose}
@@ -466,6 +522,78 @@ export default function Sidebar({ isOpen, onClose }) {
           ))}
         </nav>
       </aside>
+
+      {/* Schedule/Booking Modal */}
+      {isModalOpen && modalType && (
+        <div
+          className={cn(
+            "fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3",
+            "overflow-y-auto"
+          )}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsModalOpen(false);
+              setModalType(null);
+            }
+          }}
+        >
+          <div
+            className={cn(
+              "w-full max-w-4xl bg-card text-card-foreground rounded-lg",
+              "border border-border/20 shadow-[0_8px_32px_rgba(0,0,0,0.2)]",
+              "p-4 relative max-h-[85vh] overflow-y-auto"
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={cn("text-xl font-bold text-foreground")}>
+                {modalType === "schedule" ? "Schedule" : modalType === "booking" ? "Booking" : "Đánh giá & sao"}
+              </h2>
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setModalType(null);
+                }}
+                className={cn(
+                  "p-1.5 rounded-lg",
+                  "text-muted-foreground hover:text-foreground",
+                  "hover:bg-muted transition-colors"
+                )}
+                aria-label="Close modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="mt-2">
+              {modalType === "schedule" && currentUserEntityId && (
+                <PerformerSchedule
+                  performerEntityAccountId={currentUserEntityId}
+                  isOwnProfile={true}
+                />
+              )}
+              {modalType === "booking" && currentUserEntityId && (
+                <>
+                  {activeEntity?.role?.toLowerCase() === "dj" ? (
+                    <DJBookingRequests performerEntityAccountId={currentUserEntityId} />
+                  ) : activeEntity?.role?.toLowerCase() === "dancer" ? (
+                    <DancerBookingRequests performerEntityAccountId={currentUserEntityId} />
+                  ) : null}
+                </>
+              )}
+              {modalType === "reviews" && activeEntity?.id && (
+                <PerformerReviews
+                  businessAccountId={activeEntity.id}
+                  performerName={activeEntity.name || activeEntity.userName || "Performer"}
+                  performerRole={activeEntity.role || "DJ"}
+                  isOwnProfile={true}
+                  allowSubmission={false}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -18,6 +18,10 @@ export const CustomerTabs = ({
   sharedIsPlaying,
   handleSeek,
   setActivePlayer,
+  onEdit,
+  onDelete,
+  isOwnProfile,
+  onImageClick,
 }) => {
   const { t } = useTranslation();
 
@@ -36,11 +40,15 @@ export const CustomerTabs = ({
               {t('common.loading')}
             </div>
           ) : posts && posts.length > 0 ? (
-            <div className={cn('space-y-4')}>
+            <div className={cn('space-y-4 -mx-4 md:-mx-6')}>
               {posts.map(post => (
                 <PostCard
                   key={post._id || post.id}
                   post={post}
+                  isOwnProfile={isOwnProfile}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onImageClick={onImageClick}
                   playingPost={playingPost}
                   setPlayingPost={(id) => {
                     setPlayingPost?.(id);
@@ -83,11 +91,15 @@ export const CustomerTabs = ({
               {t('common.loading')}
             </div>
           ) : videoPosts && videoPosts.length > 0 ? (
-            <div className={cn('space-y-4')}>
+            <div className={cn('space-y-4 -mx-4 md:-mx-6')}>
               {videoPosts.map(post => (
                 <PostCard
                   key={post._id || post.id}
                   post={post}
+                  isOwnProfile={isOwnProfile}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onImageClick={onImageClick}
                   playingPost={playingPost}
                   setPlayingPost={(id) => {
                     setPlayingPost?.(id);

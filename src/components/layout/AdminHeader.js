@@ -1,9 +1,19 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect, useState } from "react";
-import { Bell, UserCog, Home, LogOut, Settings, User as UserIcon, Palette, Languages } from "lucide-react";
+import {
+  Bell,
+  UserCog,
+  Home,
+  LogOut,
+  Settings,
+  User as UserIcon,
+  SunMedium,
+  MoonStar,
+  Contrast,
+  Languages,
+} from "lucide-react";
 import { cn } from "../../utils/cn";
-import GlobalSearch from "./common/GlobalSearch";
 import DropdownPanel from "../common/DropdownPanel";
 import { getNextTheme, getThemeLabel } from "../../config/menuConfigs";
 import { clearSession } from "../../utils/sessionManager";
@@ -20,6 +30,12 @@ export default function AdminHeader() {
   });
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
+
+  const ThemeIcon = ({ size = 16 }) => {
+    if (theme === "dark") return <MoonStar size={size} />;
+    if (theme === "bw") return <Contrast size={size} />;
+    return <SunMedium size={size} />;
+  };
 
   useEffect(() => {
     const handleProfileUpdate = () => {
@@ -72,11 +88,7 @@ export default function AdminHeader() {
           {t("layout.admin", { defaultValue: "Admin" })}
         </Link>
 
-        <div className={cn("flex items-center flex-1 max-w-lg mx-4")}> 
-          <GlobalSearch />
-        </div>
-
-        <div className={cn("relative flex items-center gap-2")}> 
+        <div className={cn("relative flex items-center gap-2 ml-auto")}> 
           <Link to="/admin/dashboard" className={cn(
             "rounded-lg p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary"
           )}>
@@ -127,7 +139,7 @@ export default function AdminHeader() {
                 <span className="w-6 h-6 inline-flex items-center justify-center rounded-md bg-primary/10 text-primary">
                   <UserIcon size={16} />
                 </span>
-                <span className="flex-1">{t("admin.manageUsers", { defaultValue: "Quản lý người dùng" })}</span>
+                <span className="flex-1">{t("sidebar.adminUsers", { defaultValue: "Quản lý người dùng" })}</span>
               </Link>
 
               <Link
@@ -138,7 +150,7 @@ export default function AdminHeader() {
                 <span className="w-6 h-6 inline-flex items-center justify-center rounded-md bg-secondary/10 text-secondary">
                   <Settings size={16} />
                 </span>
-                <span className="flex-1">{t("admin.manageMusic", { defaultValue: "Quản lý nhạc" })}</span>
+                <span className="flex-1">{t("sidebar.adminMusic", { defaultValue: "Quản lý nhạc" })}</span>
               </Link>
 
               <button
@@ -146,11 +158,12 @@ export default function AdminHeader() {
                 onClick={handleToggleTheme}
               >
                 <span className="w-6 h-6 inline-flex items-center justify-center rounded-md bg-amber-500/10 text-amber-500">
-                  <Palette size={16} />
+                  <ThemeIcon />
                 </span>
                 <span className="flex-1">{t("menu.theme", { defaultValue: "Chế độ giao diện" })}</span>
-                <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-muted/70 text-muted-foreground">
-                  {getThemeLabel(theme, t)}
+                <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-muted/70 text-muted-foreground inline-flex items-center gap-1">
+                  <ThemeIcon size={12} />
+                  <span>{getThemeLabel(theme, t)}</span>
                 </span>
               </button>
 

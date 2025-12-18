@@ -28,7 +28,9 @@ export default function PostCard({
   onReport,
   onImageClick,
   onShared,
-  disableCommentButton = false
+  disableCommentButton = false,
+  hideMenu = false,
+  isOwnProfile = false
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -177,6 +179,19 @@ export default function PostCard({
       const nextLiked = !liked
       setLiked(nextLiked)
       setLikeCount((c) => Math.max(0, c + (nextLiked ? 1 : -1)))
+
+      // Debug: log entityAccountId và session để kiểm tra phân biệt like giữa các role
+      try {
+        const rawSession = localStorage.getItem("session")
+        console.log("[PostCard] toggleLike", {
+          postId: post.id,
+          nextLiked,
+          viewerEntityAccountId,
+          session: rawSession
+        })
+      } catch {
+        console.warn("[PostCard] Failed to read session for debug logging")
+      }
 
       const response = nextLiked
         ? await likePost(post.id, { typeRole, entityAccountId: viewerEntityAccountId })
@@ -329,6 +344,16 @@ export default function PostCard({
     }
   }
 
+  // Debug / analytics: trending score & view count (from stats or fallback fields)
+  const trendingScore =
+    typeof post.stats?.trendingScore === "number"
+      ? post.stats.trendingScore
+      : (typeof post.trendingScore === "number" ? post.trendingScore : 0);
+  const viewCount =
+    typeof post.stats?.viewCount === "number"
+      ? post.stats.viewCount
+      : (typeof post.views === "number" ? post.views : 0);
+
   return (
     <article className={cn(
       "post-card",
@@ -339,8 +364,7 @@ export default function PostCard({
       /* Transitions */
       "transition-all duration-200 ease-out",
       /* Hover States - Subtle, no movement */
-      "hover:shadow-[0_2px_4px_rgba(0,0,0,0.08)]",
-      "hover:border-border/30"
+      "hover:shadow-[0_2px_4px_rgba(0,0,0,0.08)]"
     )}>
       {/* Header */}
       <div className="flex justify-between items-start mb-1.5 relative">
@@ -357,8 +381,7 @@ export default function PostCard({
                 "w-10 h-10 rounded-2xl object-cover",
                 "border-2 border-primary/20 ring-2 ring-primary/5",
                 "transition-all duration-500 ease-out",
-                "hover:border-primary/50 hover:ring-primary/20",
-                "hover:shadow-[0_8px_24px_rgba(var(--primary),0.25)]",
+                "hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]",
                 "hover:scale-110 hover:rotate-3",
                 "shadow-[0_4px_12px_rgba(0,0,0,0.12)]",
                 "cursor-pointer"
@@ -399,7 +422,28 @@ export default function PostCard({
               )}
             </div>
           </div>
+          {/* Small badge: trending score & views */}
+          {(trendingScore > 0 || viewCount > 0) && (
+            <div
+              className={cn(
+                "ml-2 px-2 py-1 rounded-full",
+                "bg-muted/70 text-[0.7rem] text-muted-foreground",
+                "flex flex-col items-start justify-center",
+                "min-w-[3.5rem]"
+              )}
+            >
+              {trendingScore > 0 && (
+                <span className="leading-tight">
+                  TS: {Math.round(trendingScore)}
+                </span>
+              )}
+              <span className="leading-tight">
+                👁 {viewCount}
+              </span>
+            </div>
+          )}
         </div>
+        {!hideMenu && (
         <div className="relative flex-shrink-0">
           <button
             className={cn(
@@ -430,7 +474,7 @@ export default function PostCard({
                 "backdrop-saturate-180"
               )}
             >
-            {post.canManage ? (
+            {post.canManage || isOwnProfile ? (
               <>
                 <button
                   className={cn(
@@ -483,6 +527,7 @@ export default function PostCard({
           </div>
         )}
         </div>
+        )}
       </div>
 
       <div>
@@ -564,7 +609,7 @@ export default function PostCard({
         {audioMedia && (
           <AudioWaveform
             audioSrc={audioMedia.url}
-            isPlaying={sharedIsPlaying || isPlaying}
+            isPlaying={sharedIsPlaying ? (playingPost === post.id) : isPlaying}
             onTogglePlay={togglePlay}
             audioTitle={audioTitle}
             artistName={artistName}
@@ -600,36 +645,36 @@ export default function PostCard({
         )}
 
 
-        {/* Display medias using PostMediaLayout component */}
+        {/* Display medias using PostMediaLayout component - full width equal to post card */}
         {!post.repostedFromId && !audioMedia && (medias.images.length > 0 || medias.videos.length > 0) && (
-          <div className="-mx-4">
-          <PostMediaLayout
-            images={medias.images}
-            videos={medias.videos}
-            onImageClick={handleImageClick}
-          />
+          <div className="w-[calc(100%+1.8rem)] -mx-[0.9rem] mt-3 -mb-4">
+            <PostMediaLayout
+              images={medias.images}
+              videos={medias.videos}
+              onImageClick={handleImageClick}
+            />
           </div>
         )}
 
-        {/* Fallback: Display single image for backward compatibility */}
+        {/* Fallback: Display single image for backward compatibility - full width equal to post card */}
         {!post.repostedFromId && !audioMedia && !post.medias && post.image && (
-          <div className="-mx-4">
-          <PostMediaLayout
-            images={[{ url: post.image, id: 'fallback-image' }]}
-            videos={[]}
-            onImageClick={handleImageClick}
-          />
+          <div className="w-[calc(100%+1.8rem)] -mx-[0.9rem] mt-3 -mb-4">
+            <PostMediaLayout
+              images={[{ url: post.image, id: 'fallback-image' }]}
+              videos={[]}
+              onImageClick={handleImageClick}
+            />
           </div>
         )}
         
-        {/* Fallback: Display single video for backward compatibility */}
+        {/* Fallback: Display single video for backward compatibility - full width equal to post card */}
         {!post.repostedFromId && !audioMedia && !post.medias && post.videoSrc && !post.image && (
-          <div className="-mx-4">
-          <PostMediaLayout
-            images={[]}
-            videos={[{ url: post.videoSrc, id: 'fallback-video', poster: post.poster }]}
-            onImageClick={handleImageClick}
-          />
+          <div className="w-[calc(100%+1.8rem)] -mx-[0.9rem] mt-3 -mb-4">
+            <PostMediaLayout
+              images={[]}
+              videos={[{ url: post.videoSrc, id: 'fallback-video', poster: post.poster }]}
+              onImageClick={handleImageClick}
+            />
           </div>
         )}
 
@@ -859,18 +904,15 @@ export default function PostCard({
             className="w-full text-left"
           >
             {post.topComments.map((comment, index) => {
-              const isAnonymousComment = Boolean(comment.isAnonymous);
+              // Anonymous temporarily disabled
+              const isAnonymousComment = false;
               const anonymousIndex = comment.anonymousIndex;
               // Read from new DTO schema: author.name or legacy authorName
               const authorName = comment.author?.name || comment.authorName;
-              const displayName = isAnonymousComment
-                ? `Người ẩn danh${anonymousIndex ? ` ${anonymousIndex}` : ""}`
-                : (authorName || "Người dùng");
+              const displayName = authorName || "Người dùng";
               // Read avatar from new DTO schema: author.avatar or legacy authorAvatar
               const authorAvatar = comment.author?.avatar || comment.authorAvatar;
-              const displayAvatar = isAnonymousComment
-                ? "/images/an-danh.png"
-                : getAvatarUrl(authorAvatar, 32);
+              const displayAvatar = getAvatarUrl(authorAvatar, 32);
 
               return (
               <div key={comment.id || index} className="mb-2 last:mb-0">

@@ -13,127 +13,172 @@ const getImageGridClasses = (count) => {
   return "";
 };
 
-// Image Item Component
-const ImageItem = ({
-  img,
+// Media Item Component (image/video treated the same in grid)
+const MediaItem = ({
+  media,
   index,
-      imageCount,
+  totalCount,
   onClick,
   isLastDisplayed,
   shouldShowOverlay,
-      remainingCount,
+  remainingCount,
 }) => {
   const itemClasses = (() => {
-    if (imageCount === 3 && index === 0) return "row-span-2";
-    if (imageCount >= 5) {
+    if (totalCount === 3 && index === 0) return "col-span-2 aspect-[2/1]";
+    if (totalCount >= 5) {
       if (index <= 1) return "col-span-3";
       if (index >= 2) return "col-span-2";
     }
-    return "";
+    return "aspect-square";
   })();
 
-            return (
-              <div
-                key={img.id || img._id || index}
-      className={cn("relative w-full h-full cursor-pointer", itemClasses)}
-      onClick={() => onClick(img.url)}
-              >
-                <img
-                  src={img.url}
-                  alt={img.caption || `Post image ${index + 1}`}
-                  className={cn(
-          "w-full h-full object-cover block",
-          shouldShowOverlay && "brightness-50"
-                  )}
-                  loading="lazy"
-                />
-                {shouldShowOverlay && (
+  const isVideo = (media.type || "").toLowerCase() === "video";
+
+  return (
+    <div
+      key={media.id || media._id || index}
+      className={cn(
+        "relative w-full h-full",
+        !isVideo && "cursor-pointer",
+        itemClasses
+      )}
+      onClick={() => {
+        if (isVideo) return;
+        onClick(media.url);
+      }}
+      role={isVideo ? undefined : "button"}
+      tabIndex={isVideo ? -1 : 0}
+      onKeyDown={(e) => {
+        if (isVideo) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick(media.url);
+        }
+      }}
+    >
+      {isVideo ? (
+        <video
+          src={media.url}
+          poster={media.thumbnail || media.poster}
+          className={cn(
+            "w-full h-full object-cover block",
+            shouldShowOverlay && "brightness-50"
+          )}
+          controls
+          aria-label="Post video"
+        />
+      ) : (
+        <img
+          src={media.url}
+          alt={media.caption || `Post media ${index + 1}`}
+          className={cn(
+            "w-full h-full object-cover block",
+            shouldShowOverlay && "brightness-50"
+          )}
+          loading="lazy"
+        />
+      )}
+      {shouldShowOverlay && (
         <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
           <span className="text-3xl font-bold text-white drop-shadow-lg">
-                      +{remainingCount}
-                    </span>
-                  </div>
-                )}
-              </div>
-            );
+            +{remainingCount}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+MediaItem.propTypes = {
+  media: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    _id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    url: PropTypes.string.isRequired,
+    caption: PropTypes.string,
+    type: PropTypes.string,
+    thumbnail: PropTypes.string,
+    poster: PropTypes.string,
+  }).isRequired,
+  index: PropTypes.number.isRequired,
+  totalCount: PropTypes.number.isRequired,
+  onClick: PropTypes.func.isRequired,
+  isLastDisplayed: PropTypes.bool,
+  shouldShowOverlay: PropTypes.bool,
+  remainingCount: PropTypes.number,
 };
 
 export default function PostMediaLayout({ images = [], videos = [], onImageClick }) {
-  const hasVideos = videos && videos.length > 0;
-  const hasImages = images && images.length > 0;
-  const imageCount = images.length;
+  const medias = [
+    ...(images || []).map((m) => ({ ...m, type: (m.type || "image").toLowerCase() })),
+    ...(videos || []).map((m) => ({ ...m, type: "video" })),
+  ];
 
-  const renderImages = () => {
-    if (!hasImages) return null;
+  if (!medias.length) return null;
 
-    const displayedCount = Math.min(imageCount, 5);
-    const remainingCount = imageCount > 5 ? imageCount - 5 : 0;
+  const totalCount = medias.length;
+  const displayedCount = Math.min(totalCount, 5);
+  const remainingCount = totalCount > 5 ? totalCount - 5 : 0;
 
-    if (imageCount === 1) {
+  if (totalCount === 1) {
+    const media = medias[0];
+    const isVideo = (media.type || "").toLowerCase() === "video";
     return (
-            <div className="mt-3" onClick={() => onImageClick(images[0].url)}>
-                 <img
-                    src={images[0].url}
-                    alt={images[0].caption || 'Post image'}
-                    className="w-full h-auto max-h-[60vh] object-cover cursor-pointer"
-                    loading="lazy"
-                />
-            </div>
-        )
-            }
-            
-            return (
-      <div className={cn("mt-3", getImageGridClasses(imageCount))}>
-        {images.slice(0, displayedCount).map((img, index) => (
-          <ImageItem
-            key={img.id || img._id || index}
-            img={img}
-            index={index}
-            imageCount={imageCount}
-            onClick={onImageClick}
-            isLastDisplayed={index === displayedCount - 1}
-            shouldShowOverlay={remainingCount > 0 && index === displayedCount - 1}
-            remainingCount={remainingCount}
-          />
-        ))}
-      </div>
-    );
-  };
-
-  const renderVideos = () => {
-    if (!hasVideos) return null;
-            return (
-      <div className={cn("mt-3 flex flex-col", videos.length > 1 ? "gap-1" : "")}>
-        {videos.map((video, index) => (
+      <div
+        className={cn("mt-3", !isVideo && "cursor-pointer")}
+        onClick={() => {
+          if (isVideo) return;
+          onImageClick(media.url);
+        }}
+        role={isVideo ? undefined : "button"}
+        tabIndex={isVideo ? -1 : 0}
+        onKeyDown={(e) => {
+          if (isVideo) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onImageClick(media.url);
+          }
+        }}
+      >
+        {isVideo ? (
           <VideoPlayer
-            key={video.id || video._id || index}
-            src={video?.url || video?.src}
-            poster={video.thumbnail || video.poster}
+            src={media?.url || media?.src}
+            poster={media.thumbnail || media.poster}
             className="w-full"
           />
-        ))}
-              </div>
-            );
-  };
-
-  if (hasVideos && hasImages) {
-    return (
-        <div className="w-full">
-            {renderVideos()}
-            {renderImages()}
-        </div>
-    )
+        ) : (
+          <img
+            src={media.url}
+            alt={media.caption || "Post media"}
+            className="w-full h-auto max-h-[60vh] object-cover cursor-pointer"
+            loading="lazy"
+          />
+        )}
+      </div>
+    );
   }
 
-  if (hasVideos) {
-    return renderVideos();
-  }
-
-  if (hasImages) {
-    return renderImages();
-  }
-
-  return null;
+  return (
+    <div
+      className={cn(
+        "gap-px overflow-hidden w-full",
+        "max-h-[70vh]",
+        getImageGridClasses(totalCount)
+      )}
+    >
+      {medias.slice(0, displayedCount).map((media, index) => (
+        <MediaItem
+          key={media.id || media._id || index}
+          media={media}
+          index={index}
+          totalCount={totalCount}
+          onClick={onImageClick}
+          isLastDisplayed={index === displayedCount - 1}
+          shouldShowOverlay={remainingCount > 0 && index === displayedCount - 1}
+          remainingCount={remainingCount}
+        />
+      ))}
+    </div>
+  );
 }
 
 PostMediaLayout.propTypes = {

@@ -32,16 +32,13 @@ export default function MediaCommentItem({
   const commentLikesCount = getLikesCount(comment.likes);
   const replies = parseReplies(comment);
   const isCommentOwner = currentUser && String(comment.accountId) === String(currentUser.id);
-  const isAnonymousComment = Boolean(comment.isAnonymous);
+  // Anonymous temporarily disabled
+  const isAnonymousComment = false;
   const anonymousIndex = comment.anonymousIndex;
 
-  const displayName = isAnonymousComment
-    ? `Người ẩn danh${anonymousIndex ? ` ${anonymousIndex}` : ""}`
-    : (comment.authorName || getNameForAccount(comment.accountId, comment.authorEntityAccountId, comment.authorName));
+  const displayName = comment.authorName || getNameForAccount(comment.accountId, comment.authorEntityAccountId, comment.authorName);
 
-  const displayAvatar = isAnonymousComment
-    ? ANONYMOUS_AVATAR_URL
-    : (comment.authorAvatar || getAvatarForAccount(comment.accountId, comment.authorEntityAccountId, comment.authorAvatar));
+  const displayAvatar = comment.authorAvatar || getAvatarForAccount(comment.accountId, comment.authorEntityAccountId, comment.authorAvatar);
   const pendingKey = `comment-${comment.id}`;
 
   return (
@@ -55,11 +52,7 @@ export default function MediaCommentItem({
           style={{ width: 32, height: 32, objectFit: 'cover', display: 'block' }}
           src={displayAvatar} 
           alt="avatar"
-          onClick={() => {
-            if (!isAnonymousComment) {
-              onNavigateToProfile(comment.authorEntityId, comment.authorEntityType, comment.authorEntityAccountId);
-            }
-          }}
+          onClick={() => onNavigateToProfile(comment.authorEntityId, comment.authorEntityType, comment.authorEntityAccountId)}
         />
         <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden">
           <div className="flex items-center gap-2 mb-1">
@@ -68,11 +61,7 @@ export default function MediaCommentItem({
                 "text-foreground font-semibold text-sm cursor-pointer",
                 "hover:underline"
               )}
-              onClick={() => {
-                if (!isAnonymousComment) {
-                  onNavigateToProfile(comment.authorEntityId, comment.authorEntityType, comment.authorEntityAccountId);
-                }
-              }}
+              onClick={() => onNavigateToProfile(comment.authorEntityId, comment.authorEntityType, comment.authorEntityAccountId)}
             >
               {displayName}
             </span>

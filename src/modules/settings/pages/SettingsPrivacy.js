@@ -38,24 +38,30 @@ export default function SettingsPrivacyPage() {
         <div className="settings-grid">
           <section className="settings-card">
             <h2>{t('settings.account')}</h2>
-            <div className="settings-item">
+            {/* <div className="settings-item">
               <div className="settings-item-info">
                 <div className="settings-item-title">{t('settings.displayName')}</div>
                 <div className="settings-item-desc">{t('settings.updateNameDesc')}</div>
               </div>
               <button className="btn-primary">{t('settings.edit')}</button>
-            </div>
+            </div> */}
 
             <div className="settings-item">
               <div className="settings-item-info">
                 <div className="settings-item-title">{t('settings.changePassword')}</div>
                 <div className="settings-item-desc">{t('settings.passwordDesc')}</div>
               </div>
-              <button className="btn-outline">{t('settings.configure')}</button>
+              <Link
+                to="/change-password"
+                className="btn-outline"
+                style={{ textDecoration: 'none', display: 'inline-block' }}
+              >
+                {t('settings.configure')}
+              </Link>
             </div>
           </section>
 
-          <section className="settings-card">
+          {/* <section className="settings-card">
             <h2>{t('settings.security')}</h2>
             <div className="settings-item">
               <div className="settings-item-info">
@@ -67,9 +73,9 @@ export default function SettingsPrivacyPage() {
                 <span className="slider" />
               </label>
             </div>
-          </section>
+          </section> */}
 
-          <section className="settings-card">
+          {/* <section className="settings-card">
             <h2>{t('settings.privacy')}</h2>
             <div className="settings-item">
               <div className="settings-item-info">
@@ -94,7 +100,7 @@ export default function SettingsPrivacyPage() {
                 <option value="onlyme">{t('settings.onlyme')}</option>
               </select>
             </div>
-          </section>
+          </section> */}
 
           <TrashManager />
 

@@ -1,5 +1,6 @@
 
 import axiosClient from "./axiosClient";
+import { getActiveEntity, getAccount } from "../utils/sessionManager";
 
 // Lấy danh sách post
 // params can include:
@@ -8,6 +9,13 @@ import axiosClient from "./axiosClient";
 //   - page, limit: for backward compatibility (offset-based pagination)
 // Returns: { success, data, nextCursor, hasMore, pagination }
 export const getPosts = (params) => axiosClient.get("/posts", { params });
+
+// Admin: Lấy tất cả posts (kể cả deleted, trashed, private)
+export const getAllPostsForAdmin = (params) => axiosClient.get("/posts/admin/all", { params });
+
+// Admin: Cập nhật post status
+export const updatePostStatusForAdmin = (postId, status) => 
+  axiosClient.patch(`/posts/admin/${postId}/status`, { status });
 
 // Lấy feed tổng hợp (posts + livestreams đã được merge ngẫu nhiên)
 // params can include:
@@ -21,6 +29,9 @@ export const getPostById = (id, params) => axiosClient.get(`/posts/${id}`, { par
 
 // Alias cho backward compatibility - giờ dùng chung endpoint với getPostById
 export const getPostDetail = (id, params) => axiosClient.get(`/posts/${id}`, { params });
+
+// Admin: lấy post (kể cả deleted/private) theo id
+export const getPostDetailAdmin = (id, params) => axiosClient.get(`/posts/admin/${id}`, { params });
 
 // Tạo post mới
 export const createPost = (data) => axiosClient.post("/posts", data);
@@ -82,8 +93,25 @@ export const searchPostsByTitle = (params) => axiosClient.get("/posts/search/tit
 // Tìm kiếm post theo author
 export const searchPostsByAuthor = (params) => axiosClient.get("/posts/search/author", { params });
 
-// Get posts by author entity id (public)
-export const getPostsByAuthor = (authorId, params) => axiosClient.get(`/posts/author/${authorId}`, { params });
+// Helper: get current viewer EntityAccountId from session
+const getViewerEntityAccountId = () => {
+  try {
+    const active = getActiveEntity() || getAccount();
+    return active?.EntityAccountId || active?.entityAccountId || null;
+  } catch {
+    return null;
+  }
+};
+
+// Get posts by author entity id (public) - include viewerEntityAccountId for correct like state
+export const getPostsByAuthor = (authorId, params = {}) => {
+  const viewerEntityAccountId = getViewerEntityAccountId();
+  const finalParams = { ...params };
+  if (viewerEntityAccountId && !finalParams.viewerEntityAccountId) {
+    finalParams.viewerEntityAccountId = viewerEntityAccountId;
+  }
+  return axiosClient.get(`/posts/author/${authorId}`, { params: finalParams });
+};
 
 // Upload media for posts (images, videos, audio)
 export const uploadPostMedia = (formData) => axiosClient.post("/posts/upload", formData, {

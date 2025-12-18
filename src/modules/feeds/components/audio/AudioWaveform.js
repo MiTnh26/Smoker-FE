@@ -25,6 +25,7 @@ export default function AudioWaveform({
   const [duration, setDuration] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
   const [waveformData, setWaveformData] = useState([]);
+  const [isPurchaseHovered, setIsPurchaseHovered] = useState(false);
   
   // Use shared audio if provided, otherwise use local audio
   const useSharedAudio = sharedAudioRef && onSeek;
@@ -76,8 +77,13 @@ export default function AudioWaveform({
   // Only control local audio if not using shared audio (shared audio is controlled by parent)
   useEffect(() => {
     if (useSharedAudio) {
-      // Waveform updates when shared audio time changes
-      drawWaveform();
+      // Waveform updates when shared audio time changes, but only if this specific audio is playing
+      if (isPlaying) {
+        drawWaveform();
+      } else {
+        // If not playing, reset waveform to show no progress
+        drawWaveform();
+      }
       return;
     }
     
@@ -117,7 +123,8 @@ export default function AudioWaveform({
     const width = canvas.width;
     const height = canvas.height;
     const barWidth = width / waveformData.length;
-    const progress = actualDuration > 0 ? actualCurrentTime / actualDuration : 0;
+    // Only show progress if this specific audio is playing
+    const progress = (isPlaying && actualDuration > 0) ? actualCurrentTime / actualDuration : 0;
 
     // Use explicit colors to avoid CSS variable issues
     const primaryColor = '#7c3aed';        // purple-600
@@ -141,7 +148,7 @@ export default function AudioWaveform({
     if (isLoaded && waveformData.length) {
       drawWaveform();
     }
-  }, [actualCurrentTime, isLoaded, waveformData, actualDuration]);
+  }, [actualCurrentTime, isLoaded, waveformData, actualDuration, isPlaying]);
 
   const formatTime = (seconds) => {
     if (!seconds || isNaN(seconds)) return "0:00";
@@ -250,15 +257,26 @@ export default function AudioWaveform({
             
             {/* Purchase Link Button */}
             {purchaseLink && (
-              <div className="audio-purchase-wrapper">
+              <div className="mt-3">
                 <a
                   href={purchaseLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="audio-purchase-button"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-100 text-sm font-semibold no-underline cursor-pointer shadow-sm transition-all hover:bg-gray-200 hover:shadow-md active:scale-95"
                   onClick={(e) => e.stopPropagation()}
+                  onMouseEnter={() => setIsPurchaseHovered(true)}
+                  onMouseLeave={() => setIsPurchaseHovered(false)}
+                  style={{ color: isPurchaseHovered ? "rgb(var(--primary))" : "#9CA3AF" }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="shrink-0"
+                  >
                     <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
                     <line x1="3" y1="6" x2="21" y2="6" />
                     <path d="M16 10a4 4 0 0 1-8 0" />
@@ -280,7 +298,7 @@ export default function AudioWaveform({
           />
           
           <div className="time-display">
-            <span className="current-time">{formatTime(actualCurrentTime)}</span>
+            <span className="current-time">{formatTime(isPlaying ? actualCurrentTime : 0)}</span>
             <span className="duration">{formatTime(actualDuration)}</span>
           </div>
         </div>

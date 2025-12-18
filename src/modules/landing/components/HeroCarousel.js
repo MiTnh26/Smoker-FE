@@ -3,32 +3,39 @@ import React, { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../../utils/cn";
 
-const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1516455590571-18256e5bb9ff?w=1600";
+// Sử dụng ảnh trong thư mục public/landing làm fallback & slide mặc định
+const FALLBACK_IMAGE = "/landing/Anh-bar.jpg";
 
 const defaultSlides = [
   {
     id: 1,
-    image: FALLBACK_IMAGE,
+    image: "/landing/Anh-bar.jpg",
     title: "Khám phá cuộc sống về đêm",
     description: "Tìm kiếm những quán bar và club tốt nhất trong thành phố",
   },
   {
     id: 2,
-    image: "https://images.unsplash.com/photo-1557925923-9e2014b87c18?w=1600",
-    title: "Đặt DJ chuyên nghiệp",
-    description: "Kết nối với những DJ hàng đầu cho sự kiện của bạn",
+    image: "/landing/quan-pub-o-ha-noi.jpg",
+    title: "Không gian bar sôi động",
+    description: "Thưởng thức đồ uống và âm nhạc trong không gian đẳng cấp",
   },
   {
     id: 3,
-    image: "https://images.unsplash.com/photo-1511578314322-379afb476865?w=1600",
-    title: "Vũ công tài năng",
-    description: "Thuê vũ công để làm sống động bữa tiệc của bạn",
+    image: "/landing/Bar.jpeg",
+    title: "Trải nghiệm bar độc đáo",
+    description: "Khám phá những concept bar mới lạ và ấn tượng",
   },
   {
     id: 4,
-    image: "https://images.unsplash.com/photo-1588771930296-88c22ad63305?w=1600",
-    title: "Đặt bàn dễ dàng",
-    description: "Đặt chỗ trước và tận hưởng đêm của bạn",
+    image: "/landing/pexels-pixabay-373290.jpg",
+    title: "Âm nhạc bùng nổ",
+    description: "Đắm chìm trong thế giới âm nhạc với dàn DJ chuyên nghiệp",
+  },
+  {
+    id: 5,
+    image: "/landing/pexels-chris-f-38966-1283219.jpg",
+    title: "Đêm hội bất tận",
+    description: "Tận hưởng những đêm hội bất tận cùng bạn bè",
   },
 ];
 

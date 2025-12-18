@@ -6,7 +6,6 @@
   background: rgb(var(--card));
   border-radius: var(--radius);
   border: 1px solid rgb(var(--border));
-  margin-top: 24px;
 }
 
 .song-list-header {
@@ -52,6 +51,10 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
+}
+
+.song-list-grid--single {
+  grid-template-columns: 1fr;
 }
 
 .song-list-item {

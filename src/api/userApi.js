@@ -3,6 +3,8 @@ import axiosClient from "./axiosClient";
 export const authApi = {
   login: (email, password) => axiosClient.post("/auth/login", { email, password }),
   googleLogin: (data) => axiosClient.post("/auth/google-oauth", data),
+  checkRegister: (email, password, confirmPassword) =>
+    axiosClient.post("/auth/register/check", { email, password, confirmPassword }),
   register: (email, password, confirmPassword) =>
     axiosClient.post("/auth/register", { email, password, confirmPassword }),
   googleRegister: (payload = {}) => axiosClient.post("/auth/google-register", payload),

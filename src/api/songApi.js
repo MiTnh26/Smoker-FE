@@ -18,6 +18,12 @@ const songApi = {
     const baseUrl = getApiBaseUrl();
     return `${baseUrl}/api/song/stream/${filename}`;
   },
+  // Stream nhạc theo id (fallback dùng filename nếu BE không hỗ trợ id)
+  getSongStreamUrlById: (idOrFilename) => {
+    const baseUrl = getApiBaseUrl();
+    if (!idOrFilename) return "";
+    return `${baseUrl}/api/song/stream/${idOrFilename}`;
+  },
   // Upload nhạc (formData: {file, ...})
   uploadSong: (formData) => {
     return axiosClient.post("/song/upload", formData, {

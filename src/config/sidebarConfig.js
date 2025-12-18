@@ -13,12 +13,15 @@ import {
   CreditCard,
   ClipboardCheck,
   BookOpen,
+  ClipboardList,
   Package,
   CheckCircle2,
   Pause,
   Play,
   DollarSign,
-  Megaphone
+  Megaphone,
+  AlertCircle,
+  FileText
 } from "lucide-react";
 
 /**
@@ -67,7 +70,6 @@ export const sidebarConfig = {
       subMenu: [
         { label: "Quản lý loại bàn", path: "/bar/settings/:barPageId/table-types" },
         { label: "Quản lý bàn", path: "/bar/settings/:barPageId" },
-        { label: "Danh sách bàn", path: "/bar/settings/:barPageId/tables" },
         { label: "Quản lý voucher", path: "/bar/settings/:barPageId/vouchers" },
         { label: "Quản lý combo", path: "/bar/settings/:barPageId/combos" },
       ],
@@ -75,20 +77,22 @@ export const sidebarConfig = {
   ],
   dj: [
     { label: "Newsfeed", icon: Home, path: "/dj/newsfeed" },
-    { label: "Dashboard", icon: BarChart3, path: "/dj/dashboard" },
-    { label: "Lịch diễn", icon: Calendar, path: "/dj/schedule" },
-    { label: "Khách hàng / Bar hợp tác", icon: Users, path: "/dj/partners" },
-    { label: "Đánh giá & sao", icon: Star, path: "/dj/reviews" },
+ 
+    { label: "Schedule", icon: Calendar, modalType: "schedule" },
+    { label: "Booking", icon: ClipboardList, modalType: "booking" },
+   
+    { label: "Đánh giá & sao", icon: Star, modalType: "reviews" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/dj/messages" },
     { label: "Hồ sơ", icon: User, path: "/dj/profile" },
   ],
 
   dancer: [
     { label: "Newsfeed", icon: Home, path: "/dancer/newsfeed" },
-    { label: "Dashboard", icon: BarChart3, path: "/dancer/dashboard" },
-    { label: "Lịch diễn", icon: Calendar, path: "/dancer/schedule" },
-    { label: "Đối tác / Bar", icon: Users, path: "/dancer/partners" },
-    { label: "Đánh giá & sao", icon: Star, path: "/dancer/reviews" },
+ 
+    { label: "Schedule", icon: Calendar, modalType: "schedule" },
+    { label: "Booking", icon: ClipboardList, modalType: "booking" },
+  
+    { label: "Đánh giá & sao", icon: Star, modalType: "reviews" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/dancer/messages" },
     { label: "Hồ sơ", icon: User, path: "/dancer/profile" },
   ],
@@ -98,14 +102,14 @@ export const sidebarConfig = {
     { label: "Quản lý người dùng", icon: Users, path: "/admin/users" },
     { label: "Quản lý duyệt", icon: ClipboardCheck, path: "/admin/approvals" },
     { label: "Thư viện nhạc", icon: Music2, path: "/admin/music" },
-    { label: "Quản lý quán / Bar", icon: Store, path: "/admin/bars" },
     { label: "Gói quảng cáo", icon: Package, path: "/admin/ad-packages" },
     { label: "Duyệt QC Event", icon: CheckCircle2, path: "/admin/event-ad-approvals" },
     { label: "Yêu cầu tạm dừng QC", icon: Pause, path: "/admin/pause-requests" },
     { label: "Yêu cầu tiếp tục QC", icon: Play, path: "/admin/resume-requests" },
     { label: "Yêu cầu hoàn tiền", icon: DollarSign, path: "/admin/refund-requests" },
-    { label: "Báo cáo & thống kê", icon: BarChart3, path: "/admin/reports" },
-    { label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },
+    { label: "Quản lý báo cáo", icon: AlertCircle, path: "/admin/reports" },
+    // { label: "Quản lý bài viết", icon: FileText, path: "/admin/posts" },
+    // { label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },
     { label: "Cài Đặt Quảng Cáo", icon: Megaphone, path: "https://smoker-revive.onrender.com/revive/www/admin/index.php", external: true },
   ],
 };

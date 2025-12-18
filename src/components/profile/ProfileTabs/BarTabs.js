@@ -9,8 +9,9 @@ import BarVideo from '../../../modules/bar/components/BarVideo';
 import BarReview from '../../../modules/bar/components/BarReview';
 import BarTables from '../../../modules/bar/components/BarTables';
 import BarAdDashboard from '../../../modules/bar/components/BarAdDashboard';
+import BarBookingList from '../../../modules/bar/components/BarBookingList';
 
-export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, isOwnProfile, currentUserRole }) => {
+export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, isOwnProfile, currentUserRole, onEdit, onDelete, onImageClick }) => {
   const { t } = useTranslation();
   
   // Debug log
@@ -47,11 +48,15 @@ export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, is
               {t('common.loading')}
             </div>
           ) : posts && posts.length > 0 ? (
-            <div className={cn('space-y-4')}>
+          <div className={cn('space-y-4 -mx-4 md:-mx-6')}>
               {posts.map(post => (
                 <PostCard
                   key={post.id}
                   post={post}
+                  isOwnProfile={isOwnProfile}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onImageClick={onImageClick}
                 />
               ))}
             </div>
@@ -79,11 +84,10 @@ export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, is
           <BarReview barPageId={barPageId} />
         </div>
       );
-    case 'tables':
-      const canCreateTables = isOwnProfile && currentUserRole === 'BAR';
+    case 'bookings':
       return (
         <div className="profile-section">
-          <BarTables barPageId={barPageId} readOnly={!canCreateTables} />
+          <BarBookingList barPageId={barPageId} isOwnProfile={isOwnProfile} />
         </div>
       );
     case 'ads':

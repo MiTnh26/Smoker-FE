@@ -6,7 +6,14 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next"; // i18n
 import { Link, useNavigate } from "react-router-dom";
-import { User, ChevronDown, ChevronUp } from "lucide-react";      
+import {
+  User,
+  ChevronDown,
+  ChevronUp,
+  SunMedium,
+  MoonStar,
+  Contrast,
+} from "lucide-react";
 import {
   normalizeSession,
   normalizeEntity,
@@ -28,6 +35,12 @@ export default function UnifiedMenu({
   const [showAll, setShowAll] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
+  const ThemeIcon = ({ size = 18 }) => {
+    if (theme === "dark") return <MoonStar size={size} />;
+    if (theme === "bw") return <Contrast size={size} />;
+    return <SunMedium size={size} />;
+  };
+
   // Get configuration
   const config = menuConfigs[menuConfig] || menuConfigs.customer;
 
@@ -37,8 +50,7 @@ export default function UnifiedMenu({
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // Load session data
-  useEffect(() => {
+  const loadSession = () => {
     try {
       const storedSession = JSON.parse(localStorage.getItem("session"));
       console.log("[UnifiedMenu] Raw session from localStorage:", storedSession);
@@ -48,10 +60,34 @@ export default function UnifiedMenu({
         setSession(normalized);
       } else {
         console.warn("[UnifiedMenu] No session found in localStorage");
+        setSession(null);
       }
     } catch (error) {
       console.error("[UnifiedMenu] Error loading session:", error);
     }
+  };
+
+  // Load session data
+  useEffect(() => {
+    loadSession();
+  }, []);
+
+  // Refresh when profile/session updates are dispatched
+  useEffect(() => {
+    const handleSessionChange = () => loadSession();
+    // Use window only to avoid no-undef in non-browser lint configs
+    const win = typeof window !== "undefined" ? window : null;
+    if (!win) return;
+
+    win.addEventListener("profileUpdated", handleSessionChange);
+    win.addEventListener("sessionUpdated", handleSessionChange);
+    win.addEventListener("storage", handleSessionChange);
+
+    return () => {
+      win.removeEventListener("profileUpdated", handleSessionChange);
+      win.removeEventListener("sessionUpdated", handleSessionChange);
+      win.removeEventListener("storage", handleSessionChange);
+    };
   }, []);
 
   console.log("[UnifiedMenu] Render - session:", session, "userData:", userData, "entities:", entities);
@@ -370,7 +406,10 @@ export default function UnifiedMenu({
                   onClick={() => handleMenuItemClick(item)}
                 >
                   <span>{t(`menu.${item.id}`, { defaultValue: item.label })}</span>
-                  <span className="theme-label">{getThemeLabel(theme, t)}</span>
+                  <span className="theme-label inline-flex items-center gap-1">
+                    <ThemeIcon size={14} />
+                    <span>{getThemeLabel(theme, t)}</span>
+                  </span>
                 </button>
               ) : item.href ? (
                 <Link
