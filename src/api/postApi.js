@@ -1,5 +1,6 @@
 
 import axiosClient from "./axiosClient";
+import { getActiveEntity, getAccount } from "../utils/sessionManager";
 
 // Lấy danh sách post
 // params can include:
@@ -92,8 +93,25 @@ export const searchPostsByTitle = (params) => axiosClient.get("/posts/search/tit
 // Tìm kiếm post theo author
 export const searchPostsByAuthor = (params) => axiosClient.get("/posts/search/author", { params });
 
-// Get posts by author entity id (public)
-export const getPostsByAuthor = (authorId, params) => axiosClient.get(`/posts/author/${authorId}`, { params });
+// Helper: get current viewer EntityAccountId from session
+const getViewerEntityAccountId = () => {
+  try {
+    const active = getActiveEntity() || getAccount();
+    return active?.EntityAccountId || active?.entityAccountId || null;
+  } catch {
+    return null;
+  }
+};
+
+// Get posts by author entity id (public) - include viewerEntityAccountId for correct like state
+export const getPostsByAuthor = (authorId, params = {}) => {
+  const viewerEntityAccountId = getViewerEntityAccountId();
+  const finalParams = { ...params };
+  if (viewerEntityAccountId && !finalParams.viewerEntityAccountId) {
+    finalParams.viewerEntityAccountId = viewerEntityAccountId;
+  }
+  return axiosClient.get(`/posts/author/${authorId}`, { params: finalParams });
+};
 
 // Upload media for posts (images, videos, audio)
 export const uploadPostMedia = (formData) => axiosClient.post("/posts/upload", formData, {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getFeed, trashPost } from "../../../../api/postApi";
+import { trashPost } from "../../../../api/postApi";
+import feedApi from "../../../../api/feedApi";
 import PostCard from "./PostCard";
 import LivestreamCardInline from "../livestream/LivestreamCardInline";
 import { useSharedAudioPlayer } from "../../../../hooks/useSharedAudioPlayer";
@@ -185,7 +186,7 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
         params.cursor = cursor;
       }
 
-      const response = await getFeed(params);
+      const response = await feedApi.getFeed(params);
       
       // Backend returns: { feed: [...], nextCursor, hasMore }
       // Axios wraps it, so response is already response.data
@@ -253,7 +254,7 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
       setLoadingMore(true);
       setError(null);
 
-      const response = await getFeed({
+      const response = await feedApi.getFeed({
         cursor: cursor,
         limit: 10
       });

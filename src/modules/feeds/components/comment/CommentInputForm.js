@@ -188,7 +188,7 @@ export default function CommentInputForm({ postId, onCommentAdded, onSubmitOverr
             }
           }}
           className={cn(
-            "w-full px-4 py-2 pr-10 border-[0.5px] border-border/20 rounded-2xl",
+            "w-full h-13 px-4 py-3 pr-10 border-[0.5px] border-border/20 rounded-2xl",
             "bg-muted/50 text-foreground text-sm outline-none resize-none",
             "transition-all duration-200",
             "focus:border-primary focus:ring-1 focus:ring-primary/10",
@@ -200,7 +200,7 @@ export default function CommentInputForm({ postId, onCommentAdded, onSubmitOverr
         <button
           type="submit"
           className={cn(
-            "absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center",
+            "absolute inset-y-0 right-2 my-auto w-8 h-8 flex items-center justify-center",
             "bg-transparent border-none rounded-full cursor-pointer transition-colors duration-200",
             newComment.trim() 
               ? "text-primary hover:bg-primary/10"
@@ -209,7 +209,7 @@ export default function CommentInputForm({ postId, onCommentAdded, onSubmitOverr
           disabled={submitting || !newComment.trim() || disabled}
           aria-label="Send comment"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <svg className="w-5 h-5 pb-[2px]" viewBox="0 0 24 24" fill="currentColor">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
           </svg>
         </button>
