@@ -328,8 +328,7 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
             }}>
               Giờ có thể đến để chuẩn bị (tùy chọn)
             </label>
-            <input
-              type="time"
+            <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               style={{
@@ -337,9 +336,12 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
                 padding: '12px',
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
-                fontSize: '1rem'
+                fontSize: '1rem',
+                minHeight: '80px',
+                resize: 'vertical',
+                fontFamily: 'inherit'
               }}
-              placeholder="Chọn giờ"
+              placeholder="Hãy nhập thời gian ước tính mà bạn sẽ đến"
             />
           </div>
 
@@ -855,7 +857,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
               Đã chọn {selectedTables.length} bàn
             </div>
             <div style={{ fontSize: '0.9rem', color: 'rgb(var(--success))' }}>
-              Tổng tiền cọc: {selectedTables.reduce((sum, t) => sum + (t.DepositPrice || 0), 0).toLocaleString('vi-VN')} đ
+              Tổng tiền cọc: {(selectedTables.length * 100000).toLocaleString('vi-VN')} đ
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>

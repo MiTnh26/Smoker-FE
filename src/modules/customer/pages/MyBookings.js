@@ -5,7 +5,7 @@ import { useCurrentUserEntity } from "../../../hooks/useCurrentUserEntity";
 import bookingApi from "../../../api/bookingApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { cn } from "../../../utils/cn";
-import { Calendar, Clock, MapPin, DollarSign, X, Eye, AlertCircle, CheckCircle, XCircle, Loader2, Search, Filter, ExternalLink, Building2, Music2, Star, Upload, Image as ImageIcon, Edit, Phone } from "lucide-react";
+import { Calendar, Clock, MapPin, DollarSign, X, Eye, AlertCircle, CheckCircle, XCircle, Loader2, Search, Filter, ExternalLink, Building2, Music2, Star, Upload, Image as ImageIcon, Edit, Phone, FileText } from "lucide-react";
 import { getAvatarUrl } from "../../../utils/defaultAvatar";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
@@ -314,12 +314,67 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
             </div>
           )}
 
-          {/* Note (for BarTable bookings) */}
-          {!isDJBooking && detailSchedule?.Note && (
+          {/* Địa điểm bar (for BarTable bookings) */}
+          {!isDJBooking && receiverInfo?.address && (
             <div className="flex items-start gap-3">
               <MapPin className="mt-1 text-muted-foreground" size={20} />
               <div className="flex-1">
-                <p className="text-sm text-muted-foreground">Ghi chú / Địa điểm</p>
+                <p className="text-sm text-muted-foreground">Địa điểm</p>
+                <p className="font-semibold text-foreground">
+                  {(() => {
+                    const address = receiverInfo.address;
+                    if (!address) return "Chưa có địa chỉ";
+                    
+                    // Nếu là string
+                    if (typeof address === 'string') {
+                      const trimmed = address.trim();
+                      // Nếu là JSON string, parse nó
+                      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                        try {
+                          const parsed = JSON.parse(trimmed);
+                          if (parsed.fullAddress) return parsed.fullAddress;
+                          // Build from parts
+                          const parts = [
+                            parsed.detail || parsed.addressDetail,
+                            parsed.wardName || parsed.ward,
+                            parsed.districtName || parsed.district,
+                            parsed.provinceName || parsed.province
+                          ].filter(Boolean);
+                          if (parts.length > 0) return parts.join(', ');
+                          return trimmed;
+                        } catch {
+                          return trimmed;
+                        }
+                      }
+                      return trimmed;
+                    }
+                    
+                    // Nếu là object
+                    if (typeof address === 'object') {
+                      if (address.fullAddress) return address.fullAddress;
+                      // Build from parts
+                      const parts = [
+                        address.detail || address.addressDetail,
+                        address.wardName || address.ward,
+                        address.districtName || address.district,
+                        address.provinceName || address.province
+                      ].filter(Boolean);
+                      if (parts.length > 0) return parts.join(', ');
+                    }
+                    
+                    return "Chưa có địa chỉ";
+                  })()}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Ghi chú (for BarTable bookings) */}
+          {!isDJBooking && detailSchedule?.Note && (
+            <div className="flex items-start gap-3">
+              <FileText className="mt-1 text-muted-foreground" size={20} />
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Ghi chú</p>
                 <p className="font-semibold text-foreground">{detailSchedule.Note}</p>
               </div>
             </div>

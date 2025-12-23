@@ -207,11 +207,36 @@ export default function PerformerReviews({
     try {
       const res = await userReviewApi.getByBusiness(businessAccountId);
       const payload = res?.data || res;
-      const normalizedList = Array.isArray(payload?.reviews)
-        ? payload.reviews.map(normalizeReview)
-        : Array.isArray(payload?.data?.reviews)
-        ? payload.data.reviews.map(normalizeReview)
+      const reviewsData = payload?.reviews || payload?.data?.reviews || [];
+      
+      // Debug: Log raw reviews data to check for Picture and FeedBackContent
+      console.log('[PerformerReviews] Raw reviews data:', reviewsData);
+      reviewsData.forEach((item, index) => {
+        if (item.Picture || item.FeedBackContent) {
+          console.log(`[PerformerReviews] Review ${index} with images:`, {
+            id: item.ReviewId,
+            Picture: item.Picture,
+            FeedBackContent: item.FeedBackContent
+          });
+        }
+      });
+      
+      const normalizedList = Array.isArray(reviewsData)
+        ? reviewsData.map(normalizeReview)
         : [];
+      
+      // Debug: Log normalized reviews to check if Picture and FeedBackContent are preserved
+      console.log('[PerformerReviews] Normalized reviews:', normalizedList);
+      normalizedList.forEach((review, index) => {
+        if (review.Picture || review.FeedBackContent) {
+          console.log(`[PerformerReviews] Normalized review ${index} with images:`, {
+            id: review.id,
+            Picture: review.Picture,
+            FeedBackContent: review.FeedBackContent
+          });
+        }
+      });
+      
       const statsPayload =
         payload?.stats || payload?.data?.stats || defaultStats;
 
@@ -357,167 +382,6 @@ export default function PerformerReviews({
         </div>
       )}
 
-      {allowSubmission && !isOwnProfile && !isBusinessRole && (
-        <div
-          className={cn(
-            "rounded-xl border border-border/30 bg-background/60",
-            "p-4 flex flex-col gap-3"
-          )}
-        >
-          <h4 className={cn("text-base font-semibold text-foreground")}>
-            {t("performerReviews.formTitle", {
-              role: performerRole || t("performerReviews.defaultRole"),
-            })}
-          </h4>
-
-          {!reviewerAccountId && (
-            <p className={cn("text-sm text-muted-foreground")}>
-              {t("performerReviews.loginRequired")}
-            </p>
-          )}
-
-          {reviewerAccountId && (
-            <>
-              {myReview && !editing && (
-                <div
-                  className={cn(
-                    "rounded-lg bg-muted/20 border border-muted/30 p-3 text-sm flex flex-col gap-2"
-                  )}
-                >
-                  <span>
-                    {t("performerReviews.youReviewedAt", {
-                      date: formatDateTime(myReview.createdAt),
-                    })}
-                  </span>
-                  <div className={cn("flex items-center gap-1")}>
-                    {Array.from({ length: 5 }).map((_, index) => (
-                      <Star
-                        key={index}
-                        size={16}
-                        className={cn(
-                          index < myReview.star
-                            ? "text-warning fill-warning"
-                            : "text-muted-foreground/40"
-                        )}
-                      />
-                    ))}
-                  </div>
-                  {myReview.comment && (
-                    <p className={cn("text-sm text-foreground leading-relaxed")}>
-                      {myReview.comment}
-                    </p>
-                  )}
-                  <div className={cn("flex gap-2")}>
-                    <button
-                      type="button"
-                      className={cn(
-                        "px-3 py-1.5 rounded-md text-xs font-medium",
-                        "bg-primary text-primary-foreground border-none",
-                        "hover:opacity-90 active:scale-95 transition-all"
-                      )}
-                      onClick={() => setEditing(true)}
-                    >
-                      {t("performerReviews.editReview")}
-                    </button>
-                    <button
-                      type="button"
-                      className={cn(
-                        "px-3 py-1.5 rounded-md text-xs font-medium",
-                        "bg-transparent border border-danger/30 text-danger",
-                        "hover:bg-danger/10 active:scale-95 transition-all"
-                      )}
-                      onClick={() => handleDelete(myReview.id)}
-                    >
-                      {t("performerReviews.deleteReview")}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {(editing || !myReview) && (
-                <form onSubmit={handleSubmit} className={cn("flex flex-col gap-3")}>
-                  <div className={cn("flex items-center gap-3 flex-wrap")}>
-                    <span className={cn("text-sm font-medium text-foreground")}>
-                      {t("performerReviews.selectRating")}
-                    </span>
-                    <StarInput
-                      value={form.rating}
-                      onChange={(value) => setForm((prev) => ({ ...prev, rating: value }))}
-                      disabled={submitting}
-                    />
-                  </div>
-                  <textarea
-                    rows={3}
-                    className={cn(
-                      "w-full px-4 py-2.5 rounded-lg",
-                      "border border-border/20",
-                      "bg-background text-foreground",
-                      "outline-none transition-all duration-200",
-                      "placeholder:text-muted-foreground/60",
-                      "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
-                      "resize-y"
-                    )}
-                    placeholder={t("performerReviews.placeholder")}
-                    value={form.comment}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, comment: event.target.value }))
-                    }
-                    disabled={submitting}
-                  />
-                  <div className={cn("flex items-center gap-2")}>
-                    <button
-                      type="submit"
-                      className={cn(
-                        "px-4 py-2 rounded-lg text-sm font-semibold border-none",
-                        "bg-warning text-foreground transition-all duration-200",
-                        "hover:bg-warning/90 active:scale-95",
-                        "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                      )}
-                      disabled={submitting || !form.rating}
-                    >
-                      {myReview
-                        ? t("performerReviews.updateReview")
-                        : t("performerReviews.submitReview")}
-                    </button>
-                    {myReview && (
-                      <button
-                        type="button"
-                        className={cn(
-                          "px-4 py-2 rounded-lg text-sm font-semibold border border-border/40",
-                          "bg-transparent text-muted-foreground transition-all duration-200",
-                          "hover:bg-muted/20 active:scale-95"
-                        )}
-                        onClick={() => {
-                          setEditing(false);
-                          setForm({
-                            rating: myReview.star,
-                            comment: myReview.comment || "",
-                          });
-                        }}
-                        disabled={submitting}
-                      >
-                        {t("performerReviews.cancel")}
-                      </button>
-                    )}
-                  </div>
-                </form>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {(isOwnProfile || isBusinessRole) && (
-        <div
-          className={cn(
-            "rounded-xl border border-border/30 bg-muted/20 p-4 text-sm text-muted-foreground"
-          )}
-        >
-          {isOwnProfile 
-            ? t("performerReviews.ownerNotice")
-            : t("performerReviews.businessRoleNotice")}
-        </div>
-      )}
 
       <div className={cn("flex flex-col gap-4")}>
         {loading ? (
@@ -678,16 +542,34 @@ function ReviewItem({ review, t }) {
         )}
         
         {/* Hiển thị ảnh feed và back nếu có */}
-        {(review.Picture || review.FeedBackContent) && (
-          <div className={cn("mt-3")}>
-            {/* Kiểm tra xem có cả 2 ảnh không */}
-            {(() => {
-              const hasPicture = review.Picture && review.Picture.trim() !== '';
-              const hasFeedbackImage = review.FeedBackContent && 
-                review.FeedBackContent.trim() !== '' && 
-                (review.FeedBackContent.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
-                 review.FeedBackContent.startsWith('data:image') ||
-                 review.FeedBackContent.startsWith('http'));
+        {(() => {
+          const hasPicture = review.Picture && typeof review.Picture === 'string' && review.Picture.trim() !== '';
+          const hasFeedBackContent = review.FeedBackContent && typeof review.FeedBackContent === 'string' && review.FeedBackContent.trim() !== '';
+          const hasFeedbackImage = hasFeedBackContent && 
+            (review.FeedBackContent.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
+             review.FeedBackContent.startsWith('data:image') ||
+             review.FeedBackContent.startsWith('http'));
+          
+          // Debug log
+          if (hasPicture || hasFeedBackContent) {
+            console.log('[PerformerReviews] ReviewItem - Image check:', {
+              reviewId: review.id,
+              hasPicture,
+              hasFeedBackContent,
+              hasFeedbackImage,
+              Picture: review.Picture,
+              FeedBackContent: review.FeedBackContent
+            });
+          }
+          
+          if (!hasPicture && !hasFeedBackContent) {
+            return null;
+          }
+          
+          return (
+            <div className={cn("mt-3")}>
+              {/* Kiểm tra xem có cả 2 ảnh không */}
+              {(() => {
               
               // Nếu có cả 2 ảnh, hiển thị cạnh nhau
               if (hasPicture && hasFeedbackImage) {
@@ -772,9 +654,10 @@ function ReviewItem({ review, t }) {
                   )}
                 </div>
               );
-            })()}
-          </div>
-        )}
+              })()}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
