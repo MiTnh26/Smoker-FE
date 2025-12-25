@@ -68,8 +68,9 @@ export default function BarReview({ barPageId }) {
       .getAll()
       .then((res) => {
         // Nếu API trả về mảng, map lại cho đúng định dạng FE
-        const data = Array.isArray(res) ? res : [];
-        // console.log('🔄 [BarReview] Fetched data:', data);
+        const data = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+        console.log('🔄 [BarReview] Fetched raw data:', data);
+        
         const mappedReviews = data
           .filter((r) => !barPageId || r.BarId === barPageId)
           .map((r) => ({
@@ -80,14 +81,15 @@ export default function BarReview({ barPageId }) {
             comment: r.Content || r.comment || "",
             date: r.created_at || r.date || new Date().toISOString(),
             AccountId: r.AccountId,
-            Picture: r.Picture, // Ảnh feed
-            FeedBackContent: r.FeedBackContent, // Ảnh back hoặc text
+            Picture: r.Picture || null, // Ảnh feed
+            FeedBackContent: r.FeedBackContent || null, // Ảnh back hoặc text
             BookingId: r.BookingId || r.bookingId, // ID booking
             BookingDate: r.BookingDate || r.bookingDate, // Ngày book
             TableName: r.TableName || r.tableName, // Tên bàn
           }));
         
         // Debug: Log reviews với ảnh
+        console.log('🔄 [BarReview] Mapped reviews:', mappedReviews);
         mappedReviews.forEach((r) => {
           if (r.Picture || r.FeedBackContent) {
             console.log('[BarReview] Review with images:', {
@@ -102,7 +104,6 @@ export default function BarReview({ barPageId }) {
         });
         
         setReviews(mappedReviews);
-        // console.log('✅ [BarReview] Fetched data:', data);
         setLoading(false);
       })
       .catch((err) => {
@@ -172,30 +173,32 @@ export default function BarReview({ barPageId }) {
   const reloadReviews = async () => {
     try {
       const res = await barReviewApi.getAll();
-      const data = Array.isArray(res) ? res : [];
-      // console.log('🔄 [BarReview] Reloaded data:', data);
-      setReviews(
-        data
-          .filter((r) => !barPageId || r.BarId === barPageId)
-          .map((r) => ({
-            id: r.BarReviewId || r.id,
-            userName: r.user?.UserName || "Ẩn danh",
-            avatar: r.user?.Avatar || "https://i.pravatar.cc/50",
-            rating: r.Star || r.rating || 0,
-            comment: r.Content || r.comment || "",
-            date: r.created_at || r.date || new Date().toISOString(),
-            AccountId: r.AccountId,
-            Picture: r.Picture, // Ảnh feed
-            FeedBackContent: r.FeedBackContent, // Ảnh back hoặc text
-            BookingId: r.BookingId || r.bookingId, // ID booking
-            BookingDate: r.BookingDate || r.bookingDate, // Ngày book
-            TableName: r.TableName || r.tableName, // Tên bàn
-          }))
-          .sort((a, b) => {
-            // Sắp xếp theo ngày review mới nhất trước
-            return new Date(b.date) - new Date(a.date);
-          })
-      );
+      const data = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : [];
+      console.log('🔄 [BarReview] Reloaded raw data:', data);
+      
+      const mappedReviews = data
+        .filter((r) => !barPageId || r.BarId === barPageId)
+        .map((r) => ({
+          id: r.BarReviewId || r.id,
+          userName: r.user?.UserName || "Ẩn danh",
+          avatar: r.user?.Avatar || "https://i.pravatar.cc/50",
+          rating: r.Star || r.rating || 0,
+          comment: r.Content || r.comment || "",
+          date: r.created_at || r.date || new Date().toISOString(),
+          AccountId: r.AccountId,
+          Picture: r.Picture || null, // Ảnh feed
+          FeedBackContent: r.FeedBackContent || null, // Ảnh back hoặc text
+          BookingId: r.BookingId || r.bookingId, // ID booking
+          BookingDate: r.BookingDate || r.bookingDate, // Ngày book
+          TableName: r.TableName || r.tableName, // Tên bàn
+        }))
+        .sort((a, b) => {
+          // Sắp xếp theo ngày review mới nhất trước
+          return new Date(b.date) - new Date(a.date);
+        });
+      
+      console.log('🔄 [BarReview] Reloaded mapped reviews:', mappedReviews);
+      setReviews(mappedReviews);
       setLoading(false);
     } catch (err) {
       setReviews(mockReviews);
@@ -310,99 +313,6 @@ export default function BarReview({ barPageId }) {
         </div>
       )}
 
-      {/* Form đánh giá - chỉ hiển thị cho customer */}
-      {isCustomer && (
-      <form
-        className={cn(
-          "mb-6 bg-card rounded-lg",
-          "border-[0.5px] border-border/20",
-          "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
-          "p-4 md:p-5 flex flex-col gap-4"
-        )}
-        onSubmit={handleSubmit}
-      >
-        <div className={cn("flex items-center gap-3 flex-wrap")}>
-          <span className={cn("text-sm font-medium text-foreground")}>
-            Chọn số sao:
-          </span>
-          <StarInput
-            value={form.rating}
-            onChange={(v) => setForm((f) => ({ ...f, rating: v }))}
-            disabled={!!myReview && !editingId}
-          />
-        </div>
-        <textarea
-          className={cn(
-            "w-full px-4 py-2.5 rounded-lg",
-            "border-[0.5px] border-border/20",
-            "bg-background text-foreground",
-            "outline-none transition-all duration-200",
-            "placeholder:text-muted-foreground/60",
-            "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
-            "resize-y",
-            "disabled:opacity-50 disabled:cursor-not-allowed"
-          )}
-          rows={3}
-          placeholder="Nhập nhận xét của bạn..."
-          value={form.comment}
-          onChange={(e) => setForm((f) => ({ ...f, comment: e.target.value }))}
-          disabled={!!myReview && !editingId}
-        />
-        <div className={cn("flex items-center gap-2 flex-wrap")}>
-          <button
-            type="submit"
-            className={cn(
-              "bg-warning text-foreground border-none",
-              "px-4 py-2 rounded-lg font-semibold text-sm",
-              "transition-all duration-200",
-              "hover:bg-warning/90",
-              "active:scale-95",
-              "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            )}
-            disabled={form.rating === 0 || !form.comment.trim() || (!!myReview && !editingId)}
-          >
-            {editingId ? "Cập nhật" : "Gửi đánh giá"}
-          </button>
-          {editingId && (
-            <button
-              type="button"
-              className={cn(
-                "bg-transparent border-none",
-                "text-muted-foreground font-semibold",
-                "px-4 py-2 rounded-lg text-sm",
-                "transition-all duration-200",
-                "hover:text-foreground hover:bg-muted/50",
-                "active:scale-95"
-              )}
-              onClick={handleCancelEdit}
-            >
-              Hủy
-            </button>
-          )}
-        </div>
-        {!!myReview && !editingId && (
-          <div className={cn(
-            "text-xs text-muted-foreground",
-            "p-2 rounded-lg bg-muted/30"
-          )}>
-            Bạn đã đánh giá quán này. Bạn có thể sửa hoặc xóa đánh giá bên dưới.
-          </div>
-        )}
-      </form>
-      )}
-      
-      {!isCustomer && user && (
-        <div className={cn(
-          "mb-6 bg-card rounded-lg",
-          "border-[0.5px] border-border/20",
-          "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
-          "p-4 md:p-5"
-        )}>
-          <p className={cn("text-sm text-muted-foreground")}>
-            Chỉ khách hàng mới có thể đánh giá quán bar.
-          </p>
-        </div>
-      )}
 
       {/* Danh sách đánh giá */}
       <div className={cn("flex flex-col gap-4")}>
@@ -523,16 +433,34 @@ export default function BarReview({ barPageId }) {
               </p>
               
               {/* Hiển thị ảnh feed và back nếu có - gọn và cân đối */}
-              {(r.Picture || r.FeedBackContent) && (
-                <div className={cn("mt-3")}>
-                  {/* Kiểm tra xem có cả 2 ảnh không */}
-                  {(() => {
-                    const hasPicture = r.Picture && r.Picture.trim() !== '';
-                    const hasFeedbackImage = r.FeedBackContent && 
-                      r.FeedBackContent.trim() !== '' && 
-                      (r.FeedBackContent.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
-                       r.FeedBackContent.startsWith('data:image') ||
-                       r.FeedBackContent.startsWith('http'));
+              {(() => {
+                const hasPicture = r.Picture && typeof r.Picture === 'string' && r.Picture.trim() !== '';
+                const hasFeedBackContent = r.FeedBackContent && typeof r.FeedBackContent === 'string' && r.FeedBackContent.trim() !== '';
+                const hasFeedbackImage = hasFeedBackContent && 
+                  (r.FeedBackContent.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
+                   r.FeedBackContent.startsWith('data:image') ||
+                   r.FeedBackContent.startsWith('http'));
+                
+                // Debug log
+                if (hasPicture || hasFeedBackContent) {
+                  console.log('[BarReview] ReviewItem - Image check:', {
+                    reviewId: r.id,
+                    hasPicture,
+                    hasFeedBackContent,
+                    hasFeedbackImage,
+                    Picture: r.Picture,
+                    FeedBackContent: r.FeedBackContent
+                  });
+                }
+                
+                if (!hasPicture && !hasFeedBackContent) {
+                  return null;
+                }
+                
+                return (
+                  <div className={cn("mt-3")}>
+                    {/* Kiểm tra xem có cả 2 ảnh không */}
+                    {(() => {
                     
                     // Nếu có cả 2 ảnh, hiển thị cạnh nhau với kích thước gọn hơn
                     if (hasPicture && hasFeedbackImage) {
@@ -617,9 +545,10 @@ export default function BarReview({ barPageId }) {
                         )}
                       </div>
                     );
-                  })()}
-                </div>
-              )}
+                    })()}
+                  </div>
+                );
+              })()}
               
               {/* Nếu là review của user hiện tại thì hiện nút sửa */}
               {user && r.AccountId === user.id && (
