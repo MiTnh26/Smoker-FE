@@ -438,7 +438,7 @@ export default function ProfilePage() {
                 "text-center py-12 text-muted-foreground",
                 "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
               )}>
-                {t("publicProfile.noVideos") || t("publicProfile.noPosts")}
+                Chưa có video
               </div>
             )}
           </div>
@@ -777,7 +777,7 @@ export default function ProfilePage() {
                 "text-center py-12 text-muted-foreground",
                 "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
               )}>
-                {t("publicProfile.noVideos") || t("publicProfile.noPosts")}
+                Chưa có video
               </div>
             )}
           </div>
@@ -867,7 +867,7 @@ export default function ProfilePage() {
                 "text-center py-12 text-muted-foreground",
                 "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
               )}>
-                {t("publicProfile.noVideos") || t("publicProfile.noPosts")}
+                Chưa có video
               </div>
             )}
           </div>
