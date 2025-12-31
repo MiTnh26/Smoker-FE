@@ -41,10 +41,9 @@ export default function TableClassificationManager({ onTableTypesChange }) {
       try {
         setLoading(true);
         const res = await barPageApi.getTableTypes(barPageId);
-        console.log("📦 Dữ liệu loại bàn:", res.data);
         setClassifications(res.data || []);
       } catch (err) {
-        console.error("❌ Lỗi tải loại bàn:", err);
+        console.error("Lỗi tải loại bàn:", err);
         addToast(t("bar.cannotLoadTableTypes"), "error");
       } finally {
         setLoading(false);
@@ -82,6 +81,13 @@ export default function TableClassificationManager({ onTableTypesChange }) {
     const dirtyItems = classifications.filter((c) => c.dirty);
     if (!dirtyItems.length) {
       addToast(t("bar.noChangesToSave"), "warning");
+      return;
+    }
+
+    // Validate: Kiểm tra tất cả loại bàn có tên chưa
+    const itemsWithoutName = dirtyItems.filter((c) => !c.TableTypeName || c.TableTypeName.trim() === "");
+    if (itemsWithoutName.length > 0) {
+      addToast(t("bar.pleaseAddTableTypeName"), "error");
       return;
     }
 
@@ -124,7 +130,7 @@ export default function TableClassificationManager({ onTableTypesChange }) {
         window.dispatchEvent(new Event("tableTypesUpdated"));
       }
     } catch (err) {
-      console.error("❌ Lỗi khi lưu loại bàn:", err);
+      console.error("Lỗi khi lưu loại bàn:", err);
       addToast(t("bar.errorSaving"), "error");
     } finally {
       setSaving(false);
@@ -165,7 +171,7 @@ export default function TableClassificationManager({ onTableTypesChange }) {
         window.dispatchEvent(new Event("tableTypesUpdated"));
       }
     } catch (err) {
-      console.error("❌ Lỗi khi xóa loại bàn:", err);
+      console.error("Lỗi khi xóa loại bàn:", err);
       setExitingCards((prev) => {
         const next = new Set(prev);
         next.delete(cardId);
@@ -180,7 +186,7 @@ export default function TableClassificationManager({ onTableTypesChange }) {
     return (
       <div className="table-classification-container">
         <div className="classification-loading">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.5rem", width: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", width: "100%" }}>
             {[1, 2, 3, 4].map((i) => (
               <SkeletonCard key={`skeleton-${i}`} />
             ))}

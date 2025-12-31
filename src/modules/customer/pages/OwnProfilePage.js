@@ -296,6 +296,66 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
     fetchFollowing();
   };
 
+  // Handle avatar change
+  const handleAvatarChange = async (newAvatarUrl) => {
+    try {
+      let res;
+      const profileEntityAccountId = profile?.EntityAccountId || profile?.entityAccountId || currentUserEntityId;
+      
+      switch (profileType.type) {
+        case 'Account':
+          res = await userApi.updateProfile({ avatar: newAvatarUrl });
+          break;
+        case 'BarPage':
+          res = await barPageApi.updateBarPage(profileEntityAccountId, { avatar: newAvatarUrl });
+          break;
+        case 'BusinessAccount':
+          res = await businessApi.updateBusiness(profileEntityAccountId, { avatar: newAvatarUrl });
+          break;
+        default:
+          throw new Error('Invalid profile type');
+      }
+      
+      if (res && (res.status === 'success' || res.data)) {
+        // Refetch profile to ensure consistency
+        handleProfileUpdate();
+      }
+    } catch (err) {
+      console.error('[OwnProfilePage] Failed to update avatar:', err);
+      alert(t('profile.updateError') || 'Cập nhật avatar thất bại. Vui lòng thử lại.');
+    }
+  };
+
+  // Handle background change
+  const handleBackgroundChange = async (newBackgroundUrl) => {
+    try {
+      let res;
+      const profileEntityAccountId = profile?.EntityAccountId || profile?.entityAccountId || currentUserEntityId;
+      
+      switch (profileType.type) {
+        case 'Account':
+          res = await userApi.updateProfile({ background: newBackgroundUrl });
+          break;
+        case 'BarPage':
+          res = await barPageApi.updateBarPage(profileEntityAccountId, { background: newBackgroundUrl });
+          break;
+        case 'BusinessAccount':
+          res = await businessApi.updateBusiness(profileEntityAccountId, { background: newBackgroundUrl });
+          break;
+        default:
+          throw new Error('Invalid profile type');
+      }
+      
+      if (res && (res.status === 'success' || res.data)) {
+        // Refetch profile to ensure consistency
+        handleProfileUpdate();
+      }
+    } catch (err) {
+      console.error('[OwnProfilePage] Failed to update background:', err);
+      alert(t('profile.updateError') || 'Cập nhật ảnh bìa thất bại. Vui lòng thử lại.');
+    }
+  };
+
   // Use profileType hook results
   const isBarProfile = profileType.isBar;
   const isDJProfile = profileType.isDJ;
@@ -415,6 +475,9 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
         avatar={profile.avatar || profile.Avatar}
         name={profile.BarName || profile.barName || profile.userName || profile.name || profile.Name || ''}
         role={profile.role || profile.Role || 'USER'}
+        isOwnProfile={true}
+        onAvatarChange={handleAvatarChange}
+        onBackgroundChange={handleBackgroundChange}
       >
         <button
           onClick={() => setShowEditModal(true)}

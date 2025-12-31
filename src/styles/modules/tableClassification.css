@@ -136,10 +136,10 @@
   }
 }
 
-/* Grid Layout */
+/* Grid Layout - 1 column (1 loại bàn mỗi dòng) */
 .classifications-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 1.5rem;
   margin-bottom: 0;
 }
@@ -306,7 +306,7 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .classifications-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    /* Already 1 column, no change needed */
   }
 }
 
@@ -327,7 +327,7 @@
   }
 
   .classifications-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    /* Already 1 column, no change needed */
     gap: 1rem;
   }
 }
@@ -357,7 +357,7 @@
   }
 
   .classifications-grid {
-    grid-template-columns: 1fr;
+    /* Already 1 column, no change needed */
   }
 
   .classification-card {

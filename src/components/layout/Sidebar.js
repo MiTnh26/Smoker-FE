@@ -27,6 +27,7 @@ export default function Sidebar({ isOpen, onClose }) {
   const [loadingTableTypes, setLoadingTableTypes] = useState(false);
   const [modalType, setModalType] = useState(null); // 'schedule' or 'booking'
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isManagerUser, setIsManagerUser] = useState(false); // Track if user is Manager
   
   const currentUserEntityId = useCurrentUserEntity();
 
@@ -34,6 +35,61 @@ export default function Sidebar({ isOpen, onClose }) {
     const session = JSON.parse(localStorage.getItem("session")) || {};
     const account = session.account || {};
     
+    // Kiểm tra xem có phải Manager không (từ bảng Managers, KHÔNG phải Accounts)
+    let manager = null;
+    try {
+      // Ưu tiên lấy từ session
+      manager = session?.manager;
+      // Nếu không có trong session, lấy từ localStorage trực tiếp
+      if (!manager) {
+        const managerStr = localStorage.getItem("manager");
+        if (managerStr && managerStr !== "null") {
+          manager = JSON.parse(managerStr);
+        }
+      }
+    } catch (err) {
+      console.error("[Sidebar] Error parsing manager:", err);
+    }
+    
+    // Kiểm tra type trong session hoặc có manager object
+    const isManagerCheck = session?.type === "manager" || (manager && manager.id);
+    
+    console.log("[Sidebar] Check Manager:", {
+      isManager: isManagerCheck,
+      hasManager: !!manager,
+      managerRole: manager?.role,
+      sessionType: session?.type
+    });
+    
+    // Nếu là Manager (từ bảng Managers), dùng menu admin
+    if (isManagerCheck && manager) {
+      const managerRole = (manager?.role || "").toLowerCase();
+      console.log("[Sidebar] Manager role:", managerRole);
+      
+      // Admin (không phải Accountant) → dùng menu admin
+      // Accountant → không hiển thị sidebar (hoặc menu riêng)
+      setIsManagerUser(true);
+      if (managerRole !== "accountant") {
+        console.log("[Sidebar] Setting admin menu for Admin role");
+        setMenus(sidebarConfig.admin || []);
+        // Set một dummy entity để Sidebar không return null
+        setActiveEntity({ type: "Manager", role: "admin", id: manager.id });
+        setUser(null);
+        return;
+      } else {
+        // Accountant có thể không cần sidebar hoặc có menu riêng
+        console.log("[Sidebar] Accountant - no sidebar menu");
+        setMenus([]);
+        setActiveEntity({ type: "Manager", role: "accountant", id: manager.id });
+        setUser(null);
+        return;
+      }
+    }
+    
+    // Nếu không phải Manager, set isManagerUser = false
+    setIsManagerUser(false);
+    
+    // Logic cũ cho User thông thường
     // Find active entity, if not found use account as fallback
     let entity = session.entities?.find((e) => e.id === session.activeEntity?.id);
     
@@ -58,7 +114,7 @@ export default function Sidebar({ isOpen, onClose }) {
     setUser(account);
     setActiveEntity(entity);
 
-    // Only use role, not type. Role can be: customer, bar, dj, dancer
+    // Only use role, not type. Role can be: customer, bar, dj, dancer, admin
     const role = (entity.role || account.role || "").toLowerCase();
 
     let menus = sidebarConfig[role] || [];
@@ -181,7 +237,11 @@ export default function Sidebar({ isOpen, onClose }) {
     };
   }, [barPageId]);
 
-  if (!activeEntity) return null;
+  // Nếu là Manager, không cần activeEntity (đã set menu ở trên)
+  // Nếu không phải Manager và không có activeEntity → không hiển thị sidebar
+  // Nếu là Manager, không cần activeEntity (đã set menu ở trên)
+  // Nếu không phải Manager và không có activeEntity → không hiển thị sidebar
+  if (!isManagerUser && !activeEntity) return null;
 
   const resolvedBarPageId = barPageId;
 
@@ -302,6 +362,7 @@ export default function Sidebar({ isOpen, onClose }) {
       "Sự kiện": "events",
       "Tin nhắn": "messages",
       "Đặt bàn của tôi": "myBookings",
+      "Ví của tôi": "wallet",
       "Hồ sơ": "profile",
       "Bank info": "bankInfo",
       "Dashboard": "dashboard",

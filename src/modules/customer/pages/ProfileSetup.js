@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { userApi } from "../../../api/userApi";
 import { locationApi } from "../../../api/locationApi";
@@ -32,6 +32,8 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
+  const isLoadingProfileRef = useRef(false); // Ref để track đang load profile (không trigger re-render)
+  const hasLoadedFromProfileRef = useRef(false); // Ref để track đã load từ profile (không reset giá trị)
 
   // Helpers
   const isHttpUrl = (value) => typeof value === 'string' && /^https?:\/\//i.test(value);
@@ -58,17 +60,28 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     const loadDistricts = async () => {
       if (!selectedProvinceId) {
         setDistricts([]);
-        setSelectedDistrictId('');
+        // Chỉ reset nếu đã initialized và không phải đang load từ profile
+        if (isInitialized && !hasLoadedFromProfileRef.current) {
+          setSelectedDistrictId('');
+        }
         return;
       }
+      
+      // Nếu đang load profile, không load lại districts vì đã load sẵn
+      if (isLoadingProfileRef.current) {
+        return;
+      }
+      
       try {
         setLocationLoading(true);
         const data = await locationApi.getDistricts(selectedProvinceId);
         setDistricts(data);
-        // Reset district and ward selection
-        setSelectedDistrictId('');
-        setSelectedWardId('');
-        setWards([]);
+        // Chỉ reset district and ward selection nếu đã initialized và không phải đang load từ profile
+        if (isInitialized && !hasLoadedFromProfileRef.current) {
+          setSelectedDistrictId('');
+          setSelectedWardId('');
+          setWards([]);
+        }
       } catch (error) {
         console.error('Failed to load districts:', error);
       } finally {
@@ -76,21 +89,33 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
       }
     };
     loadDistricts();
-  }, [selectedProvinceId]);
+  }, [selectedProvinceId, isInitialized]);
 
   // Load wards when district is selected
   useEffect(() => {
     const loadWards = async () => {
       if (!selectedDistrictId) {
         setWards([]);
-        setSelectedWardId('');
+        // Chỉ reset selectedWardId nếu đã initialized và không phải đang load từ profile
+        if (isInitialized && !hasLoadedFromProfileRef.current) {
+          setSelectedWardId('');
+        }
         return;
       }
+      
+      // Nếu đang load profile, không load lại wards vì đã load sẵn
+      if (isLoadingProfileRef.current) {
+        return;
+      }
+      
       try {
         setLocationLoading(true);
         const data = await locationApi.getWards(selectedDistrictId);
         setWards(data);
-        setSelectedWardId('');
+        // Chỉ reset selectedWardId nếu đã initialized và không phải đang load từ profile
+        if (isInitialized && !hasLoadedFromProfileRef.current) {
+          setSelectedWardId('');
+        }
       } catch (error) {
         console.error('Failed to load wards:', error);
       } finally {
@@ -98,85 +123,102 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
       }
     };
     loadWards();
-  }, [selectedDistrictId]);
+  }, [selectedDistrictId, isInitialized]);
 
   // Load existing profile data
   useEffect(() => {
     const loadProfile = async () => {
+      isLoadingProfileRef.current = true; // Bắt đầu load profile
       try {
         const res = await userApi.me();
         if (res && res.status === "success" && res.data) {
           const user = res.data;
+          
+          // Xử lý address trước - chỉ lấy detail, không lấy toàn bộ JSON
+          // Ưu tiên lấy detail từ addressData (backend đã thêm trường này)
+          let addressDetail = '';
+          let parsedAddressData = null;
+          
+          // Ưu tiên 1: Lấy detail từ addressData (backend đã parse sẵn)
+          if (user.addressData && user.addressData.detail) {
+            addressDetail = user.addressData.detail;
+            parsedAddressData = user.addressData; // Dùng addressData cho location
+          } else if (user.address) {
+            // Fallback: Parse address JSON string nếu addressData không có detail
+            try {
+              const parsed = JSON.parse(user.address);
+              if (parsed && parsed.detail) {
+                addressDetail = parsed.detail;
+                parsedAddressData = parsed; // Lưu lại để dùng cho location nếu không có addressData
+              } else if (typeof user.address === 'string' && !user.address.trim().startsWith('{')) {
+                // Nếu không phải JSON và là string thông thường, dùng luôn
+                addressDetail = user.address;
+              }
+            } catch {
+              // Nếu không parse được JSON, có thể là string thông thường
+              if (typeof user.address === 'string' && !user.address.trim().startsWith('{')) {
+                addressDetail = user.address;
+              }
+            }
+          }
+          
           setForm({
             userName: user.userName || '',
             avatar: user.avatar || '',
             background: user.background || '',
             bio: user.bio || '',
-            address: user.address || '',
+            address: addressDetail,
             phone: user.phone || '',
             gender: user.gender || ''
           });
           
           // Load structured address data if available
-          if (user.addressData) {
-            // Backend đã parse và trả về addressData object
-            if (user.addressData.provinceId) {
-              setSelectedProvinceId(user.addressData.provinceId);
-              // Load districts cho province đã chọn
-              try {
-                const districtsData = await locationApi.getDistricts(user.addressData.provinceId);
-                setDistricts(districtsData);
-                
-                if (user.addressData.districtId) {
-                  setSelectedDistrictId(user.addressData.districtId);
-                  // Load wards cho district đã chọn
-                  try {
-                    const wardsData = await locationApi.getWards(user.addressData.districtId);
-                    setWards(wardsData);
-                    
-                    if (user.addressData.wardId) {
-                      setSelectedWardId(user.addressData.wardId);
-                    }
-                  } catch (error) {
-                    console.error('Failed to load wards:', error);
-                  }
-                }
-              } catch (error) {
-                console.error('Failed to load districts:', error);
-              }
-            }
-          } else if (user.address) {
-            // Fallback: Nếu không có addressData, thử parse address như JSON
+          // Ưu tiên dùng addressData (backend đã parse sẵn), nếu không có thì dùng parsedAddressData từ address JSON
+          const locationData = user.addressData || parsedAddressData;
+          
+          if (locationData && locationData.provinceId) {
+            // Load tất cả dữ liệu trước khi set state để tránh useEffect reset
             try {
-              const addressData = JSON.parse(user.address);
-              if (addressData && addressData.provinceId) {
-                setSelectedProvinceId(addressData.provinceId);
-                if (addressData.districtId) {
-                  // Load districts và wards tương tự
-                  const districtsData = await locationApi.getDistricts(addressData.provinceId);
-                  setDistricts(districtsData);
-                  setSelectedDistrictId(addressData.districtId);
-                  
-                  if (addressData.wardId) {
-                    const wardsData = await locationApi.getWards(addressData.districtId);
-                    setWards(wardsData);
-                    setSelectedWardId(addressData.wardId);
-                  }
-                }
-                // Lấy detail address nếu có
-                if (addressData.detail) {
-                  setForm(prev => ({ ...prev, address: addressData.detail }));
+              const districtsData = await locationApi.getDistricts(locationData.provinceId);
+              let wardsData = [];
+              
+              if (locationData.districtId) {
+                wardsData = await locationApi.getWards(locationData.districtId);
+              }
+              
+              // Set tất cả state cùng lúc sau khi đã load xong tất cả dữ liệu
+              // Đảm bảo isLoadingProfileRef vẫn là true khi set để useEffect không load lại
+              setDistricts(districtsData);
+              setWards(wardsData);
+              
+              // Đánh dấu đã load từ profile để không reset giá trị
+              hasLoadedFromProfileRef.current = true;
+              
+              // Set tất cả location state cùng lúc
+              // Các useEffect sẽ check isLoadingProfileRef và return early nếu đang load profile
+              setSelectedProvinceId(locationData.provinceId);
+              
+              if (locationData.districtId) {
+                setSelectedDistrictId(locationData.districtId);
+                if (locationData.wardId) {
+                  setSelectedWardId(locationData.wardId);
                 }
               }
-            } catch {
-              // Address is plain string, ignore
+            } catch (error) {
+              console.error('Failed to load location data:', error);
             }
           }
         }
       } catch (error) {
         console.error('Failed to load profile:', error);
       } finally {
+        // Set initialized TRƯỚC khi tắt flag để đảm bảo các useEffect không reset giá trị
+        // Khi isInitialized = true, các useEffect sẽ không reset nếu giá trị đã được set từ profile
         setIsInitialized(true);
+        // Đợi một chút để đảm bảo isInitialized đã được set
+        await new Promise(resolve => setTimeout(resolve, 50));
+        // Sau đó mới tắt flag để các useEffect có thể chạy bình thường
+        isLoadingProfileRef.current = false;
       }
     };
 

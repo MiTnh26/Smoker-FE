@@ -12,10 +12,20 @@ export default function ProtectedRoute({ roles, children }) {
   // 🔹 Lấy session từ localStorage
   const session = JSON.parse(localStorage.getItem("session"));
   const user = session?.account;
+  const manager = session?.manager || JSON.parse(localStorage.getItem("manager") || "null");
   const activeEntity = session?.activeEntity || user;
+  
+  // Nếu là Manager, sử dụng manager info
+  const isManager = session?.type === "manager" || manager;
 
-  // Check banned status - chỉ check một lần
+  // Check banned status - chỉ check một lần (chỉ cho user, không check cho manager)
   useEffect(() => {
+    // Manager không cần check banned status
+    if (isManager) {
+      setIsChecking(false);
+      return;
+    }
+    
     if (!user || hasCheckedRef.current) {
       if (!user) setIsChecking(false);
       return;
@@ -41,37 +51,54 @@ export default function ProtectedRoute({ roles, children }) {
       }
     };
     checkBannedStatus();
-  }, []);
+  }, [isManager, user]);
 
-  // Nếu chưa đăng nhập
-  if (!user) return <Navigate to="/login" replace />;
+  // Nếu chưa đăng nhập (không phải user và không phải manager)
+  if (!user && !manager) {
+    // Nếu đang truy cập admin route, redirect đến manager login
+    if (window.location.pathname.startsWith("/admin")) {
+      return <Navigate to="/manager/login" replace />;
+    }
+    return <Navigate to="/login" replace />;
+  }
 
   // 🔹 Chuẩn hoá role & id
-  const rawRole = (activeEntity?.role || user?.role || "").toLowerCase();
-  // Map các biến thể role về key thống nhất
-  const roleMap = {
-    account: "customer",
-    customer: "customer",
-    admin: "admin",
-    bar: "bar",
-    barpage: "bar",
-    business: "business",
-    businessaccount: "business",
-    dj: "dj",
-    dancer: "dancer",
-  };
-  // If rawRole is empty or doesn't match, check entity type as fallback
-  let activeRole = roleMap[rawRole];
-  if (!activeRole) {
-    // Fallback: check entity type if role is missing
-    const entityType = (activeEntity?.type || user?.type || "").toLowerCase();
-    if (entityType === "account" || !entityType) {
-      activeRole = "customer"; // Default to customer for Account type or missing type
-    } else {
-      activeRole = roleMap[entityType] || rawRole; // Try entity type, then fallback to rawRole
+  let activeRole, activeId;
+  let managerRole = null;
+  
+  if (isManager) {
+    // Manager: role từ manager object (Admin hoặc Accountant)
+    managerRole = (manager?.role || "").toLowerCase();
+    activeRole = managerRole === "accountant" ? "accountant" : "admin";
+    activeId = manager?.id;
+  } else {
+    // User: logic cũ
+    const rawRole = (activeEntity?.role || user?.role || "").toLowerCase();
+    // Map các biến thể role về key thống nhất
+    const roleMap = {
+      account: "customer",
+      customer: "customer",
+      admin: "admin",
+      bar: "bar",
+      barpage: "bar",
+      business: "business",
+      businessaccount: "business",
+      dj: "dj",
+      dancer: "dancer",
+    };
+    // If rawRole is empty or doesn't match, check entity type as fallback
+    activeRole = roleMap[rawRole];
+    if (!activeRole) {
+      // Fallback: check entity type if role is missing
+      const entityType = (activeEntity?.type || user?.type || "").toLowerCase();
+      if (entityType === "account" || !entityType) {
+        activeRole = "customer"; // Default to customer for Account type or missing type
+      } else {
+        activeRole = roleMap[entityType] || rawRole; // Try entity type, then fallback to rawRole
+      }
     }
+    activeId = activeEntity?.id || user?.id;
   }
-  const activeId = activeEntity?.id || user?.id;
 
   // Debug log (rất quan trọng để kiểm tra)
   console.log("🛡 ProtectedRoute:", {
@@ -82,11 +109,31 @@ export default function ProtectedRoute({ roles, children }) {
   });
 
   // 🔹 Kiểm tra quyền truy cập
-  if (roles && !roles.includes(activeRole)) {
+  // Admin (không phải Accountant) có thể truy cập admin routes
+  // Accountant chỉ truy cập accountant routes
+  const allowedRoles = roles || [];
+  
+  // Nếu là Accountant và route yêu cầu admin → không cho phép
+  if (activeRole === "accountant" && allowedRoles.includes("admin") && !allowedRoles.includes("accountant")) {
+    console.warn("🚫 Accountant không thể truy cập admin routes");
+    return <Navigate to="/accountant/dashboard" replace />;
+  }
+  
+  // Nếu là Admin (không phải Accountant) và route yêu cầu admin → cho phép
+  const isAdminNotAccountant = activeRole === "admin" && isManager && managerRole !== "accountant";
+  const hasAccess = allowedRoles.length === 0 || 
+                    allowedRoles.includes(activeRole) || 
+                    (isAdminNotAccountant && allowedRoles.includes("admin"));
+  
+  if (roles && !hasAccess) {
     console.warn("🚫 Không đủ quyền truy cập:", { required: roles, current: activeRole });
 
     // Điều hướng về trang tương ứng với vai trò hiện tại
     switch (activeRole) {
+      case "accountant":
+        return <Navigate to="/accountant/dashboard" replace />;
+      case "admin":
+        return <Navigate to="/admin/dashboard" replace />;
       case "customer":
         return <Navigate to="/customer/newsfeed" replace />;
       case "bar":
@@ -95,8 +142,6 @@ export default function ProtectedRoute({ roles, children }) {
         return <Navigate to={`/dj/${activeId}`} replace />;
       case "dancer":
         return <Navigate to={`/dancer/${activeId}`} replace />;
-      case "admin":
-        return <Navigate to="/admin/dashboard" replace />;
       default:
         return <Navigate to="/" replace />;
     }

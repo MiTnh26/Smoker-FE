@@ -17,11 +17,10 @@ export default function AddBankInfo() {
   const [formData, setFormData] = useState({
     bankName: "",
     accountNumber: "",
+    accountHolderName: "",
     accountId: null,
-    barPageId: null,
   });
 
-  const [entityType, setEntityType] = useState("account"); // "account" or "bar"
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [existingBankInfo, setExistingBankInfo] = useState(null);
@@ -52,10 +51,18 @@ export default function AddBankInfo() {
   ];
 
   useEffect(() => {
+    // Set accountId từ user hiện tại
+    if (storedUser?.id) {
+      setFormData((prev) => ({
+        ...prev,
+        accountId: storedUser.id,
+      }));
+    }
+
     // Kiểm tra xem đã có bank info chưa
     const checkExistingBankInfo = async () => {
       try {
-        if (entityType === "account" && storedUser?.id) {
+        if (storedUser?.id) {
           const res = await bankInfoApi.getByAccountId(storedUser.id);
           // Parse response: API có thể trả về { status: "success", data: {...} } hoặc { data: {...} }
           let bankInfo = null;
@@ -69,49 +76,18 @@ export default function AddBankInfo() {
           }
           
           if (bankInfo && (bankInfo.BankInfoId || bankInfo.BankName)) {
-            console.log("✅ Found existing bank info for account:", bankInfo);
+            console.log("✅ Found existing bank info:", bankInfo);
             setExistingBankInfo(bankInfo);
-            setFormData({
+            setFormData((prev) => ({
+              ...prev,
               bankName: bankInfo.BankName || "",
               accountNumber: bankInfo.AccountNumber || "",
-              accountId: bankInfo.AccountId,
-              barPageId: null,
-            });
+              accountHolderName: bankInfo.AccountHolderName || "",
+            }));
           } else {
             // Không có bank info, reset
-            console.log("❌ No bank info found for account");
+            console.log("❌ No bank info found");
             setExistingBankInfo(null);
-          }
-        } else if (entityType === "bar") {
-          // Tìm bar page entity trong session
-          const barEntity = storedSession.entities?.find(
-            (e) => e.type === "BarPage" || e.role?.toLowerCase() === "bar"
-          );
-          const barId = barEntity?.entityId || barEntity?.id;
-          if (barId) {
-            const res = await bankInfoApi.getByBarPageId(barId);
-            // Parse response tương tự như account
-            let bankInfo = null;
-            if (res?.data) {
-              if (res.data.status === "success" && res.data.data) {
-                bankInfo = res.data.data;
-              } else if (res.data.BankInfoId || res.data.BankName) {
-                bankInfo = res.data;
-              }
-            }
-            
-            if (bankInfo && (bankInfo.BankInfoId || bankInfo.BankName)) {
-              console.log("✅ Found existing bank info for bar:", bankInfo);
-              setExistingBankInfo(bankInfo);
-              setFormData({
-                bankName: bankInfo.BankName || "",
-                accountNumber: bankInfo.AccountNumber || "",
-                accountId: null,
-                barPageId: bankInfo.BarPageId,
-              });
-            } else {
-              setExistingBankInfo(null);
-            }
           }
         }
       } catch (error) {
@@ -127,27 +103,7 @@ export default function AddBankInfo() {
     };
 
     checkExistingBankInfo();
-  }, [entityType, storedUser, storedSession]);
-
-  // Update formData khi entityType thay đổi
-  useEffect(() => {
-    if (entityType === "account") {
-      setFormData((prev) => ({
-        ...prev,
-        accountId: storedUser?.id || null,
-        barPageId: null,
-      }));
-    } else if (entityType === "bar") {
-      const barEntity = storedSession.entities?.find(
-        (e) => e.type === "BarPage" || e.role?.toLowerCase() === "bar"
-      );
-      setFormData((prev) => ({
-        ...prev,
-        accountId: null,
-        barPageId: barEntity?.entityId || barEntity?.id || null,
-      }));
-    }
-  }, [entityType, storedUser, storedSession]);
+  }, [storedUser]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -185,13 +141,13 @@ export default function AddBankInfo() {
       return false;
     }
 
-    if (entityType === "account" && !formData.accountId) {
-      setMessage("Không tìm thấy thông tin tài khoản");
+    if (!formData.accountHolderName || formData.accountHolderName.trim() === "") {
+      setMessage("Vui lòng nhập tên chủ tài khoản");
       return false;
     }
 
-    if (entityType === "bar" && !formData.barPageId) {
-      setMessage("Không tìm thấy thông tin bar page. Vui lòng đăng ký bar trước.");
+    if (!formData.accountId) {
+      setMessage("Không tìm thấy thông tin tài khoản");
       return false;
     }
 
@@ -212,8 +168,8 @@ export default function AddBankInfo() {
       const payload = {
         bankName: formData.bankName.trim(),
         accountNumber: formData.accountNumber.trim(),
-        accountId: entityType === "account" ? formData.accountId : null,
-        barPageId: entityType === "bar" ? formData.barPageId : null,
+        accountHolderName: formData.accountHolderName.trim(),
+        accountId: formData.accountId,
       };
 
       let res;
@@ -222,6 +178,7 @@ export default function AddBankInfo() {
         res = await bankInfoApi.update(existingBankInfo.BankInfoId, {
           bankName: payload.bankName,
           accountNumber: payload.accountNumber,
+          accountHolderName: payload.accountHolderName,
         });
       } else {
         // Create new bank info
@@ -246,10 +203,8 @@ export default function AddBankInfo() {
               if (!existing || !existing.BankInfoId) {
                 try {
                   let existingRes;
-                  if (entityType === "account" && formData.accountId) {
+                  if (formData.accountId) {
                     existingRes = await bankInfoApi.getByAccountId(formData.accountId);
-                  } else if (entityType === "bar" && formData.barPageId) {
-                    existingRes = await bankInfoApi.getByBarPageId(formData.barPageId);
                   }
                   
                   // Parse response đúng format
@@ -274,6 +229,7 @@ export default function AddBankInfo() {
                 res = await bankInfoApi.update(existing.BankInfoId, {
                   bankName: payload.bankName,
                   accountNumber: payload.accountNumber,
+                  accountHolderName: payload.accountHolderName,
                 });
                 // Sau khi update, reload lại để đảm bảo state sync
                 if (res?.status === "success" || res?.data) {
@@ -337,27 +293,6 @@ export default function AddBankInfo() {
         </h2>
 
         <form onSubmit={handleSubmit} className="add-bank-info-form">
-          {/* Entity Type Selector */}
-          <div className="form-group">
-            <label className="form-label">Loại tài khoản</label>
-            <div className="entity-type-selector">
-              <button
-                type="button"
-                className={`entity-type-btn ${entityType === "account" ? "active" : ""}`}
-                onClick={() => setEntityType("account")}
-              >
-                Tài khoản cá nhân
-              </button>
-              <button
-                type="button"
-                className={`entity-type-btn ${entityType === "bar" ? "active" : ""}`}
-                onClick={() => setEntityType("bar")}
-              >
-                Tài khoản Bar
-              </button>
-            </div>
-          </div>
-
           {/* Bank Name */}
           <div className="form-group">
             <label className="form-label">
@@ -407,6 +342,24 @@ export default function AddBankInfo() {
               maxLength={20}
             />
             <small className="form-hint">Chỉ nhập số, không có khoảng trắng hoặc ký tự đặc biệt</small>
+          </div>
+
+          {/* Account Holder Name */}
+          <div className="form-group">
+            <label className="form-label">
+              Tên chủ tài khoản <span className="required">*</span>
+            </label>
+            <input
+              type="text"
+              name="accountHolderName"
+              value={formData.accountHolderName}
+              onChange={handleInputChange}
+              placeholder="Nhập tên chủ tài khoản"
+              className="form-input"
+              required
+              maxLength={150}
+            />
+            <small className="form-hint">Tên chủ tài khoản ngân hàng (tên đầy đủ như trên thẻ/tài khoản)</small>
           </div>
 
           {/* Submit Button */}
