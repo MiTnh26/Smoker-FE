@@ -134,7 +134,16 @@ export function Login() {
           entities: entities,
           entityAccountId: accountEntityAccountId
         });
-        if (!res.needProfile) {
+        
+        // Redirect dựa trên role
+        // Lưu ý: Admin/Manager giờ đăng nhập từ /manager/login
+        // Chỉ Customer và các role khác mới dùng /login
+        const userRole = (res.user?.role || "").toLowerCase();
+        if (userRole === "admin") {
+          // Admin từ Accounts table → redirect đến manager login
+          // (vì admin giờ đăng nhập từ /manager/login)
+          navigate("/manager/login", { replace: true });
+        } else if (!res.needProfile) {
           navigate("/customer/newsfeed", { replace: true });
         } else {
           navigate("/profile-setup", { replace: true });

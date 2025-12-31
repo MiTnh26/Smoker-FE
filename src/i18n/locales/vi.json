@@ -34,6 +34,7 @@
     "events": "Sự kiện",
     "messages": "Tin nhắn",
     "myBookings": "Đặt bàn của tôi",
+    "wallet": "Ví của tôi",
     "profile": "Hồ sơ",
     "bankInfo": "Bank info",
     "dashboard": "Dashboard",
@@ -351,12 +352,13 @@
     "saveAll": "Lưu tất cả",
     "cannotLoadTableTypes": "Không thể tải danh sách loại bàn.",
     "noChangesToSave": "Không có thay đổi cần lưu.",
-    "saved": "✅ Đã lưu!",
-    "errorSaving": "Lỗi khi lưu loại bàn.",
+    "pleaseAddTableTypeName": "Vui lòng thêm tên loại bàn để lưu",
+    "saved": "Đã lưu thành công",
+    "errorSaving": "Không thể lưu loại bàn. Vui lòng thử lại.",
     "statusEditing": "Đang chỉnh sửa",
     "statusSaved": "Đã lưu",
     "confirmDelete": "Bạn có chắc muốn xóa loại bàn này?",
-    "deleted": "🗑️ Đã xóa loại bàn.",
+    "deleted": "Đã xóa loại bàn thành công",
     "cannotDelete": "Không thể xóa loại bàn này.",
     "voucherManagerTitle": "Quản lý Voucher",
     "loadingVouchers": "Đang tải voucher...",
@@ -415,6 +417,7 @@
     "errorSavingTables": "Lỗi khi lưu tất cả bàn!",
     "confirmDeleteTable": "Bạn có chắc muốn xóa bàn này?",
     "tableDeleted": "Xóa bàn thành công!",
+    "tableUpdated": "Đã cập nhật bàn thành công",
     "errorDeletingTable": "Lỗi khi xóa bàn",
     "tableNamePlaceholder": "Tên bàn",
     "selectTableType": "Chọn loại bàn",
@@ -737,7 +740,11 @@
     "bioPlaceholder": "Giới thiệu về bản thân...",
     "phonePlaceholder": "Nhập số điện thoại của bạn",
     "addressPlaceholder": "Nhập địa chỉ của bạn",
-    "updateFailed": "Cập nhật thất bại"
+    "updateFailed": "Cập nhật thất bại",
+    "changeCoverPhoto": "Thay ảnh bìa",
+    "invalidImage": "Vui lòng chọn file ảnh hợp lệ.",
+    "uploadError": "Upload ảnh thất bại. Vui lòng thử lại.",
+    "updateError": "Cập nhật thất bại. Vui lòng thử lại."
   }
   ,
   "publicProfile": {
@@ -785,6 +792,35 @@
     "sectionDancers": "Dancer",
     "sectionPosts": "Bài viết",
     "viewAll": "Xem tất cả"
+  },
+  "wallet": {
+    "title": "Ví của tôi",
+    "balance": "Số dư",
+    "lockedBalance": "Đang gửi yêu cầu rút",
+    "availableBalance": "Khả dụng",
+    "withdraw": "Rút tiền",
+    "transactionHistory": "Lịch sử giao dịch",
+    "noTransactions": "Chưa có giao dịch nào",
+    "withdrawRequests": "Yêu cầu rút tiền",
+    "amount": "Số tiền",
+    "selectBank": "Chọn tài khoản ngân hàng",
+    "confirmWithdraw": "Xác nhận rút tiền",
+    "withdrawSuccess": "Gửi yêu cầu rút tiền thành công",
+    "insufficientBalance": "Số dư không đủ",
+    "transactionTypes": {
+      "booking_income": "Tiền nhận từ booking",
+      "refund": "Hoàn tiền",
+      "withdraw": "Rút tiền",
+      "withdraw_reject": "Yêu cầu rút bị từ chối",
+      "system_adjust": "Điều chỉnh hệ thống"
+    },
+    "status": {
+      "pending": "Đang chờ",
+      "approved": "Đã duyệt",
+      "rejected": "Đã từ chối",
+      "paid": "Đã chuyển tiền",
+      "completed": "Hoàn thành"
+    }
   }
 }
 

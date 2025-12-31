@@ -16,6 +16,7 @@ import ManagePosts from "../modules/admin/pages/ManagePosts";
 import ProtectedRoute from "./ProtectedRoute";
 
 export default function AdminRoutes() {
+  // Chỉ Admin (không phải Accountant) mới có thể truy cập admin routes
   return (
     <Fragment>
       <Route path="/admin/dashboard" element={<ProtectedRoute roles={["admin"]}><AdminLayout><Dashboard /></AdminLayout></ProtectedRoute>} />

@@ -35,6 +35,7 @@
     "events": "Events",
     "messages": "Messages",
     "myBookings": "My Bookings",
+    "wallet": "My Wallet",
     "profile": "Profile",
     "bankInfo": "Bank info",
     "dashboard": "Dashboard",
@@ -353,13 +354,14 @@
     "saveAll": "Save all",
     "cannotLoadTableTypes": "Cannot load table types list.",
     "noChangesToSave": "No changes to save.",
-    "saved": "Saved!",
+    "pleaseAddTableTypeName": "Please add table type name to save",
+    "saved": "Saved successfully",
 
-    "errorSaving": "Error saving table types.",
+    "errorSaving": "Unable to save table type. Please try again.",
     "statusEditing": "Editing",
     "statusSaved": "Saved",
     "confirmDelete": "Are you sure you want to delete this table type?",
-    "deleted": "Table type deleted.",
+    "deleted": "Table type deleted successfully",
     "cannotDelete": "Cannot delete this table type.",
     "voucherManagerTitle": "Voucher Management",
     "loadingVouchers": "Loading vouchers...",
@@ -418,6 +420,7 @@
     "errorSavingTables": "Error saving all tables!",
     "confirmDeleteTable": "Are you sure you want to delete this table?",
     "tableDeleted": "Table deleted successfully!",
+    "tableUpdated": "Table updated successfully",
     "errorDeletingTable": "Error deleting table",
     "tableNamePlaceholder": "Table name",
     "selectTableType": "Select table type",
@@ -656,7 +659,11 @@
     "bioPlaceholder": "Tell us about yourself...",
     "phonePlaceholder": "Enter your phone number",
     "addressPlaceholder": "Enter your address",
-    "updateFailed": "Update failed"
+    "updateFailed": "Update failed",
+    "changeCoverPhoto": "Change cover photo",
+    "invalidImage": "Please select a valid image file.",
+    "uploadError": "Image upload failed. Please try again.",
+    "updateError": "Update failed. Please try again."
   }
   ,
   "publicProfile": {
@@ -819,6 +826,35 @@
         "registeredAt": "Registered at",
         "actions": "Actions"
       }
+    }
+  },
+  "wallet": {
+    "title": "My Wallet",
+    "balance": "Balance",
+    "lockedBalance": "Pending withdrawal",
+    "availableBalance": "Available",
+    "withdraw": "Withdraw",
+    "transactionHistory": "Transaction History",
+    "noTransactions": "No transactions yet",
+    "withdrawRequests": "Withdrawal Requests",
+    "amount": "Amount",
+    "selectBank": "Select bank account",
+    "confirmWithdraw": "Confirm Withdrawal",
+    "withdrawSuccess": "Withdrawal request submitted successfully",
+    "insufficientBalance": "Insufficient balance",
+    "transactionTypes": {
+      "booking_income": "Booking income",
+      "refund": "Refund",
+      "withdraw": "Withdrawal",
+      "withdraw_reject": "Withdrawal rejected",
+      "system_adjust": "System adjustment"
+    },
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "paid": "Paid",
+      "completed": "Completed"
     }
   }
 }

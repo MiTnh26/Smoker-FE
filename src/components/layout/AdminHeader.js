@@ -28,6 +28,17 @@ export default function AdminHeader() {
       return null;
     }
   });
+  
+  // Lấy manager info nếu là Manager
+  const manager = session?.manager || (() => {
+    try {
+      return JSON.parse(localStorage.getItem("manager"));
+    } catch {
+      return null;
+    }
+  })();
+  const isManager = session?.type === "manager" || manager;
+  const managerRole = manager?.role?.toLowerCase();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
@@ -59,17 +70,40 @@ export default function AdminHeader() {
   }, [theme]);
 
   const handleLogout = () => {
-    try { clearSession(); } finally { navigate("/login"); }
+    try { 
+      clearSession();
+      // Xóa manager info
+      localStorage.removeItem("manager");
+      localStorage.removeItem("token");
+    } finally { 
+      // Redirect đến trang login tương ứng
+      if (isManager) {
+        navigate("/manager/login");
+      } else {
+        navigate("/login");
+      }
+    }
   };
+
+  // Redirect về dashboard đúng role
+  const dashboardPath = isManager && managerRole === "accountant"
+    ? "/accountant/dashboard"
+    : "/admin/dashboard";
 
   const handleToggleTheme = () => {
     const next = getNextTheme(theme);
     setTheme(next);
   };
 
+  // Hiển thị thông tin Manager hoặc Admin
   const activeEntity = session?.activeEntity || session?.account;
-  const displayName = activeEntity?.name || activeEntity?.userName || "Admin";
-  const avatar = activeEntity?.avatar;
+  const displayName = isManager 
+    ? (manager?.email || "Manager")
+    : (activeEntity?.name || activeEntity?.userName || "Admin");
+  const avatar = isManager ? null : (activeEntity?.avatar);
+  const roleLabel = isManager 
+    ? (managerRole === "accountant" ? "Kế toán" : "Admin")
+    : t("layout.admin", { defaultValue: "Admin" });
 
   return (
     <header className={cn(
@@ -81,15 +115,15 @@ export default function AdminHeader() {
         "flex items-center w-full justify-between mx-auto",
         "max-w-[1400px]"
       )}>
-        <Link to="/admin/dashboard" className={cn(
+        <Link to={dashboardPath} className={cn(
           "text-2xl font-bold no-underline",
           "text-primary hover:opacity-80"
         )}>
-          {t("layout.admin", { defaultValue: "Admin" })}
+          {isManager && managerRole === "accountant" ? "Kế toán" : t("layout.admin", { defaultValue: "Admin" })}
         </Link>
 
         <div className={cn("relative flex items-center gap-2 ml-auto")}> 
-          <Link to="/admin/dashboard" className={cn(
+          <Link to={dashboardPath} className={cn(
             "rounded-lg p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary"
           )}>
             <Home size={20} />
@@ -125,7 +159,7 @@ export default function AdminHeader() {
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-medium">{displayName}</span>
-                <span className="text-xs text-muted-foreground">{t("layout.admin", { defaultValue: "Admin" })}</span>
+                <span className="text-xs text-muted-foreground">{roleLabel}</span>
               </div>
             </div>
 

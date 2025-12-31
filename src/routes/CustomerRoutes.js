@@ -10,6 +10,7 @@ import BarTablesPage from "../modules/customer/pages/BarTablesPage";
 import MyBookings from "../modules/customer/pages/MyBookings";
 import NotificationsPage from "../modules/customer/pages/NotificationsPage";
 import EventsFeedPage from "../modules/customer/pages/EventsFeedPage";
+import WalletPage from "../modules/customer/pages/WalletPage";
 export default function CustomerRoutes() {
   return (
     <>
@@ -93,6 +94,17 @@ export default function CustomerRoutes() {
             <ProtectedRoute roles={["customer"]}>
               <DynamicLayout>
                 <EventsFeedPage />
+              </DynamicLayout>
+            </ProtectedRoute>
+          }
+        />
+        {/* ✅ Route: Wallet Page */}
+        <Route
+          path="/wallet"
+          element={
+            <ProtectedRoute roles={["customer", "dj", "dancer", "bar", "admin"]}>
+              <DynamicLayout>
+                <WalletPage />
               </DynamicLayout>
             </ProtectedRoute>
           }

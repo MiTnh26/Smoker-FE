@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CheckCircle2, XCircle, AlertTriangle, Info, X } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 /**
@@ -28,12 +29,39 @@ export default function Toast({ show, message, type = "success", duration = 3000
 
   if (!show && !isVisible) return null;
 
-  const bgColor = {
-    success: "bg-green-500",
-    error: "bg-red-500",
-    info: "bg-blue-500",
-    warning: "bg-yellow-500",
-  }[type] || "bg-green-500";
+  const toastConfig = {
+    success: {
+      icon: CheckCircle2,
+      bg: "bg-green-50 dark:bg-green-950/20",
+      border: "border-green-200 dark:border-green-800",
+      text: "text-green-800 dark:text-green-200",
+      iconColor: "text-green-600 dark:text-green-400",
+    },
+    error: {
+      icon: XCircle,
+      bg: "bg-red-50 dark:bg-red-950/20",
+      border: "border-red-200 dark:border-red-800",
+      text: "text-red-800 dark:text-red-200",
+      iconColor: "text-red-600 dark:text-red-400",
+    },
+    warning: {
+      icon: AlertTriangle,
+      bg: "bg-yellow-50 dark:bg-yellow-950/20",
+      border: "border-yellow-200 dark:border-yellow-800",
+      text: "text-yellow-800 dark:text-yellow-200",
+      iconColor: "text-yellow-600 dark:text-yellow-400",
+    },
+    info: {
+      icon: Info,
+      bg: "bg-blue-50 dark:bg-blue-950/20",
+      border: "border-blue-200 dark:border-blue-800",
+      text: "text-blue-800 dark:text-blue-200",
+      iconColor: "text-blue-600 dark:text-blue-400",
+    },
+  };
+
+  const config = toastConfig[type] || toastConfig.info;
+  const Icon = config.icon;
 
   return (
     <div
@@ -44,71 +72,28 @@ export default function Toast({ show, message, type = "success", duration = 3000
     >
       <div
         className={cn(
-          "flex items-center gap-3 rounded-lg px-4 py-3 text-white shadow-lg",
-          bgColor
+          "flex items-center gap-3 rounded-xl px-4 py-3 border shadow-lg backdrop-blur-sm",
+          "max-w-md w-full",
+          config.bg,
+          config.border,
+          config.text
         )}
       >
-        {type === "success" && (
-          <svg
-            className="h-5 w-5 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        )}
-        {type === "error" && (
-          <svg
-            className="h-5 w-5 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        )}
-        {type === "warning" && (
-          <svg
-            className="h-5 w-5 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-        )}
-        {type === "info" && (
-          <svg
-            className="h-5 w-5 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        )}
-        <span className="text-sm font-medium">{message}</span>
+        <Icon className={cn("h-5 w-5 flex-shrink-0", config.iconColor)} />
+        <span className="text-sm font-medium flex-1">{message}</span>
+        <button
+          onClick={() => {
+            setIsVisible(false);
+            setTimeout(() => onClose?.(), 300);
+          }}
+          className={cn(
+            "ml-2 p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors",
+            config.text
+          )}
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
@@ -156,12 +141,39 @@ function ToastItem({ id, message, type = "info", duration = 3000, onClose }) {
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const bgColor = {
-    success: "bg-green-500",
-    error: "bg-red-500",
-    info: "bg-blue-500",
-    warning: "bg-yellow-500",
-  }[type] || "bg-blue-500";
+  const toastConfig = {
+    success: {
+      icon: CheckCircle2,
+      bg: "bg-green-50 dark:bg-green-950/20",
+      border: "border-green-200 dark:border-green-800",
+      text: "text-green-800 dark:text-green-200",
+      iconColor: "text-green-600 dark:text-green-400",
+    },
+    error: {
+      icon: XCircle,
+      bg: "bg-red-50 dark:bg-red-950/20",
+      border: "border-red-200 dark:border-red-800",
+      text: "text-red-800 dark:text-red-200",
+      iconColor: "text-red-600 dark:text-red-400",
+    },
+    warning: {
+      icon: AlertTriangle,
+      bg: "bg-yellow-50 dark:bg-yellow-950/20",
+      border: "border-yellow-200 dark:border-yellow-800",
+      text: "text-yellow-800 dark:text-yellow-200",
+      iconColor: "text-yellow-600 dark:text-yellow-400",
+    },
+    info: {
+      icon: Info,
+      bg: "bg-blue-50 dark:bg-blue-950/20",
+      border: "border-blue-200 dark:border-blue-800",
+      text: "text-blue-800 dark:text-blue-200",
+      iconColor: "text-blue-600 dark:text-blue-400",
+    },
+  };
+
+  const config = toastConfig[type] || toastConfig.info;
+  const Icon = config.icon;
 
   return (
     <div
@@ -172,71 +184,27 @@ function ToastItem({ id, message, type = "info", duration = 3000, onClose }) {
     >
       <div
         className={cn(
-          "flex items-center gap-3 rounded-lg px-4 py-3 text-white shadow-lg",
-          bgColor
+          "flex items-center gap-3 rounded-xl px-4 py-3 border shadow-lg backdrop-blur-sm",
+          config.bg,
+          config.border,
+          config.text
         )}
       >
-        {type === "success" && (
-          <svg
-            className="h-5 w-5 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        )}
-        {type === "error" && (
-          <svg
-            className="h-5 w-5 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        )}
-        {type === "warning" && (
-          <svg
-            className="h-5 w-5 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-        )}
-        {type === "info" && (
-          <svg
-            className="h-5 w-5 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        )}
-        <span className="text-sm font-medium">{message}</span>
+        <Icon className={cn("h-5 w-5 flex-shrink-0", config.iconColor)} />
+        <span className="text-sm font-medium flex-1">{message}</span>
+        <button
+          onClick={() => {
+            setIsVisible(false);
+            setTimeout(() => onClose?.(), 300);
+          }}
+          className={cn(
+            "ml-2 p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/5 transition-colors",
+            config.text
+          )}
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );

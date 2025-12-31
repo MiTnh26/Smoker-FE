@@ -4,7 +4,6 @@ import { cn } from '../../utils/cn';
 import { userApi } from '../../api/userApi';
 import barPageApi from '../../api/barPageApi';
 import businessApi from '../../api/businessApi';
-import { ImageUploadField } from './ImageUploadField';
 import AddressSelector from '../common/AddressSelector';
 import { X } from 'lucide-react';
 
@@ -12,8 +11,6 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
   const { t } = useTranslation();
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [uploadingBackground, setUploadingBackground] = useState(false);
   const [errors, setErrors] = useState({});
   
   // Address selector states
@@ -37,8 +34,6 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
         address: profile.address || profile.Address || '',
         pricePerHours: profile.pricePerHours || profile.PricePerHours || '',
         pricePerSession: profile.pricePerSession || profile.PricePerSession || '',
-        avatar: profile.avatar || profile.Avatar || '',
-        background: profile.background || profile.Background || '',
       });
 
       // Parse address data to populate AddressSelector
@@ -100,28 +95,11 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
         data.address = JSON.stringify(addressObj);
       }
       
-      // Preserve avatar and background URLs even if they're empty strings (to allow clearing)
-      // But don't send them if they're null/undefined
-      const avatarToSend = data.avatar !== undefined && data.avatar !== null ? data.avatar : undefined;
-      const backgroundToSend = data.background !== undefined && data.background !== null ? data.background : undefined;
-      
-      // Remove empty fields (but keep avatar/background if they were explicitly set)
+      // Remove empty fields
       for (const key of Object.keys(data)) {
-        if (key === 'avatar' || key === 'background') {
-          // Keep avatar/background if they were explicitly set (even if empty string)
-          continue;
-        }
         if (data[key] === '' || data[key] === null || data[key] === undefined) {
           delete data[key];
         }
-      }
-      
-      // Re-add avatar/background if they were set
-      if (avatarToSend !== undefined) {
-        data.avatar = avatarToSend;
-      }
-      if (backgroundToSend !== undefined) {
-        data.background = backgroundToSend;
       }
       
       // Remove bio for BarPage since table doesn't have Bio column
@@ -305,36 +283,6 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
 
       return (
       <div className={cn('space-y-5')}>
-        {/* Avatar & Background */}
-        <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-6')}>
-          <div className={cn('space-y-3')}>
-            <label className={cn('block text-sm font-semibold text-foreground mb-2')}>
-              {t('profile.avatar') || 'Avatar'}
-            </label>
-            <ImageUploadField 
-              label="" 
-              value={formData.avatar} 
-              onChange={url => setFormData(p => ({...p, avatar: url}))} 
-              uploading={uploadingAvatar} 
-              onUploadStateChange={setUploadingAvatar} 
-              urlInput={false}
-            />
-          </div>
-          <div className={cn('space-y-3')}>
-            <label className={cn('block text-sm font-semibold text-foreground mb-2')}>
-              {t('profile.background') || 'Background'}
-            </label>
-          <ImageUploadField
-              label="" 
-              value={formData.background} 
-              onChange={url => setFormData(p => ({...p, background: url}))} 
-              uploading={uploadingBackground} 
-              onUploadStateChange={setUploadingBackground} 
-              urlInput={false}
-          />
-        </div>
-        </div>
-
         {/* Name */}
         <div className={cn('space-y-2')}>
           <label htmlFor="userName" className={cn('block text-sm font-semibold text-foreground')}>
@@ -551,7 +499,7 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
           </button>
           <button
             onClick={handleSave}
-            disabled={saving || uploadingAvatar || uploadingBackground}
+            disabled={saving}
             className={cn(
               'px-8 py-3 rounded-xl font-semibold',
               'bg-primary text-primary-foreground',
