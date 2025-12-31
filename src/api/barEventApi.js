@@ -56,6 +56,11 @@ updateEvent: (eventId, formData) => {
   // Lấy events feed với bar rating
   getEventsWithBarRating: (params = {}) =>
     axiosClient.get("/events/feed", { params }),
+
+  // Lấy events đang và sắp diễn ra, sắp xếp theo average rating của bar (giảm dần)
+  // Params: { hours: số giờ từ bây giờ (mặc định 168 = 7 ngày), skip: số bản ghi bỏ qua, take: số bản ghi lấy }
+  getOngoingAndUpcomingEvents: (params = {}) =>
+    axiosClient.get("/events/ongoing-upcoming", { params }),
 };
 
 export default barEventApi;
