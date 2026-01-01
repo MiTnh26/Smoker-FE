@@ -17,6 +17,20 @@ export default function ManageUsers() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
+  
+  // Kiểm tra xem user hiện tại có phải là Manager (từ bảng Managers) không
+  const [isManager, setIsManager] = useState(false);
+  
+  useEffect(() => {
+    // Check if current user is Manager
+    try {
+      const session = JSON.parse(localStorage.getItem("session"));
+      const manager = session?.manager || JSON.parse(localStorage.getItem("manager") || "null");
+      setIsManager(!!(session?.type === "manager" || manager));
+    } catch {
+      setIsManager(false);
+    }
+  }, []);
 
   // Detail modal state
   const [detailOpen, setDetailOpen] = useState(false);
@@ -191,16 +205,21 @@ export default function ManageUsers() {
                   <td className="p-3">{u.Email}</td>
                   <td className="p-3">{u.UserName}</td>
                   <td className="p-3">
-                    <select
-                      className="bg-transparent border rounded px-2 py-1"
-                      value={normalizedRole}
-                      onChange={(e) => handleRoleChange(u, e.target.value)}
-                    >
-                      <option value="">{t("admin.users.selectRole", { defaultValue: "Select role" })}</option>
-                      {ACCOUNT_ROLE_OPTIONS.map((r) => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
+                    {isManager ? (
+                      // Manager không được phép đổi role
+                      <span className="text-muted-foreground">{normalizedRole || "—"}</span>
+                    ) : (
+                      <select
+                        className="bg-transparent border rounded px-2 py-1"
+                        value={normalizedRole}
+                        onChange={(e) => handleRoleChange(u, e.target.value)}
+                      >
+                        <option value="">{t("admin.users.selectRole", { defaultValue: "Select role" })}</option>
+                        {ACCOUNT_ROLE_OPTIONS.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    )}
                   </td>
                   <td className="p-3">
                     <span className={cn("px-2 py-1 rounded text-xs",

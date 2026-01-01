@@ -16,6 +16,9 @@ import SearchResults from "../modules/search/pages/SearchResults";
 import DynamicLayout from "../layouts/DynamicLayout";
 import ProfilePage from "../modules/profile/pages/ProfilePage";
 import PaymentReturn from "../pages/PaymentReturn";
+import ManagerLogin from "../modules/manager/pages/ManagerLogin";
+import ManagerRegister from "../modules/manager/pages/ManagerRegister";
+import AccountantRoutes from "./AccountantRoutes";
 
 export default function AppRoutes() {
   return (
@@ -40,8 +43,14 @@ export default function AppRoutes() {
         {DancerRoutes()}
         {BarRoutes()}
         {AdminRoutes()}
+        {AccountantRoutes()}
         {BusinessRouters()}
         {SettingsRoutes()}
+        
+        {/* Manager Auth Routes */}
+        <Route path="/manager/login" element={<ManagerLogin />} />
+        <Route path="/manager/register" element={<ManagerRegister />} />
+        
         <Route
           path="/search"
           element={(
