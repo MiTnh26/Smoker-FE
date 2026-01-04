@@ -5,9 +5,9 @@
    ========================================================= */
 
 :root {
-  /* ===== 🧱 BASE COLORS ===== */
-  --background: 244 244 244; /* Màu nền tổng thể - trắng xám nhẹ để dịu mắt hơn */
-  --foreground: 15 23 42; /* Màu chữ chính - đậm hơn một chút cho dễ đọc */
+  /* ===== 🧱 BASE COLORS - Gen Z Style ===== */
+  --background: 240 242 245; /* Nền xanh nhạt giống Facebook - #F0F2F5 */
+  --foreground: 15 23 42; /* Màu chữ chính - đậm, dễ đọc */
 
   /* ===== 🪟 SURFACE COLORS ===== */
   --card: 255 255 255; /* Màu nền của các thẻ (card, modal, sidebar, box, panel) */
@@ -18,69 +18,82 @@
   --border-darker: 51 65 85; /* Màu đường viền tối hơn */
   --radius: 0.625rem; /* Bo góc mặc định - 10px (tinh tế hơn 8px) */
 
-  /* ===== 🌈 BRAND / ACTION COLORS ===== */
-  --primary: 99 102 241; /* Màu thương hiệu chính - giữ nguyên indigo */
-  --primary-foreground: 255 255 255; /* Màu chữ/icon nằm trên nền primary */
-  --secondary: 167 139 250; /* Màu phụ - tím pastel mềm mại hơn */
+  /* ===== 🌈 BRAND / ACTION COLORS - Gen Z / Futuristic ===== */
+  --primary: 34 211 238; /* Neon Cyan - màu chính Gen Z, tương lai, hiện đại */
+  --primary-foreground: 255 255 255; /* Màu chữ trắng trên nền cyan (contrast tốt) */
+  --secondary: 236 72 153; /* Neon Pink/Magenta - màu phụ sống động */
   --secondary-foreground: 255 255 255; /* Màu chữ/icon trên nền secondary */
 
-  /* ===== ✅ FEEDBACK COLORS ===== */
-  --success: 16 185 129; /* Màu báo trạng thái thành công - emerald tinh tế hơn */
-  --warning: 245 158 11; /* Màu cảnh báo - amber ấm áp hơn */
-  --danger: 239 68 68; /* Màu lỗi, cảnh báo mạnh - giữ nguyên */
+  /* ===== ✅ FEEDBACK COLORS - Gen Z Style ===== */
+  --success: 34 211 238; /* Cyan/Neon Green - màu thành công tương lai */
+  --warning: 251 191 36; /* Neon Yellow - cảnh báo sáng, nổi bật */
+  --danger: 239 68 68; /* Neon Red - lỗi, cảnh báo mạnh */
 
   /* ===== 💬 UI SUPPORT COLORS ===== */
   --input: 248 250 252; /* Màu nền input - pastel nhẹ */
   --input-border: 226 232 240; /* Màu viền input - mềm mại */
   --overlay: 0 0 0 / 0.45; /* Màu lớp phủ - tinh tế hơn một chút */
+  
+  /* ===== ✨ GLOW EFFECTS ===== */
+  --glow-color: var(--primary); /* Màu glow mặc định - dùng primary */
+  --glow-opacity: 0.4; /* Độ mờ của glow */
 
-  /* ===== 🎯 EXTRA SEMANTIC TOKENS (for legacy replacements) ===== */
+  /* ===== 🎯 EXTRA SEMANTIC TOKENS - Gen Z / Futuristic ===== */
   --white: 255 255 255; /* Dùng thay cho #fff */
   --black: 0 0 0;       /* Dùng thay cho #000 */
-  --accent: 249 115 22;  /* Cam - tinh tế hơn một chút */
-  --highlight: 236 72 153; /* Hồng - mềm mại hơn */
-  --primary-hover: 79 70 229; /* Hover đậm hơn một chút */
-  --primary-light: 224 231 255; /* Primary nhạt nhưng rõ ràng cho hover nền sáng */
-  --card-hover: 241 245 249; /* Card hover - slate-100 rõ ràng */
+  --accent: 34 211 238;  /* Accent - Neon Cyan (đồng bộ với primary) */
+  --highlight: 236 72 153; /* Highlight - Neon Pink (đồng bộ với secondary) */
+  --primary-hover: 6 182 212; /* Hover - Cyan đậm hơn, neon hơn */
+  --primary-light: 207 250 254; /* Primary nhạt - Cyan pastel cho hover nền sáng */
+  --card-hover: 240 253 250; /* Card hover - Cyan nhẹ, hiện đại */
 }
 
 /* ===== 🌙 DARK MODE ===== */
 [data-theme='dark'] {
-  /* ===== 🧱 BASE ===== */
-  --background: 15 23 42; /* Màu nền chính - slate-900 ấm hơn */
-  --foreground: 248 250 252; /* Màu chữ chính - slate-50 mềm mại hơn trắng thuần */
+  /* ===== 🧱 BASE - Gen Z Dark Mode ===== */
+  --background: 9 9 11; /* Nền đen sâu hơn - cyberpunk vibe */
+  --foreground: 250 250 250; /* Màu chữ sáng, tương phản tốt */
 
-  /* ===== 🪟 SURFACE ===== */
-  --card: 30 41 59; /* Màu nền card - slate-800 tinh tế hơn */
-  --card-foreground: 248 250 252; /* Màu chữ trong card */
-  --muted: 51 65 85; /* Màu nền nhẹ, khối phụ - slate-700 */
-  --muted-foreground: 148 163 184; /* Màu chữ phụ - slate-400 dễ đọc hơn */
-  --border: 71 85 105; /* Màu viền tối - slate-600 tinh tế */
-  --border-darker: 51 65 85; /* Màu viền tối hơn */
-  /* ===== 🌈 BRAND / ACTION ===== */
-  --primary: 147 51 234; /* Màu tím thương hiệu - giữ nguyên */
-  --primary-foreground: 255 255 255;
-  --secondary: 167 139 250; /* Màu phụ - tím pastel mềm mại hơn */
-  --secondary-foreground: 255 255 255;
+  /* ===== 🪟 SURFACE - Gen Z Dark Mode ===== */
+  --card: 24 24 27; /* Nền card đen xám - hiện đại, tương lai */
+  --card-foreground: 250 250 250; /* Màu chữ trong card */
+  --muted: 39 39 42; /* Màu nền nhẹ, khối phụ - tối hơn cho cyberpunk */
+  --muted-foreground: 161 161 170; /* Màu chữ phụ - xám sáng, dễ đọc */
+  --border: 63 63 70; /* Màu viền - xám trung tính, hiện đại */
+  --border-darker: 39 39 42; /* Màu viền tối hơn */
+  /* ===== 🌈 BRAND / ACTION - Gen Z Dark Mode ===== */
+  --primary: 255 255 255; /* Màu trắng hoàn toàn cho dark mode - không còn cyan */
+  --primary-foreground: 9 9 11; /* Dark text trên nền trắng (contrast tốt) */
+  --secondary: 255 255 255; /* Màu trắng cho secondary trong dark mode */
+  --secondary-foreground: 9 9 11; /* Dark text trên nền trắng */
 
-  /* ===== ✅ FEEDBACK ===== */
-  --success: 52 211 153; /* Emerald sáng hơn một chút */
-  --warning: 251 191 36; /* Amber sáng hơn */
-  --danger: 248 113 113; /* Đỏ nhẹ hơn một chút */
+  /* ===== ✅ FEEDBACK - Gen Z Dark Mode ===== */
+  --success: 255 255 255; /* Màu trắng cho success trong dark mode */
+  --warning: 255 255 255; /* Màu trắng cho warning trong dark mode */
+  --danger: 255 255 255; /* Màu trắng cho danger trong dark mode */
 
   /* ===== 💬 UI ===== */
   --input: 51 65 85; /* Màu nền input tối - slate-700 */
   --input-border: 71 85 105; /* Viền input - slate-600 */
   --overlay: 0 0 0 / 0.65; /* Lớp phủ modal - tinh tế hơn */
+  
+  /* ===== ✨ GLOW EFFECTS - Dark Mode ===== */
+  --glow-color: 255 255 255; /* Màu glow trắng trong dark mode */
+  --glow-opacity: 0.6; /* Độ mờ của glow cao hơn trong dark mode */
 
-  /* Keep extra tokens consistent across themes */
+  /* Keep extra tokens consistent across themes - Gen Z Style */
   --white: 255 255 255;
   --black: 0 0 0;
-  --accent: 249 115 22; /* Cam tinh tế hơn */
-  --highlight: 236 72 153; /* Hồng mềm mại hơn */
-  --primary-hover: 126 34 206; /* Hover đậm hơn một chút */
-  --primary-light: 67 56 202; /* Primary nhạt nhưng rõ ràng cho hover nền tối */
+  --accent: 255 255 255; /* Accent - Màu trắng trong dark mode */
+  --highlight: 255 255 255; /* Highlight - Màu trắng trong dark mode */
+  --primary-hover: 255 255 255; /* Hover - Màu trắng trong dark mode */
+  --primary-light: 255 255 255; /* Primary nhạt - Trắng cho hover nền tối */
   --card-hover: 51 65 85; /* Card hover - slate-700 rõ ràng */
+  
+  /* Text shadow cho chữ đen trong dark mode */
+  --text-shadow-white: 0 0 2px rgba(255, 255, 255, 0.8),
+                       0 0 4px rgba(255, 255, 255, 0.6),
+                       0 0 6px rgba(255, 255, 255, 0.4);
 }
 [data-theme='dj'] {
   --primary: 244 114 182; /* Hồng sáng tinh tế hơn */

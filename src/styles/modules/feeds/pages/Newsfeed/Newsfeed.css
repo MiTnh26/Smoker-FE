@@ -261,7 +261,7 @@
 .story-section {
   width: 100%;
   max-width: 960px;
-  margin: 0 auto 0.375rem; /* reduced spacing to balance feed */
+  margin: 0.375rem auto 0; /* margin-top for header spacing, no margin-bottom to match post gap */
   background: rgb(var(--card));
   border: 1px solid rgba(var(--border), 0.6);
   position: relative;
@@ -343,7 +343,7 @@
 .create-post-box {
   width: 100%;
   max-width: 960px;
-  margin: 0 auto 0.375rem;
+  margin: 0.375rem auto 0.375rem; /* margin-top matches story-section gap, margin-bottom matches post gap */
 }
 
 @media (max-width: 768px) {
@@ -421,8 +421,7 @@
 }
 
 .post-card:hover {
-  /* Only add subtle shadow on hover, không đổi màu viền */
-  box-shadow: 0 8px 24px rgba(var(--primary) / 0.2);
+  /* Bỏ hiệu ứng hover làm nền sáng mờ */
 }
 
 .post-header {

@@ -1,7 +1,7 @@
 // src/components/layout/PageHeader.js
 // Shared header for Bar, DJ, and Dancer pages
 import { Link, useNavigate } from "react-router-dom";
-import { Home, MessageCircle, User, Search, Bell } from "lucide-react";
+import { Home, MessageCircle, User, Search, Bell, CheckCheck } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import UnifiedMenu from "../../common/UnifiedMenu";
@@ -434,6 +434,42 @@ export default function PageHeader() {
           if (activePanel === "notifications") return t('layout.notifications');
           return "";
         })()}
+        headerAction={activePanel === "notifications" && unreadNotificationCount > 0 ? (
+          <button
+            onClick={async () => {
+              try {
+                const entityAccountId = getEntityAccountId();
+                if (entityAccountId) {
+                  await notificationApi.markAllAsRead(entityAccountId);
+                  setUnreadNotificationCount(0);
+                  // Trigger refresh in NotificationPanel
+                  window.dispatchEvent(new Event("notificationRefresh"));
+                }
+              } catch (error) {
+                console.error("Error marking all as read:", error);
+              }
+            }}
+            className={cn(
+              "w-7 h-7 flex items-center justify-center",
+              "bg-transparent border-none text-muted-foreground",
+              "cursor-pointer rounded-lg transition-all duration-200",
+              "hover:bg-muted/50 hover:text-foreground",
+              "active:scale-95",
+              "group relative"
+            )}
+          >
+            <CheckCheck size={18} />
+            <span className={cn(
+              "absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1",
+              "bg-foreground text-background text-xs rounded",
+              "opacity-0 group-hover:opacity-100 transition-opacity",
+              "pointer-events-none whitespace-nowrap",
+              "z-50"
+            )}>
+              Đánh dấu tất cả đã đọc
+            </span>
+          </button>
+        ) : null}
       >
         {activePanel === "user" && barUser && (
           <UnifiedMenu

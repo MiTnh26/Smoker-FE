@@ -248,8 +248,7 @@
     border: 1px solid rgb(var(--border));
   }
   .post-card:hover {
-    /* Giữ hiệu ứng bóng, bỏ đổi màu viền */
-    box-shadow: 0 8px 24px rgba(var(--primary) / 0.2);
+    /* Bỏ hiệu ứng hover làm nền sáng mờ */
   }
 
   .post-header, .post-user { @apply flex items-center gap-3 justify-between; }

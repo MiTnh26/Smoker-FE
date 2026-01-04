@@ -99,6 +99,35 @@ export default function WalletPage() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
+    
+    // SQL Server trả về datetime string dạng 'YYYY-MM-DD HH:mm:ss.mmm'
+    // Database đã lưu đúng giờ Việt Nam (GMT+7), cần parse thủ công để không bị convert timezone
+    if (typeof dateString === 'string') {
+      // Kiểm tra format datetime từ SQL Server
+      const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
+      if (match) {
+        const [, year, month, day, hour, minute, second] = match;
+        // Tạo date object với timezone local (không dùng timeZone option để tránh double conversion)
+        const localDate = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hour),
+          parseInt(minute),
+          parseInt(second || 0)
+        );
+        // Format không dùng timeZone để giữ nguyên giờ đã parse
+        return localDate.toLocaleString('vi-VN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+    }
+    
+    // Fallback: parse như bình thường
     const date = new Date(dateString);
     return date.toLocaleString('vi-VN', {
       year: 'numeric',

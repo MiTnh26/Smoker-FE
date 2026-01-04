@@ -105,12 +105,7 @@ export default function AddressSelector({
   return (
     <div className={cn("space-y-3", className)}>
       {/* Province */}
-      <div>
-        <label htmlFor="province" className={cn(
-          "block text-sm font-medium text-foreground mb-2"
-        )}>
-          {t('address.province')}
-        </label>
+      <div className="relative">
         <select
           id="province"
           name="province"
@@ -118,11 +113,11 @@ export default function AddressSelector({
           onChange={(e) => onProvinceChange(e.target.value)}
           disabled={locationLoading || disabled}
           className={cn(
-            "w-full px-3 py-2 rounded-lg",
-            "border-[0.5px] border-border/20",
-            "bg-background text-foreground",
+            "w-full px-4 py-3 pr-10 rounded-lg appearance-none",
+            "border border-border/20",
+            "bg-white text-foreground",
             "outline-none transition-all duration-200",
-            "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
+            "focus:border-primary/40 focus:ring-2 focus:ring-primary/10",
             "disabled:bg-muted/50 disabled:text-muted-foreground disabled:cursor-not-allowed"
           )}
         >
@@ -133,16 +128,14 @@ export default function AddressSelector({
             </option>
           ))}
         </select>
+        <svg className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
       </div>
 
       {/* District */}
       {selectedProvinceId && (
-        <div>
-          <label htmlFor="district" className={cn(
-            "block text-sm font-medium text-foreground mb-2"
-          )}>
-            {t('address.district')}
-          </label>
+        <div className="relative">
           <select
             id="district"
             name="district"
@@ -150,11 +143,11 @@ export default function AddressSelector({
             onChange={(e) => onDistrictChange(e.target.value)}
             disabled={locationLoading || disabled || !selectedProvinceId}
             className={cn(
-              "w-full px-3 py-2 rounded-lg",
-              "border-[0.5px] border-border/20",
-              "bg-background text-foreground",
+              "w-full px-4 py-3 pr-10 rounded-lg appearance-none",
+              "border border-border/20",
+              "bg-white text-foreground",
               "outline-none transition-all duration-200",
-              "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
+              "focus:border-primary/40 focus:ring-2 focus:ring-primary/10",
               "disabled:bg-muted/50 disabled:text-muted-foreground disabled:cursor-not-allowed"
             )}
           >
@@ -165,17 +158,15 @@ export default function AddressSelector({
               </option>
             ))}
           </select>
+          <svg className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
       )}
 
       {/* Ward */}
       {selectedDistrictId && (
-        <div>
-          <label htmlFor="ward" className={cn(
-            "block text-sm font-medium text-foreground mb-2"
-          )}>
-            {t('address.ward')}
-          </label>
+        <div className="relative">
           <select
             id="ward"
             name="ward"
@@ -183,11 +174,11 @@ export default function AddressSelector({
             onChange={(e) => onWardChange(e.target.value)}
             disabled={locationLoading || disabled || !selectedDistrictId}
             className={cn(
-              "w-full px-3 py-2 rounded-lg",
-              "border-[0.5px] border-border/20",
-              "bg-background text-foreground",
+              "w-full px-4 py-3 pr-10 rounded-lg appearance-none",
+              "border border-border/20",
+              "bg-white text-foreground",
               "outline-none transition-all duration-200",
-              "focus:border-primary/40 focus:ring-1 focus:ring-primary/20",
+              "focus:border-primary/40 focus:ring-2 focus:ring-primary/10",
               "disabled:bg-muted/50 disabled:text-muted-foreground disabled:cursor-not-allowed"
             )}
           >
@@ -198,17 +189,15 @@ export default function AddressSelector({
               </option>
             ))}
           </select>
+          <svg className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
       )}
 
       {/* Address Detail */}
       {(selectedProvinceId || selectedDistrictId || selectedWardId) && (
         <div>
-          <label htmlFor="addressDetail" className={cn(
-            "block text-sm font-medium text-foreground mb-2"
-          )}>
-            Địa chỉ chi tiết (số nhà, tên đường...)
-          </label>
           <input
             type="text"
             id="addressDetail"
@@ -217,18 +206,15 @@ export default function AddressSelector({
             onChange={(e) => onAddressDetailChange(e.target.value)}
             disabled={disabled}
             className={cn(
-              "w-full px-3 py-2 rounded-lg",
-              "border-[0.5px] border-border/20",
-              "bg-background text-foreground",
+              "w-full px-4 py-3 rounded-lg",
+              "border border-border/20",
+              "bg-white text-foreground",
               "outline-none transition-all duration-200",
-              "placeholder:text-muted-foreground/60",
-              "focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+              "placeholder:text-muted-foreground/60 placeholder:italic",
+              "focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
             )}
             placeholder="Số nhà, tên đường, tổ, khu phố..."
           />
-          <p className={cn("mt-1 text-xs text-muted-foreground")}>
-            Địa chỉ đầy đủ: {buildAddress() || 'Chưa chọn'}
-          </p>
         </div>
       )}
     </div>

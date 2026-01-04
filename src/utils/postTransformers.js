@@ -364,7 +364,8 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     ownerAccountId: post.accountId || post.ownerAccountId || author.id || null,
     targetType: post.type || "post",
     repostedFromId,
-    originalPost: transformedOriginalPost || originalPost
+    originalPost: transformedOriginalPost || originalPost,
+    status: post.status || "public" // Map status từ post
   };
 };
 

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 import { displayGender } from '../../utils/profileDataMapper';
 import { locationApi } from '../../api/locationApi';
+import PostCard from '../../modules/feeds/components/post/PostCard';
 
 const formatAddress = (address) => {
   if (!address) return null;
@@ -176,16 +177,18 @@ export const ProfileInfoSection = ({ profile }) => {
   return (
     <div
       className={cn(
-        'bg-card rounded-lg p-6 border-[0.5px] border-border/20',
+        'bg-card rounded-lg border-[0.5px] border-border/20',
         'shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
       )}
     >
-      <h3 className={cn('text-lg font-semibold text-foreground mb-4')}>
+      {/* About Section with padding */}
+      <div className="p-6">
+        <h3 className={cn('text-lg font-semibold text-foreground mb-4 text-center')}>
         {t('profile.about')}
       </h3>
       <div className={cn('space-y-3 text-sm')}>
         {profile.bio && (
-          <p className={cn('text-foreground whitespace-pre-wrap leading-relaxed border-b border-border/50 pb-4')}>
+          <p className={cn('text-foreground whitespace-pre-wrap leading-relaxed border-b border-border/50 pb-4 text-center')}>
             {profile.bio}
           </p>
         )}
@@ -242,7 +245,7 @@ export const ProfileInfoSection = ({ profile }) => {
         </div>
         {profile.contact && (profile.contact.email || profile.contact.phone || contactAddress) && (
           <div className={cn('mt-4 pt-4 border-t border-border/30 space-y-2 text-muted-foreground text-sm')}>
-            <h4 className={cn('text-base font-semibold text-foreground mb-2')}>
+            <h4 className={cn('text-base font-semibold text-foreground mb-2 text-center')}>
               {t('publicProfile.contact')}
             </h4>
             {profile.contact.email && (
@@ -266,6 +269,76 @@ export const ProfileInfoSection = ({ profile }) => {
           </div>
         )}
       </div>
+       </div>
+     </div>
+   );
+ };
+ 
+/**
+ * Posts List Component - Separate from ProfileInfoSection
+ * Renders posts list similar to Posts Tab
+ */
+export const ProfilePostsSection = ({ 
+  posts = [], 
+  postsLoading = false, 
+  onImageClick, 
+  onReport,
+  onEdit,
+  onDelete,
+  isOwnProfile = false,
+  playingPost,
+  setPlayingPost,
+  sharedAudioRef,
+  sharedCurrentTime,
+  sharedDuration,
+  sharedIsPlaying,
+  onSeek,
+  setActivePlayer
+}) => {
+  const { t } = useTranslation();
+
+  if (!posts || posts.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className={cn('flex flex-col gap-6')}>
+      {postsLoading ? (
+        <div className={cn("text-center py-12 text-muted-foreground")}>
+          {t('common.loading')}
+        </div>
+      ) : (
+        <div className={cn("flex flex-col gap-1.5 -mx-4 md:-mx-6")}>
+          {posts.slice(0, 5).map(post => {
+            const postId = post._id || post.id;
+            return (
+              <PostCard
+                key={postId}
+                post={post}
+                isOwnProfile={isOwnProfile}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onImageClick={onImageClick}
+                onReport={onReport}
+                playingPost={playingPost}
+                setPlayingPost={(id) => {
+                  setPlayingPost?.(id);
+                  if (id === postId && setActivePlayer) {
+                    setActivePlayer?.(post);
+                  } else if (!id && setActivePlayer) {
+                    setActivePlayer?.(null);
+                  }
+                }}
+                sharedAudioRef={sharedAudioRef}
+                sharedCurrentTime={sharedCurrentTime}
+                sharedDuration={sharedDuration}
+                sharedIsPlaying={sharedIsPlaying && playingPost === postId}
+                onSeek={onSeek}
+              />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -286,4 +359,22 @@ ProfileInfoSection.propTypes = {
       address: PropTypes.oneOfType([PropTypes.string, PropTypes.object])
     })
   })
+};
+
+ProfilePostsSection.propTypes = {
+  posts: PropTypes.array,
+  postsLoading: PropTypes.bool,
+  onImageClick: PropTypes.func,
+  onReport: PropTypes.func,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
+  isOwnProfile: PropTypes.bool,
+  playingPost: PropTypes.any,
+  setPlayingPost: PropTypes.func,
+  sharedAudioRef: PropTypes.any,
+  sharedCurrentTime: PropTypes.number,
+  sharedDuration: PropTypes.number,
+  sharedIsPlaying: PropTypes.bool,
+  onSeek: PropTypes.func,
+  setActivePlayer: PropTypes.func
 };
