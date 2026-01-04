@@ -363,7 +363,7 @@ export default function PostDetailModal({
   return (
     <div 
       className={cn(
-        "fixed inset-0 bg-black/75 backdrop-blur-xl z-[9999]",
+        "fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999]",
         "flex items-center justify-center p-4",
         "overflow-y-auto"
       )}

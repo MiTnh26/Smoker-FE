@@ -176,10 +176,47 @@ export default function BarRegister() {
   }
 
   return (
-    <div className="business-register-container">
-      <h2>Đăng ký Trang Quán Bar</h2>
+    <div className="min-h-screen bg-[#F0F2F5] py-8">
+      <div className="max-w-3xl mx-auto px-4">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-foreground mb-2">Đăng ký Trang Quán Bar</h2>
+          <p className="text-sm text-muted-foreground">Hoàn thành các bước sau để tạo trang quán Bar của bạn</p>
+        </div>
 
-      {step === 1 && (
+        {/* Progress Indicator */}
+        <div className="flex items-center justify-center mb-8">
+          <div className="flex items-center gap-4">
+            {/* Step 1 */}
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold">
+                1
+              </div>
+              <span className="text-sm font-medium text-foreground mt-2">Thông tin</span>
+            </div>
+            
+            {/* Connector Line */}
+            <div className="w-24 h-0.5 bg-border relative">
+              <div className={`absolute inset-0 h-full transition-all duration-300 ${step >= 2 ? 'bg-primary' : 'bg-border'}`} />
+            </div>
+            
+            {/* Step 2 */}
+            <div className="flex flex-col items-center">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                step >= 2 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-muted text-muted-foreground'
+              }`}>
+                2
+              </div>
+              <span className={`text-sm mt-2 ${step >= 2 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                Hình ảnh
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {step === 1 && (
         <BarRegisterStep1
           info={info}
           handleInfoChange={handleInfoChange}
@@ -207,21 +244,20 @@ export default function BarRegister() {
         />
       )}
 
-      {step === 2 && (
-        <BarRegisterStep2
-          info={info}
-          files={files}
-          previews={previews}
-          handleFileChange={handleFileChange}
-          submitStep2={submitStep2}
-          isLoading={isLoading}
-          prevStep={prevStep}
-          message={message}
-          Preview={ProfilePreviewCard}
-        />
-      )}
-
-      {message && !isSuccess && <p className="business-register-message">{message}</p>}
+        {step === 2 && (
+          <BarRegisterStep2
+            info={info}
+            files={files}
+            previews={previews}
+            handleFileChange={handleFileChange}
+            submitStep2={submitStep2}
+            isLoading={isLoading}
+            prevStep={prevStep}
+            message={message}
+            Preview={ProfilePreviewCard}
+          />
+        )}
+      </div>
     </div>
   );
 }

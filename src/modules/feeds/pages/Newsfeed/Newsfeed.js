@@ -3,13 +3,14 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next";
 
-import FeedHeader from "./components/FeedHeader"
 import { StoryBar, StoryViewer, StoryEditor } from "../../components/story"
 import PostFeed from "../../components/post/PostFeed"
 import "../../../../styles/modules/feeds/pages/Newsfeed/Newsfeed.css"
+import LiveSetup from "../../components/livestream/LiveSetup";
 import LiveBroadcaster from "../../components/livestream/LiveBroadcaster";
 import LiveViewer from "../../components/livestream/LiveViewer";
 import useLivestreamManager from "../../components/livestream/useLivestreamManager";
+import livestreamApi from "../../../../api/livestreamApi";
 
 import { useStoryManager } from "../../components/story";
 
@@ -25,6 +26,8 @@ export default function NewsfeedPage() {
     closeBroadcaster,
   } = useLivestreamManager()
   const [showStoryEditor, setShowStoryEditor] = useState(false)
+  const [showLiveSetup, setShowLiveSetup] = useState(false)
+  const [liveSetupData, setLiveSetupData] = useState(null)
   const {
     stories,
     fetchStories,
@@ -81,14 +84,12 @@ export default function NewsfeedPage() {
   }
   };
 
-  const handleGoLive = () => openBroadcaster();
+  const handleGoLive = () => setShowLiveSetup(true);
   const handleLivestreamEnded = () => closeBroadcaster({ refresh: true });
   const handleLivestreamClick = (livestream) => openViewer(livestream);
 
   return (
     <div className="newsfeed-page">
-      <FeedHeader />
-
       {/* Tạo Story + StoryBar */}
       <div className="story-section">
         <StoryBar 
@@ -116,11 +117,58 @@ export default function NewsfeedPage() {
         />
       )}
 
+      {/* Live Setup */}
+      {showLiveSetup && (
+        <LiveSetup
+          onClose={() => {
+            setShowLiveSetup(false);
+            closeBroadcaster({ refresh: false });
+          }}
+          onStartLive={async (setupData) => {
+            try {
+              if (setupData.isScheduled && setupData.scheduledDateTime) {
+                // Create scheduled livestream
+                const settings = {
+                  privacy: setupData.privacy,
+                  shareToStory: setupData.shareToStory,
+                  pinnedComment: setupData.pinnedComment,
+                  background: setupData.background,
+                  webcamPosition: setupData.webcamPosition,
+                  screenShareEnabled: setupData.screenShareEnabled,
+                  screenShareType: setupData.screenShareType,
+                };
+                await livestreamApi.createScheduledLivestream(
+                  setupData.title,
+                  setupData.description,
+                  setupData.scheduledDateTime,
+                  settings
+                );
+                setShowLiveSetup(false);
+                // Show success message or notification
+                alert("Đã lên lịch phát trực tiếp thành công!");
+              } else {
+                // Start live immediately
+                setLiveSetupData(setupData);
+                setShowLiveSetup(false);
+                openBroadcaster();
+              }
+            } catch (error) {
+              console.error("Error starting/scheduling livestream:", error);
+              alert(error.message || "Có lỗi xảy ra khi tạo livestream");
+            }
+          }}
+        />
+      )}
+
       {/* Live Broadcaster */}
       {isBroadcasterOpen && (
         <LiveBroadcaster
-          onClose={() => closeBroadcaster({ refresh: false })}
+          onClose={() => {
+            closeBroadcaster({ refresh: false });
+            setLiveSetupData(null);
+          }}
           onEnded={handleLivestreamEnded}
+          setupData={liveSetupData}
         />
       )}
 

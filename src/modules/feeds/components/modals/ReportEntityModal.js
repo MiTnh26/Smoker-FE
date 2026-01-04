@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import reportApi from "../../../../api/reportApi";
 import { useAuth } from "../../../../hooks/useAuth";
 import { cn } from "../../../../utils/cn";
+import "../../../../styles/modules/feeds/components/modals/postForms.css";
 
 const DEFAULT_REASON_KEY = "spam";
 
@@ -206,7 +207,7 @@ export default function ReportEntityModal({
         type="button"
         className={cn(
           "absolute inset-0 w-full h-full z-0",
-          "bg-black/75 backdrop-blur-xl cursor-default"
+          "bg-black/50 backdrop-blur-sm cursor-default"
         )}
         aria-label={t("modal.cancel")}
         onClick={onClose}
@@ -268,11 +269,7 @@ export default function ReportEntityModal({
             value={details}
             onChange={(e) => setDetails(e.target.value)}
             className={cn(
-              "w-full resize-y bg-background text-foreground",
-              "border-[0.5px] border-border/20 rounded-lg p-4",
-              "font-inherit text-base leading-6 outline-none",
-              "transition-all duration-200",
-              "focus:border-primary focus:ring-2 focus:ring-primary/10",
+              "post-form-textarea-modern w-full",
               "placeholder:text-muted-foreground/60"
             )}
           />

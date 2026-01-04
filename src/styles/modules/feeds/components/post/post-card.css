@@ -1,22 +1,7 @@
 /* CSS file nhỏ chỉ cho pseudo-elements phức tạp */
 /* Phần lớn styles đã được migrate sang Tailwind utility classes */
 
-/* Post card gradient overlay on hover */
-.post-card-gradient::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 0;
-  background: linear-gradient(90deg, rgb(var(--primary)), rgb(var(--secondary)));
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.post-card-gradient:hover::before {
-  opacity: 1;
-}
+/* Post card gradient overlay on hover - Đã bỏ */
 
 /* Action button ripple effect */
 .action-btn-ripple::before {

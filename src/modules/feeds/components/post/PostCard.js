@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
+import { Globe, Lock } from "lucide-react"
 import YouTubeLinkPreview from "../../../../components/common/YouTubeLinkPreview"
 import { splitTextWithYouTube } from "../../../../utils/youtube"
 import { likePost, unlikePost, trackPostView } from "../../../../api/postApi"
@@ -415,6 +416,16 @@ export default function PostCard({
               <p className="text-muted-foreground text-[0.8rem] m-0">
                 {post.time}
               </p>
+              {/* Status icon (public/private) */}
+              {post.status && (
+                <span className="text-muted-foreground">
+                  {post.status === "public" ? (
+                    <Globe size={12} className="inline-block" />
+                  ) : post.status === "private" ? (
+                    <Lock size={12} className="inline-block" />
+                  ) : null}
+                </span>
+              )}
               {post.location && (
                 <span className="text-muted-foreground text-[0.75rem] flex items-center gap-1">
                   📍 {post.location}
@@ -691,7 +702,7 @@ export default function PostCard({
               }
             }}
             className={cn(
-            "mt-3 rounded-lg border border-border/30",
+            "mt-3 rounded-lg border-[0.5px] border-border/20",
             "bg-muted/30 p-3",
             "hover:bg-muted/50 transition-colors",
             "cursor-pointer"
@@ -714,9 +725,21 @@ export default function PostCard({
                         {originalPost.user}
                       </span>
                       {originalPost.createdAt && (
-                        <span className="text-xs text-muted-foreground block mt-0.5">
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs text-muted-foreground">
                           {formatPostTime(originalPost.createdAt, t)}
+                          </span>
+                          {/* Status icon (public/private) */}
+                          {originalPost.status && (
+                            <span className="text-muted-foreground">
+                              {originalPost.status === "public" ? (
+                                <Globe size={12} className="inline-block" />
+                              ) : originalPost.status === "private" ? (
+                                <Lock size={12} className="inline-block" />
+                              ) : null}
                         </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

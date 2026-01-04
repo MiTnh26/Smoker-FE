@@ -317,6 +317,106 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
       }
       
       if (res && (res.status === 'success' || res.data)) {
+        // Update session so headers/menus reflect new avatar
+        try {
+          const { getSession, updateSession } = await import("../../../utils/sessionManager");
+          const session = getSession();
+
+          if (session) {
+            let updatedProfileData = null;
+
+            // For Account profile, refetch current user to get freshest data
+            if (profileType.type === "Account") {
+              try {
+                const meRes = await userApi.me();
+                if (meRes?.status === "success" && meRes.data) {
+                  updatedProfileData = meRes.data;
+                }
+              } catch (fetchErr) {
+                console.error("[OwnProfilePage] Failed to refetch user after avatar update:", fetchErr);
+              }
+            } else {
+              // For BarPage/BusinessAccount, use new avatar merged over existing profile
+              updatedProfileData = {
+                ...(profile || {}),
+                avatar: newAvatarUrl,
+              };
+            }
+
+            if (updatedProfileData) {
+              const currentAccount = session.account || {};
+              const currentActive = session.activeEntity || null;
+              const entities = Array.isArray(session.entities) ? session.entities : [];
+
+              // Preserve EntityAccountId for account
+              const accountEntityAccountId =
+                currentAccount.EntityAccountId ||
+                currentAccount.entityAccountId ||
+                null;
+
+              const updatedAccount =
+                profileType.type === "Account"
+                  ? {
+                      ...currentAccount,
+                      avatar: updatedProfileData.avatar || currentAccount.avatar,
+                    }
+                  : currentAccount;
+
+              // Helper to decide if an entity is the one we just edited
+              const isSameEntity = (entity) => {
+                if (!entity) return false;
+                const entityEaId = entity.EntityAccountId || entity.entityAccountId || null;
+                const profileEaId =
+                  updatedProfileData.EntityAccountId ||
+                  updatedProfileData.entityAccountId ||
+                  profile?.EntityAccountId ||
+                  profile?.entityAccountId ||
+                  null;
+
+                // Prefer matching by EntityAccountId; fallback to id
+                if (entityEaId && profileEaId && String(entityEaId) === String(profileEaId)) {
+                  return true;
+                }
+
+                const entityId = entity.id;
+                const profileId = updatedProfileData.id || profile?.id;
+                return entityId && profileId && String(entityId) === String(profileId);
+              };
+
+              // Update activeEntity (Account / BarPage / BusinessAccount)
+              const updatedActiveEntity = currentActive && isSameEntity(currentActive)
+                ? {
+                    ...currentActive,
+                    avatar: updatedProfileData.avatar || currentActive.avatar,
+                  }
+                : currentActive;
+
+              // Update matching entity in entities array
+              const updatedEntities = entities.map((entity) => {
+                if (!isSameEntity(entity)) return entity;
+                return {
+                  ...entity,
+                  avatar: updatedProfileData.avatar || entity.avatar,
+                };
+              });
+
+              updateSession({
+                account: updatedAccount,
+                activeEntity: updatedActiveEntity,
+                entities: updatedEntities,
+              });
+
+              // Notify other components (headers, menus, sidebars, etc.)
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new Event("profileUpdated"));
+                window.dispatchEvent(new Event("sessionUpdated"));
+              }
+            }
+          }
+        } catch (sessionErr) {
+          console.error("[OwnProfilePage] Error updating session after avatar update:", sessionErr);
+        }
+
         // Refetch profile to ensure consistency
         handleProfileUpdate();
       }
@@ -347,6 +447,106 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
       }
       
       if (res && (res.status === 'success' || res.data)) {
+        // Update session so headers/menus reflect new background
+        try {
+          const { getSession, updateSession } = await import("../../../utils/sessionManager");
+          const session = getSession();
+
+          if (session) {
+            let updatedProfileData = null;
+
+            // For Account profile, refetch current user to get freshest data
+            if (profileType.type === "Account") {
+              try {
+                const meRes = await userApi.me();
+                if (meRes?.status === "success" && meRes.data) {
+                  updatedProfileData = meRes.data;
+                }
+              } catch (fetchErr) {
+                console.error("[OwnProfilePage] Failed to refetch user after background update:", fetchErr);
+              }
+            } else {
+              // For BarPage/BusinessAccount, use new background merged over existing profile
+              updatedProfileData = {
+                ...(profile || {}),
+                background: newBackgroundUrl,
+              };
+            }
+
+            if (updatedProfileData) {
+              const currentAccount = session.account || {};
+              const currentActive = session.activeEntity || null;
+              const entities = Array.isArray(session.entities) ? session.entities : [];
+
+              // Preserve EntityAccountId for account
+              const accountEntityAccountId =
+                currentAccount.EntityAccountId ||
+                currentAccount.entityAccountId ||
+                null;
+
+              const updatedAccount =
+                profileType.type === "Account"
+                  ? {
+                      ...currentAccount,
+                      background: updatedProfileData.background || currentAccount.background,
+                    }
+                  : currentAccount;
+
+              // Helper to decide if an entity is the one we just edited
+              const isSameEntity = (entity) => {
+                if (!entity) return false;
+                const entityEaId = entity.EntityAccountId || entity.entityAccountId || null;
+                const profileEaId =
+                  updatedProfileData.EntityAccountId ||
+                  updatedProfileData.entityAccountId ||
+                  profile?.EntityAccountId ||
+                  profile?.entityAccountId ||
+                  null;
+
+                // Prefer matching by EntityAccountId; fallback to id
+                if (entityEaId && profileEaId && String(entityEaId) === String(profileEaId)) {
+                  return true;
+                }
+
+                const entityId = entity.id;
+                const profileId = updatedProfileData.id || profile?.id;
+                return entityId && profileId && String(entityId) === String(profileId);
+              };
+
+              // Update activeEntity (Account / BarPage / BusinessAccount)
+              const updatedActiveEntity = currentActive && isSameEntity(currentActive)
+                ? {
+                    ...currentActive,
+                    background: updatedProfileData.background || currentActive.background,
+                  }
+                : currentActive;
+
+              // Update matching entity in entities array
+              const updatedEntities = entities.map((entity) => {
+                if (!isSameEntity(entity)) return entity;
+                return {
+                  ...entity,
+                  background: updatedProfileData.background || entity.background,
+                };
+              });
+
+              updateSession({
+                account: updatedAccount,
+                activeEntity: updatedActiveEntity,
+                entities: updatedEntities,
+              });
+
+              // Notify other components (headers, menus, sidebars, etc.)
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new Event("profileUpdated"));
+                window.dispatchEvent(new Event("sessionUpdated"));
+              }
+            }
+          }
+        } catch (sessionErr) {
+          console.error("[OwnProfilePage] Error updating session after background update:", sessionErr);
+        }
+
         // Refetch profile to ensure consistency
         handleProfileUpdate();
       }
@@ -553,6 +753,26 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
             >
               {t('profile.postsTab')}
               {activeTab === "posts" && (
+                <span className={cn(
+                  "absolute bottom-0 left-0 right-0 h-0.5",
+                  "bg-primary"
+                )} />
+              )}
+            </button>
+            
+            {/* Images Tab - All profiles */}
+            <button
+              onClick={() => setActiveTab("images")}
+              className={cn(
+                "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                "transition-all duration-200 relative whitespace-nowrap",
+                activeTab === "images"
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {t('profile.imagesTab') || 'Ảnh'}
+              {activeTab === "images" && (
                 <span className={cn(
                   "absolute bottom-0 left-0 right-0 h-0.5",
                   "bg-primary"

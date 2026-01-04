@@ -9,13 +9,16 @@ import PropTypes from "prop-types";
 export default function LivestreamCardInline({ livestream, onClick }) {
   const viewerCount = livestream.viewCount ?? 0;
   
-  // Debug: Log broadcaster info
-  if (livestream && !livestream.broadcasterName) {
-    console.log("[LivestreamCardInline] Missing broadcaster info:", {
+  // Debug: Log livestream data for preview
+  if (livestream) {
+    console.log("[LivestreamCardInline] Livestream data:", {
       livestreamId: livestream.livestreamId,
-      hostEntityAccountId: livestream.hostEntityAccountId,
-      hasBroadcasterName: !!livestream.broadcasterName,
-      hasBroadcasterAvatar: !!livestream.broadcasterAvatar,
+      broadcasterName: livestream.broadcasterName,
+      broadcasterAvatar: livestream.broadcasterAvatar,
+      thumbnailUrl: livestream.thumbnailUrl,
+      previewUrl: livestream.previewUrl,
+      imageUrl: livestream.imageUrl,
+      hasPreview: !!(livestream.thumbnailUrl || livestream.previewUrl || livestream.imageUrl || livestream.broadcasterAvatar),
     });
   }
 
@@ -41,6 +44,28 @@ export default function LivestreamCardInline({ livestream, onClick }) {
       <div className="flex justify-between items-start mb-1.5 relative">
         <div className="flex items-center gap-3.5 flex-1 min-w-0">
           <div className="relative flex-shrink-0">
+            {/* Broadcaster Avatar */}
+            {livestream.broadcasterAvatar ? (
+              <img
+                src={livestream.broadcasterAvatar}
+                alt={livestream.broadcasterName || "Broadcaster"}
+                className={cn(
+                  "w-14 h-14 rounded-2xl object-cover",
+                  "border-2 border-danger/30 ring-2 ring-danger/10",
+                  "transition-all duration-500 ease-out",
+                  "hover:border-danger/50 hover:ring-danger/20",
+                  "hover:shadow-[0_8px_24px_rgba(239,68,68,0.25)]",
+                  "hover:scale-110",
+                  "shadow-[0_4px_12px_rgba(239,68,68,0.12)]"
+                )}
+                onError={(e) => {
+                  // Fallback to default avatar if image fails
+                  e.target.style.display = 'none';
+                  e.target.nextElementSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            {/* Fallback Avatar */}
             <div
               className={cn(
                 "w-14 h-14 rounded-2xl",
@@ -51,10 +76,17 @@ export default function LivestreamCardInline({ livestream, onClick }) {
                 "hover:border-danger/50 hover:ring-danger/20",
                 "hover:shadow-[0_8px_24px_rgba(239,68,68,0.25)]",
                 "hover:scale-110 hover:rotate-3",
-                "shadow-[0_4px_12px_rgba(239,68,68,0.12)]"
+                "shadow-[0_4px_12px_rgba(239,68,68,0.12)]",
+                livestream.broadcasterAvatar ? "hidden" : ""
               )}
             >
-              <Video size={24} className="text-danger" />
+              {livestream.broadcasterName ? (
+                <span className="text-xl font-bold text-danger">
+                  {livestream.broadcasterName[0]?.toUpperCase() || "L"}
+                </span>
+              ) : (
+                <Video size={24} className="text-danger" />
+              )}
             </div>
             {/* LIVE Badge */}
             <div
@@ -76,38 +108,22 @@ export default function LivestreamCardInline({ livestream, onClick }) {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <h4
-              className={cn(
-                "font-semibold text-[0.95rem] mb-1",
-                "text-foreground whitespace-nowrap",
-                "overflow-hidden text-ellipsis",
-                "flex items-center gap-2"
-              )}
-            >
-              <span>{livestream.title || "Livestream đang phát"}</span>
-            </h4>
+            {/* Broadcaster Name */}
+            {livestream.broadcasterName && (
+              <h4
+                className={cn(
+                  "font-semibold text-[0.95rem] mb-1",
+                  "text-foreground"
+                )}
+              >
+                {livestream.broadcasterName}
+              </h4>
+            )}
+            {/* Title */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Broadcaster info */}
-              {livestream.broadcasterName && (
-                <div className="flex items-center gap-1.5">
-                  {livestream.broadcasterAvatar ? (
-                    <img
-                      src={livestream.broadcasterAvatar}
-                      alt={livestream.broadcasterName}
-                      className="h-4 w-4 rounded-full object-cover border border-border/30"
-                    />
-                  ) : (
-                    <div className="h-4 w-4 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="text-[8px] font-semibold text-primary">
-                        {livestream.broadcasterName[0]?.toUpperCase() || "U"}
-                      </span>
-                    </div>
-                  )}
-                  <span className="text-[0.75rem] text-muted-foreground font-medium">
-                    {livestream.broadcasterName}
-                  </span>
-                </div>
-              )}
+              <span className="text-[0.85rem] text-muted-foreground">
+                {livestream.title || "Livestream đang phát"}
+              </span>
               <div
                 className={cn(
                   "flex items-center gap-1 px-2 py-0.5 rounded-lg",
@@ -117,12 +133,12 @@ export default function LivestreamCardInline({ livestream, onClick }) {
                 <Users size={12} />
                 {viewerCount} người đang xem
               </div>
-              {livestream.description && (
-                <p className="text-muted-foreground text-[0.75rem] m-0 line-clamp-1">
-                  {livestream.description}
-                </p>
-              )}
             </div>
+            {livestream.description && (
+              <p className="text-muted-foreground text-[0.75rem] mt-1 m-0 line-clamp-1">
+                {livestream.description}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -137,7 +153,31 @@ export default function LivestreamCardInline({ livestream, onClick }) {
           "group cursor-pointer"
         )}
       >
-        <Video size={48} className={cn("text-muted-foreground")} />
+        {/* Preview Image if available - Use thumbnailUrl, previewUrl, imageUrl, or broadcasterAvatar as fallback */}
+        {(livestream.thumbnailUrl || livestream.previewUrl || livestream.imageUrl || livestream.broadcasterAvatar) ? (
+          <>
+            <img
+              src={livestream.thumbnailUrl || livestream.previewUrl || livestream.imageUrl || livestream.broadcasterAvatar}
+              alt={livestream.title || "Livestream preview"}
+              className={cn(
+                "w-full h-full object-cover",
+                "group-hover:scale-105 transition-transform duration-300"
+              )}
+              onError={(e) => {
+                // Fallback to video icon if image fails
+                e.target.style.display = 'none';
+                const fallbackIcon = e.target.nextElementSibling;
+                if (fallbackIcon) fallbackIcon.style.display = 'flex';
+              }}
+            />
+            {/* Fallback icon - hidden by default, shown if image fails */}
+            <div className="hidden items-center justify-center absolute inset-0">
+              <Video size={48} className={cn("text-muted-foreground")} />
+            </div>
+          </>
+        ) : (
+          <Video size={48} className={cn("text-muted-foreground")} />
+        )}
         {/* Overlay on hover */}
         <div
           className={cn(
@@ -197,6 +237,11 @@ LivestreamCardInline.propTypes = {
     viewCount: PropTypes.number,
     startTime: PropTypes.string,
     agoraChannelName: PropTypes.string,
+    broadcasterName: PropTypes.string,
+    broadcasterAvatar: PropTypes.string,
+    thumbnailUrl: PropTypes.string,
+    previewUrl: PropTypes.string,
+    imageUrl: PropTypes.string,
   }).isRequired,
   onClick: PropTypes.func,
 };

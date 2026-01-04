@@ -3,12 +3,10 @@ import { ChevronDown } from "lucide-react";
 import AddressSelector from "../../../components/common/AddressSelector";
 import { cn } from "../../../utils/cn";
 
-export default function BarRegisterStep1({ 
+export default function DancerRegisterStep1({ 
   info, 
   handleInfoChange, 
-  submitStep1, 
-  isLoading, 
-  message,
+  goNextStep,
   selectedProvinceId,
   selectedDistrictId,
   selectedWardId,
@@ -21,17 +19,17 @@ export default function BarRegisterStep1({
 }) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
-      <form onSubmit={submitStep1}>
+      <form onSubmit={goNextStep}>
         <div className="space-y-6">
-          {/* Tên quán Bar */}
+          {/* Tên Dancer */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-foreground">
-              Tên quán Bar <span className="text-destructive">*</span>
+              Tên Dancer <span className="text-destructive">*</span>
             </label>
             <input
               type="text"
-              name="barName"
-              value={info.barName}
+              name="userName"
+              value={info.userName}
               onChange={handleInfoChange}
               required
               className={cn(
@@ -41,7 +39,7 @@ export default function BarRegisterStep1({
                 "outline-none transition-all duration-200",
                 "focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
               )}
-              placeholder="Nhập tên quán Bar của bạn"
+              placeholder="Nhập tên Dancer của bạn"
             />
           </div>
 
@@ -71,19 +69,88 @@ export default function BarRegisterStep1({
             </div>
           </div>
 
-          {/* Số điện thoại và Email - 2 cột */}
+          {/* Giới tính */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-foreground">
+              Giới tính
+            </label>
+            <div className="relative">
+              <select
+                name="gender"
+                value={info.gender}
+                onChange={handleInfoChange}
+                className={cn(
+                  "w-full px-4 py-3 pr-10 rounded-lg appearance-none",
+                  "bg-white border border-border/20",
+                  "text-foreground",
+                  "outline-none transition-all duration-200",
+                  "focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+                )}
+              >
+                <option value="">-- Chọn giới tính --</option>
+                <option value="Nam">Nam</option>
+                <option value="Nữ">Nữ</option>
+                <option value="Khác">Khác</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Số điện thoại */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-foreground">
+              Số điện thoại <span className="text-destructive">*</span>
+            </label>
+            <input
+              type="text"
+              name="phone"
+              value={info.phone}
+              onChange={handleInfoChange}
+              className={cn(
+                "w-full px-4 py-3 rounded-lg",
+                "bg-white border border-border/20",
+                "text-foreground placeholder:text-muted-foreground/60 placeholder:italic",
+                "outline-none transition-all duration-200",
+                "focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+              )}
+              placeholder="Nhập số điện thoại"
+            />
+          </div>
+
+          {/* Giới thiệu bản thân */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-foreground">
+              Giới thiệu bản thân
+            </label>
+            <textarea
+              name="bio"
+              value={info.bio}
+              onChange={handleInfoChange}
+              rows={3}
+              className={cn(
+                "w-full px-4 py-3 rounded-lg",
+                "bg-white border border-border/20",
+                "text-foreground placeholder:text-muted-foreground/60 placeholder:italic",
+                "outline-none transition-all duration-200 resize-none",
+                "focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+              )}
+              placeholder="Nhập giới thiệu về bản thân"
+            />
+          </div>
+
+          {/* Giá thuê - 2 cột */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Số điện thoại */}
+            {/* Giá thuê theo giờ */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-foreground">
-                Số điện thoại <span className="text-destructive">*</span>
+                Giá thuê theo giờ (đồng)
               </label>
               <input
-                type="text"
-                name="phoneNumber"
-                value={info.phoneNumber}
+                type="number"
+                name="pricePerHours"
+                value={info.pricePerHours}
                 onChange={handleInfoChange}
-                required
+                min="0"
                 className={cn(
                   "w-full px-4 py-3 rounded-lg",
                   "bg-white border border-border/20",
@@ -91,21 +158,21 @@ export default function BarRegisterStep1({
                   "outline-none transition-all duration-200",
                   "focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                 )}
-                placeholder="Nhập số điện thoại"
+                placeholder="Nhập giá theo giờ"
               />
             </div>
 
-            {/* Email */}
+            {/* Giá thuê theo buổi */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-foreground">
-                Email <span className="text-destructive">*</span>
+                Giá thuê theo buổi (đồng)
               </label>
               <input
-                type="email"
-                name="email"
-                value={info.email}
+                type="number"
+                name="pricePerSession"
+                value={info.pricePerSession}
                 onChange={handleInfoChange}
-                required
+                min="0"
                 className={cn(
                   "w-full px-4 py-3 rounded-lg",
                   "bg-white border border-border/20",
@@ -113,7 +180,7 @@ export default function BarRegisterStep1({
                   "outline-none transition-all duration-200",
                   "focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                 )}
-                placeholder="Nhập email"
+                placeholder="Nhập giá theo buổi"
               />
             </div>
           </div>
@@ -121,7 +188,6 @@ export default function BarRegisterStep1({
           {/* Button */}
           <button
             type="submit"
-            disabled={isLoading}
             className={cn(
               "w-full px-6 py-3 rounded-lg",
               "bg-[#00B2FF] text-white",
@@ -133,19 +199,12 @@ export default function BarRegisterStep1({
               "flex items-center justify-center gap-2"
             )}
           >
-            {isLoading ? "Đang tạo..." : (
-              <>
-                Tiếp tục
-                <span className="text-lg">→</span>
-              </>
-            )}
+            Tiếp tục
+            <span className="text-lg">→</span>
           </button>
-
-          {message && (
-            <p className="text-sm text-destructive text-center">{message}</p>
-          )}
         </div>
       </form>
     </div>
   );
 }
+

@@ -3,19 +3,19 @@
    Tinh tế, tối giản, không phô trương
    ========================================================= */
 
-/* Modal Overlay Backdrop */
+/* Modal Overlay Backdrop - Giống ShareModal */
 .post-form-overlay {
-  background: rgba(var(--overlay));
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.5); /* bg-black/50 */
+  backdrop-filter: blur(4px); /* backdrop-blur-sm */
+  -webkit-backdrop-filter: blur(4px);
 }
 
-/* Card Container - Instagram Style */
+/* Card Container - Modern & Elegant Style */
 .post-form-glass-card {
   background: rgb(var(--card));
   border: 0.5px solid rgba(var(--border), 0.2);
-  border-radius: 0.5rem; /* rounded-lg = 8px */
-  box-shadow: 0 2px 8px rgba(var(--black), 0.12);
+  border-radius: 20px; /* 16-24px range, using 20px for modern look */
+  box-shadow: 0 4px 24px rgba(var(--black), 0.15);
   overflow: hidden;
   position: relative;
   display: flex;
@@ -37,8 +37,12 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-weight: 600;
-  font-size: 1rem;
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: #1A1A1A;
+}
+
+[data-theme='dark'] .post-form-header-content {
   color: rgb(var(--card-foreground));
 }
 
@@ -61,6 +65,10 @@
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+.post-form-header-close svg {
+  stroke-width: 1.5;
 }
 
 .post-form-header-close:hover {
@@ -86,7 +94,7 @@
   margin-bottom: 0.25rem;
 }
 
-/* Input Fields - Instagram Style */
+/* Input Fields - Modern Style */
 .post-form-input,
 .post-form-textarea {
   width: 100%;
@@ -98,6 +106,72 @@
   font-size: 0.875rem;
   outline: none;
   transition: all 0.2s ease;
+}
+
+/* Modern Textarea - Borderless, Transparent Background */
+.post-form-textarea-modern {
+  background: transparent !important;
+  border: none !important;
+  padding: 1rem;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  color: rgb(var(--foreground));
+  resize: none !important;
+  min-height: 120px;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.post-form-textarea-modern:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  ring: none !important;
+}
+
+.post-form-textarea-modern::placeholder {
+  color: rgba(var(--muted-foreground), 0.5);
+  font-style: italic;
+}
+
+/* Hashtag styling - blue color */
+.post-form-textarea-modern:has-text {
+  color: rgb(var(--foreground));
+}
+
+/* Global Borderless Textarea Style - Áp dụng cho tất cả textarea */
+textarea.borderless-textarea,
+textarea[class*="borderless"],
+.post-form-textarea-borderless {
+  background: transparent !important;
+  border: none !important;
+  resize: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  color: rgb(var(--foreground));
+  padding: 1rem;
+}
+
+textarea.borderless-textarea:focus,
+textarea[class*="borderless"]:focus,
+.post-form-textarea-borderless:focus {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  ring: none !important;
+}
+
+textarea.borderless-textarea::placeholder,
+textarea[class*="borderless"]::placeholder,
+.post-form-textarea-borderless::placeholder {
+  color: rgba(var(--muted-foreground), 0.5);
+  font-style: italic;
 }
 
 .post-form-input:focus,
@@ -136,7 +210,7 @@
   box-shadow: 0 0 0 1px rgba(var(--primary), 0.2);
 }
 
-/* Pill Buttons for Media Selectors - Borderless */
+/* Pill Buttons for Media Selectors - Modern Line Icons */
 .post-form-pill-button {
   display: inline-flex;
   align-items: center;
@@ -151,6 +225,17 @@
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+}
+
+.post-form-pill-button-modern {
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+}
+
+.post-form-pill-button-modern .post-form-pill-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  stroke-width: 1.5;
 }
 
 .post-form-pill-button:hover {
@@ -192,7 +277,7 @@
   gap: 0.5rem;
 }
 
-/* Media Grid */
+/* Media Grid - Modern with larger gap */
 .post-form-media-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -203,7 +288,11 @@
   padding-right: 6px; /* space for scrollbar */
 }
 
-/* Media Chip/Card */
+.post-form-media-grid-modern {
+  gap: 12px; /* Increased gap for elegant spacing */
+}
+
+/* Media Chip/Card - Modern with larger border radius and shadow */
 .post-form-media-chip {
   position: relative;
   aspect-ratio: 1;
@@ -214,6 +303,16 @@
   box-shadow: 0 1px 2px rgba(var(--black), 0.05);
 }
 
+.post-form-media-chip-modern {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(var(--black), 0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+.post-form-media-chip-modern:hover {
+  /* Bỏ hiệu ứng hover - không scale, không di chuyển */
+}
+
 .post-form-media-chip img,
 .post-form-media-chip video {
   width: 100%;
@@ -221,6 +320,72 @@
   object-fit: cover;
 }
 
+/* Action buttons group - modern design */
+.post-form-media-chip-actions {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.375rem;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.95);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.post-form-media-chip-actions-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: all;
+}
+
+/* Individual action button */
+.post-form-media-chip-action-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 0.5px solid rgba(255, 255, 255, 0.4);
+  color: rgb(var(--foreground));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+              0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+}
+
+.post-form-media-chip-action-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2),
+              0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.post-form-media-chip-action-btn:active {
+  transform: scale(0.95);
+}
+
+/* Remove button - red tint on hover */
+.post-form-media-chip-remove-modern:hover {
+  background: rgba(239, 68, 68, 0.95);
+  color: white;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Edit button - blue/primary tint on hover */
+.post-form-media-chip-edit-modern:hover {
+  background: rgba(var(--primary), 0.95);
+  color: white;
+  border-color: rgba(var(--primary), 0.3);
+}
+
+/* Legacy support */
 .post-form-media-chip-remove {
   position: absolute;
   top: 0.375rem;
@@ -263,6 +428,20 @@
   );
 }
 
+/* Modern caption - subtle overlay at bottom */
+.post-form-media-chip-caption-modern {
+  padding: 0.75rem;
+  background: linear-gradient(
+    to top,
+    rgba(var(--black), 0.85),
+    rgba(var(--black), 0.6),
+    rgba(var(--black), 0.3),
+    transparent
+  );
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
 .post-form-media-chip-caption input {
   width: 100%;
   padding: 0.375rem 0.5rem;
@@ -272,6 +451,22 @@
   font-size: 0.75rem;
   color: rgb(var(--foreground));
   outline: none;
+}
+
+.post-form-media-chip-caption-modern input {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  color: rgb(var(--foreground));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.post-form-media-chip-caption-modern input::placeholder {
+  color: rgba(var(--muted-foreground), 0.7);
 }
 
 .post-form-media-chip-caption input:focus {
@@ -352,6 +547,24 @@
   padding: 1rem;
   border-top: 0.5px solid rgba(var(--border), 0.3);
   background: rgb(var(--card));
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.post-form-footer-modern {
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.post-form-footer-modern .post-form-button-cancel-modern {
+  flex-shrink: 0;
+  min-width: auto;
+}
+
+.post-form-footer-modern .post-form-button-submit-modern {
+  flex: 1;
+  max-width: calc(100% - 120px); /* Chừa khoảng 120px cho nút Hủy + gap */
 }
 
 .post-form-button {
@@ -390,6 +603,82 @@
   background: rgba(var(--primary), 0.9);
 }
 
+/* Modern submit button with gradient and shadow - FIX COLOR CONFLICT */
+.post-form-button-submit-modern {
+  border-radius: 8px !important;
+  padding: 0.75rem 2rem !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Background - Light mode: cyan gradient, Dark mode: white gradient */
+:not([data-theme='dark']) .post-form-button-submit-modern {
+  background: linear-gradient(135deg, rgb(34, 211, 238) 0%, rgba(34, 211, 238, 0.9) 100%) !important;
+  box-shadow: 0 4px 12px rgba(34, 211, 238, 0.3) !important;
+  color: rgb(255, 255, 255) !important;
+}
+
+[data-theme='dark'] .post-form-button-submit-modern {
+  background: linear-gradient(135deg, rgb(255, 255, 255) 0%, rgba(255, 255, 255, 0.9) 100%) !important;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3) !important;
+  color: rgb(9, 9, 11) !important;
+}
+
+/* Fix color - override all other rules with higher specificity */
+.post-form-button.post-form-button-submit.post-form-button-submit-modern {
+  /* Base color - will be overridden by theme-specific rules above */
+}
+
+/* Dark mode - black text on white background */
+[data-theme='dark'] .post-form-button.post-form-button-submit.post-form-button-submit-modern {
+  color: rgb(9, 9, 11) !important;
+}
+
+/* Light mode - white text on primary background */
+:not([data-theme='dark']) .post-form-button.post-form-button-submit.post-form-button-submit-modern {
+  color: rgb(255, 255, 255) !important;
+}
+
+.post-form-button-submit-modern:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+:not([data-theme='dark']) .post-form-button-submit-modern:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.95) 0%, rgba(34, 211, 238, 0.85) 100%) !important;
+  box-shadow: 0 6px 16px rgba(34, 211, 238, 0.4) !important;
+}
+
+[data-theme='dark'] .post-form-button-submit-modern:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%) !important;
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.4) !important;
+}
+
+.post-form-button-submit-modern:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+:not([data-theme='dark']) .post-form-button-submit-modern:active:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(34, 211, 238, 0.3) !important;
+}
+
+[data-theme='dark'] .post-form-button-submit-modern:active:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Modern cancel button - text style */
+.post-form-button-cancel-modern {
+  background: transparent;
+  color: rgb(var(--muted-foreground));
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+}
+
+.post-form-button-cancel-modern:hover:not(:disabled) {
+  color: rgb(var(--foreground));
+  background: rgba(var(--muted), 0.3);
+}
+
 .post-form-button-submit:active:not(:disabled) {
   transform: scale(0.95);
 }
@@ -398,6 +687,34 @@
   opacity: 0.5;
   cursor: not-allowed;
   transform: none !important;
+}
+
+/* Legacy edit button - removed, using action-btn instead */
+
+/* Caption preview - hiện caption ngắn ở đáy ảnh */
+.post-form-media-chip-caption-preview {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0.5rem;
+  background: linear-gradient(
+    to top,
+    rgba(var(--black), 0.8),
+    rgba(var(--black), 0.5),
+    transparent
+  );
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: white;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  max-height: 3rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* Dark Theme Enhancements */

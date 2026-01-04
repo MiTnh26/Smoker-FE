@@ -30,7 +30,7 @@ import BarReview from "../../bar/components/BarReview";
 import BarTables from "../../bar/components/BarTables";
 import BarTablesPage from "../../customer/pages/BarTablesPage";
 import PerformerReviews from "../../business/components/PerformerReviews";
-import { ProfileInfoSection } from "../../../components/profile/ProfileInfoSection";
+import { ProfileInfoSection, ProfilePostsSection } from "../../../components/profile/ProfileInfoSection";
 import AudioPlayerBar from "../../feeds/components/audio/AudioPlayerBar";
 import { useSharedAudioPlayer } from "../../../hooks/useSharedAudioPlayer";
 import ImageDetailModal from "../../feeds/components/media/mediasOfPost/ImageDetailModal";
@@ -382,7 +382,7 @@ export default function ProfilePage() {
                 {t('common.loading')}
               </div>
             ) : posts && posts.length > 0 ? (
-              <div className={cn("space-y-4 -mx-4 md:-mx-6")}>
+              <div className={cn("flex flex-col gap-1.5 -mx-4 md:-mx-6")}>
                 {posts.map(post => (
                   <PostCard
                     key={post.id}
@@ -409,6 +409,144 @@ export default function ProfilePage() {
             )}
           </div>
         );
+      case "images": {
+        // Lọc tất cả ảnh từ posts có medias.images
+        const allImages = [];
+        (posts || []).forEach(post => {
+          if (post.medias?.images && post.medias.images.length > 0) {
+            post.medias.images.forEach(image => {
+              allImages.push({
+                ...image,
+                postId: post.id || post._id,
+                post: post
+              });
+            });
+          }
+        });
+
+        return (
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : allImages && allImages.length > 0 ? (
+              <div className={cn("grid grid-cols-3 gap-0 -mx-4 md:-mx-6")}>
+                {allImages.map((image, idx) => (
+                  <div
+                    key={`${image.postId}-${image.id || idx}`}
+                    className={cn(
+                      "relative aspect-square overflow-hidden cursor-pointer",
+                      "bg-card group rounded-lg",
+                      "border-[0.5px] border-border/20",
+                      "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                    )}
+                    onClick={() => {
+                      setSelectedImage({
+                        imageUrl: image.url,
+                        postId: image.postId,
+                        mediaId: image.id || image._id,
+                        allImages: allImages.map(img => ({ url: img.url, _id: img.id || img._id })),
+                        currentIndex: idx
+                      });
+                    }}
+                  >
+                    <img
+                      src={image.url}
+                      alt=""
+                      className={cn(
+                        "w-full h-full object-cover transition-transform duration-200",
+                        "group-hover:scale-105"
+                      )}
+                      loading="lazy"
+                    />
+                    <div className={cn(
+                      "absolute inset-0 bg-black/0 group-hover:bg-black/10",
+                      "transition-colors duration-200"
+                    )} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noImages") || t("publicProfile.noPosts")}
+              </div>
+            )}
+          </div>
+        );
+      }
+      case "images": {
+        // Lọc tất cả ảnh từ posts có medias.images
+        const allImages = [];
+        (posts || []).forEach(post => {
+          if (post.medias?.images && post.medias.images.length > 0) {
+            post.medias.images.forEach(image => {
+              allImages.push({
+                ...image,
+                postId: post.id || post._id,
+                post: post
+              });
+            });
+          }
+        });
+
+        return (
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : allImages && allImages.length > 0 ? (
+              <div className={cn("grid grid-cols-3 gap-0 -mx-4 md:-mx-6")}>
+                {allImages.map((image, idx) => (
+                  <div
+                    key={`${image.postId}-${image.id || idx}`}
+                    className={cn(
+                      "relative aspect-square overflow-hidden cursor-pointer",
+                      "bg-card group rounded-lg",
+                      "border-[0.5px] border-border/20",
+                      "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                    )}
+                    onClick={() => {
+                      setSelectedImage({
+                        imageUrl: image.url,
+                        postId: image.postId,
+                        mediaId: image.id || image._id,
+                        allImages: allImages.map(img => ({ url: img.url, _id: img.id || img._id })),
+                        currentIndex: idx
+                      });
+                    }}
+                  >
+                    <img
+                      src={image.url}
+                      alt=""
+                      className={cn(
+                        "w-full h-full object-cover transition-transform duration-200",
+                        "group-hover:scale-105"
+                      )}
+                      loading="lazy"
+                    />
+                    <div className={cn(
+                      "absolute inset-0 bg-black/0 group-hover:bg-black/10",
+                      "transition-colors duration-200"
+                    )} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noImages") || t("publicProfile.noPosts")}
+              </div>
+            )}
+          </div>
+        );
+      }
       case "videos": {
         const videoPosts = (posts || []).filter((post) => {
           const hasVideoMedia = post.medias?.videos && post.medias.videos.length > 0;
@@ -422,7 +560,7 @@ export default function ProfilePage() {
                 {t('common.loading')}
               </div>
             ) : videoPosts && videoPosts.length > 0 ? (
-              <div className={cn("space-y-4 -mx-4 md:-mx-6")}>
+              <div className={cn("flex flex-col gap-1.5 -mx-4 md:-mx-6")}>
               {videoPosts.map(post => (
                 <PostCard
                   key={post.id}
@@ -584,7 +722,7 @@ export default function ProfilePage() {
                 {t('common.loading')}
               </div>
             ) : posts && posts.length > 0 ? (
-              <div className={cn("space-y-4 -mx-4 md:-mx-6")}>
+              <div className={cn("flex flex-col gap-1.5 -mx-4 md:-mx-6")}>
               {posts.map(post => (
                 <PostCard
                   key={post.id}
@@ -611,6 +749,75 @@ export default function ProfilePage() {
             )}
           </div>
         );
+      case "images": {
+        // Lọc tất cả ảnh từ posts có medias.images
+        const allImages = [];
+        (posts || []).forEach(post => {
+          if (post.medias?.images && post.medias.images.length > 0) {
+            post.medias.images.forEach(image => {
+              allImages.push({
+                ...image,
+                postId: post.id || post._id,
+                post: post
+              });
+            });
+          }
+        });
+
+        return (
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : allImages && allImages.length > 0 ? (
+              <div className={cn("grid grid-cols-3 gap-0 -mx-4 md:-mx-6")}>
+                {allImages.map((image, idx) => (
+                  <div
+                    key={`${image.postId}-${image.id || idx}`}
+                    className={cn(
+                      "relative aspect-square overflow-hidden cursor-pointer",
+                      "bg-card group rounded-lg",
+                      "border-[0.5px] border-border/20",
+                      "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                    )}
+                    onClick={() => {
+                      setSelectedImage({
+                        imageUrl: image.url,
+                        postId: image.postId,
+                        mediaId: image.id || image._id,
+                        allImages: allImages.map(img => ({ url: img.url, _id: img.id || img._id })),
+                        currentIndex: idx
+                      });
+                    }}
+                  >
+                    <img
+                      src={image.url}
+                      alt=""
+                      className={cn(
+                        "w-full h-full object-cover transition-transform duration-200",
+                        "group-hover:scale-105"
+                      )}
+                      loading="lazy"
+                    />
+                    <div className={cn(
+                      "absolute inset-0 bg-black/0 group-hover:bg-black/10",
+                      "transition-colors duration-200"
+                    )} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noImages") || t("publicProfile.noPosts")}
+              </div>
+            )}
+          </div>
+        );
+      }
       case "music": {
         // Filter posts that have music (avoid including pure video posts)
         const musicPosts = posts.filter(post => {
@@ -729,7 +936,7 @@ export default function ProfilePage() {
                 {t('common.loading')}
               </div>
             ) : posts && posts.length > 0 ? (
-              <div className={cn("space-y-4 -mx-4 md:-mx-6")}>
+              <div className={cn("flex flex-col gap-1.5 -mx-4 md:-mx-6")}>
                 {posts.map(post => (
                   <PostCard
                     key={post.id}
@@ -749,6 +956,75 @@ export default function ProfilePage() {
             )}
           </div>
         );
+      case "images": {
+        // Lọc tất cả ảnh từ posts có medias.images
+        const allImages = [];
+        (posts || []).forEach(post => {
+          if (post.medias?.images && post.medias.images.length > 0) {
+            post.medias.images.forEach(image => {
+              allImages.push({
+                ...image,
+                postId: post._id || post.id,
+                post: post
+              });
+            });
+          }
+        });
+
+        return (
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : allImages && allImages.length > 0 ? (
+              <div className={cn("grid grid-cols-3 gap-0 -mx-4 md:-mx-6")}>
+                {allImages.map((image, idx) => (
+                  <div
+                    key={`${image.postId}-${image.id || idx}`}
+                    className={cn(
+                      "relative aspect-square overflow-hidden cursor-pointer",
+                      "bg-card group rounded-lg",
+                      "border-[0.5px] border-border/20",
+                      "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                    )}
+                    onClick={() => {
+                      setSelectedImage({
+                        imageUrl: image.url,
+                        postId: image.postId,
+                        mediaId: image.id || image._id,
+                        allImages: allImages.map(img => ({ url: img.url, _id: img.id || img._id })),
+                        currentIndex: idx
+                      });
+                    }}
+                  >
+                    <img
+                      src={image.url}
+                      alt=""
+                      className={cn(
+                        "w-full h-full object-cover transition-transform duration-200",
+                        "group-hover:scale-105"
+                      )}
+                      loading="lazy"
+                    />
+                    <div className={cn(
+                      "absolute inset-0 bg-black/0 group-hover:bg-black/10",
+                      "transition-colors duration-200"
+                    )} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noImages") || t("publicProfile.noPosts")}
+              </div>
+            )}
+          </div>
+        );
+      }
       case "videos": {
         const videoPosts = (posts || []).filter((post) => {
           const hasVideoMedia = post.medias?.videos && post.medias.videos.length > 0;
@@ -809,6 +1085,13 @@ export default function ProfilePage() {
         return (
           <div className={cn("flex flex-col gap-6")}>
             <ProfileInfoSection profile={profile} />
+            <ProfilePostsSection 
+              posts={posts}
+              postsLoading={postsLoading}
+              onImageClick={(data) => setSelectedImage(data)}
+              onReport={(p) => setReportingPost(p)}
+              isOwnProfile={isOwnProfile}
+            />
           </div>
         );
       case "posts":
@@ -819,7 +1102,7 @@ export default function ProfilePage() {
                 {t('common.loading')}
               </div>
             ) : posts && posts.length > 0 ? (
-              <div className={cn("space-y-4 -mx-4 md:-mx-6")}>
+              <div className={cn("flex flex-col gap-1.5 -mx-4 md:-mx-6")}>
                 {posts.map(post => (
                   <PostCard
                     key={post._id || post.id}
@@ -839,6 +1122,75 @@ export default function ProfilePage() {
             )}
           </div>
         );
+      case "images": {
+        // Lọc tất cả ảnh từ posts có medias.images
+        const allImages = [];
+        (posts || []).forEach(post => {
+          if (post.medias?.images && post.medias.images.length > 0) {
+            post.medias.images.forEach(image => {
+              allImages.push({
+                ...image,
+                postId: post._id || post.id,
+                post: post
+              });
+            });
+          }
+        });
+
+        return (
+          <div className="flex flex-col gap-6">
+            {postsLoading ? (
+              <div className={cn("text-center py-12 text-muted-foreground")}>
+                {t('common.loading')}
+              </div>
+            ) : allImages && allImages.length > 0 ? (
+              <div className={cn("grid grid-cols-3 gap-0 -mx-4 md:-mx-6")}>
+                {allImages.map((image, idx) => (
+                  <div
+                    key={`${image.postId}-${image.id || idx}`}
+                    className={cn(
+                      "relative aspect-square overflow-hidden cursor-pointer",
+                      "bg-card group rounded-lg",
+                      "border-[0.5px] border-border/20",
+                      "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                    )}
+                    onClick={() => {
+                      setSelectedImage({
+                        imageUrl: image.url,
+                        postId: image.postId,
+                        mediaId: image.id || image._id,
+                        allImages: allImages.map(img => ({ url: img.url, _id: img.id || img._id })),
+                        currentIndex: idx
+                      });
+                    }}
+                  >
+                    <img
+                      src={image.url}
+                      alt=""
+                      className={cn(
+                        "w-full h-full object-cover transition-transform duration-200",
+                        "group-hover:scale-105"
+                      )}
+                      loading="lazy"
+                    />
+                    <div className={cn(
+                      "absolute inset-0 bg-black/0 group-hover:bg-black/10",
+                      "transition-colors duration-200"
+                    )} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={cn(
+                "text-center py-12 text-muted-foreground",
+                "bg-card rounded-lg border-[0.5px] border-border/20 p-8"
+              )}>
+                {t("publicProfile.noImages") || t("publicProfile.noPosts")}
+              </div>
+            )}
+          </div>
+        );
+      }
       case "videos": {
         const videoPosts = (posts || []).filter((post) => {
           const hasVideoMedia = post.medias?.videos && post.medias.videos.length > 0;
@@ -1087,6 +1439,26 @@ export default function ProfilePage() {
               >
                 {t('profile.postsTab')}
                 {activeTab === "posts" && (
+                  <span className={cn(
+                    "absolute bottom-0 left-0 right-0 h-0.5",
+                    "bg-primary"
+                  )} />
+                )}
+              </button>
+            
+            {/* Images Tab - All profiles */}
+              <button
+                onClick={() => setActiveTab("images")}
+                className={cn(
+                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
+                  "transition-all duration-200 relative whitespace-nowrap",
+                  activeTab === "images"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {t('profile.imagesTab') || 'Ảnh'}
+                {activeTab === "images" && (
                   <span className={cn(
                     "absolute bottom-0 left-0 right-0 h-0.5",
                     "bg-primary"

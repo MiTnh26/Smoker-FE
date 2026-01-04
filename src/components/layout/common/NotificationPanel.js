@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Heart, MessageCircle, UserPlus, Mail, CheckCircle } from "lucide-react";
+import { Bell, Heart, MessageCircle, UserPlus, Mail, CheckCircle, Wallet, CheckCheck } from "lucide-react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { useSocket } from "../../../contexts/SocketContext";
@@ -8,7 +8,7 @@ import { getSession, getActiveEntity, getEntities } from "../../../utils/session
 import notificationApi from "../../../api/notificationApi";
 import { cn } from "../../../utils/cn";
 
-export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountChange }) {
+export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountChange, onMarkAllAsRead }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -221,7 +221,7 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
 
 
   // Get notification icon component based on type
-  const getNotificationIcon = (type, size = 20) => {
+  const getNotificationIcon = (type, size = 20, content = null) => {
     switch (type) {
       case "Like":
         return <Heart size={size} className="text-red-500 fill-red-500" />;
@@ -233,6 +233,10 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
         return <Mail size={size} className="text-primary" />;
       case "Confirm":
         return <CheckCircle size={size} className="text-success" />;
+      case "Wallet":
+        // Nếu content chứa "bị từ chối" thì icon màu đỏ, còn lại màu xanh
+        const isRejected = content && (content.includes("bị từ chối") || content.includes("từ chối"));
+        return <Wallet size={size} className={isRejected ? "text-red-500" : "text-green-500"} />;
       default:
         return <Bell size={size} className="text-muted-foreground" />;
     }
@@ -284,6 +288,10 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
           // New format: just sender name
           return t("notifications.sentYouAMessage", { name: senderName });
         }
+        
+      case "Wallet":
+        // Wallet notifications - hiển thị content trực tiếp
+        return content || t("notifications.walletNotification", "Thông báo ví");
         
       default:
         // Fallback for old notifications or unknown types
@@ -354,18 +362,33 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
     const handleNewNotification = (data) => {
       console.log("[NotificationPanel] Received new notification:", data);
       
+      // Backend emit trực tiếp notification object, không wrap trong { notification: ... }
+      // Nhưng có thể có cả 2 format (backward compatibility)
+      const notification = data.notification || data;
+      
       // Only process non-Messages notifications
       // Messages notifications are handled separately in the messages module
-      if (data.notification && data.notification.type === "Messages") {
+      if (notification && notification.type === "Messages") {
         console.log("[NotificationPanel] Ignoring Messages notification (handled separately)");
         return;
       }
       
-      if (data.notification) {
-        // Add new notification to the list (only non-Messages)
-        setNotifications((prev) => [data.notification, ...prev]);
+      if (notification) {
+        // Convert notificationId to _id để match với format từ API
+        const formattedNotification = {
+          ...notification,
+          _id: notification.notificationId || notification._id,
+          createdAt: notification.createdAt || new Date()
+        };
         
-        // Sender info is now included in the notification object from the socket
+        // Add new notification to the list (only non-Messages)
+        setNotifications((prev) => [formattedNotification, ...prev]);
+        
+        // Update unread count
+        setUnreadCount((prev) => prev + 1);
+        if (onUnreadCountChange) {
+          onUnreadCountChange((prev) => prev + 1);
+        }
       }
       
       // Update unread count (backend already excludes Messages)
@@ -396,10 +419,15 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
       fetchUnreadCount();
     }, 60000);
 
-    // Listen for notification refresh events (e.g., when someone follows)
+    // Listen for notification refresh events (e.g., when someone follows or mark all as read)
     const handleNotificationRefresh = () => {
       fetchUnreadCount();
       fetchNotifications(); // Also refresh the list
+      // Update local state to mark all as read
+      setNotifications((prev) =>
+        prev.map((notif) => ({ ...notif, status: "Read" }))
+      );
+      setUnreadCount(0);
     };
     
     // eslint-disable-next-line no-undef
@@ -479,12 +507,12 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
                         }}
                       />
                       <div className={cn("hidden items-center justify-center w-10 h-10 rounded-full bg-muted")}>
-                        {getNotificationIcon(notification.type, 20)}
+                        {getNotificationIcon(notification.type, 20, notification.content)}
                       </div>
                     </>
                   ) : (
                     <div className={cn("flex items-center justify-center w-10 h-10 rounded-full bg-muted")}>
-                      {getNotificationIcon(notification.type, 20)}
+                      {getNotificationIcon(notification.type, 20, notification.content)}
                     </div>
                   )}
                 </div>
@@ -511,17 +539,6 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
 
       {/* Footer */}
       <div className={cn("px-3 py-3 border-t border-border")}>
-        {unreadCount > 0 && (
-          <button
-            className={cn(
-              "w-full bg-transparent border-none text-primary font-semibold cursor-pointer",
-              "text-[14px] px-2 py-1 rounded transition-colors hover:bg-muted mb-2"
-            )}
-            onClick={handleMarkAllAsRead}
-          >
-            {t("notifications.markAllAsRead", "Đánh dấu tất cả đã đọc")}
-          </button>
-        )}
         <button
           className={cn(
             "w-full bg-transparent border-none text-primary font-semibold cursor-pointer",

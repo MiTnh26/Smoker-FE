@@ -41,26 +41,8 @@
   padding-top: 0.5rem;
 }
 
-.post-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 0px;
-  background: linear-gradient(90deg, rgb(var(--primary)), rgb(var(--secondary)));
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
 .post-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  border-color: rgba(var(--primary), 0.3);
-}
-
-.post-card:hover::before {
-  opacity: 1;
+  /* Bỏ hiệu ứng hover làm nền sáng mờ */
 }
 
 /* HEADER */
@@ -96,7 +78,7 @@
 
 .post-card:hover .user-avatar {
   border-color: rgba(var(--primary), 0.3);
-  box-shadow: 0 4px 12px rgba(var(--primary), 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Giữ shadow nhẹ, không có shadow trắng */
 }
 
 .verified-badge {

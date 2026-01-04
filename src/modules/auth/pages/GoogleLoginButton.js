@@ -112,7 +112,12 @@ export default function GoogleLoginButton() {
           entityAccountId: accountEntityAccountId
         });
       
-        setMessage(t('auth.googleLoginSuccess'));
+        // Hiển thị thông báo phù hợp cho đăng nhập hoặc đăng ký
+        if (data.isNewUser) {
+          setMessage(t('auth.googleRegisterSuccess'));
+        } else {
+          setMessage(t('auth.googleLoginSuccess'));
+        }
         setError("");
         
         if (data.needProfile) {

@@ -478,6 +478,7 @@
   box-shadow: 0 6px 16px rgba(var(--primary) / 0.35);
 }
 
+
 .next-btn:active:not(:disabled) {
   transform: translateY(0);
 }

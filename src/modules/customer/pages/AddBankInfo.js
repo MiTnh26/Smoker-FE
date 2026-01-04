@@ -78,9 +78,17 @@ export default function AddBankInfo() {
           if (bankInfo && (bankInfo.BankInfoId || bankInfo.BankName)) {
             console.log("✅ Found existing bank info:", bankInfo);
             setExistingBankInfo(bankInfo);
+            
+            const bankName = bankInfo.BankName || "";
+            // Kiểm tra xem bankName có nằm trong danh sách popularBanks không
+            const isInPopularBanks = popularBanks.includes(bankName);
+            // Nếu không có trong danh sách, hiển thị input text (chọn "Khác")
+            const shouldShowCustomInput = !isInPopularBanks && bankName !== "";
+            
+            setCustomBankInput(shouldShowCustomInput);
             setFormData((prev) => ({
               ...prev,
-              bankName: bankInfo.BankName || "",
+              bankName: bankName,
               accountNumber: bankInfo.AccountNumber || "",
               accountHolderName: bankInfo.AccountHolderName || "",
             }));
@@ -88,16 +96,19 @@ export default function AddBankInfo() {
             // Không có bank info, reset
             console.log("❌ No bank info found");
             setExistingBankInfo(null);
+            setCustomBankInput(false);
           }
         }
       } catch (error) {
         // Không tìm thấy bank info là bình thường (404)
         if (error.response?.status === 404) {
           setExistingBankInfo(null);
+          setCustomBankInput(false);
           console.log("No existing bank info found (404) - this is normal for new users");
         } else {
           console.error("Error checking existing bank info:", error);
           setExistingBankInfo(null);
+          setCustomBankInput(false);
         }
       }
     };
@@ -116,18 +127,29 @@ export default function AddBankInfo() {
 
   const handleBankNameSelect = (e) => {
     const value = e.target.value;
-    setCustomBankInput(value === "Khác");
+    const isOther = value === "Khác";
+    setCustomBankInput(isOther);
     setFormData((prev) => ({
       ...prev,
-      bankName: value === "Khác" ? "" : value,
+      bankName: isOther ? "" : value,
     }));
     setMessage("");
   };
 
   const validateForm = () => {
-    if (!formData.bankName || formData.bankName.trim() === "") {
-      setMessage("Vui lòng nhập tên ngân hàng");
-      return false;
+    // Validate tên ngân hàng
+    if (customBankInput) {
+      // Đang dùng input text (chọn "Khác"), validate từ formData.bankName
+      if (!formData.bankName || formData.bankName.trim() === "") {
+        setMessage("Vui lòng nhập tên ngân hàng");
+        return false;
+      }
+    } else {
+      // Đang dùng dropdown, validate từ formData.bankName
+      if (!formData.bankName || formData.bankName.trim() === "" || formData.bankName === "Khác") {
+        setMessage("Vui lòng chọn ngân hàng");
+        return false;
+      }
     }
 
     if (!formData.accountNumber || formData.accountNumber.trim() === "") {
@@ -300,10 +322,10 @@ export default function AddBankInfo() {
             </label>
             <select
               name="bankName"
-              value={formData.bankName}
+              value={customBankInput ? "Khác" : (formData.bankName || "")}
               onChange={handleBankNameSelect}
               className="form-select"
-              required
+              required={!customBankInput}
             >
               <option value="">-- Chọn ngân hàng --</option>
               {popularBanks.map((bank) => (

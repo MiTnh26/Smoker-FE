@@ -52,6 +52,36 @@ export const getLivestreamsByHost = async (hostId, limit = 20) => {
   return unwrap(response);
 };
 
+// Create scheduled livestream
+export const createScheduledLivestream = async (title, description, scheduledStartTime, settings) => {
+  const response = await axiosClient.post("/livestream/schedule", {
+    title,
+    description,
+    scheduledStartTime,
+    settings,
+  });
+  return unwrap(response);
+};
+
+// Get scheduled livestreams
+export const getScheduledLivestreams = async () => {
+  const response = await axiosClient.get("/livestream/scheduled");
+  const unwrapped = unwrap(response);
+  return unwrapped?.data || unwrapped || [];
+};
+
+// Cancel scheduled livestream
+export const cancelScheduledLivestream = async (livestreamId) => {
+  const response = await axiosClient.delete(`/livestream/scheduled/${livestreamId}`);
+  return unwrap(response);
+};
+
+// Activate scheduled livestream (start it now)
+export const activateScheduledLivestream = async (livestreamId) => {
+  const response = await axiosClient.post(`/livestream/scheduled/${livestreamId}/activate`);
+  return unwrap(response);
+};
+
 const livestreamApi = {
   startLivestream,
   endLivestream,
@@ -60,6 +90,10 @@ const livestreamApi = {
   getActiveLivestreams,
   incrementViewCount,
   getLivestreamsByHost,
+  createScheduledLivestream,
+  getScheduledLivestreams,
+  cancelScheduledLivestream,
+  activateScheduledLivestream,
 };
 
 export default livestreamApi;
