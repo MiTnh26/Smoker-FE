@@ -28,12 +28,12 @@ export default function BarRegisterStep1({
             <label className="block text-sm font-medium text-foreground">
               Tên quán Bar <span className="text-destructive">*</span>
             </label>
-            <input
-              type="text"
-              name="barName"
-              value={info.barName}
-              onChange={handleInfoChange}
-              required
+        <input
+          type="text"
+          name="barName"
+          value={info.barName}
+          onChange={handleInfoChange}
+          required
               className={cn(
                 "w-full px-4 py-3 rounded-lg",
                 "bg-white border border-border/20",
@@ -42,8 +42,8 @@ export default function BarRegisterStep1({
                 "focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
               )}
               placeholder="Nhập tên quán Bar của bạn"
-            />
-          </div>
+        />
+      </div>
 
           {/* Địa chỉ */}
           <div className="space-y-2">
@@ -55,21 +55,21 @@ export default function BarRegisterStep1({
                 <label className="block text-xs text-muted-foreground mb-1.5">
                   Tỉnh/Thành phố
                 </label>
-                <AddressSelector
-                  selectedProvinceId={selectedProvinceId}
-                  selectedDistrictId={selectedDistrictId}
-                  selectedWardId={selectedWardId}
-                  addressDetail={addressDetail}
-                  onProvinceChange={onProvinceChange}
-                  onDistrictChange={onDistrictChange}
-                  onWardChange={onWardChange}
-                  onAddressDetailChange={onAddressDetailChange}
-                  onAddressChange={onAddressChange}
+        <AddressSelector
+          selectedProvinceId={selectedProvinceId}
+          selectedDistrictId={selectedDistrictId}
+          selectedWardId={selectedWardId}
+          addressDetail={addressDetail}
+          onProvinceChange={onProvinceChange}
+          onDistrictChange={onDistrictChange}
+          onWardChange={onWardChange}
+          onAddressDetailChange={onAddressDetailChange}
+          onAddressChange={onAddressChange}
                   className="space-y-3"
-                />
+        />
               </div>
             </div>
-          </div>
+      </div>
 
           {/* Số điện thoại và Email - 2 cột */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -78,12 +78,12 @@ export default function BarRegisterStep1({
               <label className="block text-sm font-medium text-foreground">
                 Số điện thoại <span className="text-destructive">*</span>
               </label>
-              <input
-                type="text"
-                name="phoneNumber"
-                value={info.phoneNumber}
-                onChange={handleInfoChange}
-                required
+        <input
+          type="text"
+          name="phoneNumber"
+          value={info.phoneNumber}
+          onChange={handleInfoChange}
+          required
                 className={cn(
                   "w-full px-4 py-3 rounded-lg",
                   "bg-white border border-border/20",
@@ -92,20 +92,20 @@ export default function BarRegisterStep1({
                   "focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                 )}
                 placeholder="Nhập số điện thoại"
-              />
-            </div>
+        />
+      </div>
 
             {/* Email */}
             <div className="space-y-2">
               <label className="block text-sm font-medium text-foreground">
                 Email <span className="text-destructive">*</span>
               </label>
-              <input
-                type="email"
-                name="email"
-                value={info.email}
-                onChange={handleInfoChange}
-                required
+        <input
+          type="email"
+          name="email"
+          value={info.email}
+          onChange={handleInfoChange}
+          required
                 className={cn(
                   "w-full px-4 py-3 rounded-lg",
                   "bg-white border border-border/20",
@@ -114,8 +114,8 @@ export default function BarRegisterStep1({
                   "focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
                 )}
                 placeholder="Nhập email"
-              />
-            </div>
+        />
+      </div>
           </div>
 
           {/* Button */}
@@ -139,13 +139,13 @@ export default function BarRegisterStep1({
                 <span className="text-lg">→</span>
               </>
             )}
-          </button>
+      </button>
 
           {message && (
             <p className="text-sm text-destructive text-center">{message}</p>
           )}
         </div>
-      </form>
+    </form>
     </div>
   );
 }

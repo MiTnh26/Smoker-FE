@@ -3,10 +3,11 @@ import axiosClient from "./axiosClient";
 const unwrap = (response) => response?.data ?? response;
 
 // Start a new livestream
-export const startLivestream = async (title, description = "") => {
+export const startLivestream = async (title, description = "", pinnedComment = null) => {
   const response = await axiosClient.post("/livestream/start", {
     title,
     description,
+    pinnedComment,
   });
   return unwrap(response);
 };

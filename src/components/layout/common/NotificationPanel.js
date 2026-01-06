@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Bell, Heart, MessageCircle, UserPlus, Mail, CheckCircle, Wallet, CheckCheck } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Bell, Heart, MessageCircle, UserPlus, Mail, CheckCircle, Wallet, CheckCheck, Video } from "lucide-react";
 import PropTypes from "prop-types";
 import { useTranslation } from "react-i18next";
 import { useSocket } from "../../../contexts/SocketContext";
+import { useToast } from "../../../contexts/ToastContext";
 import { getSession, getActiveEntity, getEntities } from "../../../utils/sessionManager";
 import notificationApi from "../../../api/notificationApi";
 import { cn } from "../../../utils/cn";
@@ -13,7 +14,9 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { socket, isConnected } = useSocket();
+  const { showToast } = useToast();
   const { t } = useTranslation();
 
   // Get entityAccountId from session
@@ -173,6 +176,19 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
     // Handle different link formats (like Facebook)
     if (notification.link) {
       let targetPath = notification.link;
+      
+      // Handle livestream notifications - dispatch event thay vì navigate
+      if (targetPath.startsWith('/livestream/')) {
+        const match = targetPath.match(/\/livestream\/([^\/\?]+)/);
+        const livestreamId = match ? match[1] : null;
+        if (livestreamId) {
+          // Dispatch event để Newsfeed mở livestream modal
+          window.dispatchEvent(new CustomEvent("openLivestream", {
+            detail: { livestreamId }
+          }));
+          return; // Don't navigate
+        }
+      }
       
       // Handle post notifications
       if (targetPath.startsWith('/posts/')) {
@@ -388,6 +404,49 @@ export default function NotificationPanel({ onClose, onOpenModal, onUnreadCountC
         setUnreadCount((prev) => prev + 1);
         if (onUnreadCountChange) {
           onUnreadCountChange((prev) => prev + 1);
+        }
+        
+        // Hiển thị toast tự động cho Livestream notifications
+        if (notification.type === "Livestream") {
+          const senderName = notification.sender?.name || "Người dùng";
+          const senderAvatar = notification.sender?.avatar || null;
+          const message = notification.content || `${senderName} đang phát trực tiếp`;
+          const livestreamLink = notification.link || null;
+          const senderEntityAccountId = notification.senderEntityAccountId || null;
+          
+          // Tạo profile link từ senderEntityAccountId
+          const profileLink = senderEntityAccountId ? `/profile/${senderEntityAccountId}` : null;
+          
+          // Handler để mở livestream modal - đơn giản: dispatch event với livestreamId
+          const handleLivestreamClick = () => {
+            if (livestreamLink) {
+              // Extract livestreamId từ link: /livestream/{livestreamId}
+              const match = livestreamLink.match(/\/livestream\/([^\/\?]+)/);
+              const livestreamId = match ? match[1] : null;
+              
+              if (livestreamId) {
+                // Dispatch event để Newsfeed mở livestream modal
+                window.dispatchEvent(new CustomEvent("openLivestream", {
+                  detail: { livestreamId }
+                }));
+              }
+            }
+          };
+          
+          // Handler để navigate đến profile
+          const handleAvatarClick = () => {
+            if (profileLink) {
+              navigate(profileLink);
+            }
+          };
+          
+          showToast(message, "info", 6000, {
+            avatar: senderAvatar,
+            name: senderName,
+            link: livestreamLink,
+            onClick: handleLivestreamClick,
+            onAvatarClick: handleAvatarClick
+          });
         }
       }
       

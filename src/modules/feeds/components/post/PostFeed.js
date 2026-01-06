@@ -14,6 +14,7 @@ import PostEditModal from "../modals/PostEditModal";
 import ReportPostModal from "../modals/ReportPostModal";
 import ImageDetailModal from "../media/mediasOfPost/ImageDetailModal";
 import { mapPostForCard } from "../../../../utils/postTransformers";
+import { useSocket } from "../../../../contexts/SocketContext";
 
 const normalizeGuid = (value) => {
   if (!value) return null;
@@ -36,6 +37,7 @@ const extractLikeAccountId = (like) => {
 
 export default function PostFeed({ onGoLive, onLivestreamClick }) {
   const { t } = useTranslation();
+  const { socket } = useSocket();
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -96,6 +98,27 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
       isMounted = false;
     };
   }, []);
+
+  // Lắng nghe event livestream kết thúc để refresh feed ngay lập tức
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleLivestreamStatusChanged = (data) => {
+      if (data.status === "ended") {
+        console.log("[PostFeed] Livestream ended, refreshing feed...", data);
+        // Refresh feed ngay lập tức để livestream biến mất
+        setCursor(null);
+        setHasMore(true);
+        loadPosts(false);
+      }
+    };
+
+    socket.on("livestream-status-changed", handleLivestreamStatusChanged);
+
+    return () => {
+      socket.off("livestream-status-changed", handleLivestreamStatusChanged);
+    };
+  }, [socket]);
 
   // Infinite scroll with IntersectionObserver
   useEffect(() => {

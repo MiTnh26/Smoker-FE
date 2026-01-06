@@ -2,6 +2,11 @@ import { Video, Users, Play } from "lucide-react";
 import { cn } from "../../../../utils/cn";
 
 export default function LivestreamCard({ livestream, onClick }) {
+  // Không hiển thị card nếu livestream không còn live
+  if (!livestream || livestream.status !== "live") {
+    return null;
+  }
+
   const viewerCount = livestream.viewCount ?? 0;
 
   return (
