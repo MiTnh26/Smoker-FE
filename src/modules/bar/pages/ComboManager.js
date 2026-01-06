@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Save, Trash2, Check, AlertCircle, Package } from "lucide-react";
+import { Plus, Save, Trash2, Check, AlertCircle, Package, Eye, X } from "lucide-react";
 import comboApi from "../../../api/comboApi";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
@@ -16,6 +16,9 @@ export default function ComboManager() {
   const [saving, setSaving] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [exitingCards, setExitingCards] = useState(new Set());
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCombo, setEditingCombo] = useState(null);
+  const [showDetailCombo, setShowDetailCombo] = useState(null);
   const inputRefs = useRef({});
 
   // Toast management
@@ -36,10 +39,7 @@ export default function ComboManager() {
       try {
         setLoading(true);
         const res = await comboApi.getCombosByBar(barPageId);
-        const combosData = (res.data || []).map((c) => ({
-          ...c,
-          dirty: false,
-        }));
+        const combosData = (res.data || []);
         setCombos(combosData);
       } catch (err) {
         console.error(err);
@@ -53,58 +53,68 @@ export default function ComboManager() {
     }
   }, [barPageId, t, addToast]);
 
-  // 🔹 Thêm combo mới
+  // 🔹 Thêm combo mới - mở modal
   const addCombo = () => {
-    const newId = `new-${Date.now()}-${Math.random()}`;
-    setCombos((prev) => [
-      ...prev,
-      { ComboId: null, ComboName: "", Price: 0, dirty: true, _tempId: newId },
-    ]);
-
-    setTimeout(() => {
-      const input = inputRefs.current[newId];
-      if (input) input.focus();
-    }, 100);
-  };
-
-  // 🔹 Cập nhật giá trị combo
-  const updateCombo = (index, field, value) => {
-    setCombos((prev) => {
-      const newList = [...prev];
-      newList[index] = { ...newList[index], [field]: value, dirty: true };
-      return newList;
+    setEditingCombo({
+      ComboId: null,
+      ComboName: "",
+      Price: 0,
+      Description: ""
     });
+    setIsModalOpen(true);
   };
 
-  // 🔹 Lưu tất cả combo dirty
-  const saveAll = async () => {
-    const dirtyCombos = combos.filter((c) => c.dirty);
-    if (!dirtyCombos.length) {
-      addToast(t("bar.noChangesToSave"), "warning");
+  // 🔹 Chỉnh sửa combo - mở modal
+  const editCombo = (combo) => {
+    setEditingCombo({
+      ...combo,
+      Description: combo.Description || ""
+    });
+    setIsModalOpen(true);
+  };
+
+  // 🔹 Lưu combo từ modal
+  const saveComboFromModal = async () => {
+    if (!editingCombo.ComboName.trim() || editingCombo.Price <= 0) {
+      addToast(t("bar.pleaseFillAllFields"), "warning");
       return;
     }
 
     try {
       setSaving(true);
-      const newCombos = [...combos];
-      for (let c of dirtyCombos) {
-        const payload = {
-          barPageId,
-          comboName: c.ComboName,
-          price: Number(c.Price),
-        };
+      const payload = {
+        barPageId,
+        comboName: editingCombo.ComboName,
+        price: Number(editingCombo.Price),
+        description: editingCombo.Description || ""
+      };
 
-        if (c.ComboId) {
-          await comboApi.updateCombo(c.ComboId, payload);
-        } else {
-          const created = await comboApi.createCombo(payload);
-          c.ComboId = created.data?.ComboId; // cập nhật ID mới trả về từ BE
-        }
-
-        c.dirty = false;
+      let result;
+      if (editingCombo.ComboId) {
+        // Update existing combo
+        // Sử dụng comboId để update
+        result = await comboApi.updateCombo(editingCombo.ComboId, payload);
+        // Update combo in list with returned data or local data
+        setCombos(prev => prev.map(c =>
+          c.ComboId === editingCombo.ComboId 
+            ? { ...c, ...editingCombo, ...result.data } // Merge result.data nếu BE trả về combo mới
+            : c
+        ));
+        addToast(t("bar.comboUpdated"), "success");
+      } else {
+        // Create new combo
+        result = await comboApi.createCombo(payload);
+        // Add new combo to list
+        setCombos(prev => [...prev, {
+          ...editingCombo,
+          ComboId: result.data?.ComboId,
+          dirty: false
+        }]);
+        addToast(t("bar.comboCreated"), "success");
       }
-      setCombos(newCombos);
-      addToast(t("bar.allCombosSaved"), "success");
+
+      setIsModalOpen(false);
+      setEditingCombo(null);
     } catch (err) {
       console.error(err);
       addToast(t("bar.errorSavingCombo"), "error");
@@ -112,6 +122,13 @@ export default function ComboManager() {
       setSaving(false);
     }
   };
+
+  // 🔹 Xem chi tiết combo
+  const viewComboDetail = (combo) => {
+    setShowDetailCombo(combo);
+  };
+
+
 
   // 🔹 Xóa combo
   const deleteComboHandler = async (id, index) => {
@@ -184,13 +201,6 @@ export default function ComboManager() {
           <button onClick={addCombo} className="btn-add-table">
             <Plus size={18} /> {t("bar.addCombo")}
           </button>
-          <button
-            onClick={saveAll}
-            disabled={saving || !combos.some((c) => c.dirty)}
-            className={`btn-save-all-tables ${saving ? "loading" : ""}`}
-          >
-            {saving ? t("bar.saving") : <><Save size={18} /> {t("bar.saveAll")}</>}
-          </button>
         </div>
       </div>
 
@@ -229,8 +239,6 @@ export default function ComboManager() {
                   borderLeftColor: "rgb(var(--primary))",
                 }}
               >
-                {/* Unsaved indicator */}
-                {c.dirty && <div className="bar-table-dirty-indicator"></div>}
 
                 {/* Combo Icon */}
                 <div className="bar-table-icon-wrapper">
@@ -239,68 +247,45 @@ export default function ComboManager() {
                   </div>
                 </div>
 
-                {/* Combo Name Input */}
-                <input
-                  ref={(el) => {
-                    if (el) inputRefs.current[cardId] = el;
-                  }}
-                  type="text"
-                  value={c.ComboName || ""}
-                  placeholder={t("bar.comboNamePlaceholder")}
-                  onChange={(e) => updateCombo(i, "ComboName", e.target.value)}
-                  className="bar-table-name-input"
-                />
+                {/* Combo Name Display */}
+                <h3 className="bar-table-name text-lg font-semibold text-gray-800 mb-1">
+                  {c.ComboName || t("bar.comboNamePlaceholder")}
+                </h3>
 
-                {/* Price Input */}
-                <div style={{ position: "relative" }}>
-                  <input
-                    type="number"
-                    value={c.Price || 0}
-                    placeholder={t("bar.comboPricePlaceholder")}
-                    onChange={(e) =>
-                      updateCombo(i, "Price", Number(e.target.value))
-                    }
-                    className="bar-table-name-input"
-                    min="0"
-                  />
-                  {c.Price > 0 && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        right: "1rem",
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        color: "rgb(var(--muted-foreground))",
-                        fontSize: "0.75rem",
-                        fontWeight: "500",
-                      }}
-                    >
-                      {c.Price.toLocaleString("vi-VN")} đ
-                    </span>
-                  )}
-                </div>
+                {/* Price Display */}
+                <p className="bar-table-price text-xl font-bold text-green-600 mb-2">
+                  {c.Price.toLocaleString("vi-VN")} đ
+                </p>
 
-                {/* Status and Actions */}
-                <div className="bar-table-card-actions">
-                  <div
-                    className={`bar-table-status ${
-                      c.dirty ? "dirty" : "saved"
-                    }`}
+                {/* Description Display */}
+                {c.Description && (
+                  <p className="bar-table-description text-sm text-gray-600 mb-3 line-clamp-2">
+                    {c.Description}
+                  </p>
+                )}
+
+                {/* Actions */}
+                <div className="bar-table-card-actions flex gap-2 mt-3">
+                  <button
+                    onClick={() => viewComboDetail(c)}
+                    className="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
                   >
-                    {c.dirty ? (
-                      <><AlertCircle size={16} /> {t("bar.statusEditing")}</>
-                    ) : (
-                      <><Check size={16} /> {t("bar.statusSaved")}</>
-                    )}
-                  </div>
-                  {c.ComboId && (
-                    <button
-                      onClick={() => deleteComboHandler(c.ComboId, i)}
-                      className="bar-table-delete-btn"
-                    >
-                      <Trash2 size={16} /> {t("bar.delete")}
-                    </button>
-                  )}
+                    <Eye size={14} className="inline mr-1" />
+                    {t("bar.viewDetail")}
+                  </button>
+                  <button
+                    onClick={() => editCombo(c)}
+                    className="flex-1 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
+                  >
+                    <Check size={14} className="inline mr-1" />
+                    {t("bar.edit")}
+                  </button>
+                  <button
+                    onClick={() => deleteComboHandler(c.ComboId, i)}
+                    className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </motion.div>
             );
@@ -331,6 +316,180 @@ export default function ComboManager() {
           </button>
         </div>
       )}
+
+      {/* Combo Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setIsModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl p-6 w-full max-w-md mx-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-800">
+                  {editingCombo?.ComboId ? t("bar.editCombo") : t("bar.addCombo")}
+                </h3>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Combo Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t("bar.comboName")} *
+                  </label>
+                  <input
+                    type="text"
+                    value={editingCombo?.ComboName || ""}
+                    onChange={(e) => setEditingCombo(prev => ({ ...prev, ComboName: e.target.value }))}
+                    placeholder={t("bar.comboNamePlaceholder")}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={saving}
+                  />
+                </div>
+
+                {/* Price */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t("bar.comboPrice")} (VNĐ) *
+                  </label>
+                  <input
+                    type="number"
+                    value={editingCombo?.Price || 0}
+                    onChange={(e) => setEditingCombo(prev => ({ ...prev, Price: Number(e.target.value) }))}
+                    placeholder={t("bar.comboPricePlaceholder")}
+                    min="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={saving}
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t("bar.comboDescription")}
+                  </label>
+                  <textarea
+                    value={editingCombo?.Description || ""}
+                    onChange={(e) => setEditingCombo(prev => ({ ...prev, Description: e.target.value }))}
+                    placeholder={t("bar.comboDescriptionPlaceholder")}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    disabled={saving}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={saving}
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  onClick={saveComboFromModal}
+                  disabled={saving || !editingCombo?.ComboName.trim() || editingCombo?.Price <= 0}
+                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {saving ? t("bar.saving") : (editingCombo?.ComboId ? t("bar.update") : t("bar.create"))}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Detail Modal */}
+      <AnimatePresence>
+        {showDetailCombo && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowDetailCombo(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-xl p-6 w-full max-w-md mx-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-800">
+                  {t("bar.comboDetail")}
+                </h3>
+                <button
+                  onClick={() => setShowDetailCombo(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t("bar.comboName")}
+                  </label>
+                  <p className="text-gray-900 font-medium">{showDetailCombo.ComboName}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t("bar.comboPrice")}
+                  </label>
+                  <p className="text-gray-900 font-medium">{showDetailCombo.Price.toLocaleString("vi-VN")} đ</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t("bar.comboDescription")}
+                  </label>
+                  <p className="text-gray-900 whitespace-pre-wrap">
+                    {showDetailCombo.Description || t("bar.noDescription")}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    editCombo(showDetailCombo);
+                    setShowDetailCombo(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  {t("bar.edit")}
+                </button>
+                <button
+                  onClick={() => setShowDetailCombo(null)}
+                  className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  {t("common.close")}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

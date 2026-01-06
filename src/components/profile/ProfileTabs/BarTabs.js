@@ -8,27 +8,12 @@ import { ProfileInfoSection } from '../ProfileInfoSection';
 import BarVideo from '../../../modules/bar/components/BarVideo';
 import BarReview from '../../../modules/bar/components/BarReview';
 import BarTables from '../../../modules/bar/components/BarTables';
-import BarAdDashboard from '../../../modules/bar/components/BarAdDashboard';
-import BarBookingList from '../../../modules/bar/components/BarBookingList';
+// NOTE: Bar booking list + ad dashboard have been moved to sidebar pages.
+// We keep bar profile tabs focused on public profile content only.
 
 export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, isOwnProfile, currentUserRole, onEdit, onDelete, onImageClick }) => {
   const { t } = useTranslation();
   
-  // Debug log
-  React.useEffect(() => {
-    if (activeTab === 'ads') {
-      console.log('[BarTabs] Rendering ads tab with barPageId:', barPageId, {
-        barPageIdType: typeof barPageId,
-        barPageIdLength: barPageId?.length,
-        profile: profile ? {
-          id: profile.id,
-          BarPageId: profile.BarPageId,
-          barPageId: profile.barPageId
-        } : null
-      });
-    }
-  }, [activeTab, barPageId, profile]);
-
   switch (activeTab) {
     case 'info':
       return (
@@ -82,20 +67,6 @@ export const BarTabs = ({ profile, posts, postsLoading, activeTab, barPageId, is
       return (
         <div className="profile-section">
           <BarReview barPageId={barPageId} />
-        </div>
-      );
-    case 'bookings':
-      return (
-        <div className="profile-section">
-          <BarBookingList barPageId={barPageId} isOwnProfile={isOwnProfile} />
-        </div>
-      );
-    case 'ads':
-      // Chỉ hiển thị cho bar owner
-      if (!isOwnProfile) return null;
-      return (
-        <div className="profile-section">
-          <BarAdDashboard barPageId={barPageId} />
         </div>
       );
     default:

@@ -626,49 +626,7 @@ export default function OwnProfilePage({ profileType: initialProfileType }) {
               </button>
             )}
 
-            {/* Booking List Tab - Bar only */}
-            {isBarProfile && (
-              <button
-                onClick={() => setActiveTab("bookings")}
-                className={cn(
-                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
-                  "transition-all duration-200 relative whitespace-nowrap",
-                  activeTab === "bookings"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Danh sách đặt bàn
-                {activeTab === "bookings" && (
-                  <span className={cn(
-                    "absolute bottom-0 left-0 right-0 h-0.5",
-                    "bg-primary"
-                  )} />
-                )}
-              </button>
-            )}
-
-            {/* Ads Tab - Bar only (for bar owners) */}
-            {isBarProfile && (
-              <button
-                onClick={() => setActiveTab("ads")}
-                className={cn(
-                  "px-4 py-3 text-sm font-semibold border-none bg-transparent",
-                  "transition-all duration-200 relative whitespace-nowrap",
-                  activeTab === "ads"
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Quảng cáo
-                {activeTab === "ads" && (
-                  <span className={cn(
-                    "absolute bottom-0 left-0 right-0 h-0.5",
-                    "bg-primary"
-                  )} />
-                )}
-              </button>
-            )}
+            
           </div>
           
           {/* Tab Content */}

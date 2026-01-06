@@ -39,8 +39,15 @@ const adminApi = {
 
   // Refund Requests Management
   getRefundRequests: (params) => axiosClient.get("/admin/refund-requests", { params }),
-  updateRefundStatus: (bookedScheduleId, refundStatus) => 
+  updateRefundStatus: (bookedScheduleId, refundStatus) =>
     axiosClient.patch(`/admin/refund-requests/${bookedScheduleId}/status`, { refundStatus }),
+
+  // Voucher Management
+  getVouchers: (params) => axiosClient.get("/admin/vouchers", { params }),
+  getVoucherById: (voucherId) => axiosClient.get(`/admin/vouchers/${voucherId}`),
+  createVoucher: (data) => axiosClient.post("/admin/vouchers", data),
+  updateVoucher: (voucherId, data) => axiosClient.put(`/admin/vouchers/${voucherId}`, data),
+  deleteVoucher: (voucherId) => axiosClient.delete(`/admin/vouchers/${voucherId}`),
 };
 
 export default adminApi;

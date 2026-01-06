@@ -6,9 +6,204 @@ import { motion, AnimatePresence } from "framer-motion";
 import barTableApi from "../../../api/barTableApi";
 import barPageApi from "../../../api/barPageApi";
 import bookingApi from "../../../api/bookingApi";
+import comboApi from "../../../api/comboApi";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
 import "../../../styles/modules/customer.css";
+
+// Combo Selection Component
+const ComboSelector = ({ combos, selectedCombo, onSelectCombo, loading }) => {
+  if (loading) {
+    return (
+      <div style={{ marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '12px', color: '#1f2937' }}>
+          Chọn Combo (bắt buộc)
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
+          {[1, 2, 3].map(i => (
+            <SkeletonCard key={i} style={{ height: '100px' }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: '24px' }}>
+      <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '12px', color: '#1f2937' }}>
+        Chọn Combo (bắt buộc)
+      </h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
+        {combos.map(combo => (
+          <motion.div
+            key={combo.ComboId}
+            onClick={() => onSelectCombo(combo)}
+            style={{
+              padding: '16px',
+              borderRadius: '12px',
+              border: selectedCombo?.ComboId === combo.ComboId
+                ? '2px solid rgb(var(--success))'
+                : '2px solid #e5e7eb',
+              background: selectedCombo?.ComboId === combo.ComboId
+                ? 'rgba(var(--success), 0.05)'
+                : 'white',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <h4 style={{ fontWeight: '600', marginBottom: '8px', color: '#1f2937' }}>
+              {combo.ComboName}
+            </h4>
+            <p style={{
+              fontSize: '0.9rem',
+              color: '#6b7280',
+              marginBottom: '8px',
+              minHeight: '2.5rem'
+            }}>
+              {combo.Description || 'Combo đặc biệt cho quán này'}
+            </p>
+            <div style={{
+              fontSize: '1.1rem',
+              fontWeight: '700',
+              color: 'rgb(var(--success))'
+            }}>
+              {combo.Price.toLocaleString('vi-VN')} đ
+            </div>
+          </motion.div>
+        ))}
+      </div>
+      {combos.length === 0 && (
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          background: '#f9fafb',
+          borderRadius: '12px',
+          color: '#6b7280'
+        }}>
+          Quán này chưa có combo nào. Vui lòng liên hệ quản lý quán.
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Voucher Selector Component
+const VoucherSelector = ({
+  vouchers,
+  selectedVoucher,
+  onSelectVoucher,
+  comboValue,
+  loading,
+  onSkipVoucher
+}) => {
+  const availableVouchers = vouchers.filter(v =>
+    v.MinComboValue <= comboValue &&
+    v.UsedCount < v.MaxUsage &&
+    new Date(v.StartDate) <= new Date() &&
+    new Date(v.EndDate) >= new Date() &&
+    v.Status === 'ACTIVE'
+  );
+
+  if (loading) {
+    return (
+      <div style={{ marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '12px', color: '#1f2937' }}>
+          Voucher giảm giá (tùy chọn)
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+          {[1, 2].map(i => (
+            <SkeletonCard key={i} style={{ height: '80px' }} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: '24px' }}>
+      <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '12px', color: '#1f2937' }}>
+        Voucher giảm giá (tùy chọn)
+      </h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+        {/* Skip voucher option */}
+        <motion.div
+          onClick={onSkipVoucher}
+          style={{
+            padding: '16px',
+            borderRadius: '12px',
+            border: selectedVoucher === null
+              ? '2px solid rgb(var(--success))'
+              : '2px solid #e5e7eb',
+            background: selectedVoucher === null
+              ? 'rgba(var(--success), 0.05)'
+              : 'white',
+            cursor: 'pointer',
+            textAlign: 'center'
+          }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <div style={{ fontWeight: '600', color: '#1f2937' }}>Không dùng voucher</div>
+          <div style={{ fontSize: '0.9rem', color: '#6b7280', marginTop: '4px' }}>
+            Thanh toán đầy đủ
+          </div>
+        </motion.div>
+
+        {/* Available vouchers */}
+        {availableVouchers.map(voucher => (
+          <motion.div
+            key={voucher.VoucherId}
+            onClick={() => onSelectVoucher(voucher)}
+            style={{
+              padding: '16px',
+              borderRadius: '12px',
+              border: selectedVoucher?.VoucherId === voucher.VoucherId
+                ? '2px solid rgb(var(--success))'
+                : '2px solid #e5e7eb',
+              background: selectedVoucher?.VoucherId === voucher.VoucherId
+                ? 'rgba(var(--success), 0.05)'
+                : 'white',
+              cursor: 'pointer'
+            }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#1f2937' }}>
+              {voucher.VoucherName}
+            </div>
+            <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '4px' }}>
+              Code: {voucher.VoucherCode}
+            </div>
+            <div style={{
+              fontSize: '1rem',
+              fontWeight: '700',
+              color: 'rgb(var(--success))'
+            }}>
+              Giảm {voucher.DiscountPercentage}%
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '4px' }}>
+              Còn {voucher.MaxUsage - voucher.UsedCount} lượt
+            </div>
+          </motion.div>
+        ))}
+      </div>
+      {availableVouchers.length === 0 && (
+        <div style={{
+          textAlign: 'center',
+          padding: '20px',
+          background: '#f9fafb',
+          borderRadius: '8px',
+          color: '#6b7280',
+          fontSize: '0.9rem'
+        }}>
+          Không có voucher khả dụng cho combo này
+        </div>
+      )}
+    </div>
+  );
+};
 
 // Table Icon Component - Sử dụng CSS variables
 const TableIcon = ({ status, color, className = "" }) => {
@@ -117,13 +312,47 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-// Booking Modal Component
-const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) => {
+// Booking Modal Component with Combo & Voucher
+const BookingModal = ({
+  open,
+  onClose,
+  tables = [],
+  selectedDate,
+  onConfirm,
+  combos = [],
+  vouchers = [],
+  selectedCombo,
+  selectedVoucher,
+  onSelectCombo,
+  onSelectVoucher,
+  onSkipVoucher,
+  loadingCombos,
+  loadingVouchers
+}) => {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [phoneError, setPhoneError] = useState("");
+
+  // Calculate amounts
+  const calculateAmounts = () => {
+    if (!selectedCombo) return null;
+
+    const originalPrice = selectedCombo.Price;
+    const discountPercentage = selectedVoucher ? selectedVoucher.DiscountPercentage : 0;
+    const discountAmount = Math.floor(originalPrice * discountPercentage / 100);
+    const finalPaymentAmount = originalPrice - discountAmount;
+
+    return {
+      originalPrice,
+      discountAmount,
+      finalPaymentAmount,
+      discountPercentage
+    };
+  };
+
+  const amounts = calculateAmounts();
 
   if (!open) return null;
 
@@ -133,19 +362,20 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
     const nameTrimmed = customerName.trim();
     const phoneTrimmed = phone.trim();
 
-    // Clear error mỗi lần submit lại
     setPhoneError("");
 
-    // Không cho để trống tên và số điện thoại
     if (!nameTrimmed || !phoneTrimmed) {
       alert("Vui lòng nhập đầy đủ Tên khách hàng và Số điện thoại");
       return;
     }
 
-    // Validate số điện thoại (giống logic phần booking DJ/Dancer)
-    const rawPhone = phoneTrimmed.replace(/\s/g, "");
+    if (!selectedCombo) {
+      alert("Vui lòng chọn combo");
+      return;
+    }
 
-    // Chuẩn hoá về dạng số điện thoại Việt Nam bắt đầu bằng 0
+    // Validate số điện thoại
+    const rawPhone = phoneTrimmed.replace(/\s/g, "");
     let normalizedPhone = rawPhone;
     if (normalizedPhone.startsWith("+84")) {
       normalizedPhone = "0" + normalizedPhone.substring(3);
@@ -153,13 +383,9 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
       normalizedPhone = "0" + normalizedPhone.substring(2);
     }
 
-    // Chỉ chấp nhận số điện thoại Việt Nam: 10–11 số, bắt đầu bằng 0
     const isVietnameseFormat = /^0\d{9,10}$/.test(normalizedPhone);
-
     if (!isVietnameseFormat) {
-      setPhoneError(
-        "Số điện thoại Việt Nam không hợp lệ. Ví dụ hợp lệ: 0987654321 hoặc 0912345678"
-      );
+      setPhoneError("Số điện thoại Việt Nam không hợp lệ. Ví dụ hợp lệ: 0987654321 hoặc 0912345678");
       return;
     }
 
@@ -167,10 +393,10 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
     try {
       await onConfirm({
         customerName: nameTrimmed,
-        // Luôn lưu số điện thoại đã chuẩn hoá dạng Việt Nam (bắt đầu bằng 0)
         phone: normalizedPhone,
         note: note.trim(),
       });
+      // Reset form
       setCustomerName("");
       setPhone("");
       setNote("");
@@ -199,7 +425,7 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
         background: 'white',
         borderRadius: '16px',
         padding: '32px',
-        maxWidth: '500px',
+        maxWidth: '700px',
         width: '90%',
         maxHeight: '90vh',
         overflow: 'auto'
@@ -210,52 +436,85 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
           marginBottom: '24px',
           color: '#1f2937'
         }}>
-          Đặt bàn {tables.length > 1 ? `(${tables.length} bàn)` : ''}
+          Đặt bàn với Combo
         </h2>
 
-        {/* Danh sách bàn đã chọn */}
+        {/* Bàn đã chọn */}
         {tables.length > 0 && (
           <div style={{
             background: '#f3f4f6',
             padding: '16px',
             borderRadius: '8px',
-            marginBottom: '20px',
-            maxHeight: '200px',
-            overflowY: 'auto'
+            marginBottom: '20px'
           }}>
-            <div style={{ fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
-              Bàn đã chọn:
-            </div>
-            {tables.map((table, index) => (
-              <div key={table.BarTableId} style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '8px 0',
-                borderBottom: index < tables.length - 1 ? '1px solid #e5e7eb' : 'none'
-              }}>
-                <span style={{ color: '#6b7280' }}>{table.TableName}</span>
-                <span style={{ fontWeight: '600', color: 'rgb(var(--success))' }}>
-                  {table.DepositPrice ? table.DepositPrice.toLocaleString('vi-VN') + ' đ' : 'Miễn phí'}
-                </span>
-              </div>
-            ))}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginTop: '12px',
-              paddingTop: '12px',
-              borderTop: '2px solid #d1d5db'
-            }}>
-              <span style={{ fontWeight: '700', color: '#1f2937' }}>Tổng tiền cọc:</span>
-              <span style={{ fontWeight: '700', fontSize: '1.1rem', color: 'rgb(var(--success))' }}>
-                {(tables.length * 100000).toLocaleString('vi-VN')} đ
-              </span>
+            <div style={{ fontWeight: '600', marginBottom: '8px', color: '#374151' }}>
+              Bàn đã chọn: {tables[0].TableName}
             </div>
           </div>
         )}
 
+        {/* Combo Selection */}
+        <ComboSelector
+          combos={combos}
+          selectedCombo={selectedCombo}
+          onSelectCombo={onSelectCombo}
+          loading={loadingCombos}
+        />
+
+        {/* Voucher Selection - chỉ hiện khi đã chọn combo */}
+        {selectedCombo && (
+          <VoucherSelector
+            vouchers={vouchers}
+            selectedVoucher={selectedVoucher}
+            onSelectVoucher={onSelectVoucher}
+            comboValue={selectedCombo.Price}
+            loading={loadingVouchers}
+            onSkipVoucher={onSkipVoucher}
+          />
+        )}
+
+        {/* Payment Summary */}
+        {amounts && (
+          <div style={{
+            background: '#f3f4f6',
+            padding: '20px',
+            borderRadius: '12px',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{ fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
+              Tóm tắt thanh toán
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Giá combo gốc:</span>
+                <span>{amounts.originalPrice.toLocaleString('vi-VN')} đ</span>
+              </div>
+
+              {amounts.discountAmount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgb(var(--success))' }}>
+                  <span>Giảm giá ({amounts.discountPercentage}%):</span>
+                  <span>-{amounts.discountAmount.toLocaleString('vi-VN')} đ</span>
+                </div>
+              )}
+
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                borderTop: '2px solid #d1d5db',
+                paddingTop: '8px',
+                fontWeight: '700',
+                fontSize: '1.1rem',
+                color: 'rgb(var(--success))'
+              }}>
+                <span>Tổng tiền thanh toán:</span>
+                <span>{amounts.finalPaymentAmount.toLocaleString('vi-VN')} đ</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Customer Information Form */}
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '20px' }}>
             <label style={{
@@ -326,7 +585,7 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
               fontWeight: '600',
               color: '#374151'
             }}>
-              Giờ có thể đến để chuẩn bị (tùy chọn)
+              Ghi chú (tùy chọn)
             </label>
             <textarea
               value={note}
@@ -341,48 +600,31 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
                 resize: 'vertical',
                 fontFamily: 'inherit'
               }}
-              placeholder="Hãy nhập thời gian ước tính mà bạn sẽ đến"
+              placeholder="Thời gian đến, yêu cầu đặc biệt..."
             />
           </div>
 
-          {tables.length > 0 && (
-            <div style={{ 
+          {/* Payment Notice */}
+          {selectedCombo && (
+            <div style={{
               marginBottom: '20px',
               padding: '12px',
               background: '#FEF3C7',
               borderRadius: '8px',
               border: '1px solid #FCD34D'
             }}>
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
                 gap: '8px',
                 color: '#92400E',
                 fontWeight: '600'
               }}>
                 <span>💳</span>
-                <span>Bạn sẽ được chuyển đến trang thanh toán PayOS để đặt cọc sau khi xác nhận</span>
+                <span>Bạn sẽ thanh toán toàn bộ combo. Sau khi thanh toán thành công, hệ thống sẽ tạo QR code để quán bar xác nhận.</span>
               </div>
             </div>
           )}
-
-          <div style={{
-            background: '#f3f4f6',
-            padding: '16px',
-            borderRadius: '8px',
-            marginBottom: '24px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ color: '#6b7280' }}>Ngày:</span>
-              <span style={{ fontWeight: '600' }}>{selectedDate}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280' }}>Tổng tiền cọc ({tables.length} bàn × 100k):</span>
-              <span style={{ fontWeight: '600', color: 'rgb(var(--success))' }}>
-                {(tables.length * 100000).toLocaleString('vi-VN')} đ
-              </span>
-            </div>
-          </div>
 
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
@@ -402,7 +644,7 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !selectedCombo}
               style={{
                 flex: 1,
                 padding: '12px',
@@ -410,12 +652,12 @@ const BookingModal = ({ open, onClose, tables = [], selectedDate, onConfirm }) =
                 borderRadius: '8px',
                 background: '#3b82f6',
                 color: 'white',
-                cursor: submitting ? 'not-allowed' : 'pointer',
+                cursor: (submitting || !selectedCombo) ? 'not-allowed' : 'pointer',
                 fontWeight: '600',
-                opacity: submitting ? 0.7 : 1
+                opacity: (submitting || !selectedCombo) ? 0.7 : 1
               }}
             >
-              {submitting ? 'Đang xử lý...' : 'Đặt cọc lịch đặt bàn'}
+              {submitting ? 'Đang xử lý...' : 'Thanh toán Combo'}
             </button>
           </div>
         </form>
@@ -437,7 +679,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
   const [error, setError] = useState("");
   const [toasts, setToasts] = useState([]);
   const [receiverId, setReceiverId] = useState(null);
-  
+
   // Filter states
   const [selectedDate, setSelectedDate] = useState(() => {
     if (propBarId) {
@@ -445,10 +687,18 @@ const BarTablesPage = ({ barId: propBarId }) => {
     }
     return searchParams.get('date') || new Date().toISOString().split('T')[0];
   });
-  
-  // Booking modal
+
+  // Booking modal with combo/voucher
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [selectedTables, setSelectedTables] = useState([]);
+  const [selectedCombo, setSelectedCombo] = useState(null);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
+
+  // Combo and voucher data
+  const [combos, setCombos] = useState([]);
+  const [vouchers, setVouchers] = useState([]);
+  const [loadingCombos, setLoadingCombos] = useState(false);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
 
   // Toast management
   const addToast = useCallback((message, type = "info", duration = 3000) => {
@@ -473,11 +723,68 @@ const BarTablesPage = ({ barId: propBarId }) => {
         console.error("Error fetching bar details:", error);
       }
     };
-    
+
     if (barId) {
       fetchReceiverId();
     }
   }, [barId]);
+
+  // Fetch combos when barId is available
+  useEffect(() => {
+    const fetchCombos = async () => {
+      if (!barId) return;
+
+      try {
+        setLoadingCombos(true);
+        // Sử dụng comboApi.getCombosByBar để lấy danh sách combo
+        const response = await comboApi.getCombosByBar(barId);
+        // Kiểm tra response format: axios trả về response object, data nằm trong response.data
+        const combosData = response.data || [];
+        // Nếu API trả về { status: 'success', data: [...] } hoặc chỉ là array
+        if (Array.isArray(combosData)) {
+          setCombos(combosData);
+        } else if (combosData.data && Array.isArray(combosData.data)) {
+           setCombos(combosData.data);
+        } else {
+           setCombos([]);
+        }
+      } catch (error) {
+        console.error("Error fetching combos:", error);
+        addToast("Không thể tải danh sách combo", "error");
+      } finally {
+        setLoadingCombos(false);
+      }
+    };
+
+    fetchCombos();
+  }, [barId, addToast]);
+
+  // Fetch vouchers when component mounts
+  useEffect(() => {
+    const fetchVouchers = async () => {
+      try {
+        setLoadingVouchers(true);
+        // minComboValue=0 => lấy tất cả voucher hệ thống, FE sẽ filter theo combo sau
+        const response = await bookingApi.getAvailableVouchers(0);
+        const payload = response?.data ?? response;
+        if (payload?.success) {
+          setVouchers(payload.data || []);
+        } else if (payload?.data?.success) {
+          setVouchers(payload.data.data || []);
+        } else {
+          // fallback: nếu API trả thẳng array
+          setVouchers(Array.isArray(payload) ? payload : []);
+        }
+      } catch (error) {
+        console.error("Error fetching vouchers:", error);
+        // Don't show error toast for vouchers as it's optional
+      } finally {
+        setLoadingVouchers(false);
+      }
+    };
+
+    fetchVouchers();
+  }, []);
 
   // Fetch bookings for date - wrap trong useCallback để tránh infinite loop
   const fetchBookingsForDate = useCallback(async (date) => {
@@ -714,71 +1021,95 @@ const BarTablesPage = ({ barId: propBarId }) => {
       addToast("Vui lòng chọn ít nhất một bàn", "warning");
       return;
     }
+
+    // Reset combo and voucher selection when opening modal
+    setSelectedCombo(null);
+    setSelectedVoucher(null);
+
     setBookingModalOpen(true);
   };
 
-  // Handle booking confirm
+  // Handle combo selection
+  const handleSelectCombo = (combo) => {
+    setSelectedCombo(combo);
+    // Reset voucher when combo changes
+    setSelectedVoucher(null);
+  };
+
+  // Handle voucher selection
+  const handleSelectVoucher = (voucher) => {
+    setSelectedVoucher(voucher);
+  };
+
+  // Handle skip voucher
+  const handleSkipVoucher = () => {
+    setSelectedVoucher(null);
+  };
+
+  // Handle booking confirm with combo and voucher
   const handleBookingConfirm = async (formData) => {
-    if (!receiverId || selectedTables.length === 0) {
-      addToast("Lỗi: Thiếu thông tin", "error");
+    if (!receiverId || selectedTables.length === 0 || !selectedCombo) {
+      addToast("Lỗi: Thiếu thông tin bắt buộc", "error");
       return;
     }
 
     try {
-      // Format tables data for API
-      const tablesData = selectedTables.map(table => ({
-        id: table.BarTableId,
-        tableName: table.TableName,
-        price: table.DepositPrice || 0
-      }));
+      // Validate combo and voucher
+      const validationData = {
+        comboId: selectedCombo.ComboId,
+        voucherCode: selectedVoucher?.VoucherCode,
+        barId: barId
+      };
 
-      // Tính tổng tiền cọc: mỗi bàn 100k VND
-      const DEPOSIT_PER_TABLE = 100000; // 100k VND mỗi bàn
-      const totalDepositAmount = selectedTables.length * DEPOSIT_PER_TABLE;
-      const totalAmount = selectedTables.reduce((sum, table) => sum + (table.DepositPrice || 0), 0);
+      const validationRes = await bookingApi.validateBookingData(validationData);
+      // axiosClient có thể unwrap response.data, nên normalize lại cho chắc
+      const validationPayload = validationRes?.data ?? validationRes;
+
+      if (!validationPayload?.valid) {
+        addToast(
+          validationPayload?.reason || validationPayload?.message || "Dữ liệu không hợp lệ",
+          "error"
+        );
+        return;
+      }
 
       // Tính startTime và endTime
-      // startTime: Nếu ngày hôm nay thì từ thời điểm hiện tại, nếu ngày tương lai thì từ 00:00:00
-      // endTime: Cuối ngày đã chọn (23:59:59)
       const now = new Date();
       const selectedDateObj = new Date(selectedDate);
       const isToday = selectedDateObj.toDateString() === now.toDateString();
-      
+
       let startTime, endTime;
       if (isToday) {
-        // Nếu là hôm nay, bắt đầu từ thời điểm hiện tại
         startTime = now.toISOString();
-        // Kết thúc vào cuối ngày hôm nay
         const endOfDay = new Date(selectedDateObj);
         endOfDay.setHours(23, 59, 59, 999);
         endTime = endOfDay.toISOString();
       } else {
-        // Nếu là ngày tương lai, bắt đầu từ đầu ngày
         const startOfDay = new Date(selectedDateObj);
         startOfDay.setHours(0, 0, 0, 0);
         startTime = startOfDay.toISOString();
-        // Kết thúc vào cuối ngày
         const endOfDay = new Date(selectedDateObj);
         endOfDay.setHours(23, 59, 59, 999);
         endTime = endOfDay.toISOString();
       }
 
+      // Tạo booking với combo và voucher
       const bookingData = {
         receiverId: receiverId,
-        tables: tablesData,
-        note: `${formData.customerName} - ${formData.phone}${formData.note ? ` - ${formData.note}` : ''}`,
-        totalAmount: totalAmount,
+        comboId: selectedCombo.ComboId,
+        voucherCode: selectedVoucher?.VoucherCode,
+        tableId: selectedTables[0].BarTableId, // Chỉ chọn 1 bàn
         bookingDate: selectedDate,
         startTime: startTime,
         endTime: endTime,
-        // Luôn để Pending vì sẽ thanh toán qua PayOS
-        paymentStatus: "Pending",
-        scheduleStatus: "Confirmed" // Luôn confirmed vì không cần bar xác nhận
+        note: `${formData.customerName} - ${formData.phone}${formData.note ? ` - ${formData.note}` : ''}`
       };
 
-      // Tạo booking trước
-      const result = await bookingApi.createBooking(bookingData);
-      
+      console.log("[BarTablesPage] Creating booking with combo:", bookingData);
+
+      // Tạo booking với combo
+      const result = await bookingApi.createBookingWithCombo(bookingData);
+
       if (!result.success) {
         throw new Error(result.message || "Đặt bàn thất bại");
       }
@@ -788,17 +1119,26 @@ const BarTablesPage = ({ barId: propBarId }) => {
         throw new Error("Không lấy được booking ID");
       }
 
-      // Tạo payment link PayOS cho tiền cọc (mỗi bàn 100k)
-      console.log("[BarTablesPage] Creating payment link for deposit:", {
+      // Tạo payment link cho toàn bộ combo
+      // Ưu tiên dùng số tiền FE đã tính theo voucher (để đảm bảo PayOS đúng ngay)
+      const discountPercentages = selectedVoucher ? Number(selectedVoucher.DiscountPercentage || 0) : 0;
+      const paymentAmount = Math.max(
+        0,
+        Number(selectedCombo?.Price || 0) - Math.floor(Number(selectedCombo?.Price || 0) * discountPercentages / 100)
+      );
+      console.log("[BarTablesPage] Creating full payment link:", {
         bookingId,
-        depositAmount: totalDepositAmount,
-        tableCount: selectedTables.length
+        paymentAmount,
+        comboName: selectedCombo.ComboName
       });
 
-      const paymentResult = await bookingApi.createTablePayment(bookingId, totalDepositAmount);
-      
+      const paymentResult = await bookingApi.createTableFullPayment(bookingId, {
+        amount: paymentAmount,
+        discountPercentages
+      });
+
       if (paymentResult.success && paymentResult.data?.paymentUrl) {
-        // Redirect đến PayOS để thanh toán
+        // Redirect đến PayOS để thanh toán toàn bộ combo
         window.location.href = paymentResult.data.paymentUrl;
       } else {
         throw new Error("Không thể tạo link thanh toán");
@@ -857,7 +1197,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
               Đã chọn {selectedTables.length} bàn
             </div>
             <div style={{ fontSize: '0.9rem', color: 'rgb(var(--success))' }}>
-              Tổng tiền cọc: {(selectedTables.length * 100000).toLocaleString('vi-VN')} đ
+              Vui lòng chọn Combo ở bước tiếp theo
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -1053,16 +1393,6 @@ const BarTablesPage = ({ barId: propBarId }) => {
                     {table.TableTypeName}
                   </p>
                 )}
-                {table.DepositPrice !== null && table.DepositPrice !== undefined && Number(table.DepositPrice) > 0 && (
-                  <p style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: 'rgb(var(--success))',
-                    margin: '8px 0 0 0'
-                  }}>
-                    {Number(table.DepositPrice).toLocaleString('vi-VN')} đ
-                  </p>
-                )}
 
                 {/* Disabled Overlay */}
                 {isDisabled && (
@@ -1126,6 +1456,15 @@ const BarTablesPage = ({ barId: propBarId }) => {
         tables={selectedTables}
         selectedDate={selectedDate}
         onConfirm={handleBookingConfirm}
+        combos={combos}
+        vouchers={vouchers}
+        selectedCombo={selectedCombo}
+        selectedVoucher={selectedVoucher}
+        onSelectCombo={handleSelectCombo}
+        onSelectVoucher={handleSelectVoucher}
+        onSkipVoucher={handleSkipVoucher}
+        loadingCombos={loadingCombos}
+        loadingVouchers={loadingVouchers}
       />
     </div>
   );

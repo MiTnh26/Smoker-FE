@@ -7,7 +7,7 @@ import BarSettings from "../modules/bar/pages/BarSettings";
 import BarTableListPage from "../modules/bar/pages/BarTableListPage";
 import TableClassificationManager from "../modules/bar/pages/TableClassificationManager";
 import ComboManager from "../modules/bar/pages/ComboManager";
-import VoucherManager from "../modules/bar/pages/VoucherManager";
+// Removed: VoucherManager - bar voucher management removed
 import ManagePost from "../modules/bar/pages/ManagePost";
 import ManageStory from "../modules/bar/pages/ManageStory";
 import EventsPage from "../modules/bar/pages/EventsPage";
@@ -15,6 +15,7 @@ import Newsfeed from "../modules/feeds/pages/Newsfeed/Newsfeed";
 import MessagesPage from "../modules/messages/pages/MessagesPage";
 import MessagesLayout from "../layouts/MessagesLayout";
 import BarDashboardPage from "../modules/bar/pages/BarDashboardPage";
+import BarBookingListPage from "../modules/bar/pages/BarBookingListPage";
 
 const BarProfileRoute = () => {
   // DynamicLayout will automatically detect role and use appropriate header
@@ -53,6 +54,14 @@ export default function BarRoutes() {
           }
         />
         <Route
+          path="/bar/bookings"
+          element={
+            <ProtectedRoute roles={["bar"]}>
+              <DynamicLayout><BarBookingListPage /></DynamicLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/bar/:barPageId"
           element={<BarProfileRoute />}
         />
@@ -81,14 +90,7 @@ export default function BarRoutes() {
           </ProtectedRoute>
         }
       />
-       <Route
-        path="/bar/settings/:barPageId/vouchers"
-        element={
-          <ProtectedRoute roles={["bar"]}>
-            <DynamicLayout> <VoucherManager /></DynamicLayout>
-          </ProtectedRoute>
-        }
-      />
+       {/* Removed: Voucher route - bar voucher management removed */}
        <Route
         path="/bar/settings/:barPageId/combos"
         element={
