@@ -102,7 +102,7 @@ export default function Toast({ show, message, type = "success", duration = 3000
 /**
  * ToastContainer component for managing multiple toasts
  * @param {Object} props
- * @param {Array} props.toasts - Array of toast objects with { id, message, type, duration }
+ * @param {Array} props.toasts - Array of toast objects with { id, message, type, duration, avatar, name, link, onClick, onAvatarClick }
  * @param {Function} props.removeToast - Function to remove a toast by id
  */
 export function ToastContainer({ toasts = [], removeToast }) {
@@ -117,6 +117,11 @@ export function ToastContainer({ toasts = [], removeToast }) {
           message={toast.message}
           type={toast.type || "info"}
           duration={toast.duration || 3000}
+          avatar={toast.avatar}
+          name={toast.name}
+          link={toast.link}
+          onClick={toast.onClick}
+          onAvatarClick={toast.onAvatarClick}
           onClose={() => removeToast?.(toast.id)}
         />
       ))}
@@ -127,7 +132,18 @@ export function ToastContainer({ toasts = [], removeToast }) {
 /**
  * Individual toast item for ToastContainer
  */
-function ToastItem({ id, message, type = "info", duration = 3000, onClose }) {
+export function ToastItem({ 
+  id, 
+  message, 
+  type = "info", 
+  duration = 3000, 
+  avatar,
+  name,
+  link,
+  onClick,
+  onAvatarClick,
+  onClose 
+}) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -175,6 +191,29 @@ function ToastItem({ id, message, type = "info", duration = 3000, onClose }) {
   const config = toastConfig[type] || toastConfig.info;
   const Icon = config.icon;
 
+  const handleClick = (e) => {
+    // Nếu click vào avatar/name hoặc nút close, không trigger onClick của toast
+    if (e.target.closest('.toast-avatar-container') || e.target.closest('button')) {
+      return;
+    }
+    
+    // Prevent default và stop propagation
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Gọi onClick handler nếu có
+    if (onClick) {
+      onClick();
+    }
+  };
+
+  const handleAvatarClick = (e) => {
+    e.stopPropagation();
+    if (onAvatarClick) {
+      onAvatarClick();
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -187,13 +226,57 @@ function ToastItem({ id, message, type = "info", duration = 3000, onClose }) {
           "flex items-center gap-3 rounded-xl px-4 py-3 border shadow-lg backdrop-blur-sm",
           config.bg,
           config.border,
-          config.text
+          config.text,
+          (onClick || link) && "cursor-pointer hover:opacity-90 transition-opacity"
         )}
+        onClick={handleClick}
       >
+        {/* Avatar và Name nếu có */}
+        {(avatar || name) ? (
+          <div 
+            className="toast-avatar-container flex items-center gap-2 flex-shrink-0"
+            onClick={handleAvatarClick}
+          >
+            {avatar ? (
+              <img
+                src={avatar}
+                alt={name || "User"}
+                className="h-8 w-8 rounded-full object-cover border cursor-pointer hover:opacity-80 transition-opacity"
+                style={{ borderColor: 'rgb(var(--border))' }}
+                onError={(e) => {
+                  e.target.style.display = "none";
+                  if (e.target.nextSibling) {
+                    e.target.nextSibling.style.display = "flex";
+                  }
+                }}
+              />
+            ) : null}
+            <div
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold border cursor-pointer hover:opacity-80 transition-opacity",
+                avatar && "hidden"
+              )}
+              style={{ 
+                backgroundColor: 'rgb(var(--primary))', 
+                color: 'rgb(var(--primary-foreground))', 
+                borderColor: 'rgb(var(--primary))' 
+              }}
+            >
+              {name?.[0]?.toUpperCase() || "U"}
+            </div>
+            {name && (
+              <span className="text-sm font-semibold cursor-pointer hover:opacity-80 transition-opacity">
+                {name}
+              </span>
+            )}
+          </div>
+        ) : (
         <Icon className={cn("h-5 w-5 flex-shrink-0", config.iconColor)} />
+        )}
         <span className="text-sm font-medium flex-1">{message}</span>
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             setIsVisible(false);
             setTimeout(() => onClose?.(), 300);
           }}

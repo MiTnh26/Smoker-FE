@@ -15,15 +15,39 @@ export default function useLivestreamChat({ channelName, user, isBroadcaster = f
 
   useEffect(() => {
     if (!socket || !channelName || !user?.id) return;
+    
+    let isMounted = true;
+    let hasJoined = false;
+    
     // Emit join với isBroadcaster flag và entityAccountId
-    socket.emit("join-livestream", { 
-      channelName, 
-      userId: user.id, 
-      isBroadcaster,
-      entityAccountId: user?.entityAccountId || null
-    });
+    const joinLivestream = () => {
+      if (hasJoined) {
+        console.log("[useLivestreamChat] Already joined, skipping");
+        return;
+      }
+      hasJoined = true;
+      socket.emit("join-livestream", { 
+        channelName, 
+        userId: user.id, 
+        isBroadcaster,
+        entityAccountId: user?.entityAccountId || null
+      });
+    };
+    
+    // Small delay để tránh multiple calls
+    const timeoutId = setTimeout(joinLivestream, 100);
+    
     return () => {
-      socket.emit("leave-livestream", { channelName, userId: user.id });
+      isMounted = false;
+      clearTimeout(timeoutId);
+      if (hasJoined) {
+        socket.emit("leave-livestream", { 
+          channelName, 
+          userId: user.id,
+          entityAccountId: user?.entityAccountId || null
+        });
+        hasJoined = false;
+      }
     };
   }, [socket, channelName, user?.id, user?.entityAccountId, isBroadcaster]);
 

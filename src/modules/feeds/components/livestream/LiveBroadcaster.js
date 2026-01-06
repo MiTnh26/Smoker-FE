@@ -105,7 +105,11 @@ export default function LiveBroadcaster({ onClose, onEnded, setupData }) {
       setIsInitializing(true);
       setError(null);
 
-      const payload = await livestreamApi.startLivestream(title, description);
+      const payload = await livestreamApi.startLivestream(
+        title, 
+        description, 
+        setupData?.pinnedComment || null
+      );
       const livestream = payload?.livestream;
       const agora = payload?.agora;
 
@@ -197,6 +201,8 @@ export default function LiveBroadcaster({ onClose, onEnded, setupData }) {
       setLivestreamMeta({
         livestreamId: livestream.livestreamId,
         channelName: agora.channelName,
+        hostAccountId: livestream.hostAccountId || sessionUser?.id,
+        hostEntityAccountId: livestream.hostEntityAccountId || sessionUser?.entityAccountId,
       });
       setIsLive(true);
     } catch (err) {
@@ -231,22 +237,51 @@ export default function LiveBroadcaster({ onClose, onEnded, setupData }) {
     return () => cancelAnimationFrame(id);
   }, [isLive, playLocalVideo]);
 
-  // Warning when user tries to leave while live
+  // Warning và tự động end livestream khi user refresh/close tab
   useEffect(() => {
-    if (!isLive) return;
-
-    const handleBeforeUnload = (e) => {
+    if (!isLive || !livestreamMeta?.livestreamId) return;
+    
+    const handleBeforeUnload = async (e) => {
+      // Cố gắng end livestream trước khi unload
+      // Sử dụng sendBeacon để đảm bảo request được gửi ngay cả khi trang đang unload
+      if (livestreamMeta?.livestreamId) {
+        try {
+          const endpoint = `/api/livestream/${livestreamMeta.livestreamId}/end`;
+          const url = new URL(endpoint, window.location.origin);
+          
+          // Sử dụng fetch với keepalive (reliable hơn sendBeacon cho POST)
+          fetch(url.toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            keepalive: true,
+            credentials: 'include'
+          }).catch(() => {}); // Ignore errors khi unload
+        } catch (err) {
+          console.error("[LiveBroadcaster] Error ending livestream on unload:", err);
+        }
+      }
+      
+      // Vẫn hiển thị warning
       e.preventDefault();
-      e.returnValue = "Bạn đang phát trực tiếp. Bạn có chắc chắn muốn rời khỏi trang?";
+      e.returnValue = "Bạn đang phát trực tiếp. Livestream sẽ tự động kết thúc sau 30 giây nếu bạn rời khỏi trang.";
       return e.returnValue;
+    };
+    
+    const handleVisibilityChange = () => {
+      // Khi tab bị ẩn hoặc đóng, log để debug
+      if (document.hidden && livestreamMeta?.livestreamId) {
+        console.log("[LiveBroadcaster] Tab hidden, livestream will auto-end if broadcaster doesn't return");
+      }
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [isLive]);
+  }, [isLive, livestreamMeta]);
 
   const handleStop = async () => {
     await stopBroadcast();
@@ -309,7 +344,7 @@ export default function LiveBroadcaster({ onClose, onEnded, setupData }) {
             ) : (
               <div className="text-center py-8">
                 <p className="text-foreground">Đang chuẩn bị phát trực tiếp...</p>
-              </div>
+            </div>
             )}
           </div>
         )}
@@ -358,6 +393,47 @@ export default function LiveBroadcaster({ onClose, onEnded, setupData }) {
                   <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
                   LIVE
                 </div>
+              </div>
+              
+              {/* Broadcaster Info - Moved to bottom */}
+              <div className="rounded-xl px-4 py-3 backdrop-blur-md border border-border/30 shadow-lg" style={{ backgroundColor: 'rgb(var(--card))' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  {sessionUser?.avatar ? (
+                    <img
+                      src={sessionUser.avatar}
+                      alt={sessionUser?.name || "You"}
+                      className="h-10 w-10 rounded-full object-cover border flex-shrink-0"
+                      style={{ borderColor: 'rgb(var(--border))' }}
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "flex";
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className={cn(
+                      "flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold flex-shrink-0 border",
+                      sessionUser?.avatar && "hidden"
+                    )}
+                    style={{ backgroundColor: 'rgb(var(--primary))', color: 'rgb(var(--primary-foreground))', borderColor: 'rgb(var(--primary))' }}
+                  >
+                    {sessionUser?.name?.[0]?.toUpperCase() || "Y"}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground mb-0.5">
+                      {sessionUser?.name || "Bạn"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {viewerCount} người đang xem {description && `· ${description}`}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-foreground mb-1">
+                  Video trực tiếp của bạn nói về điều gì?
+                </p>
+                <p className="text-base font-semibold text-foreground">
+                  {title || "Chưa có tiêu đề"}
+                </p>
               </div>
               <div className="rounded-3xl border p-4 backdrop-blur-md shadow-lg" style={{ backgroundColor: 'rgb(var(--card))', borderColor: 'rgb(var(--border))' }}>
                 <div className="flex flex-wrap items-center gap-3">
@@ -448,34 +524,45 @@ export default function LiveBroadcaster({ onClose, onEnded, setupData }) {
                   // Regular chat messages
                   return (
                     <div key={`${msg.userId}-${index}`} className="flex items-start gap-3 rounded-2xl px-3 py-2 hover:bg-muted/30 transition-colors" style={{ backgroundColor: 'rgb(var(--muted))' }}>
-                      {msg.userAvatar ? (
-                        <img
-                          src={msg.userAvatar}
-                          alt={msg.userName || "User"}
+                    {msg.userAvatar ? (
+                      <img
+                        src={msg.userAvatar}
+                        alt={msg.userName || "User"}
                           className="h-8 w-8 rounded-full object-cover border flex-shrink-0"
                           style={{ borderColor: 'rgb(var(--border))' }}
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                            if (e.target.nextSibling) {
-                              e.target.nextSibling.style.display = "flex";
-                            }
-                          }}
-                        />
-                      ) : null}
-                      <div
-                        className={cn(
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                          if (e.target.nextSibling) {
+                            e.target.nextSibling.style.display = "flex";
+                          }
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={cn(
                           "flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold flex-shrink-0 border",
-                          msg.userAvatar && "hidden"
-                        )}
+                        msg.userAvatar && "hidden"
+                      )}
                         style={{ backgroundColor: 'rgb(var(--primary))', color: 'rgb(var(--primary-foreground))', borderColor: 'rgb(var(--primary))' }}
-                      >
-                        {msg.userName?.[0] || "U"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold" style={{ color: 'rgb(var(--foreground))' }}>{msg.userName || "User"}</p>
-                        <p className="text-sm" style={{ color: 'rgb(var(--muted-foreground))' }}>{msg.message}</p>
-                      </div>
+                    >
+                      {msg.userName?.[0] || "U"}
                     </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-sm font-semibold" style={{ color: 'rgb(var(--foreground))' }}>{msg.userName || "User"}</p>
+                          {/* Badge "Chủ Live" nếu là chủ livestream */}
+                          {(msg.userId === livestreamMeta?.hostAccountId || 
+                            msg.entityAccountId === livestreamMeta?.hostEntityAccountId ||
+                            msg.userId === sessionUser?.id ||
+                            msg.entityAccountId === sessionUser?.entityAccountId) && (
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500 text-white">
+                              Chủ Live
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm" style={{ color: 'rgb(var(--muted-foreground))' }}>{msg.message}</p>
+                    </div>
+                  </div>
                   );
                 })}
                 {/* Invisible element để scroll xuống */}
