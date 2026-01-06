@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
-import { Search, ArrowLeft, Check } from "lucide-react";
+import { Search, ArrowLeft, Check, Globe, Lock, ChevronDown, X } from "lucide-react";
 import messageApi from "../../../../api/messageApi";
 import publicProfileApi from "../../../../api/publicProfileApi";
 import { createPost, trackPostShare, trackMediaShare, getPostById } from "../../../../api/postApi";
 import { cn } from "../../../../utils/cn";
+import "../../../../styles/modules/feeds/components/modals/postForms.css";
 
 export default function ShareModal({ open, post, onClose, onShared, triggerRef }) {
   const { t } = useTranslation();
@@ -14,12 +15,34 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [repostComment, setRepostComment] = useState(""); // Comment when reposting
+  const [status, setStatus] = useState("public"); // "public" hoặc "private"
+  const [showPrivacyDropdown, setShowPrivacyDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [originalPreviewPost, setOriginalPreviewPost] = useState(null);
   const [loadingOriginalPreview, setLoadingOriginalPreview] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const popupRef = useRef(null);
+
+  // Get current user info
+  useEffect(() => {
+    if (open && shareType === 'wall') {
+      try {
+        const raw = localStorage.getItem("session");
+        const session = raw ? JSON.parse(raw) : null;
+        const activeEntity = session?.activeEntity || session?.account;
+        if (activeEntity) {
+          setCurrentUser({
+            name: activeEntity?.name || activeEntity?.userName || activeEntity?.BarName || activeEntity?.BusinessName || "Người dùng",
+            avatar: activeEntity?.avatar || activeEntity?.profilePicture || null,
+          });
+        }
+      } catch (e) {
+        console.error("[ShareModal] Error getting current user:", e);
+      }
+    }
+  }, [open, shareType]);
 
   useEffect(() => {
     if (open && shareType === 'message') {
@@ -413,7 +436,8 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
         authorName: activeEntity?.name || activeEntity?.userName || "Người dùng",
         authorAvatar: activeEntity?.avatar || activeEntity?.profilePicture || "",
         // Copy medias từ post/media gốc
-        mediaIds: mediaIds.length > 0 ? mediaIds : undefined // Chỉ gửi nếu có mediaIds
+        mediaIds: mediaIds.length > 0 ? mediaIds : undefined, // Chỉ gửi nếu có mediaIds
+        status: status // Thêm status vào postData
       };
 
       console.log("[ShareModal] Creating repost with data:", {
@@ -474,6 +498,8 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
       setSelectedConversation(null);
       setSearchQuery("");
       setRepostComment("");
+      setStatus("public");
+      setShowPrivacyDropdown(false);
       setOriginalPreviewPost(null);
       setLoadingOriginalPreview(false);
     }
@@ -561,13 +587,13 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
       <div 
         ref={popupRef}
         className={cn(
-          "fixed bg-card/95 backdrop-blur-xl rounded-2xl shadow-2xl z-[9999]",
+          "fixed bg-card/95 backdrop-blur-xl shadow-2xl z-[9999]",
           "flex flex-col overflow-hidden border-[0.5px] border-border/30",
           "before:absolute before:inset-0 before:bg-gradient-to-br before:from-primary/10 before:via-transparent before:to-secondary/10",
           "before:opacity-60 before:pointer-events-none",
           shouldCenter 
-            ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 min-w-[380px] max-w-[420px] max-h-[600px]"
-            : "min-w-[200px] max-w-[320px] max-h-[400px]"
+            ? "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 min-w-[500px] max-w-[520px] max-h-[700px] rounded-[20px]"
+            : "min-w-[200px] max-w-[320px] max-h-[400px] rounded-2xl"
         )}
         style={!shouldCenter ? { top: `${position.top}px`, left: `${position.left}px` } : undefined}
         onClick={(e) => e.stopPropagation()}
@@ -781,9 +807,9 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
               </div>
             </div>
           ) : (
-            <div className="flex flex-col h-full max-h-[600px]">
+            <div className="flex flex-col h-full max-h-[700px]">
               {/* Header */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 flex-shrink-0">
+              <div className="post-form-header flex-shrink-0">
                 <button 
                   className={cn(
                     "w-8 h-8 flex items-center justify-center",
@@ -793,38 +819,152 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
                   )}
                   onClick={() => setShareType(null)}
                 >
-                  <ArrowLeft size={18} />
+                  <ArrowLeft size={18} strokeWidth={1.5} />
                 </button>
-                <h4 className="m-0 flex-1 text-base font-semibold text-foreground">
-                  Đăng lại
-                </h4>
+                <div className="post-form-header-content" style={{ flex: 1, justifyContent: 'center' }}>
+                  <span className="text-lg font-bold" style={{ color: '#1A1A1A' }}>Đăng lại</span>
+                </div>
+                <button
+                  type="button"
+                  className="post-form-header-close"
+                  onClick={onClose}
+                  aria-label="Close"
+                >
+                  <X size={16} strokeWidth={1.5} />
+                </button>
               </div>
 
+              {/* User Info Section */}
+              {currentUser && (
+                <div className="px-6 pt-4 pb-3 flex items-center gap-3 flex-shrink-0 border-b border-border/20">
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                    {currentUser.avatar ? (
+                      <img
+                        src={currentUser.avatar}
+                        alt={currentUser.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          const fallback = e.target.nextElementSibling;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={cn(
+                        "w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20",
+                        "flex items-center justify-center text-foreground font-semibold text-sm",
+                        currentUser.avatar ? 'hidden' : ''
+                      )}
+                    >
+                      {currentUser.name?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-foreground text-sm overflow-hidden text-ellipsis whitespace-nowrap">
+                      {currentUser.name}
+                    </div>
+                  </div>
+                  {/* Privacy Dropdown */}
+                  <div className="relative flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowPrivacyDropdown(!showPrivacyDropdown)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all",
+                        "text-xs font-medium",
+                        "bg-muted/40 border-border hover:bg-muted/60",
+                        "text-foreground"
+                      )}
+                    >
+                      {status === "public" ? (
+                        <Globe size={14} />
+                      ) : (
+                        <Lock size={14} />
+                      )}
+                      <ChevronDown size={12} className={cn("transition-transform", showPrivacyDropdown && "rotate-180")} />
+                    </button>
+                    
+                    {/* Dropdown Menu */}
+                    {showPrivacyDropdown && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setShowPrivacyDropdown(false)}
+                        />
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-card border border-border rounded-lg shadow-lg z-20 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStatus("public");
+                              setShowPrivacyDropdown(false);
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
+                              "text-sm font-medium",
+                              status === "public"
+                                ? "bg-primary/10 text-primary"
+                                : "text-foreground hover:bg-muted/50"
+                            )}
+                          >
+                            <Globe size={18} />
+                            <div className="flex flex-col">
+                              <span>{t('modal.postPrivacyPublic')}</span>
+                              <span className="text-xs text-muted-foreground">{t('modal.postPrivacyPublicDesc')}</span>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStatus("private");
+                              setShowPrivacyDropdown(false);
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
+                              "text-sm font-medium",
+                              status === "private"
+                                ? "bg-primary/10 text-primary"
+                                : "text-foreground hover:bg-muted/50"
+                            )}
+                          >
+                            <Lock size={18} />
+                            <div className="flex flex-col">
+                              <span>{t('modal.postPrivacyPrivate')}</span>
+                              <span className="text-xs text-muted-foreground">{t('modal.postPrivacyPrivateDesc')}</span>
+                            </div>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="flex-1 overflow-y-auto px-6 py-4">
                 {/* Comment Input */}
                 <div className="mb-4">
                   <textarea
-                    placeholder="Viết gì đó về bài viết này..."
+                    placeholder="Bạn đang nghĩ gì?..."
                     value={repostComment}
                     onChange={(e) => setRepostComment(e.target.value)}
                     className={cn(
-                      "w-full min-h-[100px] p-3 rounded-xl",
-                      "bg-muted/50 border border-border/30",
-                      "text-sm text-foreground placeholder:text-muted-foreground",
-                      "outline-none transition-all duration-200 resize-none",
-                      "focus:bg-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                      "post-form-textarea post-form-textarea-modern",
+                      "w-full min-h-[120px] p-4",
+                      "text-foreground placeholder:text-muted-foreground/70",
+                      "transition-all duration-200"
                     )}
                     maxLength={500}
+                    rows={4}
                   />
-                  <div className="text-xs text-muted-foreground text-right mt-1">
+                  <div className="text-xs text-muted-foreground text-right mt-2">
                     {repostComment.length}/500
                   </div>
                 </div>
 
                 {/* Original Post Preview */}
                 <div className="mb-4">
-                  <div className="p-4 bg-muted/30 rounded-xl border border-border/30">
+                  <div className="p-4 bg-card rounded-xl border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]">
                     {loadingOriginalPreview && post.repostedFromId ? (
                       <div className="text-center py-4 text-muted-foreground text-sm">
                         {t('common.loading') || 'Đang tải...'}
@@ -986,30 +1126,18 @@ export default function ShareModal({ open, post, onClose, onShared, triggerRef }
               </div>
 
               {/* Footer */}
-              <div className="flex gap-2 justify-end px-4 py-3 border-t border-border/30 flex-shrink-0 bg-card/50">
+              <div className="post-form-footer post-form-footer-modern flex-shrink-0">
                 <button 
-                  className={cn(
-                    "px-5 py-2.5 rounded-lg text-sm font-medium",
-                    "cursor-pointer transition-all duration-200 border-none",
-                    "bg-transparent text-foreground",
-                    "hover:bg-muted/50",
-                    "active:scale-95",
-                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                  )}
+                  type="button"
+                  className="post-form-button post-form-button-cancel post-form-button-cancel-modern"
                   onClick={onClose} 
                   disabled={submitting}
                 >
                   Hủy
                 </button>
                 <button
-                  className={cn(
-                    "px-6 py-2.5 rounded-lg text-sm font-semibold",
-                    "cursor-pointer transition-all duration-200 border-none",
-                    "bg-primary text-primary-foreground",
-                    "hover:bg-primary/90 shadow-md",
-                    "active:scale-95",
-                    "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
-                  )}
+                  type="button"
+                  className="post-form-button post-form-button-submit post-form-button-submit-modern"
                   onClick={handleShareToWall}
                   disabled={submitting}
                 >

@@ -51,7 +51,7 @@ export const spacingLg = "gap-4";
 export const spacingXl = "gap-6";
 
 // ===== POST CARD SPECIFIC =====
-export const postCardBase = "bg-card text-card-foreground rounded-[1.25rem] shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5 mb-6 border border-border/50 relative overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:border-primary/30";
+export const postCardBase = "bg-card text-card-foreground rounded-[1.25rem] shadow-[0_2px_8px_rgba(0,0,0,0.06)] p-5 mb-6 border border-border/50 relative overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:border-primary/30";
 
 // ===== DROPDOWN MENU =====
 export const dropdownBase = "absolute bg-card text-foreground border border-[rgb(var(--border-darker))]/50 rounded-xl shadow-[0_12px_28px_rgba(0,0,0,0.15)] p-2 z-20 backdrop-saturate-180 backdrop-blur-xl";

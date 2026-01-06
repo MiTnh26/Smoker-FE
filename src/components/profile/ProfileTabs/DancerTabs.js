@@ -5,7 +5,7 @@ import { DollarSign } from 'lucide-react';
 import PostCard from '../../../modules/feeds/components/post/PostCard';
 import PerformerReviews from '../../../modules/business/components/PerformerReviews';
 import BarVideo from '../../../modules/bar/components/BarVideo';
-import { ProfileInfoSection } from '../ProfileInfoSection';
+import { ProfileInfoSection, ProfilePostsSection } from '../ProfileInfoSection';
 
 export const DancerTabs = ({ profile, posts, postsLoading, activeTab, performerTargetId, isOwnProfile, entityId, onEdit, onDelete, onImageClick }) => {
   const { t } = useTranslation();
@@ -51,6 +51,15 @@ export const DancerTabs = ({ profile, posts, postsLoading, activeTab, performerT
             </div>
           )}
           <ProfileInfoSection profile={profile} />
+          <ProfilePostsSection 
+            posts={posts}
+            postsLoading={postsLoading}
+            onImageClick={onImageClick}
+            onReport={null}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            isOwnProfile={isOwnProfile}
+          />
         </div>
       );
     case 'posts':
@@ -61,7 +70,7 @@ export const DancerTabs = ({ profile, posts, postsLoading, activeTab, performerT
               {t('common.loading')}
             </div>
           ) : posts && posts.length > 0 ? (
-            <div className={cn('space-y-4 -mx-4 md:-mx-6')}>
+            <div className={cn('flex flex-col gap-1.5 -mx-4 md:-mx-6')}>
               {posts.map(post => (
                 <PostCard key={post.id} post={post} isOwnProfile={isOwnProfile} onEdit={onEdit} onDelete={onDelete} onImageClick={onImageClick} />
               ))}
@@ -78,6 +87,79 @@ export const DancerTabs = ({ profile, posts, postsLoading, activeTab, performerT
           )}
         </div>
       );
+    case 'images': {
+      // Lọc tất cả ảnh từ posts có medias.images
+      const allImages = [];
+      (posts || []).forEach(post => {
+        if (post.medias?.images && post.medias.images.length > 0) {
+          post.medias.images.forEach(image => {
+            allImages.push({
+              ...image,
+              postId: post.id || post._id,
+              post: post
+            });
+          });
+        }
+      });
+
+      return (
+        <div className="flex flex-col gap-6">
+          {postsLoading ? (
+            <div className={cn('text-center py-12 text-muted-foreground')}>
+              {t('common.loading')}
+            </div>
+          ) : allImages && allImages.length > 0 ? (
+            <div className={cn('grid grid-cols-3 gap-0 -mx-4 md:-mx-6')}>
+              {allImages.map((image, idx) => (
+                <div
+                  key={`${image.postId}-${image.id || idx}`}
+                  className={cn(
+                    'relative aspect-square overflow-hidden cursor-pointer',
+                    'bg-card group rounded-lg',
+                    'border-[0.5px] border-border/20',
+                    'shadow-[0_1px_2px_rgba(0,0,0,0.05)]'
+                  )}
+                  onClick={() => {
+                    if (onImageClick) {
+                      onImageClick({
+                        imageUrl: image.url,
+                        postId: image.postId,
+                        mediaId: image.id || image._id,
+                        allImages: allImages.map(img => ({ url: img.url, _id: img.id || img._id })),
+                        currentIndex: idx
+                      });
+                    }
+                  }}
+                >
+                  <img
+                    src={image.url}
+                    alt=""
+                    className={cn(
+                      'w-full h-full object-cover transition-transform duration-200',
+                      'group-hover:scale-105'
+                    )}
+                    loading="lazy"
+                  />
+                  <div className={cn(
+                    'absolute inset-0 bg-black/0 group-hover:bg-black/10',
+                    'transition-colors duration-200'
+                  )} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div
+              className={cn(
+                'text-center py-12 text-muted-foreground',
+                'bg-card rounded-lg border-[0.5px] border-border/20 p-8'
+              )}
+            >
+              {t('publicProfile.noImages') || t('publicProfile.noPosts')}
+            </div>
+          )}
+        </div>
+      );
+    }
     case 'videos': {
       const videoPosts = (posts || []).filter((post) => {
         const hasVideoMedia = post.medias?.videos && post.medias.videos.length > 0;
@@ -91,7 +173,7 @@ export const DancerTabs = ({ profile, posts, postsLoading, activeTab, performerT
               {t('common.loading')}
             </div>
           ) : videoPosts && videoPosts.length > 0 ? (
-            <div className={cn('space-y-4 -mx-4 md:-mx-6')}>
+            <div className={cn('flex flex-col gap-1.5 -mx-4 md:-mx-6')}>
               {videoPosts.map(post => (
                 <PostCard key={post.id} post={post} isOwnProfile={isOwnProfile} onEdit={onEdit} onDelete={onDelete} onImageClick={onImageClick} />
               ))}

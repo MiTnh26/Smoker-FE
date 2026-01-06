@@ -58,3 +58,25 @@
     @apply transition-all duration-200;
   }
 }
+
+/* Dark mode: thêm text-shadow màu trắng cho chữ đen */
+[data-theme='dark'] *[style*="color: black"],
+[data-theme='dark'] *[style*="color: #000"],
+[data-theme='dark'] *[style*="color: rgb(0, 0, 0)"],
+[data-theme='dark'] *[style*="color: rgba(0, 0, 0"],
+[data-theme='dark'] .text-black,
+[data-theme='dark'] [class*="text-black"],
+[data-theme='dark'] [style*="color: rgb(var(--primary-foreground))"],
+[data-theme='dark'] [style*="color: rgb(var(--secondary-foreground))"] {
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.8),
+               0 0 4px rgba(255, 255, 255, 0.6),
+               0 0 6px rgba(255, 255, 255, 0.4);
+}
+
+/* Áp dụng text-shadow cho các phần tử dùng primary-foreground và secondary-foreground trong dark mode */
+[data-theme='dark'] [class*="text-primary-foreground"],
+[data-theme='dark'] [class*="text-secondary-foreground"] {
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.8),
+               0 0 4px rgba(255, 255, 255, 0.6),
+               0 0 6px rgba(255, 255, 255, 0.4);
+}

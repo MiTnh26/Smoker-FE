@@ -15,12 +15,17 @@ export default function useLivestreamChat({ channelName, user, isBroadcaster = f
 
   useEffect(() => {
     if (!socket || !channelName || !user?.id) return;
-    // Emit join với isBroadcaster flag
-    socket.emit("join-livestream", { channelName, userId: user.id, isBroadcaster });
+    // Emit join với isBroadcaster flag và entityAccountId
+    socket.emit("join-livestream", { 
+      channelName, 
+      userId: user.id, 
+      isBroadcaster,
+      entityAccountId: user?.entityAccountId || null
+    });
     return () => {
       socket.emit("leave-livestream", { channelName, userId: user.id });
     };
-  }, [socket, channelName, user?.id, isBroadcaster]);
+  }, [socket, channelName, user?.id, user?.entityAccountId, isBroadcaster]);
 
   useEffect(() => {
     if (!socket) return;
@@ -43,25 +48,61 @@ export default function useLivestreamChat({ channelName, user, isBroadcaster = f
         setIsEnded(true);
       }
     };
-    // Bỏ logic tăng/giảm ở FE - chỉ dùng count từ BE để đảm bảo chính xác
-    // const handleUserJoined = () => setViewerCount((prev) => prev + 1);
-    // const handleUserLeft = () => setViewerCount((prev) => Math.max(0, prev - 1));
+    // Handle user joined notification - hiển thị trong chat
+    const handleUserJoined = (data) => {
+      if (data.channelName && data.channelName !== channelName) return;
+      // Không hiển thị notification cho chính user đó
+      if (data.userId === user?.id || data.userId === user?.entityAccountId) return;
+      // Thêm notification message vào chat - thông báo hệ thống
+      setMessages((prev) => [...prev, {
+        type: 'system-notification',
+        message: `${data.userName || 'Người dùng'} đã tham gia`,
+        userName: 'Hệ thống',
+        timestamp: data.timestamp || new Date().toISOString(),
+      }]);
+    };
+    // Handle user left notification
+    const handleUserLeft = (data) => {
+      if (data.channelName && data.channelName !== channelName) return;
+      // Không hiển thị notification cho chính user đó
+      if (data.userId === user?.id || data.userId === user?.entityAccountId) return;
+      // Thêm notification message vào chat - thông báo hệ thống
+      setMessages((prev) => [...prev, {
+        type: 'system-notification',
+        message: `${data.userName || 'Người dùng'} đã rời đi`,
+        userName: 'Hệ thống',
+        timestamp: data.timestamp || new Date().toISOString(),
+      }]);
+    };
+    // Handle batch users joined notification
+    const handleBatchUsersJoined = (data) => {
+      if (data.channelName && data.channelName !== channelName) return;
+      // Thêm batch notification vào chat - thông báo hệ thống
+      setMessages((prev) => [...prev, {
+        type: 'system-notification',
+        message: `${data.count} người đã tham gia`,
+        count: data.count,
+        userName: 'Hệ thống',
+        timestamp: new Date().toISOString(),
+      }]);
+    };
 
     socket.on("new-chat-message", handleNewMessage);
     socket.on("new-reaction", handleReaction);
     socket.on("viewer-count-updated", handleViewerCount);
     socket.on("livestream-ended", handleLivestreamEnded);
-    // Bỏ các event user-joined/user-left - chỉ dùng viewer-count-updated từ BE
-    // socket.on("user-joined", handleUserJoined);
-    // socket.on("user-left", handleUserLeft);
+    socket.on("user-joined", handleUserJoined);
+    socket.on("user-left", handleUserLeft);
+    socket.on("batch-users-joined", handleBatchUsersJoined);
 
     return () => {
       socket.off("new-chat-message", handleNewMessage);
       socket.off("new-reaction", handleReaction);
       socket.off("viewer-count-updated", handleViewerCount);
       socket.off("livestream-ended", handleLivestreamEnded);
-      // socket.off("user-joined", handleUserJoined);
-      // socket.off("user-left", handleUserLeft);
+      socket.off("user-joined", handleUserJoined);
+      socket.off("user-left", handleUserLeft);
+      socket.off("batch-users-joined", handleBatchUsersJoined);
     };
   }, [socket, channelName]);
 

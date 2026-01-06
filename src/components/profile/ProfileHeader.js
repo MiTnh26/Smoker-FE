@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Camera } from "lucide-react";
 import { cn } from "../../utils/cn";
@@ -17,7 +17,7 @@ export const ProfileHeader = ({
   role,
   children, // Action buttons (top right)
   requestBookingButton, // Request booking button (bottom right)
-  defaultBackground = "https://i.imgur.com/6IUbEMn.jpg",
+  defaultBackground = "/13.png",
   defaultAvatar = null, // Sẽ dùng getAvatarUrl
   isOwnProfile = false, // Cho phép thay ảnh bìa và avatar
   onAvatarChange, // Callback khi avatar thay đổi
@@ -29,6 +29,18 @@ export const ProfileHeader = ({
   const backgroundInputRef = useRef(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingBackground, setUploadingBackground] = useState(false);
+  const [backgroundError, setBackgroundError] = useState(false);
+  const [backgroundUrl, setBackgroundUrl] = useState(background || defaultBackground);
+
+  // Reset background error khi background thay đổi
+  useEffect(() => {
+    if (background) {
+      setBackgroundError(false);
+      setBackgroundUrl(background);
+    } else {
+      setBackgroundUrl(defaultBackground);
+    }
+  }, [background, defaultBackground]);
 
   const { upload: uploadAvatar } = useImageUpload({
     endpoint: '/posts/upload',
@@ -112,10 +124,26 @@ export const ProfileHeader = ({
     <section 
       className={cn("relative w-full h-[200px] md:h-[250px] overflow-hidden rounded-b-lg")}
     >
+      {/* Hidden img để detect lỗi load image trước khi set background */}
+      {background && !backgroundError && (
+        <img
+          src={background}
+          alt=""
+          className="hidden"
+          onError={() => {
+            setBackgroundError(true);
+            setBackgroundUrl(defaultBackground);
+          }}
+          onLoad={() => {
+            setBackgroundError(false);
+            setBackgroundUrl(background);
+          }}
+        />
+      )}
       <div
         className={cn("absolute inset-0 bg-cover bg-center transition-opacity duration-200", uploadingBackground && "opacity-50")}
         style={{
-          backgroundImage: `url(${background || defaultBackground})`,
+          backgroundImage: `url(${backgroundUrl})`,
         }}
       />
       {/* Gradient Overlay */}
@@ -226,9 +254,23 @@ export const ProfileHeader = ({
             </h1>
             <div className={cn(
               "text-xs md:text-sm text-primary-foreground/90",
-              "drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
+              "drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]",
+              "font-semibold tracking-wide uppercase",
+              "font-inter"
             )}>
-              {role || "USER"}
+              {(() => {
+                const roleUpper = (role || "USER").toString().toUpperCase();
+                if (roleUpper === "CUSTOMER" || roleUpper === "USER") {
+                  return t("common.role.customer") || "Người Dùng";
+                } else if (roleUpper === "BAR") {
+                  return t("common.role.bar") || "Quán Bar";
+                } else if (roleUpper === "DANCER") {
+                  return t("common.role.dancer") || "Dancer";
+                } else if (roleUpper === "DJ") {
+                  return t("common.role.dj") || "DJ";
+                }
+                return role || "USER";
+              })()}
             </div>
           </div>
         </div>

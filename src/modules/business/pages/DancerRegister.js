@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import businessApi from "../../../api/businessApi";
 import { userApi } from "../../../api/userApi";
-import AddressSelector from "../../../components/common/AddressSelector";
 import { fetchAllEntities } from "../../../utils/sessionHelper";
 import "../../../styles/modules/businessRegister.css";
 import ProfilePreviewCard from "../components/ProfilePreviewCard";
+import DancerRegisterStep1 from "../components/DancerRegisterStep1";
 
 export default function DancerRegister() {
   const navigate = useNavigate();
@@ -196,72 +196,70 @@ export default function DancerRegister() {
   }
 
   return (
-    <div className="business-register-container">
-      <h2>Đăng ký Dancer</h2>
+    <div className="min-h-screen bg-[#F0F2F5] py-8">
+      <div className="max-w-3xl mx-auto px-4">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-foreground mb-2">Đăng ký Dancer</h2>
+          <p className="text-sm text-muted-foreground">Hoàn thành các bước sau để tạo trang Dancer của bạn</p>
+        </div>
 
-      {step === 1 && (
-        <form onSubmit={goNextStep} className="business-register-form">
-          <div className="form-group">
-            <label>Tên Dancer</label>
-            <input type="text" name="userName" value={info.userName} onChange={handleInfoChange} required />
+        {/* Progress Indicator */}
+        <div className="flex items-center justify-center mb-8">
+          <div className="flex items-center gap-4">
+            {/* Step 1 */}
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold">
+                1
+              </div>
+              <span className="text-sm font-medium text-foreground mt-2">Thông tin</span>
+            </div>
+            
+            {/* Connector Line */}
+            <div className="w-24 h-0.5 bg-border relative">
+              <div className={`absolute inset-0 h-full transition-all duration-300 ${step >= 2 ? 'bg-primary' : 'bg-border'}`} />
+            </div>
+            
+            {/* Step 2 */}
+            <div className="flex flex-col items-center">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                step >= 2 
+                  ? 'bg-primary text-primary-foreground' 
+                  : 'bg-muted text-muted-foreground'
+              }`}>
+                2
+              </div>
+              <span className={`text-sm mt-2 ${step >= 2 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                Hình ảnh
+              </span>
+            </div>
           </div>
+        </div>
 
-          <div className="form-group">
-            <label>Giới tính</label>
-            <select name="gender" value={info.gender} onChange={handleInfoChange}>
-              <option value="">-- Chọn giới tính --</option>
-              <option value="Nam">Nam</option>
-              <option value="Nữ">Nữ</option>
-              <option value="Khác">Khác</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>Địa chỉ</label>
-            <AddressSelector
-              selectedProvinceId={selectedProvinceId}
-              selectedDistrictId={selectedDistrictId}
-              selectedWardId={selectedWardId}
-              addressDetail={addressDetail}
-              onProvinceChange={(id) => {
-                setSelectedProvinceId(id);
-                setSelectedDistrictId('');
-                setSelectedWardId('');
-              }}
-              onDistrictChange={(id) => {
-                setSelectedDistrictId(id);
-                setSelectedWardId('');
-              }}
-              onWardChange={setSelectedWardId}
-              onAddressDetailChange={setAddressDetail}
-              onAddressChange={(fullAddr) => {
-                setInfo(prev => ({ ...prev, address: fullAddr }));
-              }}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Số điện thoại</label>
-            <input type="text" name="phone" value={info.phone} onChange={handleInfoChange} />
-          </div>
-
-          <div className="form-group">
-            <label>Giới thiệu bản thân</label>
-            <textarea name="bio" value={info.bio} onChange={handleInfoChange} rows={3} />
-          </div>
-
-          <div className="form-group">
-            <label>Giá thuê theo giờ (đồng)</label>
-            <input type="number" name="pricePerHours" value={info.pricePerHours} onChange={handleInfoChange} />
-          </div>
-
-          <div className="form-group">
-            <label>Giá thuê theo buổi (đồng)</label>
-            <input type="number" name="pricePerSession" value={info.pricePerSession} onChange={handleInfoChange} />
-          </div>
-
-          <button type="submit" className="business-register-btn">Tiếp tục</button>
-        </form>
+        {step === 1 && (
+        <DancerRegisterStep1
+          info={info}
+          handleInfoChange={handleInfoChange}
+          goNextStep={goNextStep}
+          selectedProvinceId={selectedProvinceId}
+          selectedDistrictId={selectedDistrictId}
+          selectedWardId={selectedWardId}
+          addressDetail={addressDetail}
+          onProvinceChange={(id) => {
+            setSelectedProvinceId(id);
+            setSelectedDistrictId('');
+            setSelectedWardId('');
+          }}
+          onDistrictChange={(id) => {
+            setSelectedDistrictId(id);
+            setSelectedWardId('');
+          }}
+          onWardChange={setSelectedWardId}
+          onAddressDetailChange={setAddressDetail}
+          onAddressChange={(fullAddr) => {
+            setInfo(prev => ({ ...prev, address: fullAddr }));
+          }}
+        />
       )}
 
       {step === 2 && (
@@ -315,7 +313,7 @@ export default function DancerRegister() {
         </div>
       )}
 
-      {message && !isSuccess && <p className="business-register-message">{message}</p>}
+      </div>
     </div>
   );
 }

@@ -46,7 +46,7 @@ export default function TrashModal({ open, posts, loading, onClose, onRestore, o
   return (
     <div 
       className={cn(
-        "fixed inset-0 bg-black/75 backdrop-blur-xl z-[1000]",
+        "fixed inset-0 bg-black/50 backdrop-blur-sm z-[1000]",
         "flex items-center justify-center p-4"
       )}
       role="dialog"

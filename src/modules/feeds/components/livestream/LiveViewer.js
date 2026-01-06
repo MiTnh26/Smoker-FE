@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import { MessageCircle, Send, X } from "lucide-react";
+import { MessageCircle, Send, X, Wrench } from "lucide-react";
 import livestreamApi from "../../../../api/livestreamApi";
 import { cn } from "../../../../utils/cn";
 import useAgoraClient from "./hooks/useAgoraClient";
@@ -18,9 +18,17 @@ export default function LiveViewer({ livestream, onClose }) {
   const [countdown, setCountdown] = useState(10);
 
   const sessionUser = useMemo(() => getSessionUser(), []);
+  // Kiểm tra xem user hiện tại có phải là broadcaster không
+  const isBroadcaster = useMemo(() => {
+    if (!sessionUser || !livestream) return false;
+    return livestream.hostAccountId === sessionUser.id || 
+           livestream.hostEntityAccountId === sessionUser.entityAccountId;
+  }, [sessionUser, livestream]);
+  
   const { messages, viewerCount, sendMessage, isEnded } = useLivestreamChat({
     channelName: livestream.agoraChannelName,
     user: sessionUser,
+    isBroadcaster: isBroadcaster,
   });
 
   const { client, joinChannel, leaveChannel } = useAgoraClient({ mode: "viewer" });
@@ -34,7 +42,22 @@ export default function LiveViewer({ livestream, onClose }) {
         if (mediaType === "video") {
           remoteTracksRef.current.video = remoteTrack;
           if (videoRef.current) {
-            remoteTrack.play(videoRef.current);
+            // Đảm bảo video element sẵn sàng
+            if (videoRef.current.tagName === 'VIDEO') {
+              remoteTrack.play(videoRef.current);
+            } else {
+              // Nếu là div, tạo video element mới
+              const videoElement = document.createElement('video');
+              videoElement.className = 'w-full h-full bg-black';
+              videoElement.style.objectFit = 'contain';
+              videoElement.autoplay = true;
+              videoElement.playsInline = true;
+              if (videoRef.current.parentNode) {
+                videoRef.current.parentNode.replaceChild(videoElement, videoRef.current);
+                videoRef.current = videoElement;
+              }
+              remoteTrack.play(videoElement);
+            }
           }
         }
         if (mediaType === "audio") {
@@ -97,7 +120,14 @@ export default function LiveViewer({ livestream, onClose }) {
           "user-unpublished": handleUserUnpublished,
         },
       });
-      await livestreamApi.incrementViewCount(livestream.livestreamId);
+      // Chỉ tăng view count nếu không phải broadcaster
+      // Kiểm tra xem user hiện tại có phải là broadcaster không
+      const currentUserId = sessionUser?.id;
+      const isBroadcaster = livestream.hostAccountId === currentUserId || 
+                           livestream.hostEntityAccountId === sessionUser?.entityAccountId;
+      if (!isBroadcaster) {
+        await livestreamApi.incrementViewCount(livestream.livestreamId);
+      }
       setIsConnecting(false);
     } catch (err) {
       console.error("[LiveViewer] join error:", err);
@@ -165,74 +195,86 @@ export default function LiveViewer({ livestream, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/90 px-4 py-8">
-      <div className="relative flex w-full max-w-6xl flex-col gap-4 rounded-3xl border border-border/40 bg-card/95 p-4 shadow-2xl md:flex-row">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgb(var(--background))' }}>
+      <div className="relative flex w-full h-full flex-col gap-0 md:flex-row" style={{ backgroundColor: 'rgb(var(--background))' }}>
         <button
           onClick={handleClose}
           className={cn(
             "absolute right-4 top-4 z-50",
-            "rounded-full bg-card/90 backdrop-blur-sm",
-            "border-2 border-border/60",
-            "p-2.5 text-foreground",
-            "shadow-lg shadow-black/20",
-            "transition-all duration-200",
-            "hover:bg-card hover:border-border",
-            "hover:scale-110 hover:shadow-xl",
-            "active:scale-95"
+            "rounded-full backdrop-blur-md",
+            "p-2.5 transition-all duration-200",
+            "hover:scale-110 active:scale-95",
+            "border border-border/30",
+            "bg-card/80 text-foreground/80",
+            "hover:bg-card hover:text-foreground",
+            "shadow-lg"
           )}
           aria-label="Đóng livestream"
         >
           <X className="h-5 w-5" />
         </button>
 
-        <div className="relative flex-1 rounded-2xl bg-black/80 self-start">
-          <div ref={videoRef} className="aspect-video w-full rounded-2xl bg-black/80" />
+        <div className="relative flex-1 self-start flex items-center justify-center" style={{ backgroundColor: 'rgb(var(--background))' }}>
+          <video 
+            ref={videoRef} 
+            className="w-full h-full min-h-[100vh] md:min-h-[calc(100vh-0px)]" 
+            style={{ objectFit: 'contain', backgroundColor: 'rgb(var(--background))' }}
+            autoPlay
+            playsInline
+          />
           {isConnecting && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-black/70 text-primary-foreground">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 backdrop-blur-md rounded-lg" style={{ backgroundColor: 'rgba(var(--overlay))' }}>
               <div className="h-12 w-12 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p>Đang kết nối...</p>
+              <p className="text-foreground font-medium">Đang kết nối...</p>
             </div>
           )}
           {error && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-danger/20 text-danger">
-              <p>{error}</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 backdrop-blur-md rounded-lg" style={{ backgroundColor: 'rgba(var(--overlay))' }}>
+              <p className="text-destructive font-medium">{error}</p>
             </div>
           )}
           {isEnded && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-black/80 backdrop-blur-sm">
-              <div className="rounded-full bg-muted/90 p-4 mb-2">
-                <X className="h-12 w-12 text-muted-foreground" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 backdrop-blur-md rounded-lg" style={{ backgroundColor: 'rgba(var(--overlay))' }}>
+              <div className="rounded-full p-4 mb-2 border border-border/30" style={{ backgroundColor: 'rgb(var(--card))' }}>
+                <X className="h-12 w-12 text-foreground" />
               </div>
-              <p className="text-xl font-semibold text-primary-foreground">Phiên live đã kết thúc</p>
+              <p className="text-xl font-semibold text-foreground">Phiên live đã kết thúc</p>
               <p className="text-sm text-muted-foreground">Người phát đã kết thúc livestream này</p>
               {countdown > 0 && (
                 <p className="text-sm text-muted-foreground mt-2">
-                  Tự động đóng sau <span className="font-semibold text-primary-foreground">{countdown}</span> giây
+                  Tự động đóng sau <span className="font-semibold text-foreground">{countdown}</span> giây
                 </p>
               )}
             </div>
           )}
 
           {!isEnded && (
-          <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-danger px-3 py-1 text-xs font-semibold text-primary-foreground shadow-lg shadow-danger/40">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-primary-foreground" />
+          <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md border border-danger/30" style={{ backgroundColor: 'rgb(var(--danger))' }}>
+            <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
             <span>LIVE</span>
           </div>
           )}
 
-          <div className="absolute left-4 bottom-4 rounded-xl bg-black/60 px-4 py-2 text-sm text-white backdrop-blur">
-            <p className="text-base font-semibold">{livestream.title}</p>
-            <p className="text-xs text-white/80">
-              {viewerCount} người đang xem · {livestream.description}
+          <div className="absolute left-4 bottom-4 rounded-xl px-4 py-2.5 text-sm backdrop-blur-md border border-border/30 shadow-lg" style={{ backgroundColor: 'rgb(var(--card))' }}>
+            <p className="text-base font-semibold mb-1 text-foreground">{livestream.title}</p>
+            <p className="text-xs text-muted-foreground">
+              {viewerCount} người đang xem {livestream.description && `· ${livestream.description}`}
             </p>
           </div>
 
           <div className="absolute right-4 bottom-4 flex gap-2">
             <button
               className={cn(
-                "rounded-full bg-white/20 p-2 text-white backdrop-blur transition hover:bg-white/40",
-                showChat && "bg-white/40"
+                "rounded-full p-3 backdrop-blur-md transition-all duration-200",
+                "border border-border/30 shadow-lg",
+                "hover:scale-110 active:scale-95",
+                showChat 
+                  ? "text-white" 
+                  : "text-foreground/80 hover:text-foreground"
               )}
+              style={{ 
+                backgroundColor: showChat ? 'rgb(var(--primary))' : 'rgb(var(--card))'
+              }}
               onClick={() => setShowChat((prev) => !prev)}
               aria-label="Toggle chat"
             >
@@ -242,60 +284,94 @@ export default function LiveViewer({ livestream, onClose }) {
         </div>
 
         {showChat && (
-          <div className="flex w-full max-w-sm flex-col rounded-2xl border border-border/60 bg-card/80 p-4 backdrop-blur md:w-80 self-start md:h-[calc((100vw-8rem-2rem)*9/16)] md:max-h-[600px]">
-            <div className="mb-3 flex items-center justify-between flex-shrink-0">
+          <div className="flex w-full md:w-96 flex-col md:h-full md:max-h-screen border-l backdrop-blur-md shadow-2xl" style={{ backgroundColor: 'rgb(var(--card))', borderColor: 'rgb(var(--border))' }}>
+            <div className="mb-3 flex items-center justify-between flex-shrink-0 px-4 pt-4 pb-2 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
               <div className="flex items-center gap-2 text-foreground">
-                <MessageCircle className="h-4 w-4" />
-                <span className="text-sm font-semibold uppercase tracking-wide">Bình luận</span>
+                <MessageCircle className="h-4 w-4" style={{ color: 'rgb(var(--primary))' }} />
+                <span className="text-sm font-semibold">Bình luận</span>
               </div>
               <span className="text-xs text-muted-foreground">{viewerCount} người xem</span>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 space-y-2 py-2">
               {messages.length === 0 && (
-                <p className="text-center text-sm text-muted-foreground">Hãy là người đầu tiên bình luận!</p>
+                <p className="text-center text-sm text-muted-foreground py-8">Hãy là người đầu tiên bình luận!</p>
               )}
-              {messages.map((msg, idx) => (
-                <div key={`${msg.userId}-${idx}`} className="flex items-start gap-3 rounded-xl bg-muted/30 p-2">
-                  {msg.userAvatar ? (
-                    <img
-                      src={msg.userAvatar}
-                      alt={msg.userName || "User"}
-                      className="h-8 w-8 rounded-full object-cover border border-border/30"
-                      onError={(e) => {
-                        // Fallback to initial if image fails to load
-                        e.target.style.display = "none";
-                        e.target.nextSibling.style.display = "flex";
-                      }}
-                    />
-                  ) : null}
-                  <div
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary",
-                      msg.userAvatar && "hidden"
-                    )}
-                  >
-                    {msg.userName?.[0] || "U"}
+              {messages.map((msg, idx) => {
+                // System notification messages (user joined/left) - thông báo hệ thống với icon cờ lê
+                if (msg.type === 'system-notification' || msg.type === 'notification' || msg.type === 'batch-notification') {
+                  return (
+                    <div key={`notification-${idx}`} className="flex items-start gap-2.5 py-1.5">
+                      {/* Icon cờ lê cho thông báo hệ thống */}
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full border flex items-center justify-center" style={{ backgroundColor: 'rgb(var(--muted))', borderColor: 'rgb(var(--border))' }}>
+                        <Wrench className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground mb-0.5">Hệ thống</p>
+                        <p className="text-sm text-muted-foreground break-words">{msg.message}</p>
+                      </div>
+                    </div>
+                  );
+                }
+                // Regular chat messages
+                return (
+                  <div key={`${msg.userId}-${idx}`} className="flex items-start gap-2.5 py-1.5 rounded-lg px-2 hover:bg-muted/30 transition-colors">
+                    {msg.userAvatar ? (
+                      <img
+                        src={msg.userAvatar}
+                        alt={msg.userName || "User"}
+                        className="h-8 w-8 rounded-full object-cover border flex-shrink-0"
+                        style={{ borderColor: 'rgb(var(--border))' }}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                          e.target.nextSibling.style.display = "flex";
+                        }}
+                      />
+                    ) : null}
+                    <div
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold flex-shrink-0 border",
+                        msg.userAvatar && "hidden"
+                      )}
+                      style={{ backgroundColor: 'rgb(var(--primary))', color: 'rgb(var(--primary-foreground))', borderColor: 'rgb(var(--primary))' }}
+                    >
+                      {msg.userName?.[0]?.toUpperCase() || "U"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground mb-0.5">{msg.userName || "User"}</p>
+                      <p className="text-sm text-muted-foreground break-words">{msg.message}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground">{msg.userName || "User"}</p>
-                    <p className="text-sm text-muted-foreground">{msg.message}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {/* Invisible element để scroll xuống */}
               <div ref={messagesEndRef} />
             </div>
-            <div className="mt-3 flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-2 flex-shrink-0">
+            <div className="mt-2 flex items-center gap-2 px-4 pb-4 flex-shrink-0 border-t pt-3" style={{ borderColor: 'rgb(var(--border))' }}>
               <input
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                 placeholder="Nhập bình luận..."
-                className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                className="flex-1 text-sm rounded-full px-4 py-2.5 focus:outline-none transition-all duration-200 border"
+                style={{ 
+                  backgroundColor: 'rgb(var(--muted))',
+                  color: 'rgb(var(--foreground))',
+                  borderColor: 'rgb(var(--border))',
+                  '--tw-placeholder-opacity': '0.5'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = 'rgb(var(--primary))';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(var(--primary), 0.2)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'rgb(var(--border))';
+                  e.target.style.boxShadow = 'none';
+                }}
               />
               <button
                 onClick={handleSendMessage}
-                className="rounded-full bg-primary/90 p-2 text-white shadow-lg shadow-primary/30 transition hover:bg-primary"
+                className="rounded-full p-2.5 text-white transition-all duration-200 hover:scale-110 active:scale-95 flex-shrink-0 shadow-lg"
+                style={{ backgroundColor: 'rgb(var(--primary))' }}
               >
                 <Send className="h-4 w-4" />
               </button>
