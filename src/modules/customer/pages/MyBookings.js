@@ -171,6 +171,23 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
   };
 
   const getStatusConfig = (scheduleStatus, paymentStatus) => {
+    // Ưu tiên check Canceled/Rejected trước (bất kể payment status)
+    if (scheduleStatus === "Canceled") {
+      return { 
+        label: "Đã hủy", 
+        color: "#6b7280", 
+        bg: "rgba(107, 114, 128, 0.1)" 
+      };
+    }
+    
+    if (scheduleStatus === "Rejected") {
+      return { 
+        label: "Từ chối", 
+        color: "rgb(var(--danger))", 
+        bg: "rgba(var(--danger), 0.1)" 
+      };
+    }
+
     // Nếu chưa thanh toán → hiển thị "Chưa thanh toán"
     if (paymentStatus !== "Paid" && paymentStatus !== "Done") {
       return { 
@@ -187,7 +204,7 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
       Arrived: { label: "Đã tới quán", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)" },
       Ended: { label: "Kết thúc", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)" },
       Completed: { label: "Hoàn thành", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)" },
-      Canceled: { label: "Đã hủy", color: "rgb(var(--danger))", bg: "rgba(var(--danger), 0.1)" },
+      Canceled: { label: "Đã hủy", color: "#6b7280", bg: "rgba(107, 114, 128, 0.1)" },
       Rejected: { label: "Từ chối", color: "rgb(var(--danger))", bg: "rgba(var(--danger), 0.1)" },
     };
     return configs[scheduleStatus] || configs.Pending;
