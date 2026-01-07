@@ -1,7 +1,6 @@
 import PropTypes from "prop-types";
 import React, { useState, useEffect } from "react";
 import { Star, MapPin, Music } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { cn } from "../../../utils/cn";
 import { locationApi } from "../../../api/locationApi";
 
@@ -11,13 +10,6 @@ const skeletonItems = ["one", "two", "three", "four", "five", "six"];
 export function FeaturedVenues({ venues = [], loading = false, error = null }) {
   const [hoveredId, setHoveredId] = useState(null);
   const [formattedAddresses, setFormattedAddresses] = useState({});
-  const navigate = useNavigate();
-
-  const handleVenueClick = (venue) => {
-    if (venue?.barPageId) {
-      navigate(`/bar/${venue.barPageId}`);
-    }
-  };
 
   // Fetch address names from IDs
   const fetchAddressFromIds = async (addressObj) => {
@@ -176,15 +168,13 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
           "bg-card text-card-foreground rounded-lg",
           "border-[0.5px] border-border/20",
           "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
-          "overflow-hidden cursor-pointer",
+          "overflow-hidden",
           "transition-all duration-200",
           "hover:border-border/30",
-          "hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
-          "active:scale-[0.98]"
+          "hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
         )}
         onMouseEnter={() => setHoveredId(String(key))}
         onMouseLeave={() => setHoveredId(null)}
-        onClick={() => handleVenueClick(venue)}
       >
         <div className="relative w-full h-48 md:h-56 overflow-hidden">
           <img

@@ -22,7 +22,8 @@ import {
   Megaphone,
   AlertCircle,
   FileText,
-  Wallet
+  Wallet,
+  Ticket
 } from "lucide-react";
 
 /**
@@ -58,6 +59,7 @@ export const sidebarConfig = {
   bar: [
     { label: "Newsfeed", icon: Home, path: "/bar/newsfeed" },
     { label: "Dashboard", icon: BarChart3, path: "/bar/dashboard" },
+    { label: "Quản lý đặt bàn", icon: ClipboardList, path: "/bar/bookings" },
     { label: "Sự kiện", icon: Calendar, path: "/bar/events" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/bar/messages" },
     { label: "Ví của tôi", icon: Wallet, path: "/wallet" },
@@ -73,7 +75,6 @@ export const sidebarConfig = {
       subMenu: [
         { label: "Quản lý loại bàn", path: "/bar/settings/:barPageId/table-types" },
         { label: "Quản lý bàn", path: "/bar/settings/:barPageId" },
-        { label: "Quản lý voucher", path: "/bar/settings/:barPageId/vouchers" },
         { label: "Quản lý combo", path: "/bar/settings/:barPageId/combos" },
       ],
     },
@@ -106,6 +107,7 @@ export const sidebarConfig = {
     { label: "Dashboard", icon: BarChart3, path: "/admin/dashboard" },
     { label: "Quản lý người dùng", icon: Users, path: "/admin/users" },
     { label: "Quản lý duyệt", icon: ClipboardCheck, path: "/admin/approvals" },
+    { label: "Quản lý voucher", icon: Ticket, path: "/admin/vouchers" },
     { label: "Thư viện nhạc", icon: Music2, path: "/admin/music" },
     { label: "Gói quảng cáo", icon: Package, path: "/admin/ad-packages" },
     { label: "Duyệt QC Event", icon: CheckCircle2, path: "/admin/event-ad-approvals" },

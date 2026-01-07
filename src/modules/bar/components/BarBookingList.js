@@ -4,16 +4,33 @@ import { cn } from '../../../utils/cn';
 import bookingApi from '../../../api/bookingApi';
 import barPageApi from '../../../api/barPageApi';
 import barTableApi from '../../../api/barTableApi';
+import QRScanner from '../../../components/common/QRScanner';
 
 export default function BarBookingList({ barPageId, isOwnProfile }) {
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'confirmed'
   const [bookings, setBookings] = useState([]);
+  const [confirmedBookings, setConfirmedBookings] = useState([]);
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [receiverId, setReceiverId] = useState(null);
   const [updatingBooking, setUpdatingBooking] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+
+  // Status configuration
+  const getStatusConfig = (status) => {
+    const configs = {
+      Pending: { label: "Chờ xác nhận", color: "rgb(var(--warning))", bg: "rgba(var(--warning), 0.1)" },
+      Confirmed: { label: "Đã xác nhận", color: "rgb(var(--success))", bg: "rgba(var(--success), 0.1)" },
+      Completed: { label: "Hoàn thành", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)" },
+      Canceled: { label: "Đã hủy", color: "rgb(var(--danger))", bg: "rgba(var(--danger), 0.1)" },
+      Rejected: { label: "Từ chối", color: "rgb(var(--danger))", bg: "rgba(var(--danger), 0.1)" },
+      Ended: { label: "Đã kết thúc", color: "rgb(var(--muted-foreground))", bg: "rgba(var(--muted-foreground), 0.1)" },
+    };
+    return configs[status] || configs.Pending;
+  };
 
   // Fetch receiverId from barPageId
   useEffect(() => {
@@ -124,9 +141,39 @@ export default function BarBookingList({ barPageId, isOwnProfile }) {
     }
   }, [receiverId, selectedDate, fetchBookingsForDate]);
 
+  // Fetch confirmed bookings
+  const fetchConfirmedBookings = useCallback(async () => {
+    if (!barPageId) return;
+
+    try {
+      const response = await bookingApi.getConfirmedBookings(barPageId);
+      if (response.data?.success) {
+        setConfirmedBookings(response.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching confirmed bookings:', err);
+    }
+  }, [barPageId]);
+
+  // QR Scanner handlers
+  const handleQRScanSuccess = (scanResult) => {
+    console.log('QR Scan successful:', scanResult);
+    // Refresh confirmed bookings list
+    fetchConfirmedBookings();
+    // Close scanner
+    setQrScannerOpen(false);
+  };
+
+  const handleQRScanError = (error) => {
+    console.error('QR Scan error:', error);
+  };
+
   useEffect(() => {
     if (receiverId) {
       fetchBookings();
+    }
+    if (barPageId) {
+      fetchConfirmedBookings();
     }
   }, [receiverId, selectedDate, fetchBookings]);
 
@@ -174,11 +221,53 @@ export default function BarBookingList({ barPageId, isOwnProfile }) {
 
   return (
     <div className={cn('flex flex-col gap-6')}>
-      <div className={cn('bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]')}>
-        <div className={cn('mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4')}>
-          <h2 className={cn('text-xl font-bold')}>
-            Danh sách đặt bàn ({bookings.length})
-          </h2>
+      {/* Tabs */}
+      <div className={cn('bg-card rounded-lg p-4 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]')}>
+        <div className={cn('flex items-center gap-4 mb-4')}>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={cn(
+              'px-4 py-2 rounded-lg font-semibold transition-colors',
+              activeTab === 'pending'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            )}
+          >
+            Chờ xác nhận ({bookings.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('confirmed')}
+            className={cn(
+              'px-4 py-2 rounded-lg font-semibold transition-colors',
+              activeTab === 'confirmed'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            )}
+          >
+            Đã xác nhận ({confirmedBookings.length})
+          </button>
+          {activeTab === 'confirmed' && (
+            <button
+              onClick={() => setQrScannerOpen(true)}
+              className={cn(
+                'ml-auto px-4 py-2 rounded-lg font-semibold',
+                'bg-success text-success-foreground hover:bg-success/90',
+                'transition-colors'
+              )}
+            >
+              📱 Quét QR
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Pending Bookings Tab */}
+      {activeTab === 'pending' && (
+        <div className={cn('bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]')}>
+          <div className={cn('mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4')}>
+            <h2 className={cn('text-xl font-bold')}>
+              Danh sách đặt bàn chờ xác nhận ({bookings.length})
+            </h2>
           
           {/* Date filter */}
           <div className={cn('flex items-center gap-2')}>
@@ -360,6 +449,101 @@ export default function BarBookingList({ barPageId, isOwnProfile }) {
           </div>
         )}
       </div>
+      )}
+
+      {/* Confirmed Bookings Tab */}
+      {activeTab === 'confirmed' && (
+        <div className={cn('bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]')}>
+          <div className={cn('mb-4')}>
+            <h2 className={cn('text-xl font-bold')}>
+              Danh sách đặt bàn đã xác nhận ({confirmedBookings.length})
+            </h2>
+          </div>
+
+          {confirmedBookings.length === 0 ? (
+            <div className={cn(
+              'text-center py-12 text-muted-foreground',
+              'bg-muted/30 rounded-lg border border-border/20 p-8'
+            )}>
+              <div className="text-4xl mb-4">📋</div>
+              <p className="text-lg font-semibold mb-2">Chưa có booking nào được xác nhận</p>
+              <p className="text-sm">Sử dụng nút "Quét QR" để xác nhận khách hàng đến quán</p>
+            </div>
+          ) : (
+            <div className={cn('space-y-4')}>
+              {confirmedBookings.map((booking) => {
+                const bookingDetails = booking;
+                const statusConfig = getStatusConfig(booking.scheduleStatus || booking.ScheduleStatus);
+
+                return (
+                  <div key={booking.BookedScheduleId} className={cn(
+                    'p-4 rounded-lg border border-border/20',
+                    'bg-card hover:bg-muted/30 transition-colors'
+                  )}>
+                    <div className={cn('flex items-start justify-between gap-4')}>
+                      <div className={cn('flex-1')}>
+                        <div className={cn('flex items-center gap-2 mb-2')}>
+                          <h3 className={cn('font-semibold text-lg')}>
+                            {bookingDetails.ComboName || 'Combo đặt bàn'}
+                          </h3>
+                          <span
+                            className={cn(
+                              "px-2 py-1 rounded-full text-xs font-semibold",
+                              "border"
+                            )}
+                            style={{
+                              color: statusConfig.color,
+                              backgroundColor: statusConfig.bg,
+                              borderColor: statusConfig.color
+                            }}
+                          >
+                            {statusConfig.label}
+                          </span>
+                        </div>
+
+                        <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground mb-3')}>
+                          <div className={cn('flex items-center gap-2')}>
+                            <span>👤</span>
+                            <span>{bookingDetails.BookerName || 'N/A'}</span>
+                          </div>
+                          <div className={cn('flex items-center gap-2')}>
+                            <span>💰</span>
+                            <span>{bookingDetails.TotalAmount?.toLocaleString('vi-VN')} đ</span>
+                          </div>
+                          <div className={cn('flex items-center gap-2')}>
+                            <span>📅</span>
+                            <span>{new Date(bookingDetails.BookingDate).toLocaleDateString('vi-VN')}</span>
+                          </div>
+                          <div className={cn('flex items-center gap-2')}>
+                            <span>✅</span>
+                            <span>Đã xác nhận lúc {new Date(bookingDetails.ConfirmedAt).toLocaleTimeString('vi-VN')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* QR Scanner Modal */}
+      {qrScannerOpen && (
+        <div className={cn(
+          'fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4'
+        )}>
+          <div className={cn('bg-card rounded-xl shadow-2xl max-w-md w-full')}>
+            <QRScanner
+              onScanSuccess={handleQRScanSuccess}
+              onScanError={handleQRScanError}
+              onClose={() => setQrScannerOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

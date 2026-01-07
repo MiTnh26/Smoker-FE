@@ -31,7 +31,7 @@
     "react-i18next": "^16.2.4",
     "react-router-dom": "^7.9.3",
     "react-scripts": "5.0.1",
-    "recharts": "^3.5.1",
+    "recharts": "^3.6.0",
     "shadcn-ui": "^0.9.5",
     "socket.io-client": "^4.8.1",
     "swiper": "^12.0.3",
