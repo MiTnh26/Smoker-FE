@@ -618,10 +618,47 @@ const BookingModal = ({
                 alignItems: 'center',
                 gap: '8px',
                 color: '#92400E',
-                fontWeight: '600'
+                fontWeight: '600',
+                marginBottom: '8px'
               }}>
                 <span>💳</span>
                 <span>Bạn sẽ thanh toán toàn bộ combo. Sau khi thanh toán thành công, hệ thống sẽ tạo QR code để quán bar xác nhận.</span>
+              </div>
+            </div>
+          )}
+
+          {/* Important Notice */}
+          {selectedCombo && (
+            <div style={{
+              marginBottom: '20px',
+              padding: '16px',
+              background: '#FEE2E2',
+              borderRadius: '8px',
+              border: '1px solid #FCA5A5'
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                color: '#991B1B'
+              }}>
+                <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontWeight: '700',
+                    marginBottom: '8px',
+                    fontSize: '0.95rem'
+                  }}>
+                    Lưu ý quan trọng:
+                  </div>
+                  <div style={{
+                    fontSize: '0.9rem',
+                    lineHeight: '1.5',
+                    color: '#7F1D1D'
+                  }}>
+                    Sau khi quán bar xác nhận đặt bàn, bạn sẽ <strong>không thể hủy</strong> và <strong>không thể hoàn lại tiền</strong>. Vui lòng kiểm tra kỹ thông tin trước khi xác nhận thanh toán.
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -989,7 +1026,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [barId, selectedDate, receiverId]); // Loại bỏ fetchTables khỏi deps để tránh loop
 
-  // Handle table click - toggle selection
+  // Handle table click - chỉ cho phép chọn 1 bàn
   const handleTableClick = (table) => {
     // Kiểm tra lại trạng thái bàn trước khi cho phép chọn
     if (table.status === 'booked') {
@@ -1002,15 +1039,15 @@ const BarTablesPage = ({ barId: propBarId }) => {
       return;
     }
     
-    // Toggle selection
+    // Chỉ cho phép chọn 1 bàn - nếu đã chọn bàn khác thì thay thế
     setSelectedTables(prev => {
       const isSelected = prev.some(t => t.BarTableId === table.BarTableId);
       if (isSelected) {
-        // Bỏ chọn
-        return prev.filter(t => t.BarTableId !== table.BarTableId);
+        // Bỏ chọn nếu click vào bàn đã chọn
+        return [];
       } else {
-        // Thêm vào danh sách
-        return [...prev, table];
+        // Chọn bàn mới (thay thế bàn cũ nếu có)
+        return [table];
       }
     });
   };
@@ -1018,7 +1055,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
   // Handle open booking modal
   const handleOpenBookingModal = () => {
     if (selectedTables.length === 0) {
-      addToast("Vui lòng chọn ít nhất một bàn", "warning");
+      addToast("Vui lòng chọn một bàn", "warning");
       return;
     }
 
@@ -1194,7 +1231,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
         }}>
           <div>
             <div style={{ fontWeight: '600', color: 'rgb(var(--success))', marginBottom: '4px' }}>
-              Đã chọn {selectedTables.length} bàn
+              Đã chọn bàn: {selectedTables[0]?.TableName || selectedTables[0]?.name || 'Bàn đã chọn'}
             </div>
             <div style={{ fontSize: '0.9rem', color: 'rgb(var(--success))' }}>
               Vui lòng chọn Combo ở bước tiếp theo
@@ -1213,7 +1250,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
                 fontWeight: '600'
               }}
             >
-              Bỏ chọn tất cả
+              Bỏ chọn
             </button>
             <button
               onClick={handleOpenBookingModal}
@@ -1227,7 +1264,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
                 fontWeight: '600'
               }}
             >
-              Đặt bàn ({selectedTables.length})
+              Đặt bàn
             </button>
           </div>
         </div>

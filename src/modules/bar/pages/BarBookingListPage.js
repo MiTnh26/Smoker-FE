@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, X, Calendar, Clock, DollarSign, User, CheckCircle, AlertCircle } from 'lucide-react';
+import { Loader2, X, Calendar, Clock, DollarSign, User, CheckCircle, AlertCircle, Package, Table, FileText, Phone, Mail } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../../utils/cn';
 import bookingApi from '../../../api/bookingApi';
 import barPageApi from '../../../api/barPageApi';
@@ -15,7 +15,6 @@ import publicProfileApi from '../../../api/publicProfileApi';
  * Tự động resolve barPageId từ session (giống như BarDashboardPage)
  */
 export default function BarBookingListPage() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const [barPageId, setBarPageId] = useState(null);
   const [isOwnProfile, setIsOwnProfile] = useState(true);
@@ -32,6 +31,7 @@ export default function BarBookingListPage() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [loadingBookingDetail, setLoadingBookingDetail] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'Confirmed', 'Arrived', 'Ended'
 
   // Resolve barPageId from session
   useEffect(() => {
@@ -162,7 +162,7 @@ export default function BarBookingListPage() {
     }
   }, [receiverId]);
 
-  // Fetch bookings
+  // Fetch pending bookings (Paid + Pending)
   const fetchBookings = useCallback(async () => {
     if (!receiverId) {
       setLoading(false);
@@ -174,27 +174,22 @@ export default function BarBookingListPage() {
     try {
       const bookingsData = await fetchBookingsForDate(selectedDate);
       
-      // Filter only BarTable bookings and exclude Rejected and Canceled
-      const barTableBookings = bookingsData.filter(b => {
+      // Filter: BarTable bookings với paymentStatus = 'Paid' và scheduleStatus = 'Pending'
+      const pendingBookings = bookingsData.filter(b => {
         const type = b.Type || b.type;
         const scheduleStatus = b.scheduleStatus || b.ScheduleStatus;
-        // Exclude Rejected and Canceled bookings
-        return type === "BarTable" && scheduleStatus !== "Rejected" && scheduleStatus !== "Canceled";
+        const paymentStatus = b.paymentStatus || b.PaymentStatus;
+        
+        // Chỉ hiển thị: BarTable + Paid + Pending
+        return type === "BarTable" 
+          && (paymentStatus === 'Paid' || paymentStatus === 'Done')
+          && scheduleStatus === 'Pending'
+          && scheduleStatus !== "Rejected" 
+          && scheduleStatus !== "Canceled";
       });
       
-      // Sort: non-Ended bookings first, then by date (newest first)
-      const sorted = barTableBookings.sort((a, b) => {
-        const statusA = a.scheduleStatus || a.ScheduleStatus;
-        const statusB = b.scheduleStatus || b.ScheduleStatus;
-        const isEndedA = statusA === 'Ended';
-        const isEndedB = statusB === 'Ended';
-        
-        // If one is Ended and the other is not, non-Ended comes first
-        if (isEndedA !== isEndedB) {
-          return isEndedA ? 1 : -1;
-        }
-        
-        // If both have same Ended status, sort by date (newest first)
+      // Sort by date (newest first)
+      const sorted = pendingBookings.sort((a, b) => {
         const dateA = new Date(a.bookingDate || a.BookingDate || 0);
         const dateB = new Date(b.bookingDate || b.BookingDate || 0);
         return dateB - dateA;
@@ -209,19 +204,53 @@ export default function BarBookingListPage() {
     }
   }, [receiverId, selectedDate, fetchBookingsForDate]);
 
-  // Fetch confirmed bookings
+  // Fetch confirmed bookings (Confirmed, Arrived, Ended) với date filter
   const fetchConfirmedBookings = useCallback(async () => {
-    if (!barPageId) return;
+    if (!receiverId) return;
 
     try {
-      const response = await bookingApi.getConfirmedBookings(barPageId);
-      if (response.data?.success) {
-        setConfirmedBookings(response.data.data || []);
-      }
+      const bookingsData = await fetchBookingsForDate(selectedDate);
+      
+      // Filter: BarTable bookings với:
+      // 1. paymentStatus = 'Paid' và scheduleStatus = 'Confirmed'
+      // 2. scheduleStatus = 'Arrived'
+      // 3. scheduleStatus = 'Ended'
+      const confirmedBookings = bookingsData.filter(b => {
+        const type = b.Type || b.type;
+        const scheduleStatus = b.scheduleStatus || b.ScheduleStatus;
+        const paymentStatus = b.paymentStatus || b.PaymentStatus;
+        
+        // Loại bỏ Rejected và Canceled
+        if (scheduleStatus === "Rejected" || scheduleStatus === "Canceled") {
+          return false;
+        }
+        
+        // Chỉ hiển thị BarTable bookings
+        if (type !== "BarTable") {
+          return false;
+        }
+        
+        // Hiển thị nếu:
+        // 1. Confirmed và đã thanh toán (Paid)
+        // 2. Arrived (bất kỳ payment status)
+        // 3. Ended (bất kỳ payment status)
+        return (scheduleStatus === 'Confirmed' && (paymentStatus === 'Paid' || paymentStatus === 'Done'))
+          || scheduleStatus === 'Arrived'
+          || scheduleStatus === 'Ended';
+      });
+      
+      // Sort by date (newest first)
+      const sorted = confirmedBookings.sort((a, b) => {
+        const dateA = new Date(a.bookingDate || a.BookingDate || 0);
+        const dateB = new Date(b.bookingDate || b.BookingDate || 0);
+        return dateB - dateA;
+      });
+
+      setConfirmedBookings(sorted);
     } catch (err) {
       console.error('Error fetching confirmed bookings:', err);
     }
-  }, [barPageId]);
+  }, [receiverId, selectedDate, fetchBookingsForDate]);
 
   // QR Scanner handlers
   const handleQRScanSuccess = async (scanResult) => {
@@ -270,17 +299,16 @@ export default function BarBookingListPage() {
   useEffect(() => {
     if (receiverId) {
       fetchBookings();
-    }
-    if (barPageId) {
       fetchConfirmedBookings();
     }
-  }, [receiverId, selectedDate, fetchBookings, barPageId, fetchConfirmedBookings]);
+  }, [receiverId, selectedDate, fetchBookings, fetchConfirmedBookings]);
 
   const handleMarkPaid = async (bookingId) => {
     try {
       setUpdatingBooking(bookingId);
       await bookingApi.markPaid(bookingId);
-      await fetchBookings();
+      // Refresh cả 2 danh sách
+      await Promise.all([fetchBookings(), fetchConfirmedBookings()]);
     } catch (err) {
       console.error('Error marking paid:', err);
       alert('Không thể cập nhật trạng thái thanh toán');
@@ -293,7 +321,9 @@ export default function BarBookingListPage() {
     try {
       setUpdatingBooking(bookingId);
       await bookingApi.endBooking(bookingId);
-      await fetchBookings();
+      // Refresh cả 2 danh sách
+      await Promise.all([fetchBookings(), fetchConfirmedBookings()]);
+      // Refresh modal nếu đang mở
       if (detailModalOpen && selectedBooking?.BookedScheduleId === bookingId) {
         await handleViewBookingDetail(bookingId);
       }
@@ -309,7 +339,9 @@ export default function BarBookingListPage() {
     try {
       setUpdatingBooking(bookingId);
       await bookingApi.confirmBooking(bookingId);
-      await fetchBookings();
+      // Refresh cả 2 danh sách
+      await Promise.all([fetchBookings(), fetchConfirmedBookings()]);
+      // Refresh modal nếu đang mở
       if (detailModalOpen && selectedBooking?.BookedScheduleId === bookingId) {
         await handleViewBookingDetail(bookingId);
       }
@@ -325,7 +357,9 @@ export default function BarBookingListPage() {
     try {
       setUpdatingBooking(bookingId);
       const response = await bookingApi.markBookingArrived(bookingId);
-      await fetchBookings();
+      // Refresh cả 2 danh sách
+      await Promise.all([fetchBookings(), fetchConfirmedBookings()]);
+      // Refresh modal nếu đang mở
       if (detailModalOpen && selectedBooking?.BookedScheduleId === bookingId) {
         await handleViewBookingDetail(bookingId);
       }
@@ -370,58 +404,110 @@ export default function BarBookingListPage() {
 
   if (loading) {
     return (
-      <div className={cn('text-center py-12 text-muted-foreground')}>
-        {t('common.loading')}
+      <div className={cn('flex items-center justify-center min-h-screen')}>
+        <div className="text-center">
+          <Loader2 className="animate-spin text-primary mx-auto mb-4" size={32} />
+          <p className="text-muted-foreground">Đang tải danh sách đặt bàn...</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className={cn('flex flex-col gap-6 p-6')}>
+      {/* Header */}
       <div className={cn('mb-4')}>
-        <h1 className={cn('text-3xl font-bold text-foreground')}>
-          Quản lý đặt bàn
-        </h1>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg shadow-lg">
+            <Table size={28} className="text-white" />
+          </div>
+          <h1 className={cn('text-3xl font-bold text-foreground')}>
+            Quản lý đặt bàn
+          </h1>
+        </div>
         <p className={cn('text-muted-foreground mt-2')}>
           Quản lý và xác nhận các đặt bàn của quán bar
         </p>
       </div>
 
+      {/* Date Filter - Áp dụng cho cả 2 tab */}
+      <div className={cn('bg-card rounded-xl p-4 border border-border/20 shadow-md')}>
+        <div className={cn('flex items-center justify-between gap-4 flex-wrap')}>
+          <div className={cn('flex items-center gap-3')}>
+            <Calendar size={20} className="text-muted-foreground" />
+            <label className={cn('text-sm font-semibold text-foreground whitespace-nowrap')}>
+              Lọc theo ngày:
+            </label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className={cn(
+                'px-4 py-2 border-2 border-border rounded-xl',
+                'text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary',
+                'bg-background text-foreground shadow-sm'
+              )}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Tabs */}
-      <div className={cn('bg-card rounded-lg p-4 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]')}>
-        <div className={cn('flex items-center gap-4 mb-4')}>
+      <div className={cn('bg-card rounded-xl p-4 border border-border/20 shadow-md')}>
+        <div className={cn('flex items-center gap-4 flex-wrap')}>
           <button
-            onClick={() => setActiveTab('pending')}
+            onClick={() => {
+              setActiveTab('pending');
+              setStatusFilter('all'); // Reset filter khi chuyển tab
+            }}
             className={cn(
-              'px-4 py-2 rounded-lg font-semibold transition-colors',
+              'px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2',
               activeTab === 'pending'
-                ? 'bg-primary text-primary-foreground'
+                ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white shadow-lg'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
             )}
           >
-            Chờ xác nhận ({bookings.length})
+            <AlertCircle size={18} />
+            <span>Chờ xác nhận</span>
+            <span className={cn(
+              'px-2 py-0.5 rounded-full text-xs',
+              activeTab === 'pending' ? 'bg-white/20' : 'bg-muted-foreground/20'
+            )}>
+              {bookings.length}
+            </span>
           </button>
           <button
-            onClick={() => setActiveTab('confirmed')}
+            onClick={() => {
+              setActiveTab('confirmed');
+              setStatusFilter('all'); // Reset filter khi chuyển tab
+            }}
             className={cn(
-              'px-4 py-2 rounded-lg font-semibold transition-colors',
+              'px-6 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2',
               activeTab === 'confirmed'
-                ? 'bg-primary text-primary-foreground'
+                ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
             )}
           >
-            Đã xác nhận ({confirmedBookings.length})
+            <CheckCircle size={18} />
+            <span>Đã xác nhận</span>
+            <span className={cn(
+              'px-2 py-0.5 rounded-full text-xs',
+              activeTab === 'confirmed' ? 'bg-white/20' : 'bg-muted-foreground/20'
+            )}>
+              {confirmedBookings.length}
+            </span>
           </button>
-          {activeTab === 'confirmed' && (
+          {activeTab === 'pending' && (
             <button
               onClick={() => setQrScannerOpen(true)}
               className={cn(
-                'ml-auto px-4 py-2 rounded-lg font-semibold',
-                'bg-success text-success-foreground hover:bg-success/90',
-                'transition-colors'
+                'ml-auto px-6 py-3 rounded-xl font-semibold',
+                'bg-gradient-to-r from-blue-500 to-indigo-500 text-white',
+                'hover:from-blue-600 hover:to-indigo-600 shadow-lg hover:shadow-xl',
+                'transition-all duration-200'
               )}
             >
-              📱 Quét QR
+              Quét QR
             </button>
           )}
         </div>
@@ -429,39 +515,27 @@ export default function BarBookingListPage() {
 
       {/* Pending Bookings Tab */}
       {activeTab === 'pending' && (
-        <div className={cn('bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]')}>
-          <div className={cn('mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4')}>
-            <h2 className={cn('text-xl font-bold')}>
-              Danh sách đặt bàn chờ xác nhận ({bookings.length})
+        <div className={cn('bg-card rounded-xl p-6 border border-border/20 shadow-md')}>
+          <div className={cn('mb-6')}>
+            <h2 className={cn('text-2xl font-bold text-foreground mb-1')}>
+              Danh sách đặt bàn chờ xác nhận
             </h2>
-          
-          {/* Date filter */}
-          <div className={cn('flex items-center gap-2')}>
-            <label className={cn('text-sm font-semibold text-foreground whitespace-nowrap')}>
-              Ngày:
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className={cn(
-                'px-3 py-2 border border-border rounded-lg',
-                'text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent',
-                'bg-background text-foreground'
-              )}
-            />
+            <p className={cn('text-sm text-muted-foreground')}>
+              Tổng số: <span className="font-semibold text-primary">{bookings.length}</span> đặt bàn (Đã thanh toán, chờ xác nhận)
+            </p>
           </div>
-        </div>
         
-        {bookings.length === 0 ? (
-          <div className={cn(
-            'text-center py-12 text-muted-foreground',
-            'bg-muted/30 rounded-lg border border-border/20 p-8'
-          )}>
-            Chưa có đặt bàn nào
-          </div>
-        ) : (
-          <div className={cn('flex flex-col gap-4')}>
+          {bookings.length === 0 ? (
+            <div className={cn(
+              'text-center py-16',
+              'bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl border border-border/20 p-8'
+            )}>
+              <Table size={48} className="text-muted-foreground mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-semibold text-muted-foreground mb-2">Chưa có đặt bàn nào</p>
+              <p className="text-sm text-muted-foreground">Chọn ngày khác để xem đặt bàn</p>
+            </div>
+          ) : (
+            <div className={cn('grid grid-cols-1 lg:grid-cols-2 gap-4')}>
             {bookings.map((booking) => {
             const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
             const paymentStatus = booking.paymentStatus || booking.PaymentStatus;
@@ -502,116 +576,162 @@ export default function BarBookingListPage() {
               };
             });
 
+            // Get combo info
+            const combo = detailSchedule?.Combo || {};
+            const comboName = combo.ComboName || combo.comboName || 'Combo đặt bàn';
+            const comboPrice = combo.Price || combo.price || 0;
+            
             return (
-              <div
+              <motion.div
                 key={booking.BookedScheduleId}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ y: -2, transition: { duration: 0.2 } }}
                 className={cn(
-                  'bg-card rounded-lg border border-border/20 p-3',
-                  'shadow-sm hover:shadow-md transition-shadow',
-                  'flex items-center justify-between gap-3'
+                  'bg-gradient-to-br from-white to-blue-50 rounded-xl border-2 border-blue-100',
+                  'p-5 shadow-md hover:shadow-xl transition-all duration-300',
+                  'flex flex-col gap-4'
                 )}
               >
-                {/* Left side - Main info */}
-                <div className={cn('flex flex-col gap-1.5 flex-1 min-w-0')}>
-                  {/* Booking ID */}
-                  <div className={cn('text-[0.7rem] text-muted-foreground font-mono break-all leading-tight')}>
-                    {booking.BookedScheduleId || booking.bookedScheduleId || 'N/A'}
-                  </div>
-                  
-                  {/* Date */}
-                  <div className={cn('flex items-center gap-1.5 text-sm text-foreground')}>
-                    <span>📅</span>
-                    <span>{bookingDate ? new Date(bookingDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
-                  </div>
-                  
-                  {/* Tables */}
-                  {enrichedTableList.length > 0 && (
-                    <div className={cn('flex items-center gap-2 flex-wrap')}>
-                      <span className={cn('text-xs text-muted-foreground')}>Bàn:</span>
-                      <div className={cn('flex flex-wrap gap-1')}>
-                        {enrichedTableList.map((tableItem, idx) => (
-                          <span
-                            key={tableItem.id || idx}
-                            className={cn(
-                              'px-2 py-0.5 bg-muted/30 rounded text-xs',
-                              'border border-border/20'
-                            )}
-                          >
-                            {idx + 1}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Status badges */}
-                  <div className={cn('flex gap-2 flex-wrap')}>
-                    <span className={cn(
-                      'px-2 py-0.5 rounded-full text-xs font-semibold',
-                      scheduleStatus === 'Ended'
-                        ? 'bg-muted-foreground/10 text-muted-foreground'
-                        : scheduleStatus === 'Confirmed'
-                        ? 'bg-green-500/10 text-green-500'
-                        : scheduleStatus === 'Arrived'
-                        ? 'bg-blue-500/10 text-blue-500'
-                        : 'bg-yellow-500/10 text-yellow-500'
-                    )}>
-                      {getStatusConfig(scheduleStatus).label}
-                    </span>
-                    <span className={cn(
-                      'px-2 py-0.5 rounded-full text-xs font-semibold',
-                      paymentStatus === 'Paid' || paymentStatus === 'Done'
-                        ? 'bg-green-500/10 text-green-500'
-                        : 'bg-yellow-500/10 text-yellow-500'
-                    )}>
-                      {paymentStatus === 'Paid' || paymentStatus === 'Done' ? 'Đã thanh toán' : 'Chưa thanh toán'}
-                    </span>
-                  </div>
-                  
-                  {/* Note */}
-                  {detailSchedule?.Note && (
-                    <div className={cn('text-xs text-muted-foreground truncate')}>
-                      <span>📝 </span>
-                      {detailSchedule.Note}
-                    </div>
-                  )}
+                {/* Header - Status badges */}
+                <div className={cn('flex items-center justify-end gap-2')}>
+                  <span className={cn(
+                    'px-3 py-1 rounded-full text-xs font-semibold border',
+                    scheduleStatus === 'Ended'
+                      ? 'bg-gray-100 text-gray-600 border-gray-300'
+                      : scheduleStatus === 'Confirmed'
+                      ? 'bg-green-100 text-green-600 border-green-300'
+                      : scheduleStatus === 'Arrived'
+                      ? 'bg-blue-100 text-blue-600 border-blue-300'
+                      : 'bg-yellow-100 text-yellow-600 border-yellow-300'
+                  )}>
+                    {getStatusConfig(scheduleStatus).label}
+                  </span>
+                  <span className={cn(
+                    'px-3 py-1 rounded-full text-xs font-semibold border',
+                    paymentStatus === 'Paid' || paymentStatus === 'Done'
+                      ? 'bg-green-100 text-green-600 border-green-300'
+                      : 'bg-yellow-100 text-yellow-600 border-yellow-300'
+                  )}>
+                    {paymentStatus === 'Paid' || paymentStatus === 'Done' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                  </span>
                 </div>
 
-                {/* Right side - Action buttons */}
+                {/* Info Grid */}
+                <div className={cn('grid grid-cols-2 gap-3')}>
+                  {/* Date */}
+                  <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
+                    <Calendar size={16} className="text-blue-500" />
+                    <div>
+                      <p className={cn('text-xs text-muted-foreground')}>Ngày đặt</p>
+                      <p className={cn('text-sm font-semibold text-foreground')}>
+                        {bookingDate ? new Date(bookingDate).toLocaleDateString('vi-VN') : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Price */}
+                  <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
+                    <DollarSign size={16} className="text-green-500" />
+                    <div>
+                      <p className={cn('text-xs text-muted-foreground')}>Giá combo</p>
+                      <p className={cn('text-sm font-semibold text-green-600')}>
+                        {comboPrice.toLocaleString('vi-VN')} đ
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                  
+                {/* Tables */}
+                {enrichedTableList.length > 0 && (
+                  <div className={cn('p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100')}>
+                    <div className={cn('flex items-center gap-2 mb-2')}>
+                      <Table size={16} className="text-purple-500" />
+                      <span className={cn('text-sm font-semibold text-foreground')}>Bàn đã chọn:</span>
+                    </div>
+                    <div className={cn('flex flex-wrap gap-2')}>
+                      {enrichedTableList.map((tableItem, idx) => (
+                        <span
+                          key={tableItem.id || idx}
+                          className={cn(
+                            'px-3 py-1.5 bg-white rounded-lg text-sm font-medium',
+                            'border-2 border-purple-200 text-purple-700 shadow-sm'
+                          )}
+                        >
+                          {tableItem.fullName || tableItem.name || `Bàn ${idx + 1}`}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                  
+                {/* Note */}
+                {detailSchedule?.Note && (
+                  <div className={cn('p-3 bg-muted/30 rounded-lg border border-border/20')}>
+                    <div className={cn('flex items-center gap-2 mb-1')}>
+                      <FileText size={14} className="text-muted-foreground" />
+                      <span className={cn('text-xs font-semibold text-muted-foreground')}>Ghi chú:</span>
+                    </div>
+                    <p className={cn('text-sm text-foreground')}>{detailSchedule.Note}</p>
+                  </div>
+                )}
+
+                {/* Action buttons */}
                 {isOwnProfile && (
-                  <div className={cn('flex items-center gap-2 flex-shrink-0')}>
+                  <div className={cn('flex items-center gap-2 pt-3 border-t border-border/20')}>
                     {paymentStatus !== 'Paid' && paymentStatus !== 'Done' && scheduleStatus !== 'Ended' && (
                       <button
                         onClick={() => handleMarkPaid(booking.BookedScheduleId)}
                         disabled={isProcessing}
                         className={cn(
-                          'px-3 py-1.5 rounded-lg text-xs font-medium',
-                          'bg-green-500/10 text-green-500 hover:bg-green-500/20',
-                          'transition-colors',
-                          'disabled:opacity-60 disabled:cursor-not-allowed'
+                          'flex-1 px-4 py-2 rounded-lg text-sm font-medium',
+                          'bg-gradient-to-r from-green-500 to-emerald-500 text-white',
+                          'hover:from-green-600 hover:to-emerald-600 shadow-md hover:shadow-lg',
+                          'transition-all duration-200',
+                          'disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2'
                         )}
                       >
-                        {isProcessing ? 'Đang xử lý...' : 'Đã thanh toán'}
+                        {isProcessing ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin text-white" />
+                            <span className="text-white">Đang xử lý...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle size={16} className="text-white" />
+                            <span className="text-white">Đánh dấu đã thanh toán</span>
+                          </>
+                        )}
                       </button>
                     )}
-                    {/* Only show "Chi tiết" button after payment is confirmed */}
                     {(paymentStatus === 'Paid' || paymentStatus === 'Done') && scheduleStatus !== 'Ended' && (
                       <button
                         onClick={() => handleViewBookingDetail(booking.BookedScheduleId)}
                         disabled={isProcessing || loadingBookingDetail}
                         className={cn(
-                          'px-3 py-1.5 rounded-lg text-xs font-medium',
-                          'bg-primary/10 text-primary hover:bg-primary/20',
-                          'transition-colors',
-                          'disabled:opacity-60 disabled:cursor-not-allowed'
+                          'flex-1 px-4 py-2 rounded-lg text-sm font-medium',
+                          'bg-gradient-to-r from-blue-500 to-indigo-500 text-white',
+                          'hover:from-blue-600 hover:to-indigo-600 shadow-md hover:shadow-lg',
+                          'transition-all duration-200',
+                          'disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2'
                         )}
                       >
-                        {isProcessing || loadingBookingDetail ? 'Đang tải...' : 'Chi tiết'}
+                        {isProcessing || loadingBookingDetail ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin text-white" />
+                            <span className="text-white">Đang tải...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText size={16} className="text-white" />
+                            <span className="text-white">Xem chi tiết</span>
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
                 )}
-              </div>
+              </motion.div>
             );
             })}
           </div>
@@ -620,84 +740,268 @@ export default function BarBookingListPage() {
       )}
 
       {/* Confirmed Bookings Tab */}
-      {activeTab === 'confirmed' && (
-        <div className={cn('bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]')}>
-          <div className={cn('mb-4')}>
-            <h2 className={cn('text-xl font-bold')}>
-              Danh sách đặt bàn đã xác nhận ({confirmedBookings.length})
-            </h2>
+      {activeTab === 'confirmed' && (() => {
+        // Filter confirmed bookings theo status
+        const filteredConfirmedBookings = statusFilter === 'all' 
+          ? confirmedBookings 
+          : confirmedBookings.filter(b => {
+              const scheduleStatus = b.scheduleStatus || b.ScheduleStatus;
+              return scheduleStatus === statusFilter;
+            });
+
+        return (
+        <div className={cn('bg-card rounded-xl p-6 border border-border/20 shadow-md')}>
+          <div className={cn('mb-6')}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className={cn('text-2xl font-bold text-foreground mb-1')}>
+                  Danh sách đặt bàn đã xác nhận
+                </h2>
+                <p className={cn('text-sm text-muted-foreground')}>
+                  Tổng số: <span className="font-semibold text-primary">{filteredConfirmedBookings.length}</span> đặt bàn
+                  {statusFilter !== 'all' && (
+                    <span className="text-xs text-muted-foreground ml-2">
+                      (Đã lọc: {getStatusConfig(statusFilter).label})
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Status Filter */}
+            <div className={cn('flex items-center gap-2 flex-wrap mb-4')}>
+              <span className={cn('text-sm font-semibold text-foreground')}>Lọc theo trạng thái:</span>
+              <button
+                onClick={() => setStatusFilter('all')}
+                className={cn(
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                  statusFilter === 'all'
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                )}
+              >
+                Tất cả
+              </button>
+              <button
+                onClick={() => setStatusFilter('Confirmed')}
+                className={cn(
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                  statusFilter === 'Confirmed'
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                )}
+              >
+                Đã xác nhận
+              </button>
+              <button
+                onClick={() => setStatusFilter('Arrived')}
+                className={cn(
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                  statusFilter === 'Arrived'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                )}
+              >
+                Đã tới quán
+              </button>
+              <button
+                onClick={() => setStatusFilter('Ended')}
+                className={cn(
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200',
+                  statusFilter === 'Ended'
+                    ? 'bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                )}
+              >
+                Đã kết thúc
+              </button>
+            </div>
           </div>
 
-          {confirmedBookings.length === 0 ? (
+          {filteredConfirmedBookings.length === 0 ? (
             <div className={cn(
-              'text-center py-12 text-muted-foreground',
-              'bg-muted/30 rounded-lg border border-border/20 p-8'
+              'text-center py-16',
+              'bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl border border-border/20 p-8'
             )}>
-              <div className="text-4xl mb-4">📋</div>
-              <p className="text-lg font-semibold mb-2">Chưa có booking nào được xác nhận</p>
-              <p className="text-sm">Sử dụng nút "Quét QR" để xác nhận khách hàng đến quán</p>
+              <CheckCircle size={48} className="text-muted-foreground mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-semibold text-muted-foreground mb-2">
+                {statusFilter === 'all' 
+                  ? 'Chưa có booking nào được xác nhận'
+                  : `Chưa có booking nào với trạng thái "${getStatusConfig(statusFilter).label}"`
+                }
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {statusFilter === 'all' 
+                  ? 'Sử dụng nút "Quét QR" để xác nhận khách hàng đến quán'
+                  : 'Thử chọn trạng thái khác hoặc chọn "Tất cả"'
+                }
+              </p>
             </div>
           ) : (
-            <div className={cn('space-y-4')}>
-              {confirmedBookings.map((booking) => {
+            <div className={cn('grid grid-cols-1 lg:grid-cols-2 gap-4')}>
+              {filteredConfirmedBookings.map((booking) => {
                 const bookingDetails = booking;
                 const statusConfig = getStatusConfig(booking.scheduleStatus || booking.ScheduleStatus);
+                const detailSchedule = booking.detailSchedule || booking.DetailSchedule;
+
+                // Get table list from detailSchedule
+                let tableList = [];
+                if (detailSchedule?.Table) {
+                  let tableMap = detailSchedule.Table;
+                  if (tableMap instanceof Map) {
+                    tableMap = Object.fromEntries(tableMap);
+                  }
+                  if (tableMap && typeof tableMap.toObject === 'function') {
+                    tableMap = tableMap.toObject();
+                  }
+                  tableList = Object.keys(tableMap || {}).map(key => {
+                    const tableInfo = tableMap[key];
+                    return {
+                      id: key,
+                      name: tableInfo?.TableName || key,
+                      price: tableInfo?.Price || 0
+                    };
+                  });
+                }
+
+                // Enrich table list with full table info
+                const enrichedTableList = tableList.map((tableItem, index) => {
+                  const fullTableInfo = tables.find(t => 
+                    t.BarTableId?.toLowerCase() === tableItem.id?.toLowerCase()
+                  );
+                  const displayName = fullTableInfo?.TableName || tableItem.name || `Bàn ${index + 1}`;
+                  return {
+                    ...tableItem,
+                    fullName: displayName,
+                    tableTypeName: fullTableInfo?.TableTypeName || null
+                  };
+                });
 
                 return (
-                  <div key={booking.BookedScheduleId} className={cn(
-                    'p-4 rounded-lg border border-border/20',
-                    'bg-card hover:bg-muted/30 transition-colors'
-                  )}>
-                    <div className={cn('flex items-start justify-between gap-4')}>
-                      <div className={cn('flex-1')}>
-                        <div className={cn('flex items-center gap-2 mb-2')}>
-                          <h3 className={cn('font-semibold text-lg')}>
-                            {bookingDetails.ComboName || 'Combo đặt bàn'}
-                          </h3>
-                          <span
-                            className={cn(
-                              "px-2 py-1 rounded-full text-xs font-semibold",
-                              "border"
-                            )}
-                            style={{
-                              color: statusConfig.color,
-                              backgroundColor: statusConfig.bg,
-                              borderColor: statusConfig.color
-                            }}
-                          >
-                            {statusConfig.label}
-                          </span>
-                        </div>
+                  <motion.div
+                    key={booking.BookedScheduleId}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ y: -2, transition: { duration: 0.2 } }}
+                    className={cn(
+                      'bg-gradient-to-br from-white to-green-50 rounded-xl border-2 border-green-100',
+                      'p-5 shadow-md hover:shadow-xl transition-all duration-300'
+                    )}
+                  >
+                    {/* Header - Status badge */}
+                    <div className={cn('flex items-center justify-end mb-4')}>
+                      <span
+                        className={cn(
+                          "px-3 py-1 rounded-full text-xs font-semibold border"
+                        )}
+                        style={{
+                          color: statusConfig.color,
+                          backgroundColor: statusConfig.bg,
+                          borderColor: statusConfig.color
+                        }}
+                      >
+                        {statusConfig.label}
+                      </span>
+                    </div>
 
-                        <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground mb-3')}>
-                          <div className={cn('flex items-center gap-2')}>
-                            <span>👤</span>
-                            <span>{bookingDetails.BookerName || 'N/A'}</span>
-                          </div>
-                          <div className={cn('flex items-center gap-2')}>
-                            <span>💰</span>
-                            <span>{bookingDetails.TotalAmount?.toLocaleString('vi-VN')} đ</span>
-                          </div>
-                          <div className={cn('flex items-center gap-2')}>
-                            <span>📅</span>
-                            <span>{new Date(bookingDetails.BookingDate).toLocaleDateString('vi-VN')}</span>
-                          </div>
-                          {bookingDetails.ConfirmedAt && (
-                            <div className={cn('flex items-center gap-2')}>
-                              <span>✅</span>
-                              <span>Đã xác nhận lúc {new Date(bookingDetails.ConfirmedAt).toLocaleTimeString('vi-VN')}</span>
-                            </div>
-                          )}
+                    <div className={cn('grid grid-cols-2 gap-3 mb-3')}>
+                      <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
+                        <User size={16} className="text-blue-500" />
+                        <div>
+                          <p className={cn('text-xs text-muted-foreground')}>Người đặt</p>
+                          <p className={cn('text-sm font-semibold text-foreground')}>
+                            {bookingDetails.BookerName || 'N/A'}
+                          </p>
                         </div>
                       </div>
+                      <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
+                        <DollarSign size={16} className="text-green-500" />
+                        <div>
+                          <p className={cn('text-xs text-muted-foreground')}>Tổng tiền</p>
+                          <p className={cn('text-sm font-semibold text-green-600')}>
+                            {bookingDetails.TotalAmount?.toLocaleString('vi-VN')} đ
+                          </p>
+                        </div>
+                      </div>
+                      <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
+                        <Calendar size={16} className="text-purple-500" />
+                        <div>
+                          <p className={cn('text-xs text-muted-foreground')}>Ngày đặt</p>
+                          <p className={cn('text-sm font-semibold text-foreground')}>
+                            {new Date(bookingDetails.BookingDate).toLocaleDateString('vi-VN')}
+                          </p>
+                        </div>
+                      </div>
+                      {bookingDetails.ConfirmedAt && (
+                        <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
+                          <Clock size={16} className="text-orange-500" />
+                          <div>
+                            <p className={cn('text-xs text-muted-foreground')}>Xác nhận lúc</p>
+                            <p className={cn('text-sm font-semibold text-foreground')}>
+                              {new Date(bookingDetails.ConfirmedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
+
+                    {/* Tables */}
+                    {enrichedTableList.length > 0 && (
+                      <div className={cn('p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100 mb-3')}>
+                        <div className={cn('flex items-center gap-2 mb-2')}>
+                          <Table size={16} className="text-purple-500" />
+                          <span className={cn('text-sm font-semibold text-foreground')}>Bàn đã chọn:</span>
+                        </div>
+                        <div className={cn('flex flex-wrap gap-2')}>
+                          {enrichedTableList.map((tableItem, idx) => (
+                            <span
+                              key={tableItem.id || idx}
+                              className={cn(
+                                'px-3 py-1.5 bg-white rounded-lg text-sm font-medium',
+                                'border-2 border-purple-200 text-purple-700 shadow-sm'
+                              )}
+                            >
+                              {tableItem.fullName || tableItem.name || `Bàn ${idx + 1}`}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Button */}
+                    <div className={cn('flex items-center gap-2 pt-3 mt-3 border-t border-border/20')}>
+                      <button
+                        onClick={() => handleViewBookingDetail(booking.BookedScheduleId)}
+                        disabled={loadingBookingDetail}
+                        className={cn(
+                          'flex-1 px-4 py-2 rounded-lg text-sm font-medium',
+                          'bg-gradient-to-r from-blue-500 to-indigo-500 text-white',
+                          'hover:from-blue-600 hover:to-indigo-600 shadow-md hover:shadow-lg',
+                          'transition-all duration-200',
+                          'disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2'
+                        )}
+                      >
+                        {loadingBookingDetail ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin text-white" />
+                            <span className="text-white">Đang tải...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText size={16} className="text-white" />
+                            <span className="text-white">Xem chi tiết</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </motion.div>
                 );
               })}
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* QR Scanner Modal */}
       {qrScannerOpen && (
@@ -727,6 +1031,7 @@ export default function BarBookingListPage() {
         onMarkArrived={handleMarkArrived}
         onEndBooking={handleEndBooking}
         getStatusConfig={getStatusConfig}
+        tables={tables}
       />
 
     </div>
@@ -742,7 +1047,8 @@ const BookingDetailModal = ({
   onConfirm,
   onMarkArrived,
   onEndBooking,
-  getStatusConfig
+  getStatusConfig,
+  tables = []
 }) => {
   // Parse booking data
   const detailSchedule = booking?.detailSchedule || booking?.DetailSchedule;
@@ -791,8 +1097,10 @@ const BookingDetailModal = ({
   const statusConfig = getStatusConfig(scheduleStatus);
   const bookingId = booking.BookedScheduleId || booking.bookedScheduleId;
 
-  // Get table list
+  // Get table list from multiple sources
   let tableList = [];
+  
+  // Try to get from detailSchedule.Table
   if (detailSchedule?.Table) {
     let tableMap = detailSchedule.Table;
     if (tableMap instanceof Map) {
@@ -800,11 +1108,62 @@ const BookingDetailModal = ({
     } else if (tableMap && typeof tableMap.toObject === 'function') {
       tableMap = tableMap.toObject();
     }
-    tableList = Object.entries(tableMap || {}).map(([key, tableInfo]) => ({
-      id: key,
-      name: tableInfo?.TableName || key,
-    }));
+    if (tableMap && typeof tableMap === 'object') {
+      tableList = Object.keys(tableMap || {}).map(key => {
+        const tableInfo = tableMap[key];
+        return {
+          id: key,
+          name: tableInfo?.TableName || tableInfo?.name || key,
+          price: tableInfo?.Price || tableInfo?.price || 0
+        };
+      });
+    }
   }
+  
+  // Fallback: Try to get from booking.Table or booking.tableList
+  if (tableList.length === 0) {
+    const bookingTable = booking?.Table || booking?.table;
+    const bookingTableList = booking?.tableList || booking?.TableList;
+    
+    if (bookingTable) {
+      let tableMap = bookingTable;
+      if (tableMap instanceof Map) {
+        tableMap = Object.fromEntries(tableMap);
+      } else if (tableMap && typeof tableMap.toObject === 'function') {
+        tableMap = tableMap.toObject();
+      }
+      if (tableMap && typeof tableMap === 'object') {
+        tableList = Object.keys(tableMap || {}).map(key => {
+          const tableInfo = tableMap[key];
+          return {
+            id: key,
+            name: tableInfo?.TableName || tableInfo?.name || key,
+            price: tableInfo?.Price || tableInfo?.price || 0
+          };
+        });
+      }
+    } else if (Array.isArray(bookingTableList) && bookingTableList.length > 0) {
+      tableList = bookingTableList.map((table, index) => ({
+        id: table?.BarTableId || table?.id || table?.TableId || `table-${index}`,
+        name: table?.TableName || table?.name || `Bàn ${index + 1}`,
+        price: table?.Price || table?.price || 0
+      }));
+    }
+  }
+
+  // Enrich table list with full table info
+  const enrichedTableList = tableList.map((tableItem, index) => {
+    const fullTableInfo = tables.find(t => {
+      const tableId = t.BarTableId || t.id || t.TableId;
+      return tableId?.toLowerCase() === tableItem.id?.toLowerCase();
+    });
+    const displayName = fullTableInfo?.TableName || tableItem.name || `Bàn ${index + 1}`;
+    return {
+      ...tableItem,
+      fullName: displayName,
+      tableTypeName: fullTableInfo?.TableTypeName || null
+    };
+  });
 
   // Combo info
   const combo = detailSchedule?.Combo || {};
@@ -829,20 +1188,30 @@ const BookingDetailModal = ({
         }
       }}
     >
-      <div className={cn(
-        "w-full max-w-3xl bg-card text-card-foreground rounded-xl",
-        "border border-border/20 shadow-[0_8px_32px_rgba(0,0,0,0.2)]",
-        "p-6 relative max-h-[90vh] overflow-y-auto"
-      )}>
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className={cn(
+          "w-full max-w-3xl bg-card text-card-foreground rounded-2xl",
+          "border-2 border-border/20 shadow-2xl",
+          "p-6 relative max-h-[90vh] overflow-y-auto"
+        )}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className={cn("text-2xl font-bold text-foreground")}>
-            Chi tiết đặt bàn
-          </h3>
+        <div className="flex items-center justify-between mb-6 pb-4 border-b border-border/20">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg">
+              <FileText size={20} className="text-white" />
+            </div>
+            <h3 className={cn("text-2xl font-bold text-foreground")}>
+              Chi tiết đặt bàn
+            </h3>
+          </div>
           <button
             onClick={onClose}
             className={cn(
-              "p-1 rounded-full hover:bg-muted transition-colors",
+              "p-2 rounded-full hover:bg-muted transition-colors",
               "text-muted-foreground hover:text-foreground"
             )}
           >
@@ -852,20 +1221,12 @@ const BookingDetailModal = ({
 
         {/* Content */}
         <div className={cn("space-y-4")}>
-          {/* Booking ID */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Mã đặt bàn:</span>
-            <span className="text-sm font-mono font-semibold text-foreground">
-              {bookingId || 'N/A'}
-            </span>
-          </div>
-
           {/* Status Badges */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap mb-4">
             <span className="text-sm font-semibold text-foreground">Trạng thái:</span>
             <span
               className={cn(
-                "px-3 py-1 rounded-full text-sm font-semibold border"
+                "px-4 py-2 rounded-full text-sm font-semibold border shadow-sm"
               )}
               style={{
                 color: statusConfig.color,
@@ -877,61 +1238,71 @@ const BookingDetailModal = ({
             </span>
             <span
               className={cn(
-                "px-3 py-1 rounded-full text-sm font-semibold border",
+                "px-4 py-2 rounded-full text-sm font-semibold border shadow-sm",
                 paymentStatus === 'Paid' || paymentStatus === 'Done'
-                  ? "bg-green-500/10 text-green-500 border-green-500/20"
-                  : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                  ? "bg-green-100 text-green-600 border-green-300"
+                  : "bg-yellow-100 text-yellow-600 border-yellow-300"
               )}
             >
               {paymentStatus === 'Paid' || paymentStatus === 'Done' ? 'Đã thanh toán' : 'Chưa thanh toán'}
             </span>
           </div>
 
-          {/* Booking Date */}
-          <div className="flex items-start gap-3">
-            <Calendar className="mt-1 text-muted-foreground" size={20} />
-            <div>
-              <p className="text-sm text-muted-foreground">Ngày đặt</p>
-              <p className="font-semibold text-foreground">
-                {formatDate(bookingDate)}
-              </p>
+          {/* Info Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            {/* Booking Date */}
+            <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
+              <div className="p-2 bg-purple-500 rounded-lg">
+                <Calendar className="text-white" size={20} />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Ngày đặt</p>
+                <p className="font-bold text-foreground">
+                  {formatDate(bookingDate)}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Booker Info */}
-          <div className="flex items-start gap-3">
-            <User className="mt-1 text-muted-foreground" size={20} />
-            <div>
-              <p className="text-sm text-muted-foreground">Người đặt</p>
-              <p className="font-semibold text-foreground">
-                {booking.BookerName || booking.bookerName || 'N/A'}
-              </p>
+            {/* Booker Info */}
+            <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-100">
+              <div className="p-2 bg-blue-500 rounded-lg">
+                <User className="text-white" size={20} />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium mb-1">Người đặt</p>
+                <p className="font-bold text-foreground">
+                  {booking.BookerName || booking.bookerName || 'N/A'}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Combo Info */}
           {combo && (combo.ComboName || combo.comboName) && (
-            <div className="p-4 rounded-lg bg-muted/50 border border-border/30">
-              <p className="text-sm font-semibold text-foreground mb-2">Thông tin combo:</p>
-              <div className="space-y-2">
-                <div>
-                  <span className="text-sm text-muted-foreground">Tên combo: </span>
-                  <span className="text-sm font-semibold text-foreground">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-100 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Package size={18} className="text-purple-500" />
+                <p className="text-sm font-bold text-foreground">Thông tin combo</p>
+              </div>
+              <div className="space-y-3">
+                <div className="p-2 bg-white/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Tên combo</p>
+                  <p className="text-sm font-bold text-foreground">
                     {combo.ComboName || combo.comboName}
-                  </span>
+                  </p>
                 </div>
                 {combo.Price !== undefined && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">Giá combo: </span>
-                    <span className="text-sm font-semibold text-foreground">
+                  <div className="p-2 bg-white/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Giá combo</p>
+                    <p className="text-sm font-bold text-green-600">
                       {Number(combo.Price || combo.price || 0).toLocaleString('vi-VN')} đ
-                    </span>
+                    </p>
                   </div>
                 )}
                 {combo.Description && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">Mô tả: </span>
-                    <span className="text-sm text-foreground">{combo.Description || combo.description}</span>
+                  <div className="p-2 bg-white/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Mô tả</p>
+                    <p className="text-sm text-foreground">{combo.Description || combo.description}</p>
                   </div>
                 )}
               </div>
@@ -962,48 +1333,59 @@ const BookingDetailModal = ({
           )}
 
           {/* Tables */}
-          {tableList.length > 0 && (
-            <div>
-              <p className="text-sm text-muted-foreground mb-2">Danh sách bàn:</p>
+          {enrichedTableList.length > 0 ? (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-100 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Table size={18} className="text-purple-500" />
+                <p className="text-sm font-bold text-foreground">Bàn đã chọn</p>
+              </div>
               <div className="flex flex-wrap gap-2">
-                {tableList.map((table) => (
+                {enrichedTableList.map((table, idx) => (
                   <span
-                    key={table.id}
+                    key={table.id || idx}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-sm bg-muted/50 text-foreground",
-                      "border border-border/30"
+                      "px-3 py-1.5 rounded-lg text-sm font-medium bg-white",
+                      "border-2 border-purple-200 text-purple-700 shadow-sm"
                     )}
                   >
-                    {table.name}
+                    {table.fullName || table.name || `Bàn ${table.id || idx + 1}`}
                   </span>
                 ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 mb-4">
+              <div className="flex items-center gap-2">
+                <Table size={18} className="text-gray-400" />
+                <p className="text-sm font-medium text-gray-500">Chưa có thông tin bàn</p>
               </div>
             </div>
           )}
 
           {/* Payment Info */}
-          <div className="p-4 rounded-lg bg-muted/50 border border-border/30">
-            <p className="text-sm font-semibold text-foreground mb-3">Thông tin thanh toán:</p>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Giá gốc:</span>
-                <span className="text-sm font-semibold text-foreground">
+          <div className="p-4 rounded-xl bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-100 mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <DollarSign size={18} className="text-green-500" />
+              <p className="text-sm font-bold text-foreground">Thông tin thanh toán</p>
+            </div>
+            <div className="space-y-3">
+              <div className="p-2 bg-white/50 rounded-lg flex justify-between items-center">
+                <span className="text-sm text-muted-foreground font-medium">Giá gốc:</span>
+                <span className="text-sm font-bold text-foreground">
                   {originalAmount.toLocaleString('vi-VN')} đ
                 </span>
               </div>
               {discountAmount > 0 && (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Giảm giá:</span>
-                    <span className="text-sm font-semibold text-success">
-                      -{discountAmount.toLocaleString('vi-VN')} đ
-                    </span>
-                  </div>
-                </>
+                <div className="p-2 bg-white/50 rounded-lg flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground font-medium">Giảm giá:</span>
+                  <span className="text-sm font-bold text-green-600">
+                    -{discountAmount.toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
               )}
-              <div className="flex justify-between items-center pt-2 border-t border-border/30">
+              <div className="p-3 bg-white/70 rounded-lg flex justify-between items-center border-2 border-green-200">
                 <span className="text-base font-bold text-foreground">Tổng tiền thanh toán:</span>
-                <span className="text-lg font-bold text-success">
+                <span className="text-lg font-bold text-green-600">
                   {finalAmount.toLocaleString('vi-VN')} đ
                 </span>
               </div>
@@ -1012,9 +1394,12 @@ const BookingDetailModal = ({
 
           {/* Note */}
           {detailSchedule?.Note && (
-            <div className="p-4 rounded-lg bg-muted/50 border border-border/30">
-              <p className="text-sm font-semibold text-foreground mb-2">Ghi chú:</p>
-              <p className="text-sm text-foreground">{detailSchedule.Note}</p>
+            <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-100 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText size={18} className="text-blue-500" />
+                <p className="text-sm font-bold text-foreground">Ghi chú</p>
+              </div>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{detailSchedule.Note}</p>
             </div>
           )}
 
@@ -1025,43 +1410,104 @@ const BookingDetailModal = ({
                 onClick={() => onConfirm(bookingId)}
                 disabled={isProcessing}
                 className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-semibold",
-                  "bg-success text-success-foreground hover:bg-success/90",
-                  "transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  "flex-1 px-4 py-3 rounded-xl text-sm font-semibold",
+                  "bg-gradient-to-r from-green-500 to-emerald-500 text-white",
+                  "hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl",
+                  "transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
+                  "flex items-center justify-center gap-2"
                 )}
               >
-                {isProcessing ? 'Đang xử lý...' : 'Xác nhận booking'}
+                {isProcessing ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin text-white" />
+                    <span className="text-white">Đang xử lý...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle size={16} className="text-white" />
+                    <span className="text-white">Xác nhận booking</span>
+                  </>
+                )}
               </button>
             )}
             {(paymentStatus === 'Paid' || paymentStatus === 'Done') && scheduleStatus === 'Confirmed' && (
-              <button
-                onClick={() => onMarkArrived(bookingId)}
-                disabled={isProcessing}
-                className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-semibold",
-                  "bg-primary text-primary-foreground hover:bg-primary/90",
-                  "transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                )}
-              >
-                {isProcessing ? 'Đang xử lý...' : 'Đánh dấu đã tới quán'}
-              </button>
+              <>
+                <button
+                  onClick={() => onMarkArrived(bookingId)}
+                  disabled={isProcessing}
+                  className={cn(
+                    "flex-1 px-4 py-3 rounded-xl text-sm font-semibold",
+                    "bg-gradient-to-r from-blue-500 to-indigo-500 text-white",
+                    "hover:from-blue-600 hover:to-indigo-600 shadow-lg hover:shadow-xl",
+                    "transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
+                    "flex items-center justify-center gap-2"
+                  )}
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin text-white" />
+                      <span className="text-white">Đang xử lý...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={16} className="text-white" />
+                      <span className="text-white">Đánh dấu đã tới quán</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => onEndBooking(bookingId)}
+                  disabled={isProcessing}
+                  className={cn(
+                    "flex-1 px-4 py-3 rounded-xl text-sm font-semibold",
+                    "bg-gradient-to-r from-gray-500 to-gray-600 text-white",
+                    "hover:from-gray-600 hover:to-gray-700 shadow-lg hover:shadow-xl",
+                    "transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
+                    "flex items-center justify-center gap-2"
+                  )}
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin text-white" />
+                      <span className="text-white">Đang xử lý...</span>
+                    </>
+                  ) : (
+                    <>
+                      <X size={16} className="text-white" />
+                      <span className="text-white">Kết thúc booking</span>
+                    </>
+                  )}
+                </button>
+              </>
             )}
-            {(paymentStatus === 'Paid' || paymentStatus === 'Done') && (scheduleStatus === 'Confirmed' || scheduleStatus === 'Arrived') && (
+            {(paymentStatus === 'Paid' || paymentStatus === 'Done') && scheduleStatus === 'Arrived' && (
               <button
                 onClick={() => onEndBooking(bookingId)}
                 disabled={isProcessing}
                 className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-semibold",
-                  "bg-muted-foreground/10 text-muted-foreground hover:bg-muted-foreground/20",
-                  "transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  "flex-1 px-4 py-3 rounded-xl text-sm font-semibold",
+                  "bg-gradient-to-r from-gray-500 to-gray-600 text-white",
+                  "hover:from-gray-600 hover:to-gray-700 shadow-lg hover:shadow-xl",
+                  "transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
+                  "flex items-center justify-center gap-2"
                 )}
               >
-                {isProcessing ? 'Đang xử lý...' : 'Kết thúc booking'}
+                {isProcessing ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin text-white" />
+                    <span className="text-white">Đang xử lý...</span>
+                  </>
+                ) : (
+                  <>
+                    <X size={16} className="text-white" />
+                    <span className="text-white">Kết thúc booking</span>
+                  </>
+                )}
               </button>
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
