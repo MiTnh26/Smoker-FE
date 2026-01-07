@@ -216,7 +216,7 @@ export default function BarRegister() {
           </div>
         </div>
 
-        {step === 1 && (
+      {step === 1 && (
         <BarRegisterStep1
           info={info}
           handleInfoChange={handleInfoChange}
@@ -244,19 +244,19 @@ export default function BarRegister() {
         />
       )}
 
-        {step === 2 && (
-          <BarRegisterStep2
-            info={info}
-            files={files}
-            previews={previews}
-            handleFileChange={handleFileChange}
-            submitStep2={submitStep2}
-            isLoading={isLoading}
-            prevStep={prevStep}
-            message={message}
-            Preview={ProfilePreviewCard}
-          />
-        )}
+      {step === 2 && (
+        <BarRegisterStep2
+          info={info}
+          files={files}
+          previews={previews}
+          handleFileChange={handleFileChange}
+          submitStep2={submitStep2}
+          isLoading={isLoading}
+          prevStep={prevStep}
+          message={message}
+          Preview={ProfilePreviewCard}
+        />
+      )}
       </div>
     </div>
   );

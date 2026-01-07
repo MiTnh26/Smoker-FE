@@ -5,21 +5,14 @@ import {
   Maximize2,
   X,
   Globe,
-  MapPin,
-  Smile,
-  Tag,
   ChevronLeft,
   ChevronRight,
-  Calendar,
-  Clock,
-  Trash2,
   Video,
   AlertCircle
 } from "lucide-react";
 import AgoraRTC from "agora-rtc-sdk-ng";
 import { cn } from "../../../../utils/cn";
 import { getSessionUser } from "./utils";
-import livestreamApi from "../../../../api/livestreamApi";
 
 export default function LiveSetup({ onClose, onStartLive }) {
   const sessionUser = useMemo(() => getSessionUser(), []);
@@ -34,15 +27,6 @@ export default function LiveSetup({ onClose, onStartLive }) {
   const [pinnedComment, setPinnedComment] = useState("");
   const [enablePinnedComment, setEnablePinnedComment] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState("live"); // "live" | "manage"
-  const [scheduleType, setScheduleType] = useState("now"); // "now" | "scheduled"
-  const [scheduledDateTime, setScheduledDateTime] = useState("");
-  const [scheduledLivestreams, setScheduledLivestreams] = useState([]);
-  const [loadingScheduled, setLoadingScheduled] = useState(false);
-  const [showCreateScheduled, setShowCreateScheduled] = useState(false);
-  const [scheduledTitle, setScheduledTitle] = useState("");
-  const [scheduledDescription, setScheduledDescription] = useState("");
-  const [creatingScheduled, setCreatingScheduled] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [previewError, setPreviewError] = useState(null);
   
@@ -76,7 +60,7 @@ export default function LiveSetup({ onClose, onStartLive }) {
 
   // Start video preview
   useEffect(() => {
-    if (selectedCamera && videoPreviewRef.current && activeTab === "live") {
+    if (selectedCamera && videoPreviewRef.current) {
       const startPreview = async () => {
         try {
           setPreviewError(null);
@@ -123,81 +107,7 @@ export default function LiveSetup({ onClose, onStartLive }) {
         localTracksRef.current.videoTrack = null;
       }
     };
-  }, [selectedCamera, activeTab]);
-
-  // Load scheduled livestreams when manage tab is active
-  useEffect(() => {
-    if (activeTab === "manage") {
-      const loadScheduledLivestreams = async () => {
-        try {
-          setLoadingScheduled(true);
-          const livestreams = await livestreamApi.getScheduledLivestreams();
-          setScheduledLivestreams(livestreams || []);
-        } catch (err) {
-          console.error("[LiveSetup] Error loading scheduled livestreams:", err);
-          setScheduledLivestreams([]);
-        } finally {
-          setLoadingScheduled(false);
-        }
-      };
-      loadScheduledLivestreams();
-    }
-  }, [activeTab]);
-
-  const handleCancelScheduled = async (livestreamId) => {
-    if (!window.confirm("Bạn có chắc chắn muốn hủy buổi phát trực tiếp này?")) {
-      return;
-    }
-    try {
-      await livestreamApi.cancelScheduledLivestream(livestreamId);
-      setScheduledLivestreams(prev => prev.filter(l => l.livestreamId !== livestreamId));
-    } catch (err) {
-      console.error("[LiveSetup] Error canceling scheduled livestream:", err);
-      alert("Không thể hủy buổi phát trực tiếp. Vui lòng thử lại.");
-    }
-  };
-
-  const handleCreateScheduled = async () => {
-    if (!scheduledTitle.trim()) {
-      alert("Vui lòng nhập tiêu đề cho buổi phát trực tiếp.");
-      return;
-    }
-    if (!scheduledDateTime) {
-      alert("Vui lòng chọn thời gian phát trực tiếp.");
-      return;
-    }
-    try {
-      setCreatingScheduled(true);
-      const scheduledTime = new Date(scheduledDateTime);
-      if (scheduledTime <= new Date()) {
-        alert("Thời gian phát trực tiếp phải trong tương lai.");
-        setCreatingScheduled(false);
-        return;
-      }
-      await livestreamApi.createScheduledLivestream(
-        scheduledTitle,
-        scheduledDescription,
-        scheduledTime.toISOString(),
-        {
-          privacy: "public",
-          cameraId: selectedCamera,
-          microphoneId: selectedMicrophone,
-        }
-      );
-      // Reload scheduled livestreams
-      const livestreams = await livestreamApi.getScheduledLivestreams();
-      setScheduledLivestreams(livestreams || []);
-      setShowCreateScheduled(false);
-      setScheduledTitle("");
-      setScheduledDescription("");
-      setScheduledDateTime("");
-    } catch (err) {
-      console.error("[LiveSetup] Error creating scheduled livestream:", err);
-      alert("Không thể tạo lịch phát trực tiếp. Vui lòng thử lại.");
-    } finally {
-      setCreatingScheduled(false);
-    }
-  };
+  }, [selectedCamera]);
 
   const handleNext = () => {
     if (step < 3) {
@@ -222,8 +132,6 @@ export default function LiveSetup({ onClose, onStartLive }) {
       pinnedComment: enablePinnedComment ? pinnedComment : null,
       cameraId: selectedCamera,
       microphoneId: selectedMicrophone,
-      isScheduled: scheduleType === "scheduled",
-      scheduledDateTime: scheduleType === "scheduled" ? scheduledDateTime : null,
     });
     
     // Cleanup preview tracks
@@ -306,45 +214,6 @@ export default function LiveSetup({ onClose, onStartLive }) {
         <div className="flex gap-2 sm:gap-3 md:gap-4 flex-1 min-h-0 overflow-hidden">
           {/* Left Sidebar */}
           <div className="w-44 sm:w-52 md:w-60 flex-shrink-0 space-y-2 overflow-y-auto pr-1">
-            {/* Tabs */}
-            <div className="flex gap-1 border-b" style={{ borderColor: 'rgb(var(--border))' }}>
-              <button
-                onClick={() => {
-                  setActiveTab("live");
-                  setScheduleType("now");
-                  setScheduledDateTime("");
-                }}
-                className={cn(
-                  "flex-1 px-2 py-1.5 text-xs font-medium transition-all duration-200 border-b-2",
-                  activeTab === "live" 
-                    ? "border-primary text-primary" 
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-                style={{ 
-                  borderBottomColor: activeTab === "live" ? 'rgb(var(--primary))' : 'transparent',
-                  color: activeTab === "live" ? 'rgb(var(--primary))' : 'rgb(var(--muted-foreground))'
-                }}
-              >
-                Tạo video trực tiếp
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("manage");
-                }}
-                className={cn(
-                  "flex-1 px-2 py-1.5 text-xs font-medium transition-all duration-200 border-b-2",
-                  activeTab === "manage" 
-                    ? "border-primary text-primary" 
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-                style={{ 
-                  borderBottomColor: activeTab === "manage" ? 'rgb(var(--primary))' : 'transparent',
-                  color: activeTab === "manage" ? 'rgb(var(--primary))' : 'rgb(var(--muted-foreground))'
-                }}
-              >
-                Quản lý lịch phát trực tiếp
-              </button>
-            </div>
 
             {/* User Info */}
             <div className="rounded-lg border p-1.5" style={{ backgroundColor: 'rgb(var(--muted))', borderColor: 'rgb(var(--border))' }}>
@@ -356,62 +225,6 @@ export default function LiveSetup({ onClose, onStartLive }) {
               </p>
             </div>
 
-            {/* When to go live - Only show in live tab */}
-            {activeTab === "live" && (
-              <div className="space-y-1">
-                <label className="block text-xs font-medium" style={{ color: 'rgb(var(--foreground))' }}>
-                  Khi nào bạn sẽ phát trực tiếp?
-                </label>
-                <select
-                  value={scheduleType}
-                  onChange={(e) => {
-                    setScheduleType(e.target.value);
-                    if (e.target.value === "now") {
-                      setScheduledDateTime("");
-                    }
-                  }}
-                  className="w-full rounded-lg border px-2 py-1 text-xs transition-all duration-200 focus:outline-none"
-                  style={{ 
-                    backgroundColor: 'rgb(var(--muted))',
-                    borderColor: 'rgb(var(--border))',
-                    color: 'rgb(var(--foreground))'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = 'rgb(var(--primary))';
-                    e.target.style.boxShadow = '0 0 0 2px rgba(var(--primary), 0.2)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = 'rgb(var(--border))';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                >
-                  <option value="now">Bây giờ</option>
-                  <option value="scheduled">Theo lịch</option>
-                </select>
-                {scheduleType === "scheduled" && (
-                  <input
-                    type="datetime-local"
-                    value={scheduledDateTime}
-                    onChange={(e) => setScheduledDateTime(e.target.value)}
-                    min={new Date().toISOString().slice(0, 16)}
-                    className="w-full rounded-lg border px-2 py-1 text-xs transition-all duration-200 focus:outline-none mt-1"
-                    style={{ 
-                      backgroundColor: 'rgb(var(--muted))',
-                      borderColor: 'rgb(var(--border))',
-                      color: 'rgb(var(--foreground))'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = 'rgb(var(--primary))';
-                      e.target.style.boxShadow = '0 0 0 2px rgba(var(--primary), 0.2)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'rgb(var(--border))';
-                      e.target.style.boxShadow = 'none';
-                    }}
-                  />
-                )}
-              </div>
-            )}
 
             {/* Privacy - Always Public */}
             <div className="rounded-lg border px-2 py-1.5 text-xs" style={{ backgroundColor: 'rgb(var(--primary))', borderColor: 'rgb(var(--primary))', color: 'rgb(var(--primary-foreground))' }}>
@@ -431,258 +244,7 @@ export default function LiveSetup({ onClose, onStartLive }) {
 
           {/* Main Content */}
           <div className="flex-1 min-w-0 overflow-y-auto pr-1">
-            {activeTab === "manage" && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base sm:text-lg font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
-                    Buổi phát trực tiếp đã lên lịch
-                  </h3>
-                  <button
-                    onClick={() => setShowCreateScheduled(!showCreateScheduled)}
-                    className="rounded-lg border px-3 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 hover:scale-105"
-                    style={{ 
-                      backgroundColor: showCreateScheduled ? 'rgb(var(--muted))' : 'rgb(var(--primary))',
-                      borderColor: 'rgb(var(--primary))',
-                      color: showCreateScheduled ? 'rgb(var(--foreground))' : 'rgb(var(--primary-foreground))'
-                    }}
-                  >
-                    {showCreateScheduled ? "Hủy" : "+ Tạo lịch mới"}
-                  </button>
-                </div>
-                
-                {/* Create Scheduled Form */}
-                {showCreateScheduled && (
-                  <div className="rounded-xl border p-4 space-y-4" style={{ backgroundColor: 'rgb(var(--card))', borderColor: 'rgb(var(--border))' }}>
-                    <h4 className="text-sm font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
-                      Tạo buổi phát trực tiếp theo lịch
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <label className="block text-xs font-medium" style={{ color: 'rgb(var(--foreground))' }}>
-                          Tiêu đề <span className="text-destructive">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={scheduledTitle}
-                          onChange={(e) => setScheduledTitle(e.target.value)}
-                          placeholder="Nhập tiêu đề..."
-                          className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:outline-none"
-                          style={{ 
-                            backgroundColor: 'rgb(var(--muted))',
-                            borderColor: 'rgb(var(--border))',
-                            color: 'rgb(var(--foreground))'
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.borderColor = 'rgb(var(--primary))';
-                            e.target.style.boxShadow = '0 0 0 2px rgba(var(--primary), 0.2)';
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.borderColor = 'rgb(var(--border))';
-                            e.target.style.boxShadow = 'none';
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="block text-xs font-medium" style={{ color: 'rgb(var(--foreground))' }}>
-                          Mô tả
-                        </label>
-                        <textarea
-                          value={scheduledDescription}
-                          onChange={(e) => setScheduledDescription(e.target.value)}
-                          placeholder="Mô tả (tùy chọn)"
-                          rows={3}
-                          className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:outline-none resize-none"
-                          style={{ 
-                            backgroundColor: 'rgb(var(--muted))',
-                            borderColor: 'rgb(var(--border))',
-                            color: 'rgb(var(--foreground))'
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.borderColor = 'rgb(var(--primary))';
-                            e.target.style.boxShadow = '0 0 0 2px rgba(var(--primary), 0.2)';
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.borderColor = 'rgb(var(--border))';
-                            e.target.style.boxShadow = 'none';
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="block text-xs font-medium" style={{ color: 'rgb(var(--foreground))' }}>
-                          Thời gian phát trực tiếp <span className="text-destructive">*</span>
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={scheduledDateTime}
-                          onChange={(e) => setScheduledDateTime(e.target.value)}
-                          min={new Date().toISOString().slice(0, 16)}
-                          className="w-full rounded-lg border px-3 py-2 text-sm transition-all duration-200 focus:outline-none"
-                          style={{ 
-                            backgroundColor: 'rgb(var(--muted))',
-                            borderColor: 'rgb(var(--border))',
-                            color: 'rgb(var(--foreground))'
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.borderColor = 'rgb(var(--primary))';
-                            e.target.style.boxShadow = '0 0 0 2px rgba(var(--primary), 0.2)';
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.borderColor = 'rgb(var(--border))';
-                            e.target.style.boxShadow = 'none';
-                          }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 pt-2">
-                        <button
-                          onClick={handleCreateScheduled}
-                          disabled={creatingScheduled || !scheduledTitle.trim() || !scheduledDateTime}
-                          className="rounded-lg border px-4 py-2 text-sm font-semibold transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                          style={{ 
-                            backgroundColor: 'rgb(var(--primary))',
-                            borderColor: 'rgb(var(--primary))',
-                            color: 'rgb(var(--primary-foreground))'
-                          }}
-                        >
-                          {creatingScheduled ? "Đang tạo..." : "Tạo lịch"}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowCreateScheduled(false);
-                            setScheduledTitle("");
-                            setScheduledDescription("");
-                            setScheduledDateTime("");
-                          }}
-                          className="rounded-lg border px-4 py-2 text-sm font-medium transition-all duration-200 hover:scale-105"
-                          style={{ 
-                            backgroundColor: 'rgb(var(--card))',
-                            borderColor: 'rgb(var(--border))',
-                            color: 'rgb(var(--foreground))'
-                          }}
-                        >
-                          Hủy
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {loadingScheduled ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                  </div>
-                ) : scheduledLivestreams.length === 0 ? (
-                  <div className="text-center py-12 rounded-lg border" style={{ borderColor: 'rgb(var(--border))', backgroundColor: 'rgb(var(--muted))' }}>
-                    <Calendar className="h-16 w-16 mx-auto mb-4" style={{ color: 'rgb(var(--muted-foreground))' }} />
-                    <p className="text-sm font-medium mb-1" style={{ color: 'rgb(var(--foreground))' }}>
-                      Chưa có buổi phát trực tiếp nào được lên lịch
-                    </p>
-                    <p className="text-xs" style={{ color: 'rgb(var(--muted-foreground))' }}>
-                      Tạo lịch phát trực tiếp để người xem biết khi nào bạn sẽ phát trực tiếp
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {scheduledLivestreams.map((livestream) => {
-                      const scheduledTime = livestream.scheduledStartTime ? new Date(livestream.scheduledStartTime) : null;
-                      const now = new Date();
-                      const canStart = scheduledTime && scheduledTime <= now && livestream.status === "scheduled";
-                      
-                      return (
-                        <div
-                          key={livestream.livestreamId}
-                          className="rounded-xl border p-4 shadow-sm hover:shadow-md transition-all duration-200"
-                          style={{ backgroundColor: 'rgb(var(--card))', borderColor: 'rgb(var(--border))' }}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <h4 className="text-base font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
-                                  {livestream.title || "Không có tiêu đề"}
-                                </h4>
-                                {canStart && (
-                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: 'rgb(var(--danger))', color: 'rgb(var(--primary-foreground))' }}>
-                                    Sẵn sàng
-                                  </span>
-                                )}
-                              </div>
-                              {livestream.description && (
-                                <p className="text-sm mb-3 line-clamp-2" style={{ color: 'rgb(var(--muted-foreground))' }}>
-                                  {livestream.description}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-4 text-sm">
-                                <span className="flex items-center gap-1.5" style={{ color: 'rgb(var(--muted-foreground))' }}>
-                                  <Clock className="h-4 w-4" />
-                                  {scheduledTime 
-                                    ? scheduledTime.toLocaleString('vi-VN', {
-                                        day: '2-digit',
-                                        month: '2-digit',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      })
-                                    : 'Chưa có thời gian'}
-                                </span>
-                                {scheduledTime && scheduledTime > now && (
-                                  <span className="text-xs" style={{ color: 'rgb(var(--muted-foreground))' }}>
-                                    Còn {Math.ceil((scheduledTime - now) / (1000 * 60))} phút
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              {canStart && (
-                                <button
-                                  onClick={async () => {
-                                    try {
-                                      // Activate scheduled livestream
-                                      await livestreamApi.activateScheduledLivestream(livestream.livestreamId);
-                                      // Start live with scheduled data
-                                      onStartLive?.({
-                                        title: livestream.title,
-                                        description: livestream.description,
-                                        privacy: "public",
-                                        cameraId: selectedCamera || livestream.scheduledSettings?.cameraId,
-                                        microphoneId: selectedMicrophone || livestream.scheduledSettings?.microphoneId,
-                                        isScheduled: false,
-                                        scheduledLivestreamId: livestream.livestreamId,
-                                      });
-                                    } catch (err) {
-                                      console.error("[LiveSetup] Error activating scheduled livestream:", err);
-                                      alert("Không thể bắt đầu buổi phát trực tiếp đã lên lịch. Vui lòng thử lại.");
-                                    }
-                                  }}
-                                  className="rounded-lg border px-4 py-2 text-sm font-semibold transition-all duration-200 hover:scale-105 active:scale-95"
-                                  style={{ 
-                                    backgroundColor: 'rgb(var(--danger))',
-                                    borderColor: 'rgb(var(--danger))',
-                                    color: 'rgb(var(--primary-foreground))'
-                                  }}
-                                >
-                                  Bắt đầu
-                                </button>
-                              )}
-                              <button
-                                onClick={() => handleCancelScheduled(livestream.livestreamId)}
-                                className="rounded-lg border p-2 transition-all duration-200 hover:scale-110 active:scale-95"
-                                style={{ 
-                                  backgroundColor: 'rgb(var(--card))',
-                                  borderColor: 'rgb(var(--border))',
-                                  color: 'rgb(var(--danger))'
-                                }}
-                                title="Hủy buổi phát trực tiếp"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-            {activeTab === "live" && step === 1 && (
+            {step === 1 && (
               <div className="space-y-3">
                 {/* Camera Control */}
                 <div className="space-y-1.5">
@@ -867,7 +429,7 @@ export default function LiveSetup({ onClose, onStartLive }) {
               </div>
             )}
 
-            {activeTab === "live" && step === 2 && (
+            {step === 2 && (
               <div className="space-y-3">
                 <h3 className="text-sm sm:text-base font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
                   Thêm chi tiết về bài viết
@@ -924,46 +486,10 @@ export default function LiveSetup({ onClose, onStartLive }) {
                   />
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    className="flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 hover:scale-105"
-                    style={{ 
-                      backgroundColor: 'rgb(var(--card))',
-                      borderColor: 'rgb(var(--border))',
-                      color: 'rgb(var(--foreground))'
-                    }}
-                  >
-                    <Tag className="h-4 w-4" />
-                    Gắn thẻ người khác
-                  </button>
-                  <button
-                    className="flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 hover:scale-105"
-                    style={{ 
-                      backgroundColor: 'rgb(var(--card))',
-                      borderColor: 'rgb(var(--border))',
-                      color: 'rgb(var(--foreground))'
-                    }}
-                  >
-                    <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Check in
-                  </button>
-                  <button
-                    className="flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs sm:text-sm font-medium transition-all duration-200 hover:scale-105"
-                    style={{ 
-                      backgroundColor: 'rgb(var(--card))',
-                      borderColor: 'rgb(var(--border))',
-                      color: 'rgb(var(--foreground))'
-                    }}
-                  >
-                    <Smile className="h-4 w-4" />
-                    Cảm xúc/hoạt động
-                  </button>
-                </div>
               </div>
             )}
 
-            {activeTab === "live" && step === 3 && (
+            {step === 3 && (
               <div className="space-y-3">
                 <h3 className="text-sm sm:text-base font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
                   Bình luận ghim sẵn
@@ -994,8 +520,29 @@ export default function LiveSetup({ onClose, onStartLive }) {
                     <div className="rounded-lg border p-3" style={{ backgroundColor: 'rgb(var(--muted))', borderColor: 'rgb(var(--border))' }}>
                       <p className="text-[10px] sm:text-xs font-medium mb-2" style={{ color: 'rgb(var(--muted-foreground))' }}>Xem trước</p>
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-semibold" style={{ backgroundColor: 'rgb(var(--primary))', color: 'rgb(var(--primary-foreground))' }}>
-                          {sessionUser?.name?.[0] || "U"}
+                        {sessionUser?.avatar ? (
+                          <img
+                            src={sessionUser.avatar}
+                            alt={sessionUser?.name || "User"}
+                            className="h-6 w-6 sm:h-7 sm:w-7 rounded-full object-cover border flex-shrink-0"
+                            style={{ borderColor: 'rgb(var(--border))' }}
+                            onError={(e) => {
+                              // Fallback to initial if image fails to load
+                              e.target.style.display = "none";
+                              e.target.nextSibling.style.display = "flex";
+                            }}
+                          />
+                        ) : null}
+                        <div 
+                          className="h-6 w-6 sm:h-7 sm:w-7 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-semibold flex-shrink-0 border"
+                          style={{ 
+                            backgroundColor: 'rgb(var(--primary))', 
+                            color: 'rgb(var(--primary-foreground))',
+                            borderColor: 'rgb(var(--primary))',
+                            display: sessionUser?.avatar ? 'none' : 'flex'
+                          }}
+                        >
+                          {sessionUser?.name?.[0]?.toUpperCase() || "U"}
                         </div>
                         <span className="text-xs sm:text-sm font-semibold" style={{ color: 'rgb(var(--foreground))' }}>
                           {sessionUser?.name || "Người dùng"}
@@ -1044,11 +591,6 @@ export default function LiveSetup({ onClose, onStartLive }) {
                     <p style={{ color: 'rgb(var(--muted-foreground))' }}>
                       <span className="font-medium" style={{ color: 'rgb(var(--foreground))' }}>Nguồn video:</span> Webcam
                     </p>
-                    {scheduleType === "scheduled" && scheduledDateTime && (
-                      <p style={{ color: 'rgb(var(--muted-foreground))' }}>
-                        <span className="font-medium" style={{ color: 'rgb(var(--foreground))' }}>Thời gian:</span> {new Date(scheduledDateTime).toLocaleString('vi-VN')}
-                      </p>
-                    )}
                     <p style={{ color: 'rgb(var(--muted-foreground))' }}>
                       <span className="font-medium" style={{ color: 'rgb(var(--foreground))' }}>Quyền riêng tư:</span> {privacy === "public" ? "Công khai" : "Bạn bè"}
                     </p>

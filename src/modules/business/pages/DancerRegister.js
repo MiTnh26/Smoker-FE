@@ -218,8 +218,8 @@ export default function DancerRegister() {
             {/* Connector Line */}
             <div className="w-24 h-0.5 bg-border relative">
               <div className={`absolute inset-0 h-full transition-all duration-300 ${step >= 2 ? 'bg-primary' : 'bg-border'}`} />
-            </div>
-            
+          </div>
+
             {/* Step 2 */}
             <div className="flex flex-col items-center">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
@@ -234,32 +234,32 @@ export default function DancerRegister() {
               </span>
             </div>
           </div>
-        </div>
+          </div>
 
         {step === 1 && (
         <DancerRegisterStep1
           info={info}
           handleInfoChange={handleInfoChange}
           goNextStep={goNextStep}
-          selectedProvinceId={selectedProvinceId}
-          selectedDistrictId={selectedDistrictId}
-          selectedWardId={selectedWardId}
-          addressDetail={addressDetail}
-          onProvinceChange={(id) => {
-            setSelectedProvinceId(id);
-            setSelectedDistrictId('');
-            setSelectedWardId('');
-          }}
-          onDistrictChange={(id) => {
-            setSelectedDistrictId(id);
-            setSelectedWardId('');
-          }}
-          onWardChange={setSelectedWardId}
-          onAddressDetailChange={setAddressDetail}
-          onAddressChange={(fullAddr) => {
-            setInfo(prev => ({ ...prev, address: fullAddr }));
-          }}
-        />
+              selectedProvinceId={selectedProvinceId}
+              selectedDistrictId={selectedDistrictId}
+              selectedWardId={selectedWardId}
+              addressDetail={addressDetail}
+              onProvinceChange={(id) => {
+                setSelectedProvinceId(id);
+                setSelectedDistrictId('');
+                setSelectedWardId('');
+              }}
+              onDistrictChange={(id) => {
+                setSelectedDistrictId(id);
+                setSelectedWardId('');
+              }}
+              onWardChange={setSelectedWardId}
+              onAddressDetailChange={setAddressDetail}
+              onAddressChange={(fullAddr) => {
+                setInfo(prev => ({ ...prev, address: fullAddr }));
+              }}
+            />
       )}
 
       {step === 2 && (
