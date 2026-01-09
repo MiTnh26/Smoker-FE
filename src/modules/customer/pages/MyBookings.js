@@ -5,10 +5,11 @@ import { useCurrentUserEntity } from "../../../hooks/useCurrentUserEntity";
 import bookingApi from "../../../api/bookingApi";
 import publicProfileApi from "../../../api/publicProfileApi";
 import { cn } from "../../../utils/cn";
-import { Calendar, Clock, MapPin, DollarSign, X, Eye, AlertCircle, CheckCircle, XCircle, Loader2, Search, Filter, ExternalLink, Building2, Music2, Star, Upload, Image as ImageIcon, Edit, Phone, FileText } from "lucide-react";
+import { Calendar, Clock, MapPin, DollarSign, X, Eye, AlertCircle, CheckCircle, XCircle, Loader2, Search, Filter, ExternalLink, Building2, Music2, Star, Upload, Image as ImageIcon, Edit, Phone, FileText, Wallet, CalendarClock, CheckCircle2 } from "lucide-react";
 import { getAvatarUrl } from "../../../utils/defaultAvatar";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
+import QRCodeDisplay from "../../../components/common/QRCodeDisplay";
 import barReviewApi from "../../../api/barReviewApi";
 import userReviewApi from "../../../api/userReviewApi";
 import { uploadPostMedia } from "../../../api/postApi";
@@ -97,6 +98,55 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
     return 0;
   }, [detailSchedule, isDJBooking]);
 
+  // Amounts (ưu tiên theo data từ BE; fallback theo detailSchedule nếu thiếu)
+  // Phải đặt trước early return để tuân thủ Rules of Hooks
+  const originalAmount = useMemo(() => {
+    if (!booking) return 0;
+    const fromBooking = booking?.OriginalPrice ?? booking?.originalPrice;
+    if (fromBooking !== undefined && fromBooking !== null && !Number.isNaN(Number(fromBooking))) {
+      return Number(fromBooking);
+    }
+    const comboPrice =
+      detailSchedule?.Combo?.Price ??
+      detailSchedule?.Combo?.price ??
+      detailSchedule?.combo?.Price ??
+      detailSchedule?.combo?.price;
+    if (comboPrice !== undefined && comboPrice !== null && !Number.isNaN(Number(comboPrice))) {
+      return Number(comboPrice);
+    }
+    const total = booking?.TotalAmount ?? booking?.totalAmount;
+    return total !== undefined && total !== null ? Number(total) : 0;
+  }, [booking, detailSchedule]);
+
+  const discountPercent = useMemo(() => {
+    if (!booking) return 0;
+    const fromBooking = booking?.DiscountPercentages ?? booking?.discountPercentages;
+    if (fromBooking !== undefined && fromBooking !== null && !Number.isNaN(Number(fromBooking))) {
+      return Number(fromBooking);
+    }
+    const fromVoucher =
+      detailSchedule?.Voucher?.DiscountPercentage ??
+      detailSchedule?.Voucher?.discountPercentage ??
+      detailSchedule?.voucher?.DiscountPercentage ??
+      detailSchedule?.voucher?.discountPercentage;
+    return fromVoucher ? Number(fromVoucher) : 0;
+  }, [booking, detailSchedule]);
+
+  const finalAmount = useMemo(() => {
+    if (!booking) return 0;
+    const fromBooking = booking?.TotalAmount ?? booking?.totalAmount;
+    if (fromBooking !== undefined && fromBooking !== null && !Number.isNaN(Number(fromBooking))) {
+      return Number(fromBooking);
+    }
+    // fallback: tính theo % giảm
+    return Math.max(0, originalAmount - Math.floor((originalAmount * discountPercent) / 100));
+  }, [booking, originalAmount, discountPercent]);
+
+  const discountAmount = useMemo(() => {
+    const diff = originalAmount - finalAmount;
+    return diff > 0 ? diff : 0;
+  }, [originalAmount, finalAmount]);
+
   // Early return sau khi đã gọi tất cả hooks
   if (!open || !booking) return null;
 
@@ -120,21 +170,52 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
     });
   };
 
-  const getStatusConfig = (status) => {
+  const getStatusConfig = (scheduleStatus, paymentStatus) => {
+    // Ưu tiên check Canceled/Rejected trước (bất kể payment status)
+    if (scheduleStatus === "Canceled") {
+      return { 
+        label: "Đã hủy", 
+        color: "#6b7280", 
+        bg: "rgba(107, 114, 128, 0.1)" 
+      };
+    }
+    
+    if (scheduleStatus === "Rejected") {
+      return { 
+        label: "Từ chối", 
+        color: "rgb(var(--danger))", 
+        bg: "rgba(var(--danger), 0.1)" 
+      };
+    }
+
+    // Nếu chưa thanh toán → hiển thị "Chưa thanh toán"
+    if (paymentStatus !== "Paid" && paymentStatus !== "Done") {
+      return { 
+        label: "Chưa thanh toán", 
+        color: "rgb(var(--danger))", 
+        bg: "rgba(var(--danger), 0.1)" 
+      };
+    }
+
+    // Nếu đã thanh toán → hiển thị theo scheduleStatus
     const configs = {
       Pending: { label: "Chờ xác nhận", color: "rgb(var(--warning))", bg: "rgba(var(--warning), 0.1)" },
       Confirmed: { label: "Đã xác nhận", color: "rgb(var(--success))", bg: "rgba(var(--success), 0.1)" },
+      Arrived: { label: "Đã tới quán", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)" },
+      Ended: { label: "Kết thúc", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)" },
       Completed: { label: "Hoàn thành", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)" },
-      Canceled: { label: "Đã hủy", color: "rgb(var(--danger))", bg: "rgba(var(--danger), 0.1)" },
+      Canceled: { label: "Đã hủy", color: "#6b7280", bg: "rgba(107, 114, 128, 0.1)" },
       Rejected: { label: "Từ chối", color: "rgb(var(--danger))", bg: "rgba(var(--danger), 0.1)" },
     };
-    return configs[status] || configs.Pending;
+    return configs[scheduleStatus] || configs.Pending;
   };
 
-  const statusConfig = getStatusConfig(booking.scheduleStatus || booking.ScheduleStatus);
   const paymentStatus = booking.paymentStatus || booking.PaymentStatus;
+  const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
+  const statusConfig = getStatusConfig(scheduleStatus, paymentStatus);
   const modalTitle = isDJBooking ? "Chi tiết đặt DJ" : "Chi tiết đặt bàn";
   const bookingCodeLabel = isDJBooking ? "Mã đặt DJ" : "Mã đặt bàn";
+  const isPaid = paymentStatus === "Paid" || paymentStatus === "Done";
 
   return (
     <div
@@ -476,7 +557,7 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
           <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
             <span className="text-lg font-semibold text-foreground flex items-center gap-2">
               <DollarSign size={20} />
-              Tổng tiền cọc
+              {isDJBooking ? "Tổng tiền cọc" : "Số tiền đã thanh toán"}
             </span>
             <span className="text-2xl font-bold" style={{ color: "rgb(var(--success))" }}>
               {(() => {
@@ -485,44 +566,25 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
                   return '50,000 đ';
                 }
                 
-                // Nếu là booking quán bar: tính tổng tiền cọc = số bàn × 100,000 VND
-                // Cứ 1 bàn = 100,000 VND, 2 bàn = 200,000 VND, 3 bàn = 300,000 VND...
-                if (!isDJBooking && getTableCount > 0) {
-                  // Tính tiền cọc: 1 bàn = 100,000 VND, 2 bàn = 200,000 VND, ...
-                  const totalDeposit = getTableCount * 100000;
-                  return totalDeposit.toLocaleString('vi-VN') + ' đ';
-                }
-                
-                // Fallback: nếu không có bàn, hiển thị 0
-                return '0 đ';
+                // Booking bàn: show số tiền đã trả theo booking (TotalAmount)
+                return finalAmount.toLocaleString('vi-VN') + ' đ';
               })()}
             </span>
           </div>
 
-          {/* Total Amount */}
-          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 border border-border/20">
-            <span className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <DollarSign size={20} />
-              Tổng tiền
-            </span>
-            <span className="text-2xl font-bold" style={{ color: "rgb(var(--primary))" }}>
-              {(() => {
-                if (isDJBooking) {
-                  // DJ/Dancer: Tổng tiền = Tổng tiền gốc - 50,000 VND tiền cọc
-                  const totalAmount = booking.totalAmount || booking.TotalAmount || 0;
-                  const amountToPay = Math.max(0, totalAmount - 50000);
-                  return amountToPay.toLocaleString('vi-VN') + ' đ';
-                } else {
-                  // Quán bar: Tổng tiền = số bàn × 100,000 VND
-                  if (getTableCount > 0) {
-                    const totalAmount = getTableCount * 100000;
-                    return totalAmount.toLocaleString('vi-VN') + ' đ';
-                  }
-                  return '0 đ';
-                }
-              })()}
-            </span>
+         
+
+          {/* QR Code Display - chỉ hiện khi đã thanh toán, là table booking và chưa Ended */}
+          {isPaid && !isDJBooking && scheduleStatus !== 'Ended' && scheduleStatus !== 'ended' && (
+            <div className="pt-6 border-t border-border/30">
+              <QRCodeDisplay
+                bookingId={booking.BookedScheduleId || booking.bookedScheduleId}
+                onError={(error) => {
+                  console.error("QR Code display error:", error);
+                }}
+              />
           </div>
+          )}
 
           {/* Booking ID */}
           <div className="pt-4 border-t border-border/30">
@@ -985,17 +1047,16 @@ const ReviewModal = ({ open, onClose, booking, receiverInfo, onReviewSubmitted, 
             <div className="flex items-center gap-2">
               <DollarSign size={16} className="text-muted-foreground" />
               <span className="text-foreground font-semibold">
-                Tổng tiền: {(() => {
+                {isDJBooking ? "Tổng tiền: " : "Số tiền đã trả: "}{(() => {
                   if (isDJBooking) {
                     // DJ/Dancer: Trừ 50,000 tiền cọc
                     const totalAmount = booking.totalAmount || booking.TotalAmount || 0;
                     const amountToPay = Math.max(0, totalAmount - 50000);
                     return amountToPay.toLocaleString('vi-VN') + ' đ';
                   } else {
-                    // Booking bàn: tính = số lượng bàn × 100,000
-                    const tableCount = detailSchedule?.Table ? Object.keys(detailSchedule.Table).length : 0;
-                    const totalAmount = tableCount * 100000;
-                    return totalAmount.toLocaleString('vi-VN') + ' đ';
+                    // Booking bàn: ưu tiên TotalAmount thực tế đã lưu
+                    const totalAmount = booking.totalAmount || booking.TotalAmount || 0;
+                    return Number(totalAmount || 0).toLocaleString('vi-VN') + ' đ';
                   }
                 })()}
               </span>
@@ -1301,18 +1362,14 @@ const ReviewButton = ({ booking, userReviews, user, onReview, onEditReview }) =>
 
   if (!receiverInfo) return null;
 
-  // Kiểm tra điều kiện cho phép review: đã qua ngày booking HOẶC trạng thái là Ended
+  // Kiểm tra điều kiện cho phép review: chỉ khi trạng thái là Ended
   const scheduleStatus = booking?.scheduleStatus || booking?.ScheduleStatus;
-  const bookingDate = booking?.bookingDate || booking?.BookingDate;
-  
-  // Kiểm tra nếu đã qua ngày booking
-  const isPastDate = bookingDate ? new Date(bookingDate) < new Date() : false;
   
   // Kiểm tra nếu trạng thái là Ended
   const isEnded = scheduleStatus === 'Ended' || scheduleStatus === 'ended';
   
-  // Chỉ cho phép review nếu đã qua ngày HOẶC trạng thái là Ended
-  if (!isPastDate && !isEnded) {
+  // Chỉ cho phép review nếu trạng thái là Ended
+  if (!isEnded) {
     return null;
   }
 
@@ -1488,6 +1545,7 @@ export default function MyBookings() {
   const [existingReview, setExistingReview] = useState(null);
   const [loadingReviewReceiver, setLoadingReviewReceiver] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [activeTab, setActiveTab] = useState("upcoming");
   const [filterMode, setFilterMode] = useState("single"); // "single" or "range"
   const [singleDate, setSingleDate] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -1812,13 +1870,23 @@ export default function MyBookings() {
     }
   };
 
-  // Check if booking is completed (Ended status, Completed status, or past date + confirmed)
+  // Check if booking is completed (Ended status, Completed status, Arrived + past EndTime, or past date + confirmed)
   const isBookingCompleted = (booking) => {
     const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
     
     // Nếu status là "Ended" hoặc "Completed" → đã hoàn thành
     if (scheduleStatus === "Ended" || scheduleStatus === "Completed") {
       return true;
+    }
+    
+    // Nếu status là "Arrived" và đã qua EndTime → đã hoàn thành
+    if (scheduleStatus === "Arrived") {
+      const endTime = booking.endTime || booking.EndTime;
+      if (endTime) {
+        const endTimeObj = new Date(endTime);
+        const now = new Date();
+        return now > endTimeObj;
+      }
     }
     
     // Nếu status là "Confirmed" và đã qua ngày → đã hoàn thành
@@ -1839,21 +1907,56 @@ export default function MyBookings() {
   };
 
   const getStatusConfig = (status, booking = null) => {
-    // Nếu booking đã hoàn thành (Ended, Completed, hoặc đã qua ngày + confirmed) → hiển thị "Đã hoàn thành"
-    if (booking && isBookingCompleted(booking)) {
-      return {
-        label: "Đã hoàn thành",
-        color: "rgb(var(--primary))",
-        bg: "rgba(var(--primary), 0.1)",
-        icon: CheckCircle
-      };
+    // Nếu có booking, check scheduleStatus trước
+    if (booking) {
+      const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
+      
+      // Nếu đã Canceled hoặc Rejected → luôn hiển thị trạng thái đó (ưu tiên cao nhất)
+      if (scheduleStatus === "Canceled") {
+        return {
+          label: "Đã hủy",
+          color: "rgb(var(--danger))",
+          bg: "rgba(var(--danger), 0.1)",
+          icon: XCircle
+        };
+      }
+      if (scheduleStatus === "Rejected") {
+        return {
+          label: "Từ chối",
+          color: "rgb(var(--danger))",
+          bg: "rgba(var(--danger), 0.1)",
+          icon: XCircle
+        };
+      }
+      
+      // Nếu booking đã hoàn thành (Ended, Completed, hoặc đã qua ngày + confirmed) → hiển thị "Đã hoàn thành"
+      if (isBookingCompleted(booking)) {
+        return {
+          label: "Đã hoàn thành",
+          color: "rgb(var(--primary))",
+          bg: "rgba(var(--primary), 0.1)",
+          icon: CheckCircle
+        };
+      }
+      
+      // Nếu chưa thanh toán (và không phải Canceled/Rejected) → hiển thị "Chưa thanh toán"
+      const paymentStatus = booking.paymentStatus || booking.PaymentStatus;
+      if (paymentStatus !== "Paid" && paymentStatus !== "Done") {
+        return {
+          label: "Chưa thanh toán",
+          color: "rgb(var(--danger))",
+          bg: "rgba(var(--danger), 0.1)",
+          icon: AlertCircle
+        };
+      }
     }
     
     const configs = {
       Pending: { label: "Chờ xác nhận", color: "rgb(var(--warning))", bg: "rgba(var(--warning), 0.1)", icon: AlertCircle },
       Confirmed: { label: "Đã xác nhận", color: "rgb(var(--success))", bg: "rgba(var(--success), 0.1)", icon: CheckCircle },
+      Arrived: { label: "Đã tới quán", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)", icon: CheckCircle },
+      Ended: { label: "Kết thúc", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)", icon: CheckCircle },
       Completed: { label: "Hoàn thành", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)", icon: CheckCircle },
-      Ended: { label: "Đã hoàn thành", color: "rgb(var(--primary))", bg: "rgba(var(--primary), 0.1)", icon: CheckCircle },
       Canceled: { label: "Đã hủy", color: "rgb(var(--danger))", bg: "rgba(var(--danger), 0.1)", icon: XCircle },
       Rejected: { label: "Từ chối", color: "rgb(var(--danger))", bg: "rgba(var(--danger), 0.1)", icon: XCircle },
     };
@@ -1884,6 +1987,12 @@ export default function MyBookings() {
     if (!bookingsList || bookingsList.length === 0) return bookingsList;
 
     let filtered = bookingsList;
+
+    // Loại bỏ các booking bị Rejected khỏi mọi danh sách
+    filtered = filtered.filter((booking) => {
+      const sStatus = booking.scheduleStatus || booking.ScheduleStatus;
+      return sStatus !== "Rejected";
+    });
 
     // Filter by type first
     if (filterType !== "all") {
@@ -1963,30 +2072,61 @@ export default function MyBookings() {
   // Group bookings by status (after filtering and sorting)
   const filteredBookings = getFilteredAndSortedBookings();
   
-  // Separate Pending bookings by Type (BarTable vs DJ/Dancer)
-  const pendingBookings = filteredBookings.filter(b => (b.scheduleStatus || b.ScheduleStatus) === "Pending");
+  // Separate bookings by payment status and schedule status
+  // Chưa thanh toán
+  const unpaidBookings = filteredBookings.filter(b => {
+    const paymentStatus = b.paymentStatus || b.PaymentStatus;
+    return paymentStatus !== "Paid" && paymentStatus !== "Done";
+  });
+  const unpaidBarTable = unpaidBookings.filter(b => (b.type || b.Type) === "BarTable");
+  const unpaidDJ = unpaidBookings.filter(b => {
+    const bookingType = (b.type || b.Type || "").toString().toUpperCase();
+    return bookingType === "DJ" || bookingType === "DANCER" || bookingType === "PERFORMER";
+  });
+
+  // Đã thanh toán - Pending bookings (chờ xác nhận)
+  const pendingBookings = filteredBookings.filter(b => {
+    const paymentStatus = b.paymentStatus || b.PaymentStatus;
+    const scheduleStatus = b.scheduleStatus || b.ScheduleStatus;
+    return (paymentStatus === "Paid" || paymentStatus === "Done") && scheduleStatus === "Pending";
+  });
   const pendingBarTable = pendingBookings.filter(b => (b.type || b.Type) === "BarTable");
   const pendingDJ = pendingBookings.filter(b => {
     const bookingType = (b.type || b.Type || "").toString().toUpperCase();
     return bookingType === "DJ" || bookingType === "DANCER" || bookingType === "PERFORMER";
   });
   
-  // Confirmed bookings (chưa qua ngày)
+  // Confirmed bookings (đã xác nhận, chưa qua ngày)
   const confirmedBookings = filteredBookings.filter(b => {
+    const paymentStatus = b.paymentStatus || b.PaymentStatus;
     const status = b.scheduleStatus || b.ScheduleStatus;
-    return status === "Confirmed" && !isBookingCompleted(b);
+    return (paymentStatus === "Paid" || paymentStatus === "Done") 
+      && status === "Confirmed" 
+      && !isBookingCompleted(b);
   });
   
-  // Completed bookings (Ended, Completed, hoặc đã qua ngày + confirmed)
-  const completedBookings = filteredBookings.filter(b => {
+  // Arrived bookings (đã tới quán)
+  const arrivedBookings = filteredBookings.filter(b => {
+    const paymentStatus = b.paymentStatus || b.PaymentStatus;
     const status = b.scheduleStatus || b.ScheduleStatus;
-    return status === "Ended" || status === "Completed" || (status === "Confirmed" && isBookingCompleted(b));
+    return (paymentStatus === "Paid" || paymentStatus === "Done") && status === "Arrived";
+  });
+  
+  // Completed/Ended bookings (đã kết thúc)
+  const completedBookings = filteredBookings.filter(b => {
+    const paymentStatus = b.paymentStatus || b.PaymentStatus;
+    const status = b.scheduleStatus || b.ScheduleStatus;
+    return (paymentStatus === "Paid" || paymentStatus === "Done") 
+      && (status === "Ended" || status === "Completed" || (status === "Confirmed" && isBookingCompleted(b)));
   });
   
   const groupedBookings = {
+    UnpaidBarTable: unpaidBarTable,
+    UnpaidDJ: unpaidDJ,
     PendingBarTable: pendingBarTable,
     PendingDJ: pendingDJ,
     Confirmed: confirmedBookings,
+    Arrived: arrivedBookings,
     Completed: completedBookings,
     Rejected: filteredBookings.filter(b => (b.scheduleStatus || b.ScheduleStatus) === "Rejected"),
     Canceled: filteredBookings.filter(b => (b.scheduleStatus || b.ScheduleStatus) === "Canceled"),
@@ -2002,100 +2142,148 @@ export default function MyBookings() {
 
   const hasActiveFilter = singleDate || startDate || endDate || filterType !== "all";
 
-  // Compact Booking Card Component - chỉ hiển thị thông tin cơ bản
-  const CompactBookingCard = ({ booking, onViewDetail, onCancel, showCancel = false, reviewButton = null, onContinuePayment = null }) => {
+  // --- NEW UI COMPONENTS ---
+
+  const BookingCard = ({ booking, onViewDetail, onCancel, showCancel = false, reviewButton = null, onContinuePayment = null }) => {
     const paymentStatus = booking?.paymentStatus || booking?.PaymentStatus;
     const scheduleStatus = booking?.scheduleStatus || booking?.ScheduleStatus;
     const bookingType = booking?.type || booking?.Type || "";
     const isBarBooking = bookingType === "BarTable";
     
-    // Chỉ hiển thị nút "Tiếp tục thanh toán" khi đang chờ xác nhận (Pending)
-    const isPending = scheduleStatus === "Pending";
-    
-    // Tính số tiền cọc cần thanh toán
+    // Status Logic
+    const isUnpaid = paymentStatus !== "Paid" && paymentStatus !== "Done";
+    const isRejectedOrCanceled = scheduleStatus === "Rejected" || scheduleStatus === "Canceled";
+    const isPaidButPending = paymentStatus === "Paid" && scheduleStatus === "Pending";
+    const showContinuePayment = isUnpaid && !isRejectedOrCanceled && !isPaidButPending;
+
+    // Status Config for Badge
+    const getStatusBadge = () => {
+      // Ưu tiên check scheduleStatus trước (Canceled/Rejected luôn hiển thị đúng trạng thái)
+      switch (scheduleStatus) {
+        case 'Canceled': return { label: "Đã hủy", className: "bg-gray-100 text-gray-700 border-gray-200" };
+        case 'Rejected': return { label: "Bị từ chối", className: "bg-red-100 text-red-700 border-red-200" };
+        case 'Pending': return { label: "Chờ xác nhận", className: "bg-yellow-100 text-yellow-700 border-yellow-200" };
+        case 'Confirmed': return { label: "Sắp tới", className: "bg-blue-100 text-blue-700 border-blue-200" };
+        case 'Arrived': return { label: "Đang diễn ra", className: "bg-purple-100 text-purple-700 border-purple-200" };
+        case 'Ended': 
+        case 'Completed': return { label: "Hoàn thành", className: "bg-green-100 text-green-700 border-green-200" };
+        default:
+          // Nếu không có scheduleStatus đặc biệt, check payment status
+          if (isUnpaid) return { label: "Chờ thanh toán", className: "bg-red-100 text-red-700 border-red-200" };
+          return { label: scheduleStatus, className: "bg-gray-100 text-gray-700" };
+      }
+    };
+
+    const statusBadge = getStatusBadge();
+
+    // Calculate Deposit
     const depositAmount = useMemo(() => {
       if (isBarBooking) {
-        // BarTable: đếm số bàn từ detailSchedule.Table
         const detailSchedule = booking?.detailSchedule || booking?.DetailSchedule || {};
         if (detailSchedule?.Table) {
           let tableMap = detailSchedule.Table;
-          if (tableMap instanceof Map) {
-            tableMap = Object.fromEntries(tableMap);
-          } else if (tableMap && typeof tableMap.toObject === 'function') {
-            tableMap = tableMap.toObject();
-          }
+          if (tableMap instanceof Map) tableMap = Object.fromEntries(tableMap);
+          else if (tableMap && typeof tableMap.toObject === 'function') tableMap = tableMap.toObject();
           const tableCount = Object.keys(tableMap || {}).length;
-          return tableCount * 100000; // Mỗi bàn 100k
+          return tableCount * 100000;
         }
         return 0;
-      } else {
-        // DJ/Dancer: tiền cọc cố định 50k
-        return 50000;
       }
+      return 50000; // DJ/Dancer
     }, [booking, isBarBooking]);
 
     return (
-      <div className={cn(
-        "bg-card rounded-lg border border-border/20 p-3",
-        "shadow-sm hover:shadow-md transition-shadow",
-        "flex items-center justify-between gap-3"
-      )}>
-        <div className={cn("flex flex-col gap-1.5 flex-1 min-w-0")}>
-          {/* Booking ID */}
-          <div className={cn("text-[0.7rem] text-muted-foreground font-mono break-all leading-tight")}>
-            {booking.BookedScheduleId || booking.bookedScheduleId || 'N/A'}
+      <div className="group relative bg-card rounded-xl border border-border/40 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col md:flex-row items-start md:items-center p-4 gap-4">
+        {/* Status Indicator Strip (Left side) */}
+        <div className={cn("absolute left-0 top-0 bottom-0 w-1.5 md:rounded-l-xl", 
+          isUnpaid ? "bg-red-500" : 
+          scheduleStatus === 'Confirmed' ? "bg-blue-500" :
+          scheduleStatus === 'Completed' || scheduleStatus === 'Ended' ? "bg-green-500" : 
+          scheduleStatus === 'Pending' ? "bg-yellow-500" : "bg-gray-300"
+        )} />
+
+        {/* Main Content */}
+        <div className="flex-1 w-full pl-3 md:pl-2 grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+          
+          {/* Col 1: ID & Type */}
+          <div className="md:col-span-3">
+            <h3 className="font-bold text-foreground text-base">
+              {isBarBooking ? "Đặt bàn Bar" : "Booking DJ/Dancer"}
+            </h3>
+            <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider block mt-0.5">
+              #{booking.BookedScheduleId?.slice(0, 8)}
+            </span>
           </div>
           
-          {/* Date */}
-          <div className={cn("flex items-center gap-1.5 text-sm text-foreground")}>
-            <Calendar size={14} className={cn("text-muted-foreground")} />
-            <span>{formatDate(booking.bookingDate || booking.BookingDate)}</span>
+          {/* Col 2: Date & Time */}
+          <div className="md:col-span-3 flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-sm text-foreground/80">
+              <Calendar size={14} className="text-primary shrink-0" />
+              <span className="font-medium">
+                {formatDate(booking.bookingDate || booking.BookingDate)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock size={14} className="shrink-0" />
+              <span>
+                {formatTime(booking.startTime || booking.StartTime)} - {formatTime(booking.endTime || booking.EndTime)}
+              </span>
+            </div>
           </div>
           
-          {/* Receiver Info */}
-          <div>
+          {/* Col 3: Receiver Info */}
+          <div className="md:col-span-3 flex items-center gap-2 text-sm text-foreground/80 overflow-hidden">
+            <div className="shrink-0 p-1.5 bg-primary/10 rounded-full text-primary">
+              {isBarBooking ? <Building2 size={16} /> : <Music2 size={16} />}
+            </div>
+            <div className="flex-1 min-w-0">
             <ReceiverInfo booking={booking} />
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className={cn("flex items-center gap-2 flex-shrink-0")}>
+          {/* Col 4: Status Badge */}
+          <div className="md:col-span-3 flex md:justify-center">
+            <span className={cn("px-3 py-1 rounded-full text-xs font-semibold border uppercase tracking-wide", statusBadge.className)}>
+              {statusBadge.label}
+            </span>
+          </div>
+        </div>
+
+        {/* Action Buttons (Right side on desktop, Bottom on mobile) */}
+        <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-t-0 border-border/40 pl-3 md:pl-0">
+           {/* Continue Payment Button */}
+           {showContinuePayment && onContinuePayment && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onContinuePayment(booking, depositAmount); }}
+              className="flex-1 md:flex-none bg-red-600 text-white hover:bg-red-700 text-xs font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap"
+            >
+              <DollarSign size={14} />
+              Thanh toán
+            </button>
+          )}
+
           <button
             onClick={() => onViewDetail(booking)}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-medium",
-              "bg-primary/10 text-primary hover:bg-primary/20",
-              "transition-colors"
+              "flex-1 md:flex-none py-2 px-4 rounded-lg text-xs font-medium transition-colors border whitespace-nowrap",
+              showContinuePayment 
+                ? "bg-transparent border-border text-foreground hover:bg-muted" 
+                : "bg-primary/10 text-primary hover:bg-primary/20 border-transparent"
             )}
           >
             Chi tiết
           </button>
+
           {showCancel && (
             <button
-              onClick={() => onCancel(booking)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-medium",
-                "bg-danger/10 text-danger hover:bg-danger/20",
-                "transition-colors"
-              )}
+              onClick={(e) => { e.stopPropagation(); onCancel(booking); }}
+              className="py-2 px-3 rounded-lg text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors whitespace-nowrap"
+              title="Hủy"
             >
               Hủy
             </button>
           )}
-          {/* Nút tiếp tục thanh toán - chỉ hiển thị khi đang chờ xác nhận (Pending) */}
-          {isPending && paymentStatus === "Pending" && onContinuePayment && (
-            <button
-              onClick={() => onContinuePayment(booking, depositAmount)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-semibold",
-                "bg-green-500 text-white hover:bg-green-600",
-                "transition-colors flex items-center gap-1"
-              )}
-            >
-              <DollarSign size={14} />
-              Tiếp tục thanh toán
-            </button>
-          )}
+          
           {reviewButton}
         </div>
       </div>
@@ -2103,331 +2291,194 @@ export default function MyBookings() {
   };
 
   return (
-    <div className={cn("p-6 max-w-7xl mx-auto")}>
+    <div className={cn("p-4 md:p-8 w-full max-w-[1920px] mx-auto min-h-screen bg-background")}>
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className={cn("text-3xl font-bold text-foreground mb-2")}>
-              Đặt bàn của tôi
+          <h1 className={cn("text-3xl font-bold text-foreground tracking-tight")}>
+            Lịch đặt của tôi
             </h1>
-            <p className="text-muted-foreground">
-              Quản lý và xem chi tiết các đặt bàn của bạn
+          <p className="text-muted-foreground mt-1">
+            Quản lý tất cả các booking và trạng thái của bạn
             </p>
           </div>
+        
           <button
             onClick={() => setShowFilter(!showFilter)}
             className={cn(
-              "px-4 py-2 rounded-lg font-semibold flex items-center gap-2",
-              "bg-primary text-primary-foreground hover:bg-primary/90",
-              "border-none transition-colors shadow-md",
-              hasActiveFilter && "ring-2 ring-primary/50"
+            "w-full md:w-auto px-4 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all",
+            showFilter ? "bg-primary text-primary-foreground shadow-md" : "bg-card border hover:bg-muted text-foreground"
             )}
           >
             <Filter size={18} />
-            Tìm kiếm
-            {hasActiveFilter && (
-              <span className="ml-1 px-2 py-0.5 rounded-full bg-primary-foreground/20 text-xs">
-                {filterMode === "single" && singleDate ? "1" : (startDate || endDate) ? "2" : ""}
-              </span>
-            )}
+          {showFilter ? "Đóng bộ lọc" : "Bộ lọc nâng cao"}
           </button>
         </div>
 
         {/* Filter Panel */}
         {showFilter && (
-          <div className={cn(
-            "mb-6 p-4 rounded-xl bg-card border border-border/20",
-            "shadow-sm"
-          )}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className={cn("text-lg font-semibold text-foreground flex items-center gap-2")}>
-                <Search size={20} />
-                Tìm kiếm nâng cao
-              </h3>
-              <div className="flex items-center gap-2">
-                {hasActiveFilter && (
-                  <button
-                    onClick={clearFilters}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-sm font-medium",
-                      "bg-muted text-muted-foreground hover:bg-muted/80",
-                      "border border-border/30 transition-colors"
-                    )}
-                  >
-                    Xóa bộ lọc
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowFilter(false)}
-                  className={cn(
-                    "p-1.5 rounded-lg hover:bg-muted transition-colors",
-                    "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <X size={18} />
-                </button>
+        <div className="mb-8 p-5 rounded-2xl bg-card border border-border/40 shadow-sm animate-in fade-in slide-in-from-top-4">
+           {/* Filter content keeping existing logic but styled better */}
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Thời gian</label>
+                <div className="flex bg-muted/50 p-1 rounded-lg">
+                  <button onClick={() => { setFilterMode("single"); setStartDate(""); setEndDate(""); }} className={cn("flex-1 py-1.5 text-sm rounded-md transition-all", filterMode === "single" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground")}>Một ngày</button>
+                  <button onClick={() => { setFilterMode("range"); setSingleDate(""); }} className={cn("flex-1 py-1.5 text-sm rounded-md transition-all", filterMode === "range" ? "bg-background shadow-sm font-medium" : "text-muted-foreground hover:text-foreground")}>Khoảng ngày</button>
               </div>
             </div>
 
-            {/* Filter Mode Toggle */}
-            <div className="flex items-center gap-4 mb-4">
-              <span className="text-sm font-medium text-foreground">Chế độ:</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setFilterMode("single");
-                    setStartDate("");
-                    setEndDate("");
-                  }}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-semibold transition-colors",
-                    filterMode === "single"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
-                >
-                  Một ngày
-                </button>
-                <button
-                  onClick={() => {
-                    setFilterMode("range");
-                    setSingleDate("");
-                  }}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-semibold transition-colors",
-                    filterMode === "range"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
-                >
-                  Khoảng ngày
-                </button>
-              </div>
-            </div>
-
-            {/* Filter Inputs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 md:col-span-2">
               {filterMode === "single" ? (
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <Calendar size={16} />
-                    Chọn ngày
-                  </label>
-                  <input
-                    type="date"
-                    value={singleDate}
-                    onChange={(e) => setSingleDate(e.target.value)}
-                    className={cn(
-                      "w-full rounded-lg bg-background border border-border/30",
-                      "px-4 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20",
-                      "text-foreground"
-                    )}
-                  />
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold">Chọn ngày</label>
+                      <input type="date" value={singleDate} onChange={(e) => setSingleDate(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-background border focus:ring-2 ring-primary/20 outline-none" />
                 </div>
               ) : (
-                <>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <Calendar size={16} />
-                      Từ ngày
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      max={endDate || undefined}
-                      className={cn(
-                        "w-full rounded-lg bg-background border border-border/30",
-                        "px-4 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20",
-                        "text-foreground"
-                      )}
-                    />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Từ ngày</label>
+                        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} max={endDate} className="w-full px-3 py-2 rounded-lg bg-background border focus:ring-2 ring-primary/20 outline-none" />
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      <Calendar size={16} />
-                      Đến ngày
-                    </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      min={startDate || undefined}
-                      className={cn(
-                        "w-full rounded-lg bg-background border border-border/30",
-                        "px-4 py-2.5 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20",
-                        "text-foreground"
-                      )}
-                    />
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold">Đến ngày</label>
+                        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate} className="w-full px-3 py-2 rounded-lg bg-background border focus:ring-2 ring-primary/20 outline-none" />
                   </div>
-                </>
+                    </div>
               )}
-            </div>
-
-            {/* Filter by Booking Type */}
-            <div className="mt-4 pt-4 border-t border-border/30">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-                <Filter size={16} />
-                Loại booking
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setFilterType("all")}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-semibold transition-colors",
-                    filterType === "all"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
-                >
-                  Tất cả
-                </button>
-                <button
-                  onClick={() => setFilterType("BarTable")}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2",
-                    filterType === "BarTable"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
-                >
-                  <Building2 size={16} />
-                  Đặt bàn
-                </button>
-                <button
-                  onClick={() => setFilterType("DJ")}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2",
-                    filterType === "DJ"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
-                >
-                  <Music2 size={16} />
-                  DJ
-                </button>
-                <button
-                  onClick={() => setFilterType("Dancer")}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2",
-                    filterType === "Dancer"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  )}
-                >
-                  <Music2 size={16} />
-                  Dancer
-                </button>
               </div>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Error State */}
-      {error && (
-        <div className={cn(
-          "mb-6 p-4 rounded-lg bg-danger/10 border border-danger/30",
-          "flex items-center gap-2 text-danger"
-        )}>
-          <AlertCircle size={20} />
-          <span>{error}</span>
+           <div className="mt-6 pt-4 border-t border-border/40 flex justify-end gap-3">
+              <button onClick={clearFilters} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Xóa bộ lọc</button>
+              <button onClick={() => setShowFilter(false)} className="px-6 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">Áp dụng</button>
+           </div>
         </div>
       )}
 
-      {/* Loading State */}
+      {/* Tabs Navigation */}
+      <div className="mb-8 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-2 min-w-max p-1 bg-muted/30 rounded-xl border border-border/40 w-fit">
+          {[
+            { id: 'upcoming', label: 'Sắp tới', icon: Clock },
+            { id: 'unpaid', label: 'Chờ thanh toán', icon: Wallet },
+            { id: 'history', label: 'Lịch sử', icon: CheckCircle },
+            { id: 'cancelled', label: 'Đã hủy', icon: XCircle },
+          ].map((tab) => {
+            const isActive = (filterType === tab.id) || (filterType === 'all' && tab.id === 'upcoming' && !['unpaid', 'history', 'cancelled'].includes(filterType)); // Simple active check logic mapping
+            // Actual Logic: We need a state for the active TAB, separate from the filterType (which filters by DJ/Bar)
+            // Let's implement a local state for Tabs in the main component body, 
+            // but since I'm rewriting the render, let's assume we added [activeTab, setActiveTab]
+            return (
+                <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                  "px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all duration-200",
+                  activeTab === tab.id
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                )}
+              >
+                <tab.icon size={16} />
+                {tab.label}
+                {/* Optional: Add counters here if available */}
+                </button>
+            );
+          })}
+              </div>
+      </div>
+
+      {/* Main Content */}
       {loading ? (
-        <div className="flex flex-col gap-4">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <SkeletonCard key={`skeleton-${i}`} />
-          ))}
-        </div>
-      ) : filteredBookings.length === 0 ? (
-        <div className={cn(
-          "text-center py-16 bg-card rounded-xl border border-border/20",
-          "shadow-sm"
-        )}>
-          <Calendar size={64} className="mx-auto mb-4 text-muted-foreground" />
-          <h3 className={cn("text-xl font-bold text-foreground mb-2")}>
-            {hasActiveFilter ? "Không tìm thấy đặt bàn" : "Chưa có đặt bàn nào"}
-          </h3>
-          <p className="text-muted-foreground">
-            {hasActiveFilter 
-              ? "Không có đặt bàn nào phù hợp với bộ lọc của bạn. Hãy thử thay đổi điều kiện tìm kiếm."
-              : "Bạn chưa có đặt bàn nào. Hãy đặt bàn tại các quán bar yêu thích!"}
-          </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map(i => <SkeletonCard key={`skeleton-${i}`} />)}
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* Pending BarTable Bookings */}
-          {groupedBookings.PendingBarTable.length > 0 && (
-            <div>
-              <h2 className={cn("text-xl font-bold text-foreground mb-4 flex items-center gap-2")}>
-                <span className="px-2 py-1 rounded text-sm font-semibold" style={{ backgroundColor: "rgba(var(--primary), 0.1)", color: "rgb(var(--primary))" }}>
-                  Đặt bàn
-                </span>
-                Chờ xác nhận ({groupedBookings.PendingBarTable.length})
-              </h2>
-              <p className="text-sm text-muted-foreground mb-4">
-                Đang chờ quán bar xác nhận đặt bàn của bạn
-              </p>
-              <div className="flex flex-col gap-2">
-                {groupedBookings.PendingBarTable.map((booking) => (
-                  <CompactBookingCard
+        <div className="min-h-[300px]">
+          {(() => {
+            // Filter logic based on activeTab
+            let displayedBookings = [];
+            const sorted = getFilteredAndSortedBookings();
+
+            switch (activeTab) {
+              case 'unpaid':
+                displayedBookings = sorted.filter(b => {
+                  const pStatus = b.paymentStatus || b.PaymentStatus;
+                  const sStatus = b.scheduleStatus || b.ScheduleStatus;
+                  // Chỉ hiển thị nếu chưa thanh toán VÀ trạng thái lịch là Pending
+                  // Nếu đã bị Rejected hoặc Canceled thì không coi là chờ thanh toán nữa
+                  const isUnpaid = pStatus !== "Paid" && pStatus !== "Done";
+                  const isPendingSchedule = sStatus === "Pending";
+                  return isUnpaid && isPendingSchedule;
+                });
+                break;
+              case 'history':
+                displayedBookings = sorted.filter(b => {
+                  const pStatus = b.paymentStatus || b.PaymentStatus;
+                  const sStatus = b.scheduleStatus || b.ScheduleStatus;
+                  const isPaid = pStatus === "Paid" || pStatus === "Done";
+                  const isEnded = sStatus === "Ended" || sStatus === "Completed";
+                  const isPast = sStatus === "Confirmed" && isBookingCompleted(b);
+                  return isPaid && (isEnded || isPast);
+                });
+                break;
+              case 'cancelled':
+                displayedBookings = sorted.filter(b => {
+                  const sStatus = b.scheduleStatus || b.ScheduleStatus;
+                  return sStatus === "Canceled";
+                });
+                break;
+              case 'upcoming':
+              default:
+                displayedBookings = sorted.filter(b => {
+                  const pStatus = b.paymentStatus || b.PaymentStatus;
+                  const sStatus = b.scheduleStatus || b.ScheduleStatus;
+                  const isPaid = pStatus === "Paid" || pStatus === "Done";
+                  // Include Pending, Confirmed, Arrived. Exclude Ended/Completed/Rejected/Canceled
+                  const isActive = ["Pending", "Confirmed", "Arrived"].includes(sStatus);
+                  // Also ensure not past if confirmed
+                  const isNotPast = !(sStatus === "Confirmed" && isBookingCompleted(b));
+                  return isPaid && isActive && isNotPast;
+                });
+                break;
+            }
+
+            if (displayedBookings.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center py-20 text-center bg-card rounded-2xl border border-border/40 border-dashed">
+                  <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+                    {activeTab === 'unpaid' ? <Wallet className="text-muted-foreground" size={32} /> :
+                     activeTab === 'history' ? <CheckCircle className="text-muted-foreground" size={32} /> :
+                     activeTab === 'cancelled' ? <XCircle className="text-muted-foreground" size={32} /> :
+                     <Calendar className="text-muted-foreground" size={32} />}
+              </div>
+                  <h3 className="text-lg font-semibold text-foreground">Không có booking nào</h3>
+                  <p className="text-muted-foreground max-w-sm mt-1">
+                    {activeTab === 'upcoming' ? "Bạn chưa có lịch đặt nào sắp tới. Hãy đặt bàn ngay!" :
+                     activeTab === 'unpaid' ? "Tuyệt vời! Bạn không có khoản thanh toán nào đang chờ." :
+                     "Danh sách này đang trống."}
+                  </p>
+                  {activeTab === 'upcoming' && (
+                    <button onClick={() => navigate('/customer/newsfeed')} className="mt-6 px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors">
+                      Khám phá ngay
+                    </button>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <div className="flex flex-col gap-4 animate-in fade-in duration-500">
+                {displayedBookings.map((booking) => (
+                  <BookingCard
                     key={booking.BookedScheduleId || booking.bookedScheduleId}
                     booking={booking}
                     onViewDetail={handleViewDetail}
                     onCancel={handleCancelBooking}
-                    showCancel={true}
-                    onContinuePayment={handleContinuePayment}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Pending DJ Bookings */}
-          {groupedBookings.PendingDJ.length > 0 && (
-            <div>
-              <h2 className={cn("text-xl font-bold text-foreground mb-4 flex items-center gap-2")}>
-                <span className="px-2 py-1 rounded text-sm font-semibold" style={{ backgroundColor: "rgba(var(--primary), 0.1)", color: "rgb(var(--primary))" }}>
-                  DJ/Dancer
-                </span>
-                Chờ xác nhận ({groupedBookings.PendingDJ.length})
-              </h2>
-              <p className="text-sm text-muted-foreground mb-4">
-                Đang chờ DJ/Dancer xác nhận yêu cầu booking của bạn
-              </p>
-              <div className="flex flex-col gap-2">
-                {groupedBookings.PendingDJ.map((booking) => (
-                  <CompactBookingCard
-                    key={booking.BookedScheduleId || booking.bookedScheduleId}
-                    booking={booking}
-                    onViewDetail={handleViewDetail}
-                    onCancel={handleCancelBooking}
-                    showCancel={true}
-                    onContinuePayment={handleContinuePayment}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Confirmed Bookings */}
-          {groupedBookings.Confirmed.length > 0 && (
-            <div>
-              <h2 className={cn("text-xl font-bold text-foreground mb-4")}>
-                Đã xác nhận ({groupedBookings.Confirmed.length})
-              </h2>
-              <div className="flex flex-col gap-2">
-                {groupedBookings.Confirmed.map((booking) => (
-                  <CompactBookingCard
-                    key={booking.BookedScheduleId || booking.bookedScheduleId}
-                    booking={booking}
-                    onViewDetail={handleViewDetail}
+                    showCancel={activeTab === 'upcoming' && ((booking.scheduleStatus || booking.ScheduleStatus) === 'Pending' || (booking.scheduleStatus || booking.ScheduleStatus) === 'Confirmed')}
                     onContinuePayment={handleContinuePayment}
                     reviewButton={
                       <ReviewButton
@@ -2441,71 +2492,8 @@ export default function MyBookings() {
                   />
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Completed Bookings */}
-          {groupedBookings.Completed.length > 0 && (
-            <div>
-              <h2 className={cn("text-xl font-bold text-foreground mb-4")}>
-                Hoàn thành ({groupedBookings.Completed.length})
-              </h2>
-              <div className="flex flex-col gap-2">
-                {groupedBookings.Completed.map((booking) => (
-                  <CompactBookingCard
-                    key={booking.BookedScheduleId || booking.bookedScheduleId}
-                    booking={booking}
-                    onViewDetail={handleViewDetail}
-                    reviewButton={
-                      <ReviewButton
-                        booking={booking}
-                        userReviews={userReviews}
-                        user={user}
-                        onReview={handleReview}
-                        onEditReview={handleEditReview}
-                      />
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Rejected Bookings */}
-          {groupedBookings.Rejected.length > 0 && (
-            <div>
-              <h2 className={cn("text-xl font-bold text-foreground mb-4")}>
-                Từ chối ({groupedBookings.Rejected.length})
-              </h2>
-              <div className="flex flex-col gap-2">
-                {groupedBookings.Rejected.map((booking) => (
-                  <CompactBookingCard
-                    key={booking.BookedScheduleId || booking.bookedScheduleId}
-                    booking={booking}
-                    onViewDetail={handleViewDetail}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Canceled Bookings */}
-          {groupedBookings.Canceled.length > 0 && (
-            <div>
-              <h2 className={cn("text-xl font-bold text-foreground mb-4")}>
-                Đã hủy ({groupedBookings.Canceled.length})
-              </h2>
-              <div className="flex flex-col gap-2">
-                {groupedBookings.Canceled.map((booking) => (
-                  <CompactBookingCard
-                    key={booking.BookedScheduleId || booking.bookedScheduleId}
-                    booking={booking}
-                    onViewDetail={handleViewDetail}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 

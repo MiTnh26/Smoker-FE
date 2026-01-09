@@ -40,8 +40,8 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
   // Render HTML từ Revive vào container
   useEffect(() => {
     if (adHtml && containerRef.current) {
-      // Production URL để thay thế localhost
-      const productionUrl = 'https://smoker-fe-henna.vercel.app';
+      // Sử dụng URL hiện tại thay vì hardcode production URL
+      const currentUrl = window.location.origin;
       
       // Clean HTML: bỏ \n và whitespace không cần thiết
       let cleanHtml = adHtml
@@ -50,18 +50,24 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
         .replace(/\s+/g, ' ') // Thay nhiều whitespace bằng 1 space
         .trim();
       
-      // Thay thế localhost URLs bằng production URL trong HTML
-      // Match các pattern: http://localhost:PORT/path hoặc https://localhost:PORT/path
-      cleanHtml = cleanHtml.replace(
-        /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s"'<>]*)?/gi,
-        (match) => {
-          // Lấy path từ URL gốc (sau domain và port)
-          const urlMatch = match.match(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(\/.*)?$/i);
-          const path = urlMatch && urlMatch[1] ? urlMatch[1] : '';
-          // Thay thế với production URL + path
-          return productionUrl + path;
-        }
-      );
+      // Chỉ thay thế localhost URLs nếu đang ở production (không phải localhost)
+      // Nếu đang ở localhost, giữ nguyên localhost URLs
+      const isLocalhost = currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1');
+      
+      if (!isLocalhost) {
+        // Thay thế localhost URLs bằng current URL trong HTML
+        // Match các pattern: http://localhost:PORT/path hoặc https://localhost:PORT/path
+        cleanHtml = cleanHtml.replace(
+          /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s"'<>]*)?/gi,
+          (match) => {
+            // Lấy path từ URL gốc (sau domain và port)
+            const urlMatch = match.match(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(\/.*)?$/i);
+            const path = urlMatch && urlMatch[1] ? urlMatch[1] : '';
+            // Thay thế với current URL + path
+            return currentUrl + path;
+          }
+        );
+      }
       
       // Xóa nội dung cũ
       containerRef.current.innerHTML = '';
@@ -181,7 +187,8 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
               if (href.includes('localhost') || href.includes('127.0.0.1')) {
                 const url = new URL(href);
                 const pathAndQuery = url.pathname + (url.search || '') + (url.hash || '');
-                window.location.href = productionUrl + pathAndQuery;
+                // Sử dụng current URL thay vì hardcode production URL
+                window.location.href = window.location.origin + pathAndQuery;
                 return;
               }
               

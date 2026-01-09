@@ -80,7 +80,7 @@ export default function Sidebar({ isOpen, onClose }) {
         // Accountant có thể không cần sidebar hoặc có menu riêng
         console.log("[Sidebar] Accountant - no sidebar menu");
         setMenus([]);
-        setActiveEntity(null); // Set null để sidebar không hiển thị
+        setActiveEntity({ type: "Manager", role: "accountant", id: manager.id });
         setUser(null);
         return;
       }
@@ -237,10 +237,10 @@ export default function Sidebar({ isOpen, onClose }) {
     };
   }, [barPageId]);
 
-  // Nếu là Manager (Accountant) và không có menu → không hiển thị sidebar
+  // Nếu là Manager, không cần activeEntity (đã set menu ở trên)
   // Nếu không phải Manager và không có activeEntity → không hiển thị sidebar
-  // Nếu có menu rỗng → không hiển thị sidebar
-  if (menus.length === 0) return null;
+  // Nếu là Manager, không cần activeEntity (đã set menu ở trên)
+  // Nếu không phải Manager và không có activeEntity → không hiển thị sidebar
   if (!isManagerUser && !activeEntity) return null;
 
   const resolvedBarPageId = barPageId;

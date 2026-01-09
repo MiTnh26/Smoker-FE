@@ -13,6 +13,7 @@ import ManagePauseRequests from "../modules/admin/pages/ManagePauseRequests";
 import ManageResumeRequests from "../modules/admin/pages/ManageResumeRequests";
 import ManageRefundRequests from "../modules/admin/pages/ManageRefundRequests";
 import ManagePosts from "../modules/admin/pages/ManagePosts";
+import VoucherManager from "../modules/admin/pages/VoucherManager";
 import ProtectedRoute from "./ProtectedRoute";
 
 export default function AdminRoutes() {
@@ -30,6 +31,7 @@ export default function AdminRoutes() {
       <Route path="/admin/resume-requests" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageResumeRequests /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/refund-requests" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageRefundRequests /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/posts" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManagePosts /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/vouchers" element={<ProtectedRoute roles={["admin"]}><AdminLayout><VoucherManager /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/settings/language" element={<ProtectedRoute roles={["admin"]}><AdminLayout><LanguageSettings /></AdminLayout></ProtectedRoute>} />
     </Fragment>
   );
