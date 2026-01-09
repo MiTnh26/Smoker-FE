@@ -151,7 +151,7 @@ export default function MenuContactsPanel({ isOpen, onClose }) {
       "Tin nhắn": "messages",
       "Đặt bàn của tôi": "myBookings",
       "Hồ sơ": "profile",
-      "Bank info": "bankInfo",
+      "Thông Tin Ngân Hàng": "bankInfo",
       "Dashboard": "dashboard",
       "Nhân sự (DJ, Dancer)": "staff",
       "Bar page": "barPage",

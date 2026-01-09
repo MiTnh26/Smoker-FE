@@ -4,7 +4,7 @@
   justify-content: center;
   align-items: flex-start;
   padding: 2rem;
-  background: linear-gradient(135deg, rgb(var(--primary)) 0%, rgb(var(--secondary)) 100%);
+  background: rgb(var(--background));
 }
 
 .add-bank-info-card {

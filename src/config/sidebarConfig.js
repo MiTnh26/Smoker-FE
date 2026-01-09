@@ -43,7 +43,7 @@ export const sidebarConfig = {
     { label: "Đặt bàn của tôi", icon: BookOpen, path: "/customer/my-bookings" },
     { label: "Ví của tôi", icon: Wallet, path: "/wallet" },
     { label: "Hồ sơ", icon: User, path: "/own/profile" },
-    { label: "Bank info", icon: CreditCard, path: "/customer/bank-info" },
+    { label: "Thông Tin Ngân Hàng", icon: CreditCard, path: "/customer/bank-info" },
     { label: "Đăng ký tài khoản kinh doanh", icon: Store, path: "/register/select-account-type" },
   ],
 
