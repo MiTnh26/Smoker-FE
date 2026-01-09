@@ -179,7 +179,7 @@ export default function BarBookingListPage() {
         const type = b.Type || b.type;
         const scheduleStatus = b.scheduleStatus || b.ScheduleStatus;
         const paymentStatus = b.paymentStatus || b.PaymentStatus;
-        
+      
         // Chỉ hiển thị: BarTable + Paid + Pending
         return type === "BarTable" 
           && (paymentStatus === 'Paid' || paymentStatus === 'Done')
@@ -187,7 +187,7 @@ export default function BarBookingListPage() {
           && scheduleStatus !== "Rejected" 
           && scheduleStatus !== "Canceled";
       });
-      
+        
       // Sort by date (newest first)
       const sorted = pendingBookings.sort((a, b) => {
         const dateA = new Date(a.bookingDate || a.BookingDate || 0);
@@ -421,9 +421,9 @@ export default function BarBookingListPage() {
           <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg shadow-lg">
             <Table size={28} className="text-white" />
           </div>
-          <h1 className={cn('text-3xl font-bold text-foreground')}>
-            Quản lý đặt bàn
-          </h1>
+        <h1 className={cn('text-3xl font-bold text-foreground')}>
+          Quản lý đặt bàn
+        </h1>
         </div>
         <p className={cn('text-muted-foreground mt-2')}>
           Quản lý và xác nhận các đặt bàn của quán bar
@@ -523,18 +523,18 @@ export default function BarBookingListPage() {
             <p className={cn('text-sm text-muted-foreground')}>
               Tổng số: <span className="font-semibold text-primary">{bookings.length}</span> đặt bàn (Đã thanh toán, chờ xác nhận)
             </p>
-          </div>
+        </div>
         
-          {bookings.length === 0 ? (
-            <div className={cn(
+        {bookings.length === 0 ? (
+          <div className={cn(
               'text-center py-16',
               'bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl border border-border/20 p-8'
-            )}>
+          )}>
               <Table size={48} className="text-muted-foreground mx-auto mb-4 opacity-50" />
               <p className="text-lg font-semibold text-muted-foreground mb-2">Chưa có đặt bàn nào</p>
               <p className="text-sm text-muted-foreground">Chọn ngày khác để xem đặt bàn</p>
-            </div>
-          ) : (
+          </div>
+        ) : (
             <div className={cn('grid grid-cols-1 lg:grid-cols-2 gap-4')}>
             {bookings.map((booking) => {
             const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
@@ -580,7 +580,7 @@ export default function BarBookingListPage() {
             const combo = detailSchedule?.Combo || {};
             const comboName = combo.ComboName || combo.comboName || 'Combo đặt bàn';
             const comboPrice = combo.Price || combo.price || 0;
-            
+
             return (
               <motion.div
                 key={booking.BookedScheduleId}
@@ -615,8 +615,8 @@ export default function BarBookingListPage() {
                   )}>
                     {paymentStatus === 'Paid' || paymentStatus === 'Done' ? 'Đã thanh toán' : 'Chưa thanh toán'}
                   </span>
-                </div>
-
+                  </div>
+                  
                 {/* Info Grid */}
                 <div className={cn('grid grid-cols-2 gap-3')}>
                   {/* Date */}
@@ -640,40 +640,40 @@ export default function BarBookingListPage() {
                       </p>
                     </div>
                   </div>
-                </div>
+                  </div>
                   
-                {/* Tables */}
-                {enrichedTableList.length > 0 && (
+                  {/* Tables */}
+                  {enrichedTableList.length > 0 && (
                   <div className={cn('p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100')}>
                     <div className={cn('flex items-center gap-2 mb-2')}>
                       <Table size={16} className="text-purple-500" />
                       <span className={cn('text-sm font-semibold text-foreground')}>Bàn đã chọn:</span>
                     </div>
                     <div className={cn('flex flex-wrap gap-2')}>
-                      {enrichedTableList.map((tableItem, idx) => (
-                        <span
-                          key={tableItem.id || idx}
-                          className={cn(
+                        {enrichedTableList.map((tableItem, idx) => (
+                          <span
+                            key={tableItem.id || idx}
+                            className={cn(
                             'px-3 py-1.5 bg-white rounded-lg text-sm font-medium',
                             'border-2 border-purple-200 text-purple-700 shadow-sm'
-                          )}
-                        >
+                            )}
+                          >
                           {tableItem.fullName || tableItem.name || `Bàn ${idx + 1}`}
-                        </span>
-                      ))}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
                   
-                {/* Note */}
-                {detailSchedule?.Note && (
+                  {/* Note */}
+                  {detailSchedule?.Note && (
                   <div className={cn('p-3 bg-muted/30 rounded-lg border border-border/20')}>
                     <div className={cn('flex items-center gap-2 mb-1')}>
                       <FileText size={14} className="text-muted-foreground" />
                       <span className={cn('text-xs font-semibold text-muted-foreground')}>Ghi chú:</span>
                     </div>
                     <p className={cn('text-sm text-foreground')}>{detailSchedule.Note}</p>
-                  </div>
+                </div>
                 )}
 
                 {/* Action buttons */}
@@ -756,7 +756,7 @@ export default function BarBookingListPage() {
               <div>
                 <h2 className={cn('text-2xl font-bold text-foreground mb-1')}>
                   Danh sách đặt bàn đã xác nhận
-                </h2>
+            </h2>
                 <p className={cn('text-sm text-muted-foreground')}>
                   Tổng số: <span className="font-semibold text-primary">{filteredConfirmedBookings.length}</span> đặt bàn
                   {statusFilter !== 'all' && (
@@ -766,7 +766,7 @@ export default function BarBookingListPage() {
                   )}
                 </p>
               </div>
-            </div>
+          </div>
 
             {/* Status Filter */}
             <div className={cn('flex items-center gap-2 flex-wrap mb-4')}>
@@ -890,19 +890,19 @@ export default function BarBookingListPage() {
                   >
                     {/* Header - Status badge */}
                     <div className={cn('flex items-center justify-end mb-4')}>
-                      <span
-                        className={cn(
+                          <span
+                            className={cn(
                           "px-3 py-1 rounded-full text-xs font-semibold border"
-                        )}
-                        style={{
-                          color: statusConfig.color,
-                          backgroundColor: statusConfig.bg,
-                          borderColor: statusConfig.color
-                        }}
-                      >
-                        {statusConfig.label}
-                      </span>
-                    </div>
+                            )}
+                            style={{
+                              color: statusConfig.color,
+                              backgroundColor: statusConfig.bg,
+                              borderColor: statusConfig.color
+                            }}
+                          >
+                            {statusConfig.label}
+                          </span>
+                        </div>
 
                     <div className={cn('grid grid-cols-2 gap-3 mb-3')}>
                       <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
@@ -912,8 +912,8 @@ export default function BarBookingListPage() {
                           <p className={cn('text-sm font-semibold text-foreground')}>
                             {bookingDetails.BookerName || 'N/A'}
                           </p>
-                        </div>
-                      </div>
+                          </div>
+                          </div>
                       <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
                         <DollarSign size={16} className="text-green-500" />
                         <div>
@@ -931,8 +931,8 @@ export default function BarBookingListPage() {
                             {new Date(bookingDetails.BookingDate).toLocaleDateString('vi-VN')}
                           </p>
                         </div>
-                      </div>
-                      {bookingDetails.ConfirmedAt && (
+                          </div>
+                          {bookingDetails.ConfirmedAt && (
                         <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
                           <Clock size={16} className="text-orange-500" />
                           <div>
@@ -941,9 +941,9 @@ export default function BarBookingListPage() {
                               {new Date(bookingDetails.ConfirmedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
                     {/* Tables */}
                     {enrichedTableList.length > 0 && (
@@ -951,7 +951,7 @@ export default function BarBookingListPage() {
                         <div className={cn('flex items-center gap-2 mb-2')}>
                           <Table size={16} className="text-purple-500" />
                           <span className={cn('text-sm font-semibold text-foreground')}>Bàn đã chọn:</span>
-                        </div>
+                      </div>
                         <div className={cn('flex flex-wrap gap-2')}>
                           {enrichedTableList.map((tableItem, idx) => (
                             <span
@@ -964,8 +964,8 @@ export default function BarBookingListPage() {
                               {tableItem.fullName || tableItem.name || `Bàn ${idx + 1}`}
                             </span>
                           ))}
-                        </div>
-                      </div>
+                    </div>
+                  </div>
                     )}
 
                     {/* Action Button */}
@@ -1112,7 +1112,7 @@ const BookingDetailModal = ({
       tableList = Object.keys(tableMap || {}).map(key => {
         const tableInfo = tableMap[key];
         return {
-          id: key,
+      id: key,
           name: tableInfo?.TableName || tableInfo?.name || key,
           price: tableInfo?.Price || tableInfo?.price || 0
         };
@@ -1195,7 +1195,7 @@ const BookingDetailModal = ({
         className={cn(
           "w-full max-w-3xl bg-card text-card-foreground rounded-2xl",
           "border-2 border-border/20 shadow-2xl",
-          "p-6 relative max-h-[90vh] overflow-y-auto"
+        "p-6 relative max-h-[90vh] overflow-y-auto"
         )}
       >
         {/* Header */}
@@ -1204,9 +1204,9 @@ const BookingDetailModal = ({
             <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg">
               <FileText size={20} className="text-white" />
             </div>
-            <h3 className={cn("text-2xl font-bold text-foreground")}>
-              Chi tiết đặt bàn
-            </h3>
+          <h3 className={cn("text-2xl font-bold text-foreground")}>
+            Chi tiết đặt bàn
+          </h3>
           </div>
           <button
             onClick={onClose}
@@ -1250,29 +1250,29 @@ const BookingDetailModal = ({
 
           {/* Info Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            {/* Booking Date */}
+          {/* Booking Date */}
             <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
               <div className="p-2 bg-purple-500 rounded-lg">
                 <Calendar className="text-white" size={20} />
               </div>
-              <div>
+            <div>
                 <p className="text-xs text-muted-foreground font-medium mb-1">Ngày đặt</p>
                 <p className="font-bold text-foreground">
-                  {formatDate(bookingDate)}
-                </p>
-              </div>
+                {formatDate(bookingDate)}
+              </p>
             </div>
+          </div>
 
-            {/* Booker Info */}
+          {/* Booker Info */}
             <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-100">
               <div className="p-2 bg-blue-500 rounded-lg">
                 <User className="text-white" size={20} />
               </div>
-              <div>
+            <div>
                 <p className="text-xs text-muted-foreground font-medium mb-1">Người đặt</p>
                 <p className="font-bold text-foreground">
-                  {booking.BookerName || booking.bookerName || 'N/A'}
-                </p>
+                {booking.BookerName || booking.bookerName || 'N/A'}
+              </p>
               </div>
             </div>
           </div>
@@ -1379,9 +1379,9 @@ const BookingDetailModal = ({
                 <div className="p-2 bg-white/50 rounded-lg flex justify-between items-center">
                   <span className="text-sm text-muted-foreground font-medium">Giảm giá:</span>
                   <span className="text-sm font-bold text-green-600">
-                    -{discountAmount.toLocaleString('vi-VN')} đ
-                  </span>
-                </div>
+                      -{discountAmount.toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
               )}
               <div className="p-3 bg-white/70 rounded-lg flex justify-between items-center border-2 border-green-200">
                 <span className="text-base font-bold text-foreground">Tổng tiền thanh toán:</span>
@@ -1432,17 +1432,17 @@ const BookingDetailModal = ({
             )}
             {(paymentStatus === 'Paid' || paymentStatus === 'Done') && scheduleStatus === 'Confirmed' && (
               <>
-                <button
-                  onClick={() => onMarkArrived(bookingId)}
-                  disabled={isProcessing}
-                  className={cn(
+              <button
+                onClick={() => onMarkArrived(bookingId)}
+                disabled={isProcessing}
+                className={cn(
                     "flex-1 px-4 py-3 rounded-xl text-sm font-semibold",
                     "bg-gradient-to-r from-blue-500 to-indigo-500 text-white",
                     "hover:from-blue-600 hover:to-indigo-600 shadow-lg hover:shadow-xl",
                     "transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
                     "flex items-center justify-center gap-2"
-                  )}
-                >
+                )}
+              >
                   {isProcessing ? (
                     <>
                       <Loader2 size={16} className="animate-spin text-white" />
@@ -1454,7 +1454,7 @@ const BookingDetailModal = ({
                       <span className="text-white">Đánh dấu đã tới quán</span>
                     </>
                   )}
-                </button>
+              </button>
                 <button
                   onClick={() => onEndBooking(bookingId)}
                   disabled={isProcessing}

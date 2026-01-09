@@ -201,9 +201,9 @@ export default function ComboManager() {
             <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg shadow-lg">
               <Package size={28} className="text-white" />
             </div>
-            <h1 className="bar-tables-title">
+          <h1 className="bar-tables-title">
               Quản lý Combo
-            </h1>
+          </h1>
           </div>
           <p className="bar-tables-description text-gray-600">
             Tổng số combo: <span className="font-semibold text-purple-600">{totalCombos}</span>
@@ -267,7 +267,7 @@ export default function ComboManager() {
                   </div>
                   <h3 className="bar-table-name text-lg font-bold text-gray-800">
                     {c.ComboName || "Chưa có tên"}
-                  </h3>
+                </h3>
                 </div>
 
                 {/* Price Display */}
@@ -277,8 +277,8 @@ export default function ComboManager() {
                     <span className="text-xs text-gray-500 font-medium">{fieldLabels.price}</span>
                   </div>
                   <p className="bar-table-price text-2xl font-bold text-green-600">
-                    {c.Price.toLocaleString("vi-VN")} đ
-                  </p>
+                  {c.Price.toLocaleString("vi-VN")} đ
+                </p>
                 </div>
 
                 {/* Description Display */}
@@ -289,8 +289,8 @@ export default function ComboManager() {
                       <span className="text-xs text-gray-500 font-medium">{fieldLabels.description}</span>
                     </div>
                     <p className="bar-table-description text-sm text-gray-600 line-clamp-2">
-                      {c.Description}
-                    </p>
+                    {c.Description}
+                  </p>
                   </div>
                 )}
 
@@ -371,7 +371,7 @@ export default function ComboManager() {
                   </div>
                   <h3 className="text-2xl font-bold text-gray-800">
                     {editingCombo?.ComboId ? "Chỉnh sửa Combo" : "Thêm Combo mới"}
-                  </h3>
+                </h3>
                 </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
@@ -409,16 +409,16 @@ export default function ComboManager() {
                     <span className="text-xs text-gray-500 font-normal">(VNĐ)</span>
                   </label>
                   <div className="relative">
-                    <input
-                      type="number"
+                  <input
+                    type="number"
                       value={editingCombo?.Price || ""}
                       onChange={(e) => setEditingCombo(prev => ({ ...prev, Price: Number(e.target.value) || 0 }))}
                       placeholder="Ví dụ: 500000"
-                      min="0"
+                    min="0"
                       step="1000"
                       className="w-full px-4 py-3 pl-10 bg-white border-2 border-white rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all duration-200 text-gray-800 placeholder-gray-400 shadow-sm"
-                      disabled={saving}
-                    />
+                    disabled={saving}
+                  />
                     <DollarSign size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   </div>
                   <p className="mt-1 text-xs text-gray-500">Nhập giá bán của combo (đơn vị: VNĐ)</p>
@@ -498,7 +498,7 @@ export default function ComboManager() {
                   </div>
                   <h3 className="text-2xl font-bold text-gray-800">
                     Chi tiết Combo
-                  </h3>
+                </h3>
                 </div>
                 <button
                   onClick={() => setShowDetailCombo(null)}
