@@ -97,6 +97,10 @@ export default function DancerRegister() {
     setStep(2);
   };
 
+  const goBackStep = () => {
+    setStep(1);
+  };
+
   const triggerAvatar = () => avatarInputRef.current?.click();
   const triggerBackground = () => bgInputRef.current?.click();
 
@@ -286,9 +290,19 @@ export default function DancerRegister() {
                 Nhấn trực tiếp vào avatar hoặc ảnh bìa bên dưới để chọn ảnh. Ảnh được cập nhật ngay trong phần xem trước.
               </p>
 
-              <button type="submit" className="business-register-btn" disabled={isLoading}>
-                {isLoading ? "Đang đăng ký..." : "Hoàn tất đăng ký"}
-              </button>
+              <div className="flex gap-4">
+                <button 
+                  type="button" 
+                  onClick={goBackStep}
+                  className="back-btn"
+                  disabled={isLoading}
+                >
+                  Quay lại
+                </button>
+                <button type="submit" className="business-register-btn flex-1" disabled={isLoading}>
+                  {isLoading ? "Đang đăng ký..." : "Hoàn tất đăng ký"}
+                </button>
+              </div>
               {message && <p className="business-register-message">{message}</p>}
             </form>
           </div>
