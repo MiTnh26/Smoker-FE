@@ -14,10 +14,21 @@ export default function WalletPage() {
   const [loading, setLoading] = useState(true);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   
+  // Pagination states
+  const [transactionsPage, setTransactionsPage] = useState(1);
+  const [withdrawRequestsPage, setWithdrawRequestsPage] = useState(1);
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(true);
+  const [hasMoreWithdrawRequests, setHasMoreWithdrawRequests] = useState(true);
+  const [loadingMoreTransactions, setLoadingMoreTransactions] = useState(false);
+  const [loadingMoreWithdrawRequests, setLoadingMoreWithdrawRequests] = useState(false);
+  
+  const TRANSACTIONS_PER_PAGE = 5;
+  const WITHDRAW_REQUESTS_PER_PAGE = 5;
+  
   useEffect(() => {
     loadWallet();
-    loadTransactions();
-    loadWithdrawRequests();
+    loadTransactions(1);
+    loadWithdrawRequests(1);
   }, []);
   
   const loadWallet = async () => {
@@ -33,33 +44,68 @@ export default function WalletPage() {
     }
   };
   
-  const loadTransactions = async () => {
+  const loadTransactions = async (page = 1) => {
     try {
-      const res = await walletApi.getTransactions({ limit: 50 });
+      const offset = (page - 1) * TRANSACTIONS_PER_PAGE;
+      const res = await walletApi.getTransactions({ offset, limit: TRANSACTIONS_PER_PAGE });
       if (res && res.status === 'success') {
-        setTransactions(res.data.transactions || []);
+        const newTransactions = res.data.transactions || [];
+        if (page === 1) {
+          setTransactions(newTransactions);
+        } else {
+          setTransactions(prev => [...prev, ...newTransactions]);
+        }
+        setHasMoreTransactions(newTransactions.length === TRANSACTIONS_PER_PAGE);
+        setTransactionsPage(page);
       }
     } catch (error) {
       console.error('Failed to load transactions:', error);
     }
   };
   
-  const loadWithdrawRequests = async () => {
+  const loadWithdrawRequests = async (page = 1) => {
     try {
-      const res = await walletApi.getWithdrawRequests();
+      const offset = (page - 1) * WITHDRAW_REQUESTS_PER_PAGE;
+      const res = await walletApi.getWithdrawRequests({ offset, limit: WITHDRAW_REQUESTS_PER_PAGE });
       if (res && res.status === 'success') {
-        setWithdrawRequests(res.data.requests || []);
+        const newRequests = (res.data.requests || []).map((req) => ({
+          ...req,
+          accountHolderName: req.accountHolderName || req.AccountHolderName || req.account_holder_name,
+        }));
+        if (page === 1) {
+          setWithdrawRequests(newRequests);
+        } else {
+          setWithdrawRequests(prev => [...prev, ...newRequests]);
+        }
+        setHasMoreWithdrawRequests(newRequests.length === WITHDRAW_REQUESTS_PER_PAGE);
+        setWithdrawRequestsPage(page);
       }
     } catch (error) {
       console.error('Failed to load withdraw requests:', error);
     }
   };
   
+  const loadMoreTransactions = () => {
+    if (loadingMoreTransactions || !hasMoreTransactions) return;
+    setLoadingMoreTransactions(true);
+    loadTransactions(transactionsPage + 1).finally(() => {
+      setLoadingMoreTransactions(false);
+    });
+  };
+  
+  const loadMoreWithdrawRequests = () => {
+    if (loadingMoreWithdrawRequests || !hasMoreWithdrawRequests) return;
+    setLoadingMoreWithdrawRequests(true);
+    loadWithdrawRequests(withdrawRequestsPage + 1).finally(() => {
+      setLoadingMoreWithdrawRequests(false);
+    });
+  };
+  
   const handleWithdrawSuccess = () => {
     setShowWithdrawModal(false);
     loadWallet();
-    loadTransactions();
-    loadWithdrawRequests();
+    loadTransactions(1);
+    loadWithdrawRequests(1);
   };
 
   const getTransactionTypeLabel = (type) => {
@@ -208,7 +254,7 @@ export default function WalletPage() {
                     </div>
                     <div className={cn("text-sm text-muted-foreground")}>
                       {request.bankName} - {request.accountNumber}
-                      {request.accountHolderName && ` (${request.accountHolderName})`}
+                      {(request.accountHolderName || request.AccountHolderName) && ` - ${request.accountHolderName || request.AccountHolderName}`}
                     </div>
                     <div className={cn("text-xs text-muted-foreground mt-1")}>
                       {formatDate(request.requestedAt)}
@@ -219,6 +265,26 @@ export default function WalletPage() {
                   </div>
                 </div>
               ))}
+              {hasMoreWithdrawRequests ? (
+                <div className={cn("mt-4 flex justify-center")}>
+                  <button
+                    onClick={loadMoreWithdrawRequests}
+                    disabled={loadingMoreWithdrawRequests}
+                    className={cn(
+                      "px-4 py-2 rounded-lg border border-border/20",
+                      "bg-card hover:bg-accent transition-colors",
+                      "text-sm font-medium",
+                      loadingMoreWithdrawRequests && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {loadingMoreWithdrawRequests ? 'Đang tải...' : 'Xem thêm'}
+                  </button>
+                </div>
+              ) : withdrawRequests.length > 0 && (
+                <div className={cn("mt-4 flex justify-center")}>
+                  <span className={cn("text-sm text-muted-foreground italic")}>Hết</span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -299,6 +365,26 @@ export default function WalletPage() {
                   </div>
                 );
               })}
+              {hasMoreTransactions ? (
+                <div className={cn("mt-4 flex justify-center")}>
+                  <button
+                    onClick={loadMoreTransactions}
+                    disabled={loadingMoreTransactions}
+                    className={cn(
+                      "px-4 py-2 rounded-lg border border-border/20",
+                      "bg-card hover:bg-accent transition-colors",
+                      "text-sm font-medium",
+                      loadingMoreTransactions && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {loadingMoreTransactions ? 'Đang tải...' : 'Xem thêm'}
+                  </button>
+                </div>
+              ) : transactions.length > 0 && (
+                <div className={cn("mt-4 flex justify-center")}>
+                  <span className={cn("text-sm text-muted-foreground italic")}>Hết</span>
+                </div>
+              )}
             </div>
           )}
         </div>
