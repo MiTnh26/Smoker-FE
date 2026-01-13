@@ -68,6 +68,28 @@ export default function ProfilePage() {
   const [followersModalMode, setFollowersModalMode] = useState("followers");
   const menuRef = useRef(null);
   const [activeTab, setActiveTab] = useState("info");
+  
+  // Set default tab to "tables" when not logged in and viewing bar profile
+  useEffect(() => {
+    if (!profile || !profileType) return;
+    
+    try {
+      const session = getSession();
+      const isNotLoggedIn = !session;
+      
+      if (isNotLoggedIn && profileType.isBar) {
+        // Chưa login và là bar profile -> nhảy vào tab đặt bàn
+        console.log('[ProfilePage] Setting activeTab to "tables" for bar profile (not logged in)');
+        setActiveTab("tables");
+      }
+    } catch (e) {
+      // Nếu không có session thì coi như chưa login
+      if (profileType.isBar) {
+        console.log('[ProfilePage] Setting activeTab to "tables" for bar profile (error getting session)');
+        setActiveTab("tables");
+      }
+    }
+  }, [profile, profileType]);
   const [isBanned, setIsBanned] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [showBookingView, setShowBookingView] = useState(false);
@@ -99,6 +121,7 @@ export default function ProfilePage() {
           // Dữ liệu profile đã được gộp sẵn từ backend
           const mappedData = normalizeProfileData(profileData);
           setProfile(mappedData);
+          // Tab sẽ được set tự động trong useEffect riêng dựa trên profileType
         } else {
           if (alive) {
             setError('Profile not found');

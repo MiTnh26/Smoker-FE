@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../utils/cn";
 import { locationApi } from "../../api/locationApi";
+import { formatAddressForSave, validateAddressFields } from "../../utils/addressFormatter";
 
 export default function AddressSelector({
   selectedProvinceId,
@@ -12,9 +13,11 @@ export default function AddressSelector({
   onDistrictChange,
   onWardChange,
   onAddressDetailChange,
-  onAddressChange, // Callback when full address changes
+  onAddressChange, // Callback when full address changes (for display)
+  onAddressJsonChange, // Callback when address JSON changes (for saving)
   className = "",
-  disabled = false
+  disabled = false,
+  required = true // Whether all 4 fields are required
 }) {
   const { t } = useTranslation();
   const [provinces, setProvinces] = useState([]);
@@ -94,13 +97,39 @@ export default function AddressSelector({
     return parts.join(', ');
   }, [selectedProvinceId, selectedDistrictId, selectedWardId, addressDetail, wards, districts, provinces]);
 
-  // Trigger buildAddress when selections change
+  // Validate and format address when selections change
   useEffect(() => {
+    // Build full address string for display
     if (onAddressChange && (selectedProvinceId || selectedDistrictId || selectedWardId || addressDetail)) {
       const fullAddr = buildAddress();
       onAddressChange(fullAddr);
     }
-  }, [selectedProvinceId, selectedDistrictId, selectedWardId, addressDetail, buildAddress, onAddressChange]);
+
+    // Format and validate JSON address for saving
+    if (onAddressJsonChange) {
+      if (required) {
+        // If required, validate all 4 fields are present
+        if (validateAddressFields(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId)) {
+          const addressJson = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
+          onAddressJsonChange(addressJson);
+        } else {
+          // Not all fields are filled, pass null
+          onAddressJsonChange(null);
+        }
+      } else {
+        // If not required, format if any field is present
+        if (addressDetail || selectedProvinceId || selectedDistrictId || selectedWardId) {
+          const addressJson = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
+          onAddressJsonChange(addressJson); // Will be null if validation fails
+        } else {
+          onAddressJsonChange(null);
+        }
+      }
+    }
+  }, [selectedProvinceId, selectedDistrictId, selectedWardId, addressDetail, buildAddress, onAddressChange, onAddressJsonChange, required]);
+
+  // Check if address is valid (all 4 fields filled)
+  const isAddressValid = validateAddressFields(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
 
   return (
     <div className={cn("space-y-3", className)}>

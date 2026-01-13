@@ -17,7 +17,8 @@ export default function BarRegisterStep1({
   onDistrictChange,
   onWardChange,
   onAddressDetailChange,
-  onAddressChange
+  onAddressChange,
+  onAddressJsonChange
 }) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
@@ -65,7 +66,9 @@ export default function BarRegisterStep1({
           onWardChange={onWardChange}
           onAddressDetailChange={onAddressDetailChange}
           onAddressChange={onAddressChange}
-                  className="space-y-3"
+          onAddressJsonChange={onAddressJsonChange}
+          required={true}
+          className="space-y-3"
         />
               </div>
             </div>

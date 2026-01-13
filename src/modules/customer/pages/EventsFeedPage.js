@@ -436,11 +436,16 @@ export default function EventsFeedPage() {
             event={selectedEvent}
             onClose={() => setSelectedEvent(null)}
             onNavigateToBar={() => {
-              if (selectedEvent.barPageId) {
-                navigate(`/bar/${selectedEvent.barPageId}`);
-                setSelectedEvent(null);
-              } else if (selectedEvent.bar?.entityAccountId) {
+              // Use entityAccountId for navigation (consistent with feed and landing)
+              if (selectedEvent.bar?.entityAccountId) {
                 navigate(`/profile/${selectedEvent.bar.entityAccountId}`);
+                setSelectedEvent(null);
+              } else if (selectedEvent.entityAccountId) {
+                navigate(`/profile/${selectedEvent.entityAccountId}`);
+                setSelectedEvent(null);
+              } else if (selectedEvent.barPageId) {
+                // Fallback: redirect through BarProfile which will convert barPageId to entityAccountId
+                navigate(`/bar/${selectedEvent.barPageId}`);
                 setSelectedEvent(null);
               }
             }}

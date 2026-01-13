@@ -1,6 +1,8 @@
 import PropTypes from "prop-types";
 import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Star, MapPin, Music } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "../../../utils/cn";
 import { locationApi } from "../../../api/locationApi";
 
@@ -8,6 +10,7 @@ const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1516455590571-18256e5b
 const skeletonItems = ["one", "two", "three", "four", "five", "six"];
 
 export function FeaturedVenues({ venues = [], loading = false, error = null }) {
+  const navigate = useNavigate();
   const [hoveredId, setHoveredId] = useState(null);
   const [formattedAddresses, setFormattedAddresses] = useState({});
 
@@ -152,6 +155,14 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
     return venue.address || "Đang cập nhật địa chỉ";
   };
 
+  const handleVenueClick = (venue) => {
+    // Use entityAccountId for navigation (consistent with feed)
+    const entityAccountId = venue.entityAccountId;
+    if (entityAccountId) {
+      navigate(`/profile/${entityAccountId}`);
+    }
+  };
+
   const renderVenueCard = (venue) => {
     const key = venue.barPageId || venue.id || venue.entityAccountId || venue.accountId || venue.name;
     const image = venue.background || venue.avatar || FALLBACK_IMAGE;
@@ -162,7 +173,7 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
     const location = formatAddress(venue);
 
     return (
-      <div
+      <motion.div
         key={key}
         className={cn(
           "bg-card text-card-foreground rounded-lg",
@@ -170,11 +181,16 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
           "shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
           "overflow-hidden",
           "transition-all duration-200",
-          "hover:border-border/30",
-          "hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+          "hover:border-primary/30",
+          "hover:shadow-xl hover:shadow-primary/20",
+          "cursor-pointer",
+          "group"
         )}
         onMouseEnter={() => setHoveredId(String(key))}
         onMouseLeave={() => setHoveredId(null)}
+        onClick={() => handleVenueClick(venue)}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
       >
         <div className="relative w-full h-48 md:h-56 overflow-hidden">
           <img
@@ -253,44 +269,101 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
+  };
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 50 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut",
+      },
+    },
   };
 
   return (
     <section className="py-8">
-      <div className="mb-8">
-        <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="mb-8"
+      >
+        <h2 className={cn(
+          "text-3xl md:text-4xl font-bold mb-2",
+          "bg-gradient-to-r from-foreground via-primary to-secondary",
+          "bg-clip-text text-transparent"
+        )}>
           Quán Bar Nổi Bật
         </h2>
         <p className="text-muted-foreground text-lg">
           Khám phá những địa điểm giải trí hàng đầu trong thành phố
         </p>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-50px" }}
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
         {loading && venues.length === 0
           ? skeletonItems.map(renderSkeletonCard)
           : null}
 
         {!loading && error ? (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-lg border-[0.5px] border-danger/30 bg-danger/5 p-6 text-danger">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="col-span-full flex flex-col items-center justify-center rounded-lg border-[0.5px] border-danger/30 bg-danger/5 p-6 text-danger"
+          >
             <p className="font-semibold">Không thể tải danh sách quán bar nổi bật</p>
             <p className="text-sm text-danger/80 mt-2">{error}</p>
-          </div>
+          </motion.div>
         ) : null}
 
         {!loading && !error && venues.length === 0 ? (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-lg border-[0.5px] border-border/20 bg-muted/30 p-6 text-muted-foreground">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="col-span-full flex flex-col items-center justify-center rounded-lg border-[0.5px] border-border/20 bg-muted/30 p-6 text-muted-foreground"
+          >
             <p className="font-semibold text-foreground mb-1">Chưa có dữ liệu</p>
             <p className="text-sm">Hãy quay lại sau khi các quán bar cập nhật thông tin của họ.</p>
-          </div>
+          </motion.div>
         ) : null}
 
         {!loading && !error
-          ? venues.map(renderVenueCard)
+          ? venues.map((venue, index) => (
+              <motion.div
+                key={venue.barPageId || venue.id || venue.entityAccountId || venue.accountId || index}
+                variants={itemVariants}
+                whileHover={{ 
+                  y: -10,
+                  transition: { duration: 0.2 }
+                }}
+              >
+                {renderVenueCard(venue)}
+              </motion.div>
+            ))
           : null}
-      </div>
+      </motion.div>
     </section>
   );
 }
