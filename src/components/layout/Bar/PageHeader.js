@@ -265,8 +265,85 @@ export default function PageHeader() {
     };
   }, [socket, isConnected]);
 
-  if (!session || !session.activeEntity) {
-    return null; // or a loading state
+  // Check if user is logged in
+  const isLoggedIn = !!(session && session.activeEntity);
+
+  // If not logged in, show login/register buttons instead of icons
+  if (!isLoggedIn) {
+    return (
+      <header className={cn(
+        "h-16 flex items-center px-4 md:px-8 sticky top-0 z-50",
+        "bg-card border-b border-[0.5px] border-border/20",
+        "backdrop-blur-sm",
+        "sm:h-14 sm:px-3 md:h-16 md:px-4 lg:px-8"
+      )}>
+        <div className={cn(
+          "flex items-center w-full justify-between mx-auto",
+          "max-w-[1400px]",
+          "sm:gap-2 md:gap-4"
+        )}>
+          <Link
+            to="/"
+            className={cn(
+              "no-underline",
+              "transition-opacity duration-200",
+              "hover:opacity-80",
+              "flex-shrink-0",
+              "flex items-center gap-2"
+            )}
+          >
+            <img
+              src="/13.png"
+              alt="Smoker Page"
+              className="h-12 w-auto sm:h-6 md:h-12"
+            />
+            <img
+              src="/page.png"
+              alt="Smoker Page"
+              className="h-3 w-auto sm:h-6 md:h-4"
+            />
+          </Link>
+
+          <div className={cn(
+            "flex items-center flex-1 max-w-md mx-4",
+            "sm:mx-1 sm:max-w-none sm:flex-initial md:mx-4 md:max-w-md md:flex-1"
+          )}>
+            <GlobalSearch />
+          </div>
+
+          <div className={cn("flex gap-2", "sm:gap-1.5 md:gap-2")}>
+            <button
+              onClick={() => navigate("/login")}
+              className={cn(
+                "px-4 py-2 rounded-lg",
+                "bg-transparent border border-border",
+                "text-foreground hover:bg-muted",
+                "transition-all duration-200",
+                "text-sm font-medium",
+                "sm:px-3 sm:py-1.5 sm:text-xs",
+                "md:px-4 md:py-2 md:text-sm"
+              )}
+            >
+              {t('auth.login') || 'Đăng nhập'}
+            </button>
+            <button
+              onClick={() => navigate("/register")}
+              className={cn(
+                "px-4 py-2 rounded-lg",
+                "bg-primary text-primary-foreground",
+                "hover:bg-primary/90",
+                "transition-all duration-200",
+                "text-sm font-medium",
+                "sm:px-3 sm:py-1.5 sm:text-xs",
+                "md:px-4 md:py-2 md:text-sm"
+              )}
+            >
+              {t('auth.signUp') || 'Đăng ký'}
+            </button>
+          </div>
+        </div>
+      </header>
+    );
   }
 
   const role = (session.activeEntity.role || session.activeEntity.type || "").toLowerCase();

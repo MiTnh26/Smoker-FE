@@ -6,6 +6,7 @@ import { fetchAllEntities } from "../../../utils/sessionHelper";
 import "../../../styles/modules/businessRegister.css";
 import ProfilePreviewCard from "../components/ProfilePreviewCard";
 import DancerRegisterStep1 from "../components/DancerRegisterStep1";
+import { formatAddressForSave, validateAddressFields } from "../../../utils/addressFormatter";
 
 export default function DancerRegister() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export default function DancerRegister() {
   // Step 1: basic info
   const [info, setInfo] = useState({
     userName: "",
-    address: "",
+    address: "", // Will store JSON string: {"detail":"13","provinceId":"1","districtId":"21","wardId":"617"}
     phone: "",
     bio: "",
     gender: "",
@@ -34,6 +35,7 @@ export default function DancerRegister() {
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
   const [selectedWardId, setSelectedWardId] = useState('');
   const [addressDetail, setAddressDetail] = useState('');
+  const [addressJson, setAddressJson] = useState(null); // JSON string from AddressSelector
 
   // Step 2: files + preview
   const [files, setFiles] = useState({ avatar: null, background: null });
@@ -111,6 +113,20 @@ export default function DancerRegister() {
       alert("Vui lòng thêm đủ ảnh đại diện và ảnh bìa trước khi hoàn thành.");
       return;
     }
+
+    // Validate address: must have all 4 fields
+    if (!validateAddressFields(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId)) {
+      setMessage("Vui lòng điền đầy đủ thông tin địa chỉ (Tỉnh/Thành phố, Quận/Huyện, Phường/Xã, và Địa chỉ chi tiết)");
+      return;
+    }
+
+    // Format address as JSON string
+    const addressJsonString = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
+    if (!addressJsonString) {
+      setMessage("Lỗi khi format địa chỉ. Vui lòng thử lại.");
+      return;
+    }
+
     setIsLoading(true);
     setMessage("");
 
@@ -118,23 +134,13 @@ export default function DancerRegister() {
       const user = JSON.parse(localStorage.getItem("user"));
       if (!user?.id) throw new Error("Không tìm thấy tài khoản. Vui lòng đăng nhập lại.");
 
-      // Build address data
-      const addressData = {
-        provinceId: selectedProvinceId || null,
-        districtId: selectedDistrictId || null,
-        wardId: selectedWardId || null,
-        detail: addressDetail || null,
-        fullAddress: info.address || null
-      };
-
       // B1: Gọi API registerDancer để tạo business
       const payload = {
         accountId: user.id,
         userName: info.userName.trim(),
         role: "Dancer",
         phone: info.phone || null,
-        address: info.address || null,
-        addressData: addressData,
+        address: addressJsonString, // Store JSON string in address field
         bio: info.bio || null,
         gender: info.gender || null,
         pricePerHours: Number(info.pricePerHours) || 0,

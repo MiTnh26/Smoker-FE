@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Header } from "../components/Header";
-import { HeroCarousel } from "../components/HeroCarousel";
-import { SearchBar } from "../components/SearchBar";
+import { BookingHero } from "../components/BookingHero";
+import { BookingFeatures } from "../components/BookingFeatures";
+import { BookingCTA } from "../components/BookingCTA";
+import { AnimatedSearchBar } from "../components/AnimatedSearchBar";
 import { FeaturedVenues } from "../components/FeaturedVenues";
 import barPageApi from "../../../api/barPageApi";
 import { useTranslation } from "react-i18next";
@@ -47,11 +49,22 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       <Header />
       <main>
-        <HeroCarousel />
+        {/* Hero Section với Animation */}
+        <BookingHero />
+        
+        {/* Search Section với Animation */}
+        <AnimatedSearchBar />
+        
+        {/* Features Section với Animation */}
+        <BookingFeatures />
+        
+        {/* Featured Venues */}
         <div className="container mx-auto px-4 py-8">
-       
           <FeaturedVenues venues={featuredBars} loading={loading} error={error} />
         </div>
+        
+        {/* CTA Section với Animation */}
+        <BookingCTA />
       </main>
     </div>
   );
