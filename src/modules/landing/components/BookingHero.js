@@ -1,13 +1,11 @@
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import { Calendar, Clock, Users, Sparkles } from "lucide-react";
+import { Share2, Sparkles, Calendar, Music } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { cn } from "../../../utils/cn";
 
 export function BookingHero() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const containerRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -38,7 +36,7 @@ export function BookingHero() {
     <section
       ref={containerRef}
       className={cn(
-        "relative w-full h-screen min-h-[600px] overflow-hidden",
+        "relative w-full h-screen min-h-[550px] md:min-h-[600px] lg:min-h-[650px] xl:min-h-[700px] 2xl:min-h-[750px] overflow-hidden",
         "bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900",
         "flex items-center justify-center"
       )}
@@ -52,7 +50,7 @@ export function BookingHero() {
       </motion.div>
 
       {/* Floating Particles */}
-      {[...Array(20)].map((_, i) => (
+      {Array.from({ length: 20 }).map((_, i) => (
         <motion.div
           key={i}
           className="absolute w-2 h-2 rounded-full bg-primary/30"
@@ -80,7 +78,7 @@ export function BookingHero() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
         className={cn(
-          "relative z-10 text-center px-4 max-w-5xl mx-auto",
+          "relative z-10 text-center px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 max-w-5xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-7xl mx-auto",
           "text-white"
         )}
       >
@@ -89,11 +87,11 @@ export function BookingHero() {
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-2 mb-6 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30"
+          className="inline-flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 lg:px-6 lg:py-3 mb-4 md:mb-5 lg:mb-6 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30"
         >
-          <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-sm font-semibold text-primary">
-            Đặt bàn nhanh chóng - Ưu tiên hàng đầu
+          <Sparkles className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-primary" />
+          <span className="text-xs sm:text-sm md:text-base lg:text-lg font-semibold text-primary">
+            Social Media + Đặt Bàn + Book DJ/Dancer - Tất cả trong một
           </span>
         </motion.div>
 
@@ -103,15 +101,25 @@ export function BookingHero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.8 }}
           className={cn(
-            "text-5xl md:text-7xl lg:text-8xl font-bold mb-6",
-            "bg-gradient-to-r from-white via-primary to-secondary",
-            "bg-clip-text text-transparent",
-            "leading-tight"
+            "text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4",
+            "text-white",
+            "leading-tight px-4"
           )}
         >
-          Đặt Bàn Bar
+          Nền Tảng Giải Trí Đêm
           <br />
-          <span className="text-white">Dễ Dàng Hơn Bao Giờ Hết</span>
+          <div className="flex flex-col items-center justify-center gap-2 mt-4">
+            {/* <img 
+              src="/15.png" 
+              alt="Smoker Logo Top" 
+              className="h-12 sm:h-16 md:h-20 lg:h-24 w-auto object-contain"
+            /> */}
+            <img 
+              src="/13.png" 
+              alt="Smoker Logo Bottom" 
+              className="h-12 sm:h-16 md:h-20 lg:h-24 w-auto object-contain"
+            />
+          </div>
         </motion.h1>
 
         {/* Description */}
@@ -119,10 +127,10 @@ export function BookingHero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.8 }}
-          className="text-xl md:text-2xl text-gray-300 mb-10 max-w-2xl mx-auto"
+          className="text-base sm:text-lg md:text-xl text-gray-300 mb-6 md:mb-8 max-w-2xl mx-auto px-4"
         >
-          Khám phá và đặt bàn tại những quán bar hàng đầu. 
-          Trải nghiệm dịch vụ đẳng cấp với chỉ vài cú click.
+          Nơi kết nối cộng đồng yêu giải trí đêm, chia sẻ khoảnh khắc đáng nhớ và trải nghiệm dịch vụ chất lượng. 
+          Đặt bàn bar uy tín, book DJ/Dancer chuyên nghiệp - Tất cả trong một nền tảng an toàn và đáng tin cậy.
         </motion.p>
 
         {/* Feature Icons */}
@@ -130,12 +138,12 @@ export function BookingHero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7, duration: 0.8 }}
-          className="flex flex-wrap justify-center gap-8 mb-12"
+          className="flex flex-wrap justify-center gap-4 sm:gap-6 mb-6 md:mb-8 px-4"
         >
           {[
-            { icon: Calendar, text: "Chọn ngày giờ", color: "text-primary" },
-            { icon: Users, text: "Số lượng khách", color: "text-secondary" },
-            { icon: Clock, text: "Xác nhận nhanh", color: "text-primary" },
+            { icon: Share2, text: "Newsfeed & Stories", color: "text-primary" },
+            { icon: Calendar, text: "Đặt bàn bar", color: "text-secondary" },
+            { icon: Music, text: "Book DJ/Dancer", color: "text-primary" },
           ].map((item, index) => (
             <motion.div
               key={index}
@@ -145,16 +153,16 @@ export function BookingHero() {
             >
               <motion.div
                 className={cn(
-                  "w-16 h-16 rounded-full bg-white/10 backdrop-blur-sm",
+                  "w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm",
                   "flex items-center justify-center border border-white/20",
                   "hover:bg-white/20 transition-colors"
                 )}
                 animate={floatingAnimation}
                 transition={{ ...floatingAnimation.transition, delay: index * 0.2 }}
               >
-                <item.icon className={cn("w-8 h-8", item.color)} />
+                <item.icon className={cn("w-7 h-7", item.color)} />
               </motion.div>
-              <span className="text-sm text-gray-300 font-medium">
+              <span className="text-xs sm:text-sm text-gray-300 font-medium">
                 {item.text}
               </span>
             </motion.div>
@@ -171,23 +179,18 @@ export function BookingHero() {
           <motion.button
             onClick={() => navigate("/register")}
             className={cn(
-              "px-8 py-4 rounded-xl font-bold text-lg",
-              "bg-gradient-to-r from-primary to-secondary",
-              "text-white shadow-lg shadow-primary/50",
-              "hover:shadow-xl hover:shadow-primary/70",
+              "px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold",
+              "text-sm sm:text-base",
+              "bg-primary text-white",
+              "shadow-lg shadow-primary/50",
+              "hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/70",
               "transition-all duration-300",
-              "relative overflow-hidden group"
+              "min-h-[44px] touch-target"
             )}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <span className="relative z-10">Đặt Bàn Ngay</span>
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-secondary to-primary"
-              initial={{ x: "-100%" }}
-              whileHover={{ x: 0 }}
-              transition={{ duration: 0.3 }}
-            />
+            Tham Gia Ngay
           </motion.button>
 
           <motion.button
@@ -196,15 +199,17 @@ export function BookingHero() {
               searchSection?.scrollIntoView({ behavior: "smooth" });
             }}
             className={cn(
-              "px-8 py-4 rounded-xl font-bold text-lg",
+              "px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold",
+              "text-sm sm:text-base",
               "bg-white/10 backdrop-blur-sm border border-white/20",
               "text-white hover:bg-white/20",
-              "transition-all duration-300"
+              "transition-all duration-300",
+              "min-h-[44px] touch-target"
             )}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            Khám Phá Bar
+            Khám Phá Newsfeed
           </motion.button>
         </motion.div>
       </motion.div>
@@ -214,7 +219,7 @@ export function BookingHero() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        className="absolute bottom-6 left-1/2 -translate-x-1/2"
       >
         <motion.div
           animate={{ y: [0, 10, 0] }}

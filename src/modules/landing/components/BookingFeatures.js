@@ -1,66 +1,69 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { 
-  Calendar, 
-  Clock, 
-  Shield, 
-  Star, 
-  Zap, 
+  Share2, 
+  Video, 
+  MessageCircle, 
+  Heart, 
+  Radio,
   Users,
-  CreditCard,
-  Bell
+  Bell,
+  Camera,
+  Music,
+  Calendar,
+  MapPin
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "../../../utils/cn";
 
 const features = [
   {
+    icon: Share2,
+    title: "Newsfeed & Chia sẻ",
+    description: "Lướt newsfeed, đăng ảnh/video và chia sẻ khoảnh khắc với cộng đồng",
+    color: "bg-primary",
+  },
+  {
+    icon: Camera,
+    title: "Stories 24 giờ",
+    description: "Chia sẻ stories và xem stories từ bạn bè, bar, DJ/Dancer",
+    color: "bg-secondary",
+  },
+  {
+    icon: Radio,
+    title: "Livestream trực tiếp",
+    description: "Xem và phát livestream từ bar, DJ/Dancer, tương tác real-time",
+    color: "bg-purple-500",
+  },
+  {
     icon: Calendar,
-    title: "Đặt bàn nhanh chóng",
-    description: "Chọn ngày giờ phù hợp chỉ trong vài giây",
-    color: "from-primary to-cyan-400",
+    title: "Đặt bàn bar",
+    description: "Chọn ngày giờ, combo và đặt bàn tại các quán bar hàng đầu",
+    color: "bg-blue-500",
   },
   {
-    icon: Clock,
-    title: "Xác nhận tức thì",
-    description: "Nhận xác nhận đặt bàn ngay lập tức",
-    color: "from-secondary to-pink-400",
-  },
-  {
-    icon: Shield,
-    title: "Bảo mật thông tin",
-    description: "Thông tin của bạn được bảo vệ an toàn",
-    color: "from-green-400 to-emerald-500",
-  },
-  {
-    icon: Star,
-    title: "Đánh giá thực tế",
-    description: "Xem đánh giá từ khách hàng đã sử dụng dịch vụ",
-    color: "from-yellow-400 to-orange-500",
-  },
-  {
-    icon: Zap,
-    title: "Thông báo thông minh",
-    description: "Nhận thông báo nhắc nhở trước giờ đặt bàn",
-    color: "from-purple-400 to-pink-500",
+    icon: Music,
+    title: "Book DJ/Dancer",
+    description: "Chọn slot, giá và book DJ/Dancer cho sự kiện của bạn",
+    color: "bg-pink-500",
   },
   {
     icon: Users,
-    title: "Quản lý nhóm",
-    description: "Dễ dàng đặt bàn cho nhóm bạn bè",
-    color: "from-blue-400 to-indigo-500",
+    title: "Kết nối cộng đồng",
+    description: "Follow bar, DJ/Dancer, bạn bè và xây dựng mạng lưới của riêng bạn",
+    color: "bg-indigo-500",
   },
   {
-    icon: CreditCard,
-    title: "Thanh toán linh hoạt",
-    description: "Nhiều phương thức thanh toán an toàn",
-    color: "from-teal-400 to-cyan-500",
+    icon: Heart,
+    title: "Tương tác đa dạng",
+    description: "Like, comment, share để thể hiện cảm xúc và tương tác",
+    color: "bg-red-500",
   },
   {
-    icon: Bell,
-    title: "Nhắc nhở tự động",
-    description: "Hệ thống tự động nhắc nhở bạn về lịch đặt bàn",
-    color: "from-red-400 to-rose-500",
+    icon: MessageCircle,
+    title: "Tin nhắn & Chat",
+    description: "Nhắn tin riêng tư với bạn bè, bar, DJ/Dancer và nhóm chat",
+    color: "bg-green-500",
   },
 ];
 
@@ -90,27 +93,26 @@ export function BookingFeatures() {
   const { t } = useTranslation();
 
   return (
-    <section className={cn("py-20 px-4 bg-background")}>
-      <div className="container mx-auto max-w-7xl">
+    <section className={cn("py-12 md:py-16 px-4 bg-background")}>
+      <div className="container mx-auto max-w-6xl">
         {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-10 md:mb-12"
         >
           <motion.h2
             className={cn(
-              "text-4xl md:text-5xl font-bold mb-4",
-              "bg-gradient-to-r from-primary via-secondary to-primary",
-              "bg-clip-text text-transparent"
+              "text-3xl md:text-4xl font-bold mb-3",
+              "text-foreground"
             )}
           >
-            Tại Sao Chọn Chúng Tôi?
+            Tính Năng Toàn Diện
           </motion.h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Trải nghiệm dịch vụ đặt bàn bar hiện đại với những tính năng độc đáo
+          <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
+            Social media kết hợp đặt bàn bar và book DJ/Dancer - Tất cả trong một nền tảng
           </p>
         </motion.div>
 
@@ -120,14 +122,14 @@ export function BookingFeatures() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
-          className="max-w-4xl mx-auto space-y-4"
+          className="max-w-4xl mx-auto space-y-3"
         >
           {features.map((feature, index) => (
             <motion.div
               key={index}
               variants={itemVariants}
               className={cn(
-                "flex items-start gap-4 p-4 rounded-lg",
+                "flex items-start gap-3 p-3 rounded-lg",
                 "bg-card border border-border",
                 "transition-colors duration-200"
               )}
@@ -135,19 +137,18 @@ export function BookingFeatures() {
               {/* Icon */}
               <div
                 className={cn(
-                  "w-12 h-12 rounded-lg flex-shrink-0",
-                  "bg-gradient-to-br",
+                  "w-10 h-10 rounded-lg flex-shrink-0",
                   feature.color,
                   "flex items-center justify-center",
                   "shadow-md"
                 )}
               >
-                <feature.icon className="w-6 h-6 text-white" />
+                <feature.icon className="w-5 h-5 text-white" />
               </div>
 
               {/* Content */}
               <div className="flex-1">
-                <h3 className="text-lg font-bold mb-1 text-foreground">
+                <h3 className="text-base font-bold mb-1 text-foreground">
                   {feature.title}
                 </h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">

@@ -15,7 +15,7 @@ import StoryViewers from "./StoryViewers";
 import ReportStoryModal from "./ReportStoryModal";
 import Toast from "../../../../components/common/Toast";
 
-export default function StoryViewer({ stories, activeStory, onClose, entityAccountId, onStoryDeleted }) {
+export default function StoryViewer({ stories, activeStory, onClose, entityAccountId, onStoryDeleted, onStoryViewed }) {
   const { t } = useTranslation();
   const viewedStoryIdsRef = useRef(new Set());
   
@@ -188,6 +188,10 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
               markStoryAsViewed(storyId, entityAccountId)
                 .then(() => {
                   console.log('[StoryViewer] Marked story as viewed immediately:', storyId);
+                  // Cập nhật UI ngay lập tức: thông báo cho Newsfeed / StoryManager
+                  if (onStoryViewed) {
+                    onStoryViewed(storyId);
+                  }
                 })
                 .catch((error) => {
                   console.error('[StoryViewer] Error marking story as viewed immediately:', error);

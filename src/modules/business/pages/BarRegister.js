@@ -5,6 +5,7 @@ import { userApi } from "../../../api/userApi";
 import { fetchAllEntities } from "../../../utils/sessionHelper";
 import BarRegisterStep1 from "../components/BarRegisterStep1";
 import BarRegisterStep2 from "../components/BarRegisterStep2";
+import BarTermsModal from "../components/BarTermsModal";
 import "../../../styles/modules/businessRegister.css";
 import ProfilePreviewCard from "../components/ProfilePreviewCard";
 import { formatAddressForSave, validateAddressFields } from "../../../utils/addressFormatter";
@@ -17,6 +18,7 @@ export default function BarRegister() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [message, setMessage] = useState("");
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const [info, setInfo] = useState({
     barName: "",
@@ -100,7 +102,7 @@ export default function BarRegister() {
     nextStep();
   };
 
-  const submitStep2 = async (e) => {
+  const submitStep2 = (e) => {
     e.preventDefault();
     if (!files.avatar && !files.background) {
       setMessage("Vui lòng chọn ít nhất một ảnh");
@@ -120,8 +122,19 @@ export default function BarRegister() {
       return;
     }
 
+    // Clear any previous messages and show terms modal
+    setMessage("");
+    setShowTermsModal(true);
+  };
+
+  const handleAcceptTerms = async () => {
+    // Format address as JSON string
+    const addressJsonString = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
+
     setIsLoading(true);
     setMessage("");
+    setShowTermsModal(false);
+    
     try {
       const res = await barPageApi.create({ 
         accountId: storedUser.id, 
@@ -158,6 +171,10 @@ export default function BarRegister() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCloseTermsModal = () => {
+    setShowTermsModal(false);
   };
 
   if (isSuccess) {
@@ -262,6 +279,13 @@ export default function BarRegister() {
         />
       )}
       </div>
+
+      {/* Terms Modal */}
+      <BarTermsModal
+        isOpen={showTermsModal}
+        onClose={handleCloseTermsModal}
+        onAccept={handleAcceptTerms}
+      />
     </div>
   );
 }

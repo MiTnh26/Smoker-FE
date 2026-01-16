@@ -184,7 +184,7 @@ export default function RightSidebar() {
   return (
     <aside className="right-sidebar">
       {/* 2 ô quảng cáo */}
-      <div className="right-sidebar__section right-sidebar__section--ad">
+      {/* <div className="right-sidebar__section right-sidebar__section--ad">
         <a 
           href="#" 
           onClick={(e) => e.preventDefault()}
@@ -209,7 +209,7 @@ export default function RightSidebar() {
             className="right-sidebar__ad-image"
           />
         </a>
-      </div>
+      </div> */}
 
       {/* Phần liên hệ - có thể scroll */}
       <div className="right-sidebar__section right-sidebar__section--contacts">

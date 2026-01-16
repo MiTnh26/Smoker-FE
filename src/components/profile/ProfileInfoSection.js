@@ -68,6 +68,7 @@ export const ProfileInfoSection = ({ profile }) => {
   const { t } = useTranslation();
   const [resolvedAddress, setResolvedAddress] = useState(null);
   const [loadingAddress, setLoadingAddress] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
   // Function to resolve address names from IDs
   const resolveAddressFromIds = async (addressObj) => {
@@ -174,6 +175,36 @@ export const ProfileInfoSection = ({ profile }) => {
     return null; // Don't render anything if there's no information
   }
 
+  const openAddressInMaps = (address) => {
+    if (!address) return;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      address
+    )}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyPrimaryAddress = async () => {
+    if (!primaryAddress) return;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(primaryAddress);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = primaryAddress;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy address:', error);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -199,14 +230,36 @@ export const ProfileInfoSection = ({ profile }) => {
               <span className="text-muted-foreground/60">Đang tải địa chỉ...</span>
             </div>
           ) : primaryAddress ? (
-            <div className="flex items-center gap-3">
-              <i className="bx bx-map text-lg w-5 text-center"></i>
-              <span>
-                <strong className="mr-1">
+            <div className="flex items-start gap-3">
+              <i className="bx bx-map text-lg w-5 text-center mt-0.5"></i>
+              <div className="flex-1 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => openAddressInMaps(primaryAddress)}
+                  className="text-left group"
+                >
+                  <span className="mr-1 font-semibold">
                   {t('profile.address') || 'Địa chỉ'}:
-                </strong>
+                  </span>
+                   <span className="group-hover:text-primary transition-colors">
                 {primaryAddress}
               </span>
+                </button>
+
+                {/** Copy pill - modern subtle chip */}
+                <button
+                  type="button"
+                  onClick={handleCopyPrimaryAddress}
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary bg-muted/40 px-2 py-1 rounded-full mt-0.5 transition-all border border-border/40 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto translate-y-0.5 group-hover:translate-y-0"
+                >
+                  <i className="bx bx-copy-alt text-sm" />
+                  <span>
+                    {copiedAddress
+                       ? (t('common.copied') !== 'common.copied' ? t('common.copied') : 'Đã sao chép')
+                       : (t('common.copy') !== 'common.copy' ? t('common.copy') : 'Sao chép')}
+                  </span>
+                </button>
+              </div>
             </div>
           ) : null}
           {profile.phone && (

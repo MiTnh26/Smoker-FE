@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Star, MapPin, Music } from "lucide-react";
+import { Star, MapPin, Music, Filter, ArrowUpDown, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../../utils/cn";
 import { locationApi } from "../../../api/locationApi";
@@ -13,6 +13,8 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
   const navigate = useNavigate();
   const [hoveredId, setHoveredId] = useState(null);
   const [formattedAddresses, setFormattedAddresses] = useState({});
+  const [sortBy, setSortBy] = useState("featured"); // "featured", "rating", "name"
+  const [showFilters, setShowFilters] = useState(false);
 
   // Fetch address names from IDs
   const fetchAddressFromIds = async (addressObj) => {
@@ -192,7 +194,7 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
-        <div className="relative w-full h-48 md:h-56 overflow-hidden">
+        <div className="relative w-full h-48 sm:h-52 md:h-56 overflow-hidden">
           <img
             src={image}
             alt={venue.barName}
@@ -273,6 +275,28 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
     );
   };
 
+  // Sort and filter venues
+  const sortedVenues = useMemo(() => {
+    const sorted = [...venues];
+    
+    switch (sortBy) {
+      case "rating":
+        return sorted.sort((a, b) => {
+          const ratingA = a.averageRating || 0;
+          const ratingB = b.averageRating || 0;
+          return ratingB - ratingA;
+        });
+      case "name":
+        return sorted.sort((a, b) => {
+          const nameA = (a.barName || "").toLowerCase();
+          const nameB = (b.barName || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+      default:
+        return sorted; // featured order (original order)
+    }
+  }, [venues, sortBy]);
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -296,7 +320,7 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
   };
 
   return (
-    <section className="py-8">
+    <section className="py-8 md:py-10">
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -304,16 +328,86 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
         transition={{ duration: 0.6 }}
         className="mb-8"
       >
-        <h2 className={cn(
-          "text-3xl md:text-4xl font-bold mb-2",
-          "bg-gradient-to-r from-foreground via-primary to-secondary",
-          "bg-clip-text text-transparent"
-        )}>
-          Quán Bar Nổi Bật
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+          <div>
+            <h2 className={cn(
+              "text-2xl md:text-3xl font-bold mb-2",
+              "text-foreground"
+            )}>
+          Bar, DJ & Dancer Nổi Bật
         </h2>
-        <p className="text-muted-foreground text-lg">
-          Khám phá những địa điểm giải trí hàng đầu trong thành phố
+        <p className="text-muted-foreground text-sm md:text-base">
+          Theo dõi những bar, DJ và dancer được cộng đồng yêu thích nhất
         </p>
+          </div>
+          
+          {/* Sort & Filter Controls */}
+          <div className="flex items-center gap-3">
+            <motion.button
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                "px-4 py-2 rounded-lg",
+                "bg-card border border-border/50",
+                "text-foreground hover:bg-primary/10",
+                "transition-all duration-200",
+                "flex items-center gap-2",
+                "text-sm font-medium"
+              )}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Filter className="w-4 h-4" />
+              <span className="hidden sm:inline">Lọc</span>
+            </motion.button>
+            
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className={cn(
+                  "px-4 py-2 pr-8 rounded-lg appearance-none",
+                  "bg-card border border-border/50",
+                  "text-foreground hover:bg-primary/10",
+                  "transition-all duration-200",
+                  "text-sm font-medium cursor-pointer",
+                  "focus:outline-none focus:ring-2 focus:ring-primary/50"
+                )}
+              >
+                <option value="featured">Nổi bật</option>
+                <option value="rating">Đánh giá cao</option>
+                <option value="name">Tên A-Z</option>
+              </select>
+              <ArrowUpDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            </div>
+          </div>
+        </div>
+        
+        {/* Filter Panel */}
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className={cn(
+              "mb-6 p-4 rounded-xl",
+              "bg-card/80 backdrop-blur-sm border border-border/50",
+              "shadow-lg"
+            )}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-foreground">Bộ lọc</h3>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="p-1 rounded hover:bg-muted transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Tính năng lọc nâng cao sẽ được thêm vào phiên bản sau.
+            </p>
+          </motion.div>
+        )}
       </motion.div>
 
       <motion.div
@@ -350,7 +444,7 @@ export function FeaturedVenues({ venues = [], loading = false, error = null }) {
         ) : null}
 
         {!loading && !error
-          ? venues.map((venue, index) => (
+          ? sortedVenues.map((venue, index) => (
               <motion.div
                 key={venue.barPageId || venue.id || venue.entityAccountId || venue.accountId || index}
                 variants={itemVariants}

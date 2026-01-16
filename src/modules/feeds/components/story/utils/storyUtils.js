@@ -22,40 +22,16 @@ export const isOlderThan24Hours = (story) => {
 
 /**
  * Check if story is viewed
- * Checks multiple fields and localStorage for viewed story IDs
- * 
- * Priority:
- * 1. Check story.viewed from backend (persisted in DB) - Backend cần trả về field này khi GET /stories
- * 2. Check localStorage (temporary cache for immediate UI feedback)
- * 
- * Note: Function này dùng cho UI feedback (đổi màu border). 
- * Logic filter (ẩn story) chỉ check field từ backend, không check localStorage.
+ * Chỉ dựa vào trạng thái từ backend, KHÔNG dùng localStorage.
+ * Backend cần trả về field viewed/isViewed/hasViewed khi GET /stories.
  */
 export const isViewed = (story) => {
-  // Check story fields first (from backend API response)
-  // Backend cần trả về field viewed: true/false khi GET /stories
-  if (story.viewed === true || story.isViewed === true || story.hasViewed === true) {
-    return true;
-  }
-  
-  // Check localStorage for viewed story IDs (temporary cache for immediate UI feedback)
-  // Chỉ dùng để đổi màu border ngay lập tức, không dùng để filter
-  try {
-    const storyId = story._id || story.id;
-    if (storyId) {
-      const viewedStories = localStorage.getItem('viewedStories');
-      if (viewedStories) {
-        const viewedIds = JSON.parse(viewedStories);
-        if (Array.isArray(viewedIds) && viewedIds.includes(storyId)) {
-          return true;
-        }
-      }
-    }
-  } catch (e) {
-    // Ignore localStorage errors
-  }
-  
-  return false;
+  if (!story) return false;
+  return (
+    story.viewed === true ||
+    story.isViewed === true ||
+    story.hasViewed === true
+  );
 };
 
 /**

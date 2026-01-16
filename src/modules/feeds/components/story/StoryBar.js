@@ -10,7 +10,9 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
   const barRef = useRef(null)
   const [currentIndex, setCurrentIndex] = useState(0)
 
-  const VISIBLE_COUNT = 5
+  // Số lượng item hiển thị cùng lúc (bao gồm cả card \"Tạo story\")
+ 
+  const VISIBLE_COUNT = 6
   const ITEM_WIDTH = 112
   const GAP = 8
 
@@ -74,92 +76,10 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
       };
     });
     
-    // KHÔNG filter ngay khi xem xong - chỉ đổi màu border
-    // Chỉ filter khi load lại trang (stories từ API đã có viewed: true)
-    // Filter: Chỉ ẩn user groups khi tất cả stories đã xem VÀ không phải story của bản thân
-    // Story của bản thân: LUÔN hiển thị dù đã xem hết (nếu chưa hết 24h)
-    const filteredUserGroups = userGroupsArray.filter(userGroup => {
-      // Kiểm tra xem có phải story của bản thân không
-      let isOwnStory = false;
-      if (entityAccountId) {
-        const currentId = String(entityAccountId).trim().toLowerCase();
-        const storyEntityId = userGroup.displayStory?.entityAccountId || 
-                             userGroup.displayStory?.authorEntityAccountId || 
-                             userGroup.displayStory?.EntityAccountId;
-        isOwnStory = storyEntityId && String(storyEntityId).trim().toLowerCase() === currentId;
-      }
-      
-      // Story của bản thân: LUÔN hiển thị dù đã xem hết (nếu chưa hết 24h)
-      // KHÔNG BAO GIỜ filter story của bản thân ra
-      if (isOwnStory) {
-        const storyDate = new Date(userGroup.displayStory.createdAt || 0);
-        const now = new Date();
-        const diffInHours = (now - storyDate) / (1000 * 60 * 60);
-        const isWithin24Hours = diffInHours <= 24;
-        
-        if (isWithin24Hours) {
-          console.log('[StoryBar] Keeping own story visible (within 24h):', {
-            userId: userGroup.userId,
-            storyId: userGroup.displayStory._id || userGroup.displayStory.id,
-            hoursRemaining: 24 - diffInHours
-          });
-          return true; // LUÔN hiển thị story của bản thân (nếu chưa hết 24h)
-        } else {
-          console.log('[StoryBar] Own story expired (>24h):', {
-            userId: userGroup.userId,
-            storyId: userGroup.displayStory._id || userGroup.displayStory.id,
-            hoursOld: diffInHours
-          });
-          return false; // Story của bản thân quá 24h → Ẩn (giống story của người khác)
-        }
-      }
-      
-      // Story của người khác: Chỉ ẩn khi TẤT CẢ stories đã xem VÀ đã được lưu trong DB (viewed: true từ API)
-      // Backend cần trả về field viewed: true khi fetch stories
-      const allStoriesViewed = userGroup.allStories.every(s => {
-        // Chỉ coi là "đã xem trong DB" nếu có field viewed: true từ API
-        // Backend cần trả về field này khi GET /stories
-        const isViewedInDB = s.viewed === true || s.isViewed === true || s.hasViewed === true;
-        
-        // Debug log để kiểm tra
-        if (userGroup.allStories.indexOf(s) === 0) {
-          console.log('[StoryBar] Checking story viewed status:', {
-            storyId: s._id || s.id,
-            viewed: s.viewed,
-            isViewed: s.isViewed,
-            hasViewed: s.hasViewed,
-            isViewedInDB
-          });
-        }
-        
-        return isViewedInDB;
-      });
-      
-      // Nếu tất cả đã xem trong DB → Ẩn (chỉ khi load lại trang)
-      if (allStoriesViewed) {
-        console.log('[StoryBar] Filtering out user group - all stories viewed in DB:', {
-          userId: userGroup.userId,
-          username: userGroup.displayStory?.authorName || userGroup.displayStory?.userName,
-          totalStories: userGroup.allStories.length,
-          stories: userGroup.allStories.map(s => ({
-            id: s._id || s.id,
-            viewed: s.viewed,
-            isViewed: s.isViewed,
-            hasViewed: s.hasViewed
-          }))
-        });
-        return false;
-      }
-      
-      // Còn story chưa xem trong DB → Hiển thị
-      return true;
-    });
-    
-    console.log('[StoryBar] Filtered user groups:', {
-      before: userGroupsArray.length,
-      after: filteredUserGroups.length,
-      filtered: userGroupsArray.length - filteredUserGroups.length
-    });
+    // KHÔNG ẩn nhóm story dựa trên trạng thái viewed nữa.
+    // Chỉ filter theo thời gian (24h ở trên), còn lại giữ nguyên các nhóm
+    // và chỉ thay đổi thứ tự + màu border giống Facebook.
+    const filteredUserGroups = userGroupsArray;
     
     return filteredUserGroups.sort((a, b) => {
       // Ưu tiên story của bản thân (entityAccountId match) lên đầu tiên
@@ -215,30 +135,44 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
   }
 
   return (
-    <div className="story-bar-wrapper relative flex w-full items-center">
-      <button
-        className={cn(
-          "absolute left-2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent text-2xl text-foreground transition-colors duration-200",
-          "top-1/2",
-          currentIndex === 0
-            ? "cursor-not-allowed opacity-30"
-            : "hover:bg-muted/60"
-        )}
-        onClick={() => go("left")}
-        aria-label="Previous stories"
-        disabled={currentIndex === 0}
-      >
-        ‹
-      </button>
+    <div className="relative flex w-full items-center">
+      {/* Nút previous – chỉ hiển thị khi có thể lùi */}
+      {totalItems > VISIBLE_COUNT && currentIndex > 0 && (
+        <button
+          className={cn(
+            "absolute left-3 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full",
+            "bg-[rgba(0,0,0,0.45)] text-white shadow-md transition-colors duration-200 hover:bg-[rgba(0,0,0,0.7)]",
+            "top-1/2"
+          )}
+          onClick={() => go("left")}
+          aria-label="Previous stories"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M15 18L9 12L15 6"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
 
+      {/* Thanh story full-bleed */}
       <div className="w-full overflow-hidden">
         <div
           ref={barRef}
-          className="flex items-start gap-2 px-3 py-3 transition-transform duration-300 ease-out"
+          className="flex items-start gap-2 px-0 py-0 transition-transform duration-300 ease-out"
           style={{ transform: `translateX(-${offset}px)` }}
         >
-
-      <CreateStory onOpenEditor={onOpenEditor} />
+          <CreateStory onOpenEditor={onOpenEditor} />
           {groupedByUser.map((userGroup, idx) => {
             const story = userGroup.displayStory;
             const key = story._id || `story-${idx}`;
@@ -253,7 +187,7 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
             const isViewedStory = allStoriesViewed || displayStoryViewed;
             
             const storyItemClasses = cn(
-              "flex w-[112px] shrink-0 cursor-pointer flex-col items-center text-center",
+              "group flex w-[112px] shrink-0 cursor-pointer flex-col items-center text-center",
               "transition-colors duration-200"
             );
 
@@ -265,30 +199,39 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
               >
                 <div
                   className={cn(
-                    "relative h-[200px] w-full overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-muted shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-shadow duration-200 hover:shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
+                    "relative h-[200px] w-full overflow-hidden rounded-xl bg-muted shadow-[0_1px_3px_rgba(0,0,0,0.25)] transition-shadow duration-200",
+                    "group-hover:shadow-[0_3px_12px_rgba(0,0,0,0.45)]",
                     isViewedStory && "opacity-90"
                   )}
                 >
-                  {previewImage ? (
-                    <img
-                      src={previewImage}
-                      alt={username}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-full w-full bg-muted-foreground/10" />
-                  )}
+                  <div className="h-full w-full overflow-hidden">
+                    {previewImage ? (
+                      <img
+                        src={previewImage}
+                        alt={username}
+                        className="h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-muted-foreground/10" />
+                    )}
+                  </div>
+                  {/* Avatar vòng dày kiểu Facebook */}
                   <div
                     className={cn(
-                      "absolute left-2 top-2 h-9 w-9 rounded-full border-[0.5px] border-primary/40 bg-card p-[1px] shadow-[0_2px_4px_rgba(0,0,0,0.2)] transition-colors duration-200",
-                      isViewedStory && "border-white/40 opacity-80"
+                      "absolute left-2 top-2 h-10 w-10 rounded-full p-[3px] shadow-[0_2px_4px_rgba(0,0,0,0.4)] transition-colors duration-200",
+                      !isViewedStory &&
+                        "bg-[conic-gradient(from_0deg,_rgb(var(--primary)),_rgb(var(--success)),_rgb(var(--highlight)),_rgb(var(--primary)),_rgb(var(--success)),_rgb(var(--highlight)),_rgb(var(--primary)))]",
+                      isViewedStory &&
+                        "bg-[rgb(var(--background))] border-2 border-white/60 opacity-80"
                     )}
                   >
-                    <img
-                      src={avatarSrc}
-                      alt={username}
-                      className="h-full w-full rounded-full object-cover"
-                    />
+                    <div className="h-full w-full rounded-full bg-card">
+                      <img
+                        src={avatarSrc}
+                        alt={username}
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    </div>
                   </div>
                   <p className="absolute bottom-2 left-2 right-2 truncate text-left text-xs font-semibold text-white drop-shadow">
                     {username}
@@ -301,20 +244,34 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
         </div>
       </div>
 
-      <button
-        className={cn(
-          "absolute right-2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent text-2xl text-foreground transition-colors duration-200",
-          "top-1/2",
-          currentIndex === maxIndex
-            ? "cursor-not-allowed opacity-30"
-            : "hover:bg-muted/60"
-        )}
-        onClick={() => go("right")}
-        aria-label="Next stories"
-        disabled={currentIndex === maxIndex}
-      >
-        ›
-      </button>
+      {/* Nút next – chỉ hiển thị khi còn có thể tiến */}
+      {totalItems > VISIBLE_COUNT && currentIndex < maxIndex && (
+        <button
+          className={cn(
+            "absolute right-3 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full",
+            "bg-[rgba(0,0,0,0.45)] text-white shadow-md transition-colors duration-200 hover:bg-[rgba(0,0,0,0.7)]",
+            "top-1/2"
+          )}
+          onClick={() => go("right")}
+          aria-label="Next stories"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M9 18L15 12L9 6"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
     </div>
   )
 }
