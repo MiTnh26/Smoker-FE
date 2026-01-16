@@ -262,12 +262,12 @@
   width: 100%;
   max-width: 960px;
   margin: 0.375rem auto 0; /* margin-top for header spacing, no margin-bottom to match post gap */
-  background: rgb(var(--card));
-  border: 1px solid rgba(var(--border), 0.6);
+  background: transparent;
+  border: none;
   position: relative;
-  overflow: hidden;
-  border-radius: 1rem;
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06);
+  overflow: visible;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 @media (max-width: 768px) {
@@ -633,12 +633,9 @@
   .story-section {
     margin: 0 0 0.375rem 0;
     border-radius: 0;
-    border-left: none;
-    border-right: none;
-    border-top: 1px solid rgba(var(--border), 0.55);
-    border-bottom: 1px solid rgba(var(--border), 0.55);
-    background: rgba(var(--card), 0.96);
-    box-shadow: 0 20px 36px rgba(15, 23, 42, 0.08);
+    border: none;
+    background: transparent;
+    box-shadow: none;
   }
 
   .story-bar-wrapper > button {
@@ -841,8 +838,9 @@
   .story-section {
     margin: 0 0 0.375rem 0;
     border-radius: 0;
-    border-left: none;
-    border-right: none;
+    border: none;
+    background: transparent;
+    box-shadow: none;
   }
 
   .newsfeed-main {

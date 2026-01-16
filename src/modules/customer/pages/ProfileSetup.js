@@ -877,10 +877,6 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   'Hoàn thành hồ sơ'
                 )}
               </button>
-
-              <p id="submit-help" className="text-sm text-gray-500 text-center">
-                Các trường có dấu <span className="text-red-500">*</span> là bắt buộc
-              </p>
             </form>
           </div>
 
@@ -903,8 +899,12 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                   />
                 </div>
               ) : (
-                <div className="h-32 ps-cover rounded-lg flex items-center justify-center">
-                  <span className="ps-muted text-sm">Ảnh nền</span>
+                <div className="relative h-32 rounded-lg overflow-hidden">
+                  <img
+                    src="/13.png"
+                    alt="Default background"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               )}
 

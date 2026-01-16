@@ -19,7 +19,7 @@ export function BookingCTA() {
   };
 
   return (
-    <section className={cn("relative py-20 px-4 overflow-hidden")}>
+    <section className={cn("relative py-12 md:py-16 px-4 overflow-hidden")}>
       {/* Background Gradient */}
       <div className={cn(
         "absolute inset-0",
@@ -79,12 +79,11 @@ export function BookingCTA() {
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
             className={cn(
-              "text-4xl md:text-6xl font-bold mb-6",
-              "bg-gradient-to-r from-foreground via-primary to-secondary",
-              "bg-clip-text text-transparent"
+              "text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4",
+              "text-foreground px-4"
             )}
           >
-            Đặt Bàn Ngay Hôm Nay
+            Tham Gia Cộng Đồng Ngay Hôm Nay
           </motion.h2>
 
           {/* Description */}
@@ -93,10 +92,10 @@ export function BookingCTA() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.4 }}
-            className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
+            className="text-sm sm:text-base md:text-lg text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto px-4"
           >
-            Khám phá những quán bar tuyệt vời và đặt bàn trong vài phút. 
-            Trải nghiệm dịch vụ đẳng cấp ngay bây giờ!
+            Tạo tài khoản miễn phí để lướt newsfeed, đặt bàn bar, book DJ/Dancer và kết nối với cộng đồng. 
+            Tất cả trên một nền tảng duy nhất!
           </motion.p>
 
           {/* CTA Buttons */}
@@ -109,33 +108,21 @@ export function BookingCTA() {
           >
             <motion.button
               onClick={() => navigate("/register")}
-              className={cn(
-                "group relative px-8 py-4 rounded-xl font-bold text-lg",
-                "bg-gradient-to-r from-primary to-secondary",
-                "text-white shadow-2xl shadow-primary/50",
-                "overflow-hidden",
-                "flex items-center gap-2"
-              )}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              animate={pulseAnimation}
-            >
-              <span className="relative z-10">Đặt Bàn Ngay</span>
-              <motion.div
-                className="relative z-10"
-                animate={{ x: [0, 5, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                <ArrowRight className="w-5 h-5" />
-              </motion.div>
-              
-              {/* Shine Effect */}
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                initial={{ x: "-100%" }}
-                whileHover={{ x: "100%" }}
-                transition={{ duration: 0.6 }}
-              />
+            className={cn(
+              "px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold",
+              "text-sm sm:text-base",
+              "bg-primary text-white",
+              "shadow-lg shadow-primary/50",
+              "hover:bg-primary/90 hover:shadow-xl",
+              "transition-all duration-300",
+              "flex items-center gap-2",
+              "min-h-[44px] touch-target"
+            )}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+              <span>Đăng Ký Ngay</span>
+              <ArrowRight className="w-4 h-4" />
             </motion.button>
 
             <motion.button
@@ -143,17 +130,19 @@ export function BookingCTA() {
                 const searchSection = document.getElementById("search-section");
                 searchSection?.scrollIntoView({ behavior: "smooth" });
               }}
-              className={cn(
-                "px-8 py-4 rounded-xl font-bold text-lg",
-                "bg-card border-2 border-primary",
-                "text-primary hover:bg-primary hover:text-white",
-                "transition-all duration-300",
-                "shadow-lg"
-              )}
+            className={cn(
+              "px-6 sm:px-8 py-2.5 sm:py-3 rounded-xl font-bold",
+              "text-sm sm:text-base",
+              "bg-card border-2 border-primary",
+              "text-primary hover:bg-primary hover:text-white",
+              "transition-all duration-300",
+              "min-h-[44px] touch-target",
+              "shadow-lg"
+            )}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              Khám Phá Bar
+              Khám Phá Newsfeed
             </motion.button>
           </motion.div>
 
@@ -163,12 +152,12 @@ export function BookingCTA() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.6 }}
-            className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8"
+            className="mt-10 md:mt-12 grid grid-cols-1 md:grid-cols-3 gap-6"
           >
             {[
-              { number: "10K+", label: "Khách hàng hài lòng" },
-              { number: "500+", label: "Quán bar đối tác" },
-              { number: "99%", label: "Tỷ lệ thành công" },
+              { number: "10K+", label: "Người dùng tích cực" },
+              { number: "50K+", label: "Bài đăng mỗi ngày" },
+              { number: "1M+", label: "Tương tác hàng tháng" },
             ].map((stat, index) => (
               <motion.div
                 key={index}
@@ -181,9 +170,8 @@ export function BookingCTA() {
               >
                 <motion.div
                   className={cn(
-                    "text-4xl md:text-5xl font-bold mb-2",
-                    "bg-gradient-to-r from-primary to-secondary",
-                    "bg-clip-text text-transparent"
+                    "text-3xl md:text-4xl font-bold mb-2",
+                    "text-primary"
                   )}
                 >
                   {stat.number}

@@ -6,6 +6,8 @@ import { normalizeProfileData } from "../../utils/profileDataMapper";
 import { cn } from "../../utils/cn";
 import { Calendar, MapPin, DollarSign, X, AlertCircle, Clock, CheckCircle, Phone } from "lucide-react";
 import AddressSelector from "../common/AddressSelector";
+import HorizontalDatePicker from "../common/HorizontalDatePicker";
+import PaymentSummary from "./PaymentSummary";
 
 // Constants
 const TOTAL_SLOTS = 12; // 1 ngày = 12 slot
@@ -46,7 +48,7 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
   const [bookedSlots, setBookedSlots] = useState({}); // { "2024-01-01": [1, 2, 3] } - slots đã được book theo ngày
   const [loadingBookedSlots, setLoadingBookedSlots] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
-  const [profile, setProfile] = useState(performerProfile);
+  const [profile, setProfile] = useState(null);
   const [error, setError] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [hasRiskWarning, setHasRiskWarning] = useState(false); // Cảnh báo nếu slot trước đã confirm
@@ -65,22 +67,57 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
   // Fetch profile nếu chưa có
   useEffect(() => {
     if (open && performerEntityAccountId) {
+      // Luôn xử lý performerProfile nếu có (ưu tiên)
       if (performerProfile) {
         const normalized = normalizeProfileData(performerProfile);
+        
+        // Ưu tiên lấy từ performerProfile trực tiếp (vì ProfilePage đã truyền đúng format)
+        // Sau đó fallback sang normalized nếu không có
         const pricePerSlot = Number(
+          performerProfile?.pricePerHours || 
+          performerProfile?.PricePerHours ||
+          performerProfile?.pricePerHour || 
+          performerProfile?.PricePerHour ||
           normalized?.pricePerHours || 
           normalized?.PricePerHours || 
-          performerProfile?.pricePerHours || 
-          performerProfile?.PricePerHours || 
+          normalized?.pricePerHour || 
+          normalized?.PricePerHour || 
           0
         ) || 0;
         
+        const pricePerSession = Number(
+          performerProfile?.pricePerSession || 
+          performerProfile?.PricePerSession ||
+          normalized?.pricePerSession || 
+          normalized?.PricePerSession || 
+          0
+        ) || 0;
+        
+        console.log('[RequestBookingModal] Setting profile from props:', {
+          performerProfile,
+          normalized,
+          pricePerSlot,
+          pricePerSession,
+          hasPricePerSession: !!(performerProfile?.pricePerSession || performerProfile?.PricePerSession || normalized?.pricePerSession || normalized?.PricePerSession),
+          allPaths: {
+            'performerProfile.pricePerSession': performerProfile?.pricePerSession,
+            'performerProfile.PricePerSession': performerProfile?.PricePerSession,
+            'normalized.pricePerSession': normalized?.pricePerSession,
+            'normalized.PricePerSession': normalized?.PricePerSession,
+          }
+        });
+        
         setProfile({
-          pricePerSlot, // Giá slot lẻ
+          pricePerSlot, // Giá slot lẻ (giá theo giờ)
+          pricePerSession, // Giá theo buổi
         });
       } else if (!profile) {
+        // Chỉ fetch từ API nếu không có performerProfile và chưa có profile
         fetchPerformerProfile();
       }
+    } else if (!open) {
+      // Reset profile khi đóng modal
+      setProfile(null);
     }
   }, [open, performerEntityAccountId, performerProfile]);
 
@@ -90,16 +127,56 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
     try {
       const res = await publicProfileApi.getByEntityId(performerEntityAccountId);
       let rawData = res?.data?.data || res?.data || res || {};
+      
+      console.log('[RequestBookingModal] Raw API response:', {
+        res,
+        rawData,
+        pricePerHours: rawData.pricePerHours || rawData.PricePerHours,
+        pricePerSession: rawData.pricePerSession || rawData.PricePerSession,
+        businessAccount: rawData.businessAccount || rawData.BusinessAccount,
+        BusinessAccount: rawData.BusinessAccount,
+        allKeys: Object.keys(rawData || {}),
+      });
+      
       const normalizedData = normalizeProfileData(rawData);
+      
+      console.log('[RequestBookingModal] Normalized data:', {
+        normalizedData,
+        pricePerHours: normalizedData?.pricePerHours || normalizedData?.PricePerHours,
+        pricePerSession: normalizedData?.pricePerSession || normalizedData?.PricePerSession,
+      });
       
       const pricePerSlot = normalizedData?.pricePerHours || 
                            normalizedData?.PricePerHours || 
                            normalizedData?.pricePerHour || 
-                           normalizedData?.PricePerHour || 
+                           normalizedData?.PricePerHour ||
+                           rawData?.pricePerHours ||
+                           rawData?.PricePerHours ||
+                           rawData?.businessAccount?.pricePerHours ||
+                           rawData?.businessAccount?.PricePerHours ||
+                           rawData?.BusinessAccount?.pricePerHours ||
+                           rawData?.BusinessAccount?.PricePerHours ||
                            0;
+      
+      const pricePerSession = normalizedData?.pricePerSession || 
+                             normalizedData?.PricePerSession ||
+                             rawData?.pricePerSession ||
+                             rawData?.PricePerSession ||
+                             rawData?.businessAccount?.pricePerSession ||
+                             rawData?.businessAccount?.PricePerSession ||
+                             rawData?.BusinessAccount?.pricePerSession ||
+                             rawData?.BusinessAccount?.PricePerSession ||
+                             0;
+      
+      console.log('[RequestBookingModal] Final extracted prices:', {
+        pricePerSlot,
+        pricePerSession,
+        hasPricePerSession: !!pricePerSession,
+      });
       
       setProfile({
         pricePerSlot: Number(pricePerSlot) || 0,
+        pricePerSession: Number(pricePerSession) || 0,
       });
     } catch (error) {
       console.error("[RequestBookingModal] Error fetching profile:", error);
@@ -109,71 +186,107 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
     }
   };
 
-  // Phân nhóm slot: tìm các nhóm slot liền nhau >= 4
-  const slotGroups = useMemo(() => {
-    if (selectedSlots.length === 0) return { consecutiveGroups: [], individualSlots: [] };
+  /**
+   * Helper function: Tính số slot liền nhau dài nhất từ danh sách slot đã chọn
+   * @param {number[]} selectedSlots - Mảng các slot ID đã chọn
+   * @returns {number} Số slot liền nhau dài nhất
+   */
+  const getMaxConsecutiveSlots = (selectedSlots) => {
+    if (selectedSlots.length === 0) return 0;
+    if (selectedSlots.length === 1) return 1;
     
     const sortedSlots = [...selectedSlots].sort((a, b) => a - b);
-    const consecutiveGroups = []; // Các nhóm >= 4 slot liền nhau
-    const individualSlots = []; // Các slot lẻ hoặc nhóm < 4 slot
-    
-    let currentGroup = [sortedSlots[0]];
+    let maxConsecutive = 1;
+    let currentConsecutive = 1;
     
     for (let i = 1; i < sortedSlots.length; i++) {
       if (sortedSlots[i] === sortedSlots[i - 1] + 1) {
-        // Slot liền nhau, thêm vào nhóm hiện tại
-        currentGroup.push(sortedSlots[i]);
+        currentConsecutive++;
+        maxConsecutive = Math.max(maxConsecutive, currentConsecutive);
       } else {
-        // Slot không liền nhau, xử lý nhóm hiện tại
-        if (currentGroup.length >= 4) {
-          consecutiveGroups.push([...currentGroup]);
-        } else {
-          individualSlots.push(...currentGroup);
-        }
-        // Bắt đầu nhóm mới
-        currentGroup = [sortedSlots[i]];
+        currentConsecutive = 1;
       }
     }
     
-    // Xử lý nhóm cuối cùng
-    if (currentGroup.length >= 4) {
-      consecutiveGroups.push([...currentGroup]);
-    } else {
-      individualSlots.push(...currentGroup);
+    return maxConsecutive;
+  };
+
+  /**
+   * Tính giá booking dựa trên số slot và điều kiện
+   * @param {Object} params
+   * @param {number} params.totalSlots - Tổng số slot đã chọn
+   * @param {number} params.consecutiveSlots - Số slot liền nhau dài nhất
+   * @param {number} params.pricePerHour - Giá theo slot (pricePerHours)
+   * @param {number} params.pricePerSession - Giá theo slot ưu đãi (pricePerSession)
+   * @returns {Object} { unitPrice, totalPrice, priceType }
+   */
+  const calculateBookingPrice = ({ totalSlots, consecutiveSlots, pricePerHour, pricePerSession }) => {
+    // Điều kiện áp dụng giá ưu đãi (pricePerSession):
+    // - Có ít nhất 4 slot liền nhau HOẶC tổng số slot >= 6
+    const shouldUseSessionPrice = consecutiveSlots >= 4 || totalSlots >= 6;
+    
+    // Nếu đủ điều kiện và có pricePerSession > 0 → dùng giá ưu đãi
+    if (shouldUseSessionPrice && pricePerSession > 0) {
+      return {
+        unitPrice: pricePerSession,
+        totalPrice: pricePerSession * totalSlots,
+        priceType: 'pricePerSession'
+      };
     }
     
-    return { consecutiveGroups, individualSlots };
+    // Ngược lại → dùng giá theo slot thông thường
+    return {
+      unitPrice: pricePerHour || 0,
+      totalPrice: (pricePerHour || 0) * totalSlots,
+      priceType: 'pricePerHour'
+    };
+  };
+
+  // Tính số slot liền nhau dài nhất
+  const maxConsecutiveSlots = useMemo(() => {
+    return getMaxConsecutiveSlots(selectedSlots);
   }, [selectedSlots]);
 
-  // Tính giá dựa trên số slot đã chọn
-  // Logic: 4 slot liền nhau trở lên HOẶC 6 slot trong ngày (không cần liền nhau) → giảm 20%
+  // Tính giá booking dựa trên logic đã định nghĩa
   const calculatedPrice = useMemo(() => {
-    if (!profile || selectedSlots.length === 0) return 0;
-    
-    const { pricePerSlot } = profile;
-    
-    if (pricePerSlot <= 0) return 0;
-    
-    // Nếu tổng số slot >= 6 (không cần liền nhau) → giảm 20% cho tất cả
-    if (selectedSlots.length >= 6) {
-      const totalPrice = pricePerSlot * selectedSlots.length;
-      return Math.round(totalPrice * 0.8);
+    if (!profile || selectedSlots.length === 0) {
+      return {
+        unitPrice: 0,
+        totalPrice: 0,
+        priceType: 'pricePerHour',
+        reason: null
+      };
     }
     
-    // Nếu không đủ 6 slot, kiểm tra nhóm >= 4 slot liền nhau
-    let totalPrice = 0;
+    const { pricePerSlot, pricePerSession } = profile;
+    const totalSlots = selectedSlots.length;
     
-    // Tính giá cho các nhóm >= 4 slot liền nhau (giảm 20%)
-    slotGroups.consecutiveGroups.forEach(group => {
-      const groupPrice = pricePerSlot * group.length;
-      totalPrice += Math.round(groupPrice * 0.8); // Giảm 20%
+    // Nếu không có giá hợp lệ
+    if ((pricePerSlot || 0) <= 0 && (pricePerSession || 0) <= 0) {
+      return {
+        unitPrice: 0,
+        totalPrice: 0,
+        priceType: 'pricePerHour',
+        reason: null
+      };
+    }
+    
+    // Tính giá bằng hàm calculateBookingPrice
+    const priceResult = calculateBookingPrice({
+      totalSlots,
+      consecutiveSlots: maxConsecutiveSlots,
+      pricePerHour: pricePerSlot || 0,
+      pricePerSession: pricePerSession || 0
     });
     
-    // Tính giá cho các slot lẻ (giá bình thường)
-    totalPrice += pricePerSlot * slotGroups.individualSlots.length;
-    
-    return totalPrice;
-  }, [profile, selectedSlots, slotGroups]);
+    // Trả về format sạch, không trùng lặp
+    return {
+      unitPrice: priceResult.unitPrice,
+      totalPrice: priceResult.totalPrice,
+      priceType: priceResult.priceType,
+      reason: maxConsecutiveSlots >= 4 ? 'consecutive' : totalSlots >= 6 ? 'total' : null
+    };
+  }, [profile, selectedSlots, maxConsecutiveSlots]);
 
   // Kiểm tra xem có slot nào trước slot đã chọn đã được confirm không
   // Lưu ý: bookedSlots chỉ chứa slots đã confirmed hoặc đã thanh toán cọc
@@ -196,15 +309,6 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
     if (open && performerEntityAccountId) {
       if (date) {
         fetchBookedSlots(date);
-      }
-      
-      if (performerProfile) {
-        const normalized = normalizeProfileData(performerProfile);
-        setProfile({
-          pricePerSlot: Number(normalized?.pricePerHours || normalized?.PricePerHours || 0) || 0,
-        });
-      } else if (!profile) {
-        fetchPerformerProfile();
       }
     } else {
       // Reset khi đóng modal
@@ -569,7 +673,7 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
         location: location.trim(),
         phone: phone.trim(),
         note: note.trim(),
-        offeredPrice: calculatedPrice,
+        offeredPrice: calculatedPrice.totalPrice,
         slots: selectedSlots, // Gửi thông tin slots đã chọn
       };
 
@@ -671,7 +775,9 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
               </div>
             )}
 
-            <div className={cn("grid grid-cols-1 gap-4")}>
+            <div className={cn("grid grid-cols-1 lg:grid-cols-3 gap-6")}>
+              {/* Form Section */}
+              <div className={cn("lg:col-span-2 space-y-4")}>
               {/* Date */}
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-2 flex-wrap">
@@ -686,44 +792,24 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                     </div>
                   )}
                 </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={handleDateChange}
-                  onBlur={() => validateField("date", date)}
-                  onKeyDown={(e) => {
-                    // Không cho nhập từ bàn phím nếu đã chọn slot
+                <HorizontalDatePicker
+                  selectedDate={date}
+                  onDateChange={(selectedDate) => {
+                    // Không cho đổi ngày nếu đã chọn slot
                     if (selectedSlots.length > 0) {
-                      e.preventDefault();
-                      return;
-                    }
-                    // Cho phép nhập từ bàn phím
-                    e.stopPropagation();
-                  }}
-                  onClick={(e) => {
-                    // Không cho mở date picker nếu đã chọn slot
-                    if (selectedSlots.length > 0) {
-                      e.preventDefault();
                       setError("Vui lòng bỏ chọn tất cả slot trước khi đổi ngày");
                       return;
                     }
+                    handleDateChange({ target: { value: selectedDate } });
                   }}
-                  min={(() => {
+                  minDate={(() => {
                     const tomorrow = new Date();
                     tomorrow.setDate(tomorrow.getDate() + 1);
-                    return tomorrow.toISOString().split('T')[0];
+                    tomorrow.setHours(0, 0, 0, 0);
+                    return tomorrow;
                   })()}
-                  className={cn(
-                    "w-full rounded-lg bg-background border",
-                    "px-4 py-2.5 outline-none focus:ring-2 focus:ring-primary/20",
-                    "text-foreground",
-                    fieldErrors.date
-                      ? "border-danger bg-danger/10 focus:border-danger"
-                      : "border-border/30 focus:border-primary",
-                    (loadingBookedSlots || selectedSlots.length > 0) && "opacity-50 cursor-not-allowed"
-                  )}
+                  error={fieldErrors.date}
                   disabled={loadingBookedSlots || selectedSlots.length > 0}
-                  title={selectedSlots.length > 0 ? "Vui lòng bỏ chọn tất cả slot trước khi đổi ngày" : ""}
                 />
               </div>
 
@@ -743,7 +829,7 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20">
                       <span className="text-primary text-base">💡</span>
                       <span className="text-xs font-medium text-primary">
-                        Đặt 4 slot liền nhau trở lên hoặc 6 slot trong ngày để nhận giá ưu đãi
+                        Đặt 4 slot liền nhau trở lên hoặc 6 slot trở lên để nhận giá theo buổi (ưu đãi)
                       </span>
                     </div>
                     {fieldErrors.slots && (
@@ -910,94 +996,6 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                 />
               </div>
 
-              {/* Price Summary */}
-              {selectedSlots.length > 0 && (
-                <div className="flex flex-col gap-2 p-4 rounded-lg bg-muted/30 border border-border/30">
-                  <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-                    <DollarSign size={16} />
-                    Thông tin thanh toán
-                  </span>
-                  <div className="text-sm text-foreground">
-                    <div className="flex justify-between mb-1">
-                      <span>Số slot đã chọn:</span>
-                      <span className="font-semibold">{selectedSlots.length} slot</span>
-                    </div>
-                    {profile && (
-                      <>
-                        {/* Nếu >= 6 slot: hiển thị đơn giản với giảm giá cho tất cả */}
-                        {selectedSlots.length >= 6 ? (
-                          <>
-                            <div className="flex justify-between mb-1 text-sm">
-                              <span className="text-muted-foreground">
-                                {selectedSlots.length} slot × {profile.pricePerSlot.toLocaleString('vi-VN')} đ:
-                              </span>
-                              <span>
-                                {(profile.pricePerSlot * selectedSlots.length).toLocaleString('vi-VN')} đ
-                              </span>
-                            </div>
-                            <div className="flex justify-between mb-1 text-sm">
-                              <span className="text-muted-foreground">
-                                Giảm 20% ({selectedSlots.length} slot):
-                              </span>
-                              <span className="text-success font-medium">
-                                -{Math.round(profile.pricePerSlot * selectedSlots.length * 0.2).toLocaleString('vi-VN')} đ
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            {/* Hiển thị chi tiết giá từng nhóm >= 4 slot liền nhau */}
-                            {slotGroups.consecutiveGroups.length > 0 && (
-                              <>
-                                {slotGroups.consecutiveGroups.map((group, idx) => {
-                                  const groupPrice = Math.round(profile.pricePerSlot * group.length * 0.8);
-                                  return (
-                                    <div key={`consecutive-${idx}`} className="flex justify-between mb-1 text-sm">
-                                      <span className="text-muted-foreground">
-                                        {group.length} slot liền nhau (SL{group[0]}-SL{group[group.length - 1]}) - giảm 20%:
-                                      </span>
-                                      <span className="text-success font-medium">
-                                        {groupPrice.toLocaleString('vi-VN')} đ
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </>
-                            )}
-                            {slotGroups.individualSlots.length > 0 && (
-                              <div className="flex justify-between mb-1 text-sm">
-                                <span className="text-muted-foreground">
-                                  {slotGroups.individualSlots.length} slot ({slotGroups.individualSlots.map(s => `SL${s}`).join(', ')}):
-                                </span>
-                                <span>
-                                  {(profile.pricePerSlot * slotGroups.individualSlots.length).toLocaleString('vi-VN')} đ
-                                </span>
-                              </div>
-                            )}
-                          </>
-                        )}
-                        <div className="flex justify-between mb-1 pt-1 border-t border-border/30">
-                          <span className="font-semibold">Tổng tiền:</span>
-                          <span className="font-semibold text-lg">
-                            {calculatedPrice.toLocaleString('vi-VN')} đ
-                          </span>
-                        </div>
-                        <div className="flex justify-between mb-1">
-                          <span>Tiền cọc:</span>
-                          <span className="font-semibold">{DEPOSIT_AMOUNT.toLocaleString('vi-VN')} đ</span>
-                        </div>
-                        {calculatedPrice > DEPOSIT_AMOUNT && (
-                          <div className="flex justify-between text-muted-foreground">
-                            <span>Còn lại:</span>
-                            <span>{(calculatedPrice - DEPOSIT_AMOUNT).toLocaleString('vi-VN')} đ</span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Note */}
               <label className="flex flex-col gap-2">
                 <span className="text-sm font-semibold text-foreground">Ghi chú (tùy chọn)</span>
@@ -1013,6 +1011,20 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                   )}
                 />
               </label>
+              </div>
+
+              {/* Payment Summary Sidebar */}
+              <div className={cn("lg:col-span-1")}>
+                {selectedSlots.length > 0 && profile && calculatedPrice && (
+                  <PaymentSummary
+                    selectedSlots={selectedSlots}
+                    priceCalculation={calculatedPrice}
+                    maxConsecutiveSlots={maxConsecutiveSlots}
+                    depositAmount={DEPOSIT_AMOUNT}
+                    className="sticky top-4"
+                  />
+                )}
+              </div>
             </div>
           </div>
 
@@ -1094,53 +1106,140 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
               </div>
             )}
 
-            {/* Summary */}
-            <div className="mb-4 p-4 rounded-lg bg-muted/30 border border-border/30">
-              <div className="text-sm space-y-2">
-                <div className="flex justify-between">
-                  <span>Ngày:</span>
-                  <span className="font-semibold">{date ? new Date(date).toLocaleDateString('vi-VN') : ""}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Số slot:</span>
-                  <span className="font-semibold">{selectedSlots.length} slot</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tổng giá:</span>
-                  <span className="font-semibold">{calculatedPrice.toLocaleString('vi-VN')} đ</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Tiền cọc:</span>
-                  <span className="font-semibold">{DEPOSIT_AMOUNT.toLocaleString('vi-VN')} đ</span>
-                </div>
+            {/* Phần 1: Thông tin sự kiện */}
+            <div className="mb-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <MapPin size={18} className="text-primary flex-shrink-0" />
+                <span className="flex-1">{location || addressDetail || "Chưa có địa chỉ"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-foreground">
+                <Clock size={18} className="text-primary flex-shrink-0" />
+                <span>
+                  {date ? new Date(date).toLocaleDateString('vi-VN') : ""} | {selectedSlots.length} Slot
+                  {selectedSlots.length > 0 && (() => {
+                    const firstSlot = Math.min(...selectedSlots);
+                    const lastSlot = Math.max(...selectedSlots);
+                    const startHour = (firstSlot - 1) * 2;
+                    const endHour = lastSlot * 2;
+                    return ` (${startHour}h - ${endHour}h)`;
+                  })()}
+                </span>
               </div>
             </div>
 
+            {/* Divider - Kẻ liền */}
+            <div className="h-px bg-border mb-4" />
+
+            {/* Phần 2: Chi tiết thanh toán (Hóa đơn style) */}
+            {(() => {
+              const originalPrice = (profile?.pricePerSlot || 0) * selectedSlots.length;
+              const discount = originalPrice - calculatedPrice.totalPrice;
+              const remaining = calculatedPrice.totalPrice - DEPOSIT_AMOUNT;
+              
+              return (
+                <>
+                  <div className="mb-4 p-4 rounded-lg bg-gray-50 border border-gray-200">
+                    <h4 className="text-sm font-semibold text-foreground mb-3">Chi tiết thanh toán</h4>
+                    
+                    <div className="space-y-2 text-sm">
+                      {/* Giá gốc */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Giá tiêu chuẩn:</span>
+                        <div className="flex items-center flex-1 max-w-[200px] ml-2">
+                          <span className="flex-1 border-b border-dashed border-gray-300 mx-2" />
+                          <span className="font-semibold text-foreground whitespace-nowrap">
+                            {originalPrice.toLocaleString('vi-VN')} đ
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Giảm giá */}
+                      {discount > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Ưu đãi (Combo):</span>
+                          <div className="flex items-center flex-1 max-w-[200px] ml-2">
+                            <span className="flex-1 border-b border-dashed border-gray-300 mx-2" />
+                            <span className="font-semibold text-red-500 whitespace-nowrap">
+                              -{discount.toLocaleString('vi-VN')} đ
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tổng cộng */}
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground">Tổng cộng:</span>
+                        <div className="flex items-center flex-1 max-w-[200px] ml-2">
+                          <span className="flex-1 border-b border-dashed border-gray-300 mx-2" />
+                          <span className="font-bold text-lg text-primary whitespace-nowrap">
+                            {calculatedPrice.totalPrice.toLocaleString('vi-VN')} đ
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {remaining > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted-foreground">Số tiền cần thanh toán với {performerRole === "DJ" ? "DJ" : "Dancer"}</span>
+                          <div className="flex items-center flex-1 max-w-[200px] ml-2">
+                            <span className="flex-1 border-b border-dashed border-gray-300 mx-2" />
+                            <span className="font-semibold text-red-500 whitespace-nowrap">
+                            {remaining.toLocaleString('vi-VN')} đ 
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                  {/* Divider - Kẻ nét đứt */}
+                  <div className="border-t border-dashed border-gray-300 my-4" />
+
+                  {/* Phần 3: Cần thanh toán ngay */}
+                  <div className="mb-6">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 rounded-full bg-green-100">
+                        <DollarSign size={20} className="text-green-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-muted-foreground mb-1">Cần thanh toán ngay (Cọc):</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          {DEPOSIT_AMOUNT.toLocaleString('vi-VN')} đ
+                        </p>
+                      </div>
+                    </div>
+                    {remaining > 0 && (
+                      <p className="text-xs text-muted-foreground italic ml-14">
+                        (Phần còn lại {remaining.toLocaleString('vi-VN')} đ thanh toán trực tiếp cho {performerRole === "DJ" ? "DJ" : "Dancer"})
+                      </p>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+
             {/* Actions */}
-            <div className="flex justify-end gap-3">
+            <div className="flex gap-3">
               <button
                 disabled={submitting}
                 onClick={() => setShowConfirmModal(false)}
                 className={cn(
-                  "px-6 py-2.5 rounded-lg font-semibold",
-                  "bg-muted text-muted-foreground hover:bg-muted/80",
+                  "flex-1 px-6 py-3 rounded-lg font-semibold",
+                  "bg-gray-100 text-gray-700 hover:bg-gray-200",
                   "border-none transition-colors",
                   "disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
               >
-                Quay lại
+                Hủy
               </button>
               <button
                 disabled={submitting}
                 onClick={handleConfirmSubmit}
                 className={cn(
-                  "px-6 py-2.5 rounded-lg font-semibold",
-                  "bg-primary text-primary-foreground hover:bg-primary/90",
+                  "flex-[2] px-6 py-3 rounded-lg font-bold",
+                  "bg-green-600 text-white hover:bg-green-700",
                   "border-none transition-colors shadow-md",
                   "disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
               >
-                {submitting ? "Đang xử lý..." : "Xác nhận và thanh toán cọc"}
+                {submitting ? "Đang xử lý..." : `THANH TOÁN ${DEPOSIT_AMOUNT.toLocaleString('vi-VN')} Đ`}
               </button>
             </div>
           </div>

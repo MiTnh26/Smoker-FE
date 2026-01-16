@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, MapPin, Calendar } from "lucide-react";
+import { Search, Users, Hash, Video, Music } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "../../../utils/cn";
 import { useTranslation } from "react-i18next";
@@ -19,20 +19,20 @@ export function AnimatedSearchBar() {
   };
 
   return (
-    <section id="search-section" className="py-12 px-4 bg-background">
+    <section id="search-section" className="py-8 md:py-10 px-4 bg-background">
       <div className="container mx-auto max-w-4xl">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-8"
+          className="text-center mb-6"
         >
-          <h2 className="text-3xl md:text-4xl font-bold mb-3 text-foreground">
-            Tìm Kiếm Quán Bar Yêu Thích
+          <h2 className="text-2xl md:text-3xl font-bold mb-2 text-foreground">
+            Tìm Kiếm Bar, DJ, Dancer & Bạn Bè
           </h2>
-          <p className="text-muted-foreground">
-            Khám phá hàng trăm quán bar tuyệt vời trong thành phố
+          <p className="text-sm md:text-base text-muted-foreground">
+            Tìm quán bar, DJ/Dancer, người dùng hoặc hashtag chỉ với một ô tìm kiếm
           </p>
         </motion.div>
 
@@ -65,8 +65,8 @@ export function AnimatedSearchBar() {
           >
             <Search
               className={cn(
-                "absolute left-6 top-1/2 -translate-y-1/2 z-10",
-                "w-5 h-5 transition-colors duration-300",
+                "absolute left-4 top-1/2 -translate-y-1/2 z-10",
+                "w-4 h-4 transition-colors duration-300",
                 isFocused ? "text-primary" : "text-muted-foreground"
               )}
             />
@@ -76,10 +76,10 @@ export function AnimatedSearchBar() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder={t('landing.searchPlaceholder', 'Tìm kiếm quán bar, DJ, sự kiện...')}
+              placeholder={t('landing.searchPlaceholder', 'Tìm quán bar, DJ/Dancer, người dùng, hashtag...')}
               className={cn(
-                "w-full pl-14 pr-32 py-4 md:py-5",
-                "text-base md:text-lg",
+                "w-full pl-12 pr-28 py-3 md:py-4",
+                "text-sm md:text-base",
                 "bg-transparent text-card-foreground",
                 "outline-none",
                 "placeholder:text-muted-foreground/60"
@@ -89,10 +89,11 @@ export function AnimatedSearchBar() {
               type="submit"
               className={cn(
                 "absolute right-2 top-1/2 -translate-y-1/2",
-                "px-6 py-3 rounded-xl",
-                "bg-gradient-to-r from-primary to-secondary",
-                "text-white font-semibold",
+                "px-4 py-2 rounded-xl",
+                "bg-primary text-white",
+                "text-sm font-semibold",
                 "shadow-lg shadow-primary/30",
+                "hover:bg-primary/90 transition-colors",
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}
               disabled={!searchQuery.trim()}
@@ -114,8 +115,9 @@ export function AnimatedSearchBar() {
                 className="mt-4 flex flex-wrap gap-3 justify-center"
               >
                 {[
-                  { icon: MapPin, text: "Gần đây", color: "text-primary" },
-                  { icon: Calendar, text: "Hôm nay", color: "text-secondary" },
+                  { icon: Users, text: "Bar / Club", color: "text-primary" },
+                  { icon: Music, text: "DJ / Dancer", color: "text-secondary" },
+                  { icon: Users, text: "Bạn bè", color: "text-primary" },
                 ].map((filter, index) => (
                   <motion.button
                     key={index}

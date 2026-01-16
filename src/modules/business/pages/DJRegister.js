@@ -6,6 +6,7 @@ import { fetchAllEntities } from "../../../utils/sessionHelper";
 import "../../../styles/modules/businessRegister.css";
 import ProfilePreviewCard from "../components/ProfilePreviewCard";
 import DJRegisterStep1 from "../components/DJRegisterStep1";
+import DJTermsModal from "../components/DJTermsModal";
 import { formatAddressForSave, validateAddressFields } from "../../../utils/addressFormatter";
 
 export default function DJRegister() {
@@ -17,6 +18,7 @@ export default function DJRegister() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [message, setMessage] = useState("");
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Step 1: basic info
   const [info, setInfo] = useState({
@@ -106,8 +108,8 @@ export default function DJRegister() {
   const triggerAvatar = () => avatarInputRef.current?.click();
   const triggerBackground = () => bgInputRef.current?.click();
 
-  // Submit tất cả ở bước cuối
-  const handleSubmitAll = async (e) => {
+  // Submit tất cả ở bước cuối - chỉ validate và hiển thị modal
+  const handleSubmitAll = (e) => {
     e.preventDefault();
     if (!files.avatar || !files.background) {
       alert("Vui lòng thêm đủ ảnh đại diện và ảnh bìa trước khi hoàn thành.");
@@ -127,8 +129,19 @@ export default function DJRegister() {
       return;
     }
 
+    // Clear any previous messages and show terms modal
+    setMessage("");
+    setShowTermsModal(true);
+  };
+
+  // Xử lý khi chấp nhận điều khoản
+  const handleAcceptTerms = async () => {
+    // Format address as JSON string
+    const addressJsonString = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
+
     setIsLoading(true);
     setMessage("");
+    setShowTermsModal(false);
 
     try {
       const user = JSON.parse(localStorage.getItem("user"));
@@ -191,6 +204,10 @@ export default function DJRegister() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCloseTermsModal = () => {
+    setShowTermsModal(false);
   };
 
   if (isSuccess) {
@@ -333,6 +350,12 @@ export default function DJRegister() {
         </div>
       )}
 
+      {/* Terms Modal */}
+      <DJTermsModal
+        isOpen={showTermsModal}
+        onClose={handleCloseTermsModal}
+        onAccept={handleAcceptTerms}
+      />
       </div>
     </div>
   );

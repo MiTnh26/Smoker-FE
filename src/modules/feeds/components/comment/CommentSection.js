@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
+import { MoreVertical } from "lucide-react";
 import {
   getPostById,
   getPostDetail,
@@ -18,6 +19,7 @@ import {
   unlikeReply
 } from "../../../../api/postApi";
 import { cn } from "../../../../utils/cn";
+import ExpandableText from "../../../../components/common/ExpandableText";
 
 const ANONYMOUS_AVATAR_URL = "/images/an-danh.png";
 
@@ -51,6 +53,8 @@ export default function CommentSection({ postId, onClose, inline = false, always
   const menuRef = useRef(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [canUseAnonymous, setCanUseAnonymous] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState(null); // Track which comment/reply menu is open: "comment-{id}" or "reply-{commentId}-{replyId}"
+  const menuRefs = useRef({}); // Refs for menu dropdowns
 
   const normalizeId = (value) => (value ? String(value).trim() : null);
 
@@ -128,24 +132,55 @@ export default function CommentSection({ postId, onClose, inline = false, always
     if (typeof comment?.canManage === "boolean") {
       return comment.canManage;
     }
+    
+    // Support multiple schemas:
+    // 1. New schema with author object: comment.author.entityAccountId
+    // 2. Flat fields: comment.authorEntityAccountId
+    // 3. Direct field from raw API: comment.entityAccountId (most common)
     const commentEntityAccountId = normalizeId(
-      comment.authorEntityAccountId ||
-      comment.entityAccountId
+      comment.entityAccountId ||
+      comment.author?.entityAccountId ||
+      comment.authorEntityAccountId
     );
-    const commentAccountId = normalizeId(comment.accountId || comment.authorAccountId);
+    const commentAccountId = normalizeId(
+      comment.accountId ||
+      comment.author?.accountId || 
+      comment.authorAccountId
+    );
 
+    // Debug logging (can remove later)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[canManageComment]', {
+        commentId: comment.id,
+        viewerEntityAccountId,
+        commentEntityAccountId,
+        viewerAccountId,
+        commentAccountId,
+        comment: {
+          entityAccountId: comment.entityAccountId,
+          authorEntityAccountId: comment.authorEntityAccountId,
+          'author.entityAccountId': comment.author?.entityAccountId,
+          accountId: comment.accountId,
+          'author.accountId': comment.author?.accountId,
+          authorAccountId: comment.authorAccountId
+        }
+      });
+    }
+
+    // Check entity account match
     if (
       viewerEntityAccountId &&
       commentEntityAccountId &&
-      viewerEntityAccountId === commentEntityAccountId
+      String(viewerEntityAccountId).trim() === String(commentEntityAccountId).trim()
     ) {
       return true;
     }
 
+    // Check account ID match
     if (
       viewerAccountId &&
       commentAccountId &&
-      viewerAccountId === commentAccountId
+      String(viewerAccountId).trim() === String(commentAccountId).trim()
     ) {
       return true;
     }
@@ -157,24 +192,36 @@ export default function CommentSection({ postId, onClose, inline = false, always
     if (typeof reply?.canManage === "boolean") {
       return reply.canManage;
     }
+    
+    // Support multiple schemas:
+    // 1. Direct field from raw API: reply.entityAccountId (most common)
+    // 2. New schema with author object: reply.author.entityAccountId
+    // 3. Flat fields: reply.authorEntityAccountId
     const replyEntityAccountId = normalizeId(
-      reply.authorEntityAccountId ||
-      reply.entityAccountId
+      reply.entityAccountId ||
+      reply.author?.entityAccountId ||
+      reply.authorEntityAccountId
     );
-    const replyAccountId = normalizeId(reply.accountId || reply.authorAccountId);
+    const replyAccountId = normalizeId(
+      reply.accountId ||
+      reply.author?.accountId || 
+      reply.authorAccountId
+    );
 
+    // Check entity account match
     if (
       viewerEntityAccountId &&
       replyEntityAccountId &&
-      viewerEntityAccountId === replyEntityAccountId
+      String(viewerEntityAccountId).trim() === String(replyEntityAccountId).trim()
     ) {
       return true;
     }
 
+    // Check account ID match
     if (
       viewerAccountId &&
       replyAccountId &&
-      viewerAccountId === replyAccountId
+      String(viewerAccountId).trim() === String(replyAccountId).trim()
     ) {
       return true;
     }
@@ -749,6 +796,15 @@ export default function CommentSection({ postId, onClose, inline = false, always
                     typeRole: reply.typeRole,
                     createdAt: reply.createdAt,
                     updatedAt: reply.updatedAt,
+                    // Preserve author object for canManageReply to work correctly
+                    author: reply.author || {
+                      entityAccountId: reply.authorEntityAccountId || reply.entityAccountId,
+                      entityId: reply.authorEntityId || reply.entityId,
+                      entityType: reply.authorEntityType || reply.entityType,
+                      name: reply.authorName,
+                      avatar: reply.authorAvatar,
+                      accountId: reply.accountId
+                    },
                     // Author info from backend (ưu tiên flat fields, fallback nested author object)
                     authorName: reply.authorName || reply.author?.name || 'Người dùng',
                     authorAvatar: reply.authorAvatar || reply.author?.avatar || null,
@@ -803,6 +859,15 @@ export default function CommentSection({ postId, onClose, inline = false, always
                     typeRole: reply.typeRole,
                     createdAt: reply.createdAt,
                     updatedAt: reply.updatedAt,
+                    // Preserve author object for canManageReply to work correctly
+                    author: reply.author || {
+                      entityAccountId: reply.authorEntityAccountId || reply.entityAccountId,
+                      entityId: reply.authorEntityId || reply.entityId,
+                      entityType: reply.authorEntityType || reply.entityType,
+                      name: reply.authorName,
+                      avatar: reply.authorAvatar,
+                      accountId: reply.accountId
+                    },
                     // Author info from backend (ưu tiên flat fields, fallback nested author object)
                     authorName: reply.authorName || reply.author?.name || 'Người dùng',
                     authorAvatar: reply.authorAvatar || reply.author?.avatar || null,
@@ -850,6 +915,15 @@ export default function CommentSection({ postId, onClose, inline = false, always
               updatedAt: comment.updatedAt,
               isAnonymous: isAnonymousComment,
               anonymousIndex: anonymousIndex,
+              // Preserve author object for canManageComment to work correctly
+              author: comment.author || {
+                entityAccountId: comment.authorEntityAccountId || comment.entityAccountId,
+                entityId: comment.authorEntityId || comment.entityId,
+                entityType: comment.authorEntityType || comment.entityType,
+                name: comment.authorName,
+                avatar: comment.authorAvatar,
+                accountId: comment.accountId
+              },
               // Author info: always show real identity while anonymous is disabled
               authorName: comment.authorName || comment.author?.name || (isCurrentUser ? (viewerName || identity.name || "User") : "Người dùng"),
               authorAvatar: comment.authorAvatar || comment.author?.avatar || (isCurrentUser ? (viewerAvatar || identity.avatar) : null),
@@ -1748,7 +1822,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
                     alt="avatar"
                     onClick={() => handleNavigateToProfile(comment.authorEntityId, comment.authorEntityType, comment.authorEntityAccountId)}
                   />
-                  <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden">
+                  <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden relative">
                     <div className="flex items-center gap-2 mb-1 sm:gap-1.5">
                       <span 
                         className={cn(
@@ -1813,13 +1887,15 @@ export default function CommentSection({ postId, onClose, inline = false, always
                         </div>
                       </>
                     ) : (
-                      <div className={cn(
-                        "text-foreground text-sm leading-6 break-words",
-                        "max-w-full overflow-hidden",
-                        "sm:text-xs sm:leading-5 md:text-sm md:leading-6"
-                      )}>
-                        {comment.content}
-                      </div>
+                      <ExpandableText
+                        text={comment.content || ""}
+                        maxLength={150}
+                        textClassName={cn(
+                          "text-foreground text-sm leading-6",
+                          "sm:text-xs sm:leading-5 md:text-sm md:leading-6"
+                        )}
+                        buttonClassName="sm:text-xs md:text-sm"
+                      />
                     )}
                     {comment.images && (
                       <img 
@@ -1830,6 +1906,70 @@ export default function CommentSection({ postId, onClose, inline = false, always
                           "object-contain cursor-pointer block"
                         )}
                       />
+                    )}
+                    
+                    {/* Menu button for comment owner */}
+                    {canManageComment(comment) && editingCommentId !== comment.id && (
+                      <div className="absolute top-0 right-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const menuKey = `comment-${comment.id}`;
+                            setOpenMenuId(openMenuId === menuKey ? null : menuKey);
+                          }}
+                          className={cn(
+                            "p-1 rounded-full transition-all duration-200",
+                            "hover:bg-muted/30 text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                        {openMenuId === `comment-${comment.id}` && (
+                          <div
+                            ref={(el) => {
+                              if (el) menuRefs.current[`comment-${comment.id}`] = el;
+                            }}
+                            className={cn(
+                              "absolute top-6 right-0 z-50 min-w-[120px]",
+                              "bg-card border border-border rounded-lg shadow-lg",
+                              "py-1 overflow-hidden"
+                            )}
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditingComment(comment);
+                                setOpenMenuId(null);
+                              }}
+                              className={cn(
+                                "w-full px-4 py-2 text-left text-sm",
+                                "text-foreground hover:bg-muted/30",
+                                "transition-colors duration-200"
+                              )}
+                            >
+                              {t('action.edit', { defaultValue: "Chỉnh sửa" })}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCommentClick(comment.id);
+                                setOpenMenuId(null);
+                              }}
+                              disabled={commentActionLoadingId === comment.id}
+                              className={cn(
+                                "w-full px-4 py-2 text-left text-sm",
+                                "text-danger hover:bg-danger/10",
+                                "transition-colors duration-200",
+                                "disabled:opacity-50 disabled:cursor-not-allowed"
+                              )}
+                            >
+                              {commentActionLoadingId === comment.id
+                                ? t('action.deleting', { defaultValue: "Đang xóa..." })
+                                : t('action.delete', { defaultValue: "Xóa" })}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1863,35 +2003,6 @@ export default function CommentSection({ postId, onClose, inline = false, always
                   >
                     {t('comment.reply')}
                   </button>
-                  {canManageComment(comment) && editingCommentId !== comment.id && (
-                    <>
-                      <button
-                        onClick={() => startEditingComment(comment)}
-                        className={cn(
-                          "bg-transparent border-none text-muted-foreground text-sm",
-                          "px-1 py-1 rounded cursor-pointer transition-all duration-200",
-                          "hover:bg-muted/30 hover:text-foreground",
-                          "sm:text-xs md:text-sm"
-                        )}
-                      >
-                        {t('action.edit', { defaultValue: "Chỉnh sửa" })}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCommentClick(comment.id)}
-                        className={cn(
-                          "bg-transparent border-none text-danger/90 text-sm",
-                          "px-1 py-1 rounded cursor-pointer transition-all duration-200",
-                          "hover:bg-danger/10",
-                          "sm:text-xs md:text-sm"
-                        )}
-                        disabled={commentActionLoadingId === comment.id}
-                      >
-                        {commentActionLoadingId === comment.id
-                          ? t('action.deleting', { defaultValue: "Đang xóa..." })
-                          : t('action.delete', { defaultValue: "Xóa" })}
-                      </button>
-                    </>
-                  )}
                 </div>
 
                 {/* Reply Input */}
@@ -1968,7 +2079,7 @@ export default function CommentSection({ postId, onClose, inline = false, always
                             alt="avatar"
                             onClick={() => handleNavigateToProfile(reply.authorEntityId, reply.authorEntityType, reply.authorEntityAccountId)}
                           />
-                          <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden">
+                          <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden relative">
                             <div className="flex items-center gap-2 mb-1 sm:gap-1.5">
                               <span 
                                 className={cn(
@@ -2035,13 +2146,15 @@ export default function CommentSection({ postId, onClose, inline = false, always
                                 </div>
                               </>
                             ) : (
-                              <div className={cn(
-                                "text-foreground text-[0.85rem] leading-6 break-words",
-                                "max-w-full overflow-hidden",
-                                "sm:text-[0.75rem] sm:leading-5 md:text-[0.85rem] md:leading-6"
-                              )}>
-                                {reply.content}
-                              </div>
+                              <ExpandableText
+                                text={reply.content || ""}
+                                maxLength={150}
+                                textClassName={cn(
+                                  "text-foreground text-[0.85rem] leading-6",
+                                  "sm:text-[0.75rem] sm:leading-5 md:text-[0.85rem] md:leading-6"
+                                )}
+                                buttonClassName="sm:text-[0.7rem] md:text-[0.85rem]"
+                              />
                             )}
                             {reply.images && (
                               <img 
@@ -2052,6 +2165,73 @@ export default function CommentSection({ postId, onClose, inline = false, always
                                   "object-contain cursor-pointer block"
                                 )}
                               />
+                            )}
+                            
+                            {/* Menu button for reply owner */}
+                            {canManageReply(reply) &&
+                             (!editingReplyTarget ||
+                              editingReplyTarget.replyId !== reply.id ||
+                              editingReplyTarget.commentId !== comment.id) && (
+                              <div className="absolute top-0 right-0">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const menuKey = `reply-${comment.id}-${reply.id}`;
+                                    setOpenMenuId(openMenuId === menuKey ? null : menuKey);
+                                  }}
+                                  className={cn(
+                                    "p-1 rounded-full transition-all duration-200",
+                                    "hover:bg-muted/30 text-muted-foreground hover:text-foreground"
+                                  )}
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                                {openMenuId === `reply-${comment.id}-${reply.id}` && (
+                                  <div
+                                    ref={(el) => {
+                                      if (el) menuRefs.current[`reply-${comment.id}-${reply.id}`] = el;
+                                    }}
+                                    className={cn(
+                                      "absolute top-6 right-0 z-50 min-w-[120px]",
+                                      "bg-card border border-border rounded-lg shadow-lg",
+                                      "py-1 overflow-hidden"
+                                    )}
+                                  >
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        startEditingReply(comment.id, reply);
+                                        setOpenMenuId(null);
+                                      }}
+                                      className={cn(
+                                        "w-full px-4 py-2 text-left text-sm",
+                                        "text-foreground hover:bg-muted/30",
+                                        "transition-colors duration-200"
+                                      )}
+                                    >
+                                      {t('action.edit', { defaultValue: "Chỉnh sửa" })}
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteReplyClick(comment.id, reply.id);
+                                        setOpenMenuId(null);
+                                      }}
+                                      disabled={replyActionLoadingKey === `${comment.id}-${reply.id}`}
+                                      className={cn(
+                                        "w-full px-4 py-2 text-left text-sm",
+                                        "text-danger hover:bg-danger/10",
+                                        "transition-colors duration-200",
+                                        "disabled:opacity-50 disabled:cursor-not-allowed"
+                                      )}
+                                    >
+                                      {replyActionLoadingKey === `${comment.id}-${reply.id}`
+                                        ? t('action.deleting', { defaultValue: "Đang xóa..." })
+                                        : t('action.delete', { defaultValue: "Xóa" })}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -2084,38 +2264,6 @@ export default function CommentSection({ postId, onClose, inline = false, always
                           >
                             {t('comment.reply')}
                           </button>
-                          {canManageReply(reply) &&
-                            (!editingReplyTarget ||
-                             editingReplyTarget.replyId !== reply.id ||
-                             editingReplyTarget.commentId !== comment.id) && (
-                              <>
-                                <button
-                                  onClick={() => startEditingReply(comment.id, reply)}
-                                  className={cn(
-                                    "bg-transparent border-none text-muted-foreground text-sm",
-                                    "px-1 py-1 rounded cursor-pointer transition-all duration-200",
-                                    "hover:bg-muted/30 hover:text-foreground",
-                                    "sm:text-xs md:text-sm"
-                                  )}
-                                >
-                                  {t('action.edit', { defaultValue: "Chỉnh sửa" })}
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteReplyClick(comment.id, reply.id)}
-                                  className={cn(
-                                    "bg-transparent border-none text-danger/90 text-sm",
-                                    "px-1 py-1 rounded cursor-pointer transition-all duration-200",
-                                    "hover:bg-danger/10",
-                                    "sm:text-xs md:text-sm"
-                                  )}
-                                  disabled={replyActionLoadingKey === `${comment.id}-${reply.id}`}
-                                >
-                                  {replyActionLoadingKey === `${comment.id}-${reply.id}`
-                                    ? t('action.deleting', { defaultValue: "Đang xóa..." })
-                                    : t('action.delete', { defaultValue: "Xóa" })}
-                                </button>
-                              </>
-                            )}
                         </div>
 
                         {/* Reply to Reply Input */}
