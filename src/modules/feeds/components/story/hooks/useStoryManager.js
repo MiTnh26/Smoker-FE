@@ -23,7 +23,11 @@ export const useStoryManager = () => {
   const fetchStories = useCallback(async () => {
     try {
       setLoading(true);
-      const params = entityAccountId ? { entityAccountId } : {};
+      // Luôn gửi excludeViewed=false để backend không loại bỏ story đã xem.
+      // FE sẽ tự xử lý sort + màu viền avatar dựa trên flag viewed.
+      const params = entityAccountId
+        ? { entityAccountId, excludeViewed: false }
+        : { excludeViewed: false };
       const res = await getStories(params);
       const storiesData = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
 

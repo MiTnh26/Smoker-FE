@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { getAvatarForAccount, getNameForAccount, formatTimeDisplay, getLikesCount, isLiked, getCurrentUser, parseReplies } from "./utils";
 import MediaReplyItem from "./MediaReplyItem";
 import { cn } from "../../../../../utils/cn";
+import ExpandableText from "../../../../../components/common/ExpandableText";
 
 export default function MediaCommentItem({
   comment,
@@ -93,11 +94,14 @@ export default function MediaCommentItem({
               autoFocus
             />
           ) : (
-            <div className={cn(
-              "text-foreground text-sm leading-6",
-              "break-words overflow-wrap-break-word",
-              "max-w-full overflow-hidden"
-            )}>{comment.content}</div>
+            <ExpandableText
+              text={comment.content || ""}
+              maxLength={150}
+              textClassName={cn(
+                "text-foreground text-sm leading-6"
+              )}
+              buttonClassName="text-sm"
+            />
           )}
           {comment.images && !isEditing && (
             <img

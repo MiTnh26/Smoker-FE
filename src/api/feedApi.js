@@ -12,8 +12,8 @@ const getEntityAccountIdFromSession = () => {
   }
 };
 
-export const getFeed = async ({ limit = 10, cursor }) => {
-  const params = { limit };
+export const getFeed = async ({ limit = 10, cursor, feedType = 'trending' }) => {
+  const params = { limit, feedType }; // 'trending' | 'following' | 'friends'
   if (cursor) params.cursor = cursor;
   
   const entityAccountId = getEntityAccountIdFromSession();

@@ -80,10 +80,48 @@ export function normalizeProfileData(data) {
     Gender: data.Gender || data.gender || null,
     
     // Business specific (DJ/Dancer)
-    pricePerHours: data.pricePerHours || data.PricePerHours || data.pricePerHour || data.PricePerHour || null,
-    PricePerHours: data.PricePerHours || data.pricePerHours || data.pricePerHour || data.PricePerHour || null,
-    pricePerSession: data.pricePerSession || data.PricePerSession || null,
-    PricePerSession: data.PricePerSession || data.pricePerSession || null,
+    // Check nested BusinessAccount/businessAccount object first, then top level
+    pricePerHours: data.pricePerHours || 
+                   data.PricePerHours || 
+                   data.pricePerHour || 
+                   data.PricePerHour ||
+                   data.businessAccount?.pricePerHours ||
+                   data.businessAccount?.PricePerHours ||
+                   data.BusinessAccount?.pricePerHours ||
+                   data.BusinessAccount?.PricePerHours ||
+                   data.BusinessAccount?.PricePerHours ||
+                   null,
+    PricePerHours: data.PricePerHours || 
+                   data.pricePerHours || 
+                   data.pricePerHour || 
+                   data.PricePerHour ||
+                   data.businessAccount?.PricePerHours ||
+                   data.businessAccount?.pricePerHours ||
+                   data.BusinessAccount?.PricePerHours ||
+                   data.BusinessAccount?.pricePerHours ||
+                   null,
+    pricePerSession: data.pricePerSession || 
+                     data.PricePerSession ||
+                     data.businessAccount?.pricePerSession ||
+                     data.businessAccount?.PricePerSession ||
+                     data.BusinessAccount?.pricePerSession ||
+                     data.BusinessAccount?.PricePerSession ||
+                     data.bussinessAccount?.pricePerSession ||
+                     data.bussinessAccount?.PricePerSession ||
+                     data.BussinessAccount?.pricePerSession ||
+                     data.BussinessAccount?.PricePerSession ||
+                     null,
+    PricePerSession: data.PricePerSession || 
+                     data.pricePerSession ||
+                     data.businessAccount?.PricePerSession ||
+                     data.businessAccount?.pricePerSession ||
+                     data.BusinessAccount?.PricePerSession ||
+                     data.BusinessAccount?.pricePerSession ||
+                     data.bussinessAccount?.PricePerSession ||
+                     data.bussinessAccount?.pricePerSession ||
+                     data.BussinessAccount?.PricePerSession ||
+                     data.BussinessAccount?.pricePerSession ||
+                     null,
     
     // Bar specific
     barPageId: data.barPageId || data.BarPageId || data.barPageID || data.targetId || data.targetID || data.id || null,
@@ -107,6 +145,12 @@ export function normalizeProfileData(data) {
     followersCount: data.followersCount || data.FollowersCount || 0,
     followingCount: data.followingCount || data.FollowingCount || 0,
     isFollowing: data.isFollowing || data.IsFollowing || false,
+    
+    // Keep nested objects for reference (BusinessAccount, businessAccount, etc.)
+    businessAccount: data.businessAccount || data.BusinessAccount || data.bussinessAccount || data.BussinessAccount || null,
+    BusinessAccount: data.BusinessAccount || data.businessAccount || data.BussinessAccount || data.bussinessAccount || null,
+    bussinessAccount: data.bussinessAccount || data.BussinessAccount || data.businessAccount || data.BusinessAccount || null,
+    BussinessAccount: data.BussinessAccount || data.bussinessAccount || data.BusinessAccount || data.businessAccount || null,
     
     // Keep original data for reference
     _original: data

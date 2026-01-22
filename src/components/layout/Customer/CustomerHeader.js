@@ -22,8 +22,43 @@ export default function CustomerHeader() {
   const [modalCommentId, setModalCommentId] = useState(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const { t } = useTranslation();
   const { socket, isConnected } = useSocket();
+
+  // Check login status
+  useEffect(() => {
+    const checkLoginStatus = () => {
+      try {
+        const session = getSession();
+        setIsLoggedIn(!!session);
+      } catch (e) {
+        setIsLoggedIn(false);
+      }
+    };
+
+    checkLoginStatus();
+
+    // Listen for session changes
+    const handleStorageChange = (e) => {
+      if (e.key === "session") {
+        checkLoginStatus();
+      }
+    };
+
+    const win = typeof window !== "undefined" ? window : null;
+    if (win) {
+      win.addEventListener("storage", handleStorageChange);
+      win.addEventListener("sessionUpdated", checkLoginStatus);
+    }
+
+    return () => {
+      if (win) {
+        win.removeEventListener("storage", handleStorageChange);
+        win.removeEventListener("sessionUpdated", checkLoginStatus);
+      }
+    };
+  }, []);
 
   // Get entityAccountId from session
   const getEntityAccountId = () => {
@@ -51,7 +86,7 @@ export default function CustomerHeader() {
     try {
       // Get entityAccountId from session
       const session = getSession();
-      if (!session) {
+      if (!session || !isLoggedIn) {
         setUnreadNotificationCount(0);
         return;
       }
@@ -83,6 +118,11 @@ export default function CustomerHeader() {
   // Fetch unread message count
   const fetchUnreadMessageCount = async () => {
     try {
+      if (!isLoggedIn) {
+        setUnreadMessageCount(0);
+        return;
+      }
+
       const session = JSON.parse(localStorage.getItem("session") || "{}");
       const active = session?.activeEntity || {};
       const entities = session?.entities || [];
@@ -113,7 +153,7 @@ export default function CustomerHeader() {
 
   // Join socket room and listen for real-time notifications
   useEffect(() => {
-    if (!socket || !isConnected) return;
+    if (!socket || !isConnected || !isLoggedIn) return;
 
     // Get current user's entityAccountId to join room
     const session = getSession();
@@ -164,11 +204,11 @@ export default function CustomerHeader() {
       socket.off("new_notification", handleNewNotification);
       clearInterval(interval);
     };
-  }, [socket, isConnected]);
+  }, [socket, isConnected, isLoggedIn]);
 
   // Fetch unread message count on mount and periodically
   useEffect(() => {
-    if (!socket || !isConnected) return;
+    if (!socket || !isConnected || !isLoggedIn) return;
 
     fetchUnreadMessageCount();
 
@@ -208,7 +248,7 @@ export default function CustomerHeader() {
         win.removeEventListener("messageRefresh", handleMessageRefresh);
       }
     };
-  }, [socket, isConnected]);
+  }, [socket, isConnected, isLoggedIn]);
 
   const togglePanel = (panel) => {
     const newPanel = activePanel === panel ? null : panel;
@@ -254,6 +294,8 @@ export default function CustomerHeader() {
           </div>
 
           <div className={cn("flex gap-2", "sm:gap-1.5 md:gap-2")}>
+            {isLoggedIn ? (
+              <>
             <button
               className={cn(
                 "rounded-lg p-2 flex items-center justify-center",
@@ -350,6 +392,39 @@ export default function CustomerHeader() {
             >
               <User size={24} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
             </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate("/login")}
+                  className={cn(
+                    "px-4 py-2 rounded-lg",
+                    "bg-transparent border border-border",
+                    "text-foreground hover:bg-muted",
+                    "transition-all duration-200",
+                    "text-sm font-medium",
+                    "sm:px-3 sm:py-1.5 sm:text-xs",
+                    "md:px-4 md:py-2 md:text-sm"
+                  )}
+                >
+                  {t('auth.login') || 'Đăng nhập'}
+                </button>
+                <button
+                  onClick={() => navigate("/register")}
+                  className={cn(
+                    "px-4 py-2 rounded-lg",
+                    "bg-primary text-primary-foreground",
+                    "hover:bg-primary/90",
+                    "transition-all duration-200",
+                    "text-sm font-medium",
+                    "sm:px-3 sm:py-1.5 sm:text-xs",
+                    "md:px-4 md:py-2 md:text-sm"
+                  )}
+                >
+                  {t('auth.signUp') || 'Đăng ký'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </header>

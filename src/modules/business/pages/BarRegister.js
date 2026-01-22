@@ -5,8 +5,10 @@ import { userApi } from "../../../api/userApi";
 import { fetchAllEntities } from "../../../utils/sessionHelper";
 import BarRegisterStep1 from "../components/BarRegisterStep1";
 import BarRegisterStep2 from "../components/BarRegisterStep2";
+import BarTermsModal from "../components/BarTermsModal";
 import "../../../styles/modules/businessRegister.css";
 import ProfilePreviewCard from "../components/ProfilePreviewCard";
+import { formatAddressForSave, validateAddressFields } from "../../../utils/addressFormatter";
 
 export default function BarRegister() {
   const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -16,6 +18,7 @@ export default function BarRegister() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [message, setMessage] = useState("");
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const [info, setInfo] = useState({
     barName: "",
@@ -99,34 +102,44 @@ export default function BarRegister() {
     nextStep();
   };
 
-  const buildAddress = () => {
-    const parts = [];
-    if (addressDetail) parts.push(addressDetail);
-    return info.address || addressDetail || "";
-  };
-
-  const submitStep2 = async (e) => {
+  const submitStep2 = (e) => {
     e.preventDefault();
     if (!files.avatar && !files.background) {
       setMessage("Vui lòng chọn ít nhất một ảnh");
       return;
     }
 
+    // Validate address: must have all 4 fields
+    if (!validateAddressFields(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId)) {
+      setMessage("Vui lòng điền đầy đủ thông tin địa chỉ (Tỉnh/Thành phố, Quận/Huyện, Phường/Xã, và Địa chỉ chi tiết)");
+      return;
+    }
+
+    // Format address as JSON string
+    const addressJsonString = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
+    if (!addressJsonString) {
+      setMessage("Lỗi khi format địa chỉ. Vui lòng thử lại.");
+      return;
+    }
+
+    // Clear any previous messages and show terms modal
+    setMessage("");
+    setShowTermsModal(true);
+  };
+
+  const handleAcceptTerms = async () => {
+    // Format address as JSON string
+    const addressJsonString = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
+
     setIsLoading(true);
     setMessage("");
+    setShowTermsModal(false);
+    
     try {
-      const addressData = {
-        provinceId: selectedProvinceId || null,
-        districtId: selectedDistrictId || null,
-        wardId: selectedWardId || null,
-        detail: addressDetail || null,
-        fullAddress: info.address || buildAddress() || null
-      };
-
       const res = await barPageApi.create({ 
         accountId: storedUser.id, 
         ...info,
-        addressData: addressData
+        address: addressJsonString // Store JSON string in address field
       });
       const newBarPageId = res.data.BarPageId;
 
@@ -134,10 +147,7 @@ export default function BarRegister() {
       fd.append("barPageId", newBarPageId);
       if (files.avatar) fd.append("avatar", files.avatar);
       if (files.background) fd.append("background", files.background);
-      if (selectedProvinceId || selectedDistrictId || selectedWardId) {
-        fd.append("addressData", JSON.stringify(addressData));
-        fd.append("address", addressData.fullAddress || info.address || "");
-      }
+      fd.append("address", addressJsonString); // Store JSON string
       await barPageApi.upload(fd);
 
       try {
@@ -161,6 +171,10 @@ export default function BarRegister() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCloseTermsModal = () => {
+    setShowTermsModal(false);
   };
 
   if (isSuccess) {
@@ -239,7 +253,14 @@ export default function BarRegister() {
           onWardChange={setSelectedWardId}
           onAddressDetailChange={setAddressDetail}
           onAddressChange={(fullAddr) => {
-            setInfo(prev => ({ ...prev, address: fullAddr }));
+            // Keep full address for display purposes
+            // The JSON will be stored separately via onAddressJsonChange
+          }}
+          onAddressJsonChange={(addressJson) => {
+            // Update info.address with JSON string when valid
+            if (addressJson) {
+              setInfo(prev => ({ ...prev, address: addressJson }));
+            }
           }}
         />
       )}
@@ -258,6 +279,13 @@ export default function BarRegister() {
         />
       )}
       </div>
+
+      {/* Terms Modal */}
+      <BarTermsModal
+        isOpen={showTermsModal}
+        onClose={handleCloseTermsModal}
+        onAccept={handleAcceptTerms}
+      />
     </div>
   );
 }

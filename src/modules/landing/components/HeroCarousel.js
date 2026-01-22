@@ -4,35 +4,29 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../../utils/cn";
 
 // Sử dụng ảnh trong thư mục public/landing làm fallback & slide mặc định
-const FALLBACK_IMAGE = "/landing/Anh-bar.jpg";
+const FALLBACK_IMAGE = "/landing/quan-pub-o-ha-noi.jpg";
 
 const defaultSlides = [
   {
     id: 1,
-    image: "/landing/Anh-bar.jpg",
-    title: "Khám phá cuộc sống về đêm",
-    description: "Tìm kiếm những quán bar và club tốt nhất trong thành phố",
-  },
-  {
-    id: 2,
     image: "/landing/quan-pub-o-ha-noi.jpg",
     title: "Không gian bar sôi động",
     description: "Thưởng thức đồ uống và âm nhạc trong không gian đẳng cấp",
   },
   {
-    id: 3,
+    id: 2,
     image: "/landing/Bar.jpeg",
     title: "Trải nghiệm bar độc đáo",
     description: "Khám phá những concept bar mới lạ và ấn tượng",
   },
   {
-    id: 4,
+    id: 3,
     image: "/landing/pexels-pixabay-373290.jpg",
     title: "Âm nhạc bùng nổ",
     description: "Đắm chìm trong thế giới âm nhạc với dàn DJ chuyên nghiệp",
   },
   {
-    id: 5,
+    id: 4,
     image: "/landing/pexels-chris-f-38966-1283219.jpg",
     title: "Đêm hội bất tận",
     description: "Tận hưởng những đêm hội bất tận cùng bạn bè",

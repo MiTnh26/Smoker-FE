@@ -22,7 +22,7 @@ import { userApi } from "../../../api/userApi";
 import { normalizeProfileData } from "../../../utils/profileDataMapper";
 import { mapPostForCard } from "../../../utils/postTransformers";
 import PostCard from "../../feeds/components/post/PostCard";
-import { DollarSign, MessageCircle, Calendar } from "lucide-react";
+import { MessageCircle, Calendar, CheckCircle2 } from "lucide-react";
 import BarEvent from "../../bar/components/BarEvent";
 import BarMenu from "../../bar/components/BarMenuCombo";
 import BarVideo from "../../bar/components/BarVideo";
@@ -30,7 +30,7 @@ import BarReview from "../../bar/components/BarReview";
 import BarTables from "../../bar/components/BarTables";
 import BarTablesPage from "../../customer/pages/BarTablesPage";
 import PerformerReviews from "../../business/components/PerformerReviews";
-import { ProfileInfoSection } from "../../../components/profile/ProfileInfoSection";
+import { ProfileInfoSection, ProfilePostsSection } from "../../../components/profile/ProfileInfoSection";
 import AudioPlayerBar from "../../feeds/components/audio/AudioPlayerBar";
 import { useSharedAudioPlayer } from "../../../hooks/useSharedAudioPlayer";
 import ImageDetailModal from "../../feeds/components/media/mediasOfPost/ImageDetailModal";
@@ -68,6 +68,28 @@ export default function ProfilePage() {
   const [followersModalMode, setFollowersModalMode] = useState("followers");
   const menuRef = useRef(null);
   const [activeTab, setActiveTab] = useState("info");
+  
+  // Set default tab to "tables" when not logged in and viewing bar profile
+  useEffect(() => {
+    if (!profile || !profileType) return;
+    
+    try {
+      const session = getSession();
+      const isNotLoggedIn = !session;
+      
+      if (isNotLoggedIn && profileType.isBar) {
+        // Chưa login và là bar profile -> nhảy vào tab đặt bàn
+        console.log('[ProfilePage] Setting activeTab to "tables" for bar profile (not logged in)');
+        setActiveTab("tables");
+      }
+    } catch (e) {
+      // Nếu không có session thì coi như chưa login
+      if (profileType.isBar) {
+        console.log('[ProfilePage] Setting activeTab to "tables" for bar profile (error getting session)');
+        setActiveTab("tables");
+      }
+    }
+  }, [profile, profileType]);
   const [isBanned, setIsBanned] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [showBookingView, setShowBookingView] = useState(false);
@@ -96,9 +118,26 @@ export default function ProfilePage() {
 
         // profileApi.getProfile() trả về profileData trực tiếp (không có wrapper { success, data })
         if (profileData) {
+          console.log('[ProfilePage] Raw profileData from API:', {
+            profileData,
+            pricePerHours: profileData.pricePerHours || profileData.PricePerHours,
+            pricePerSession: profileData.pricePerSession || profileData.PricePerSession,
+            businessAccount: profileData.businessAccount || profileData.BusinessAccount,
+            BusinessAccount: profileData.BusinessAccount,
+            allKeys: Object.keys(profileData),
+          });
+          
           // Dữ liệu profile đã được gộp sẵn từ backend
           const mappedData = normalizeProfileData(profileData);
+          
+          console.log('[ProfilePage] Normalized profileData:', {
+            mappedData,
+            pricePerHours: mappedData.pricePerHours || mappedData.PricePerHours,
+            pricePerSession: mappedData.pricePerSession || mappedData.PricePerSession,
+          });
+          
           setProfile(mappedData);
+          // Tab sẽ được set tự động trong useEffect riêng dựa trên profileType
         } else {
           if (alive) {
             setError('Profile not found');
@@ -372,6 +411,20 @@ export default function ProfilePage() {
             <div className={cn("bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]")}>
               <BarMenu barPageId={barPageId} />
             </div>
+            <ProfilePostsSection 
+              posts={posts}
+              postsLoading={postsLoading}
+              onImageClick={(data) => setSelectedImage(data)}
+              onReport={(p) => setReportingPost(p)}
+              isOwnProfile={isOwnProfile}
+              playingPost={playingPost}
+              setPlayingPost={setPlayingPost}
+              sharedAudioRef={sharedAudioRef}
+              sharedCurrentTime={sharedCurrentTime}
+              sharedDuration={sharedDuration}
+              sharedIsPlaying={sharedIsPlaying}
+              onSeek={handleSeek}
+            />
           </div>
         );
       case "posts":
@@ -541,39 +594,89 @@ export default function ProfilePage() {
                 "rounded-lg p-6 border-[0.5px] border-primary/30",
                 "shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
               )}>
-                <h3 className={cn("text-xl font-bold text-foreground mb-4 flex items-center gap-2")}>
-                  <DollarSign className="w-5 h-5" />
-                  {t('profile.priceTable')}
+                <h3 className={cn("text-xl font-bold text-foreground mb-4")}>
+                  Bảng giá dịch vụ
                 </h3>
                 <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4")}>
                   {profile.pricePerHours && (
                     <div className={cn(
-                      "bg-card rounded-lg p-4 border border-border/20"
+                      "bg-muted/30 rounded-lg p-4 border border-border/10",
+                      "transition-all duration-200 hover:border-border/30"
                     )}>
-                      <p className={cn("text-sm text-muted-foreground mb-1")}>
-                        {t('profile.pricePerHour')}
+                      <p className={cn("text-sm font-semibold text-muted-foreground mb-2")}>
+                        Giá tiêu chuẩn
                       </p>
-                      <p className={cn("text-2xl font-bold text-primary")}>
-                        {Number.parseInt(profile.pricePerHours || 0, 10).toLocaleString('vi-VN')} đ
+                      <p className={cn("text-2xl font-bold text-foreground")}>
+                        {Number.parseInt(profile.pricePerHours || 0, 10).toLocaleString('vi-VN')} đ / slot
+                      </p>
+                      <p className={cn("text-xs text-muted-foreground mt-2")}>
+                        Dành cho đặt lẻ
                       </p>
                     </div>
                   )}
                   {profile.pricePerSession && (
                     <div className={cn(
-                      "bg-card rounded-lg p-4 border border-border/20"
+                      "bg-white rounded-lg p-4 border-2 border-primary",
+                      "shadow-lg relative",
+                      "transition-all duration-200 hover:shadow-xl hover:scale-[1.02]"
                     )}>
-                      <p className={cn("text-sm text-muted-foreground mb-1")}>
-                        {t('profile.pricePerSession')}
+                      {/* Badge */}
+                      <div className={cn(
+                        "absolute -top-2 -right-2",
+                        "bg-gradient-to-r from-orange-500 to-orange-600",
+                        "text-white text-xs font-bold px-2 py-1 rounded-full",
+                        "shadow-md"
+                      )}>
+                        {profile.pricePerHours && profile.pricePerHours > profile.pricePerSession ? (
+                          `-${Math.round(((profile.pricePerHours - profile.pricePerSession) / profile.pricePerHours) * 100)}%`
+                        ) : (
+                          "Khuyên dùng"
+                        )}
+                      </div>
+                      <p className={cn("text-sm font-semibold text-primary mb-2 pr-12")}>
+                        Giá ưu đãi khi đặt nhiều slot
                       </p>
-                      <p className={cn("text-2xl font-bold text-primary")}>
-                        {Number.parseInt(profile.pricePerSession || 0, 10).toLocaleString('vi-VN')} đ
-                      </p>
+                      <div className={cn("mb-2")}>
+                        {profile.pricePerHours && profile.pricePerHours > profile.pricePerSession && (
+                          <span className={cn("text-lg text-muted-foreground line-through mr-2")}>
+                            {Number.parseInt(profile.pricePerHours || 0, 10).toLocaleString('vi-VN')} đ
+                          </span>
+                        )}
+                        <span className={cn("text-2xl font-bold text-orange-600")}>
+                          {Number.parseInt(profile.pricePerSession || 0, 10).toLocaleString('vi-VN')} đ / slot
+                        </span>
+                      </div>
+                      <div className={cn("text-xs text-muted-foreground space-y-1 mt-2")}>
+                        <p className={cn("font-semibold mb-1")}>Điều kiện áp dụng:</p>
+                        <div className={cn("flex items-start gap-1")}>
+                          <CheckCircle2 className={cn("w-3 h-3 text-green-600 mt-0.5 flex-shrink-0")} />
+                          <span>4 slot liền nhau</span>
+                        </div>
+                        <div className={cn("flex items-start gap-1")}>
+                          <CheckCircle2 className={cn("w-3 h-3 text-green-600 mt-0.5 flex-shrink-0")} />
+                          <span>Hoặc 6 slot bất kỳ</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
             )}
             <ProfileInfoSection profile={profile} />
+            <ProfilePostsSection 
+              posts={posts}
+              postsLoading={postsLoading}
+              onImageClick={(data) => setSelectedImage(data)}
+              onReport={(p) => setReportingPost(p)}
+              isOwnProfile={isOwnProfile}
+              playingPost={playingPost}
+              setPlayingPost={setPlayingPost}
+              sharedAudioRef={sharedAudioRef}
+              sharedCurrentTime={sharedCurrentTime}
+              sharedDuration={sharedDuration}
+              sharedIsPlaying={sharedIsPlaying}
+              onSeek={handleSeek}
+            />
           </div>
         );
       case "posts":
@@ -686,39 +789,82 @@ export default function ProfilePage() {
                 "rounded-lg p-6 border-[0.5px] border-primary/30",
                 "shadow-[0_2px_8px_rgba(0,0,0,0.1)]"
               )}>
-                <h3 className={cn("text-xl font-bold text-foreground mb-4 flex items-center gap-2")}>
-                  <DollarSign className="w-5 h-5" />
-                  {t('profile.priceTable')}
+                <h3 className={cn("text-xl font-bold text-foreground mb-4")}>
+                  Bảng giá dịch vụ
                 </h3>
                 <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-4")}>
                   {profile.pricePerHours && (
                     <div className={cn(
-                      "bg-card rounded-lg p-4 border border-border/20"
+                      "bg-muted/30 rounded-lg p-4 border border-border/10",
+                      "transition-all duration-200 hover:border-border/30"
                     )}>
-                      <p className={cn("text-sm text-muted-foreground mb-1")}>
-                        {t('profile.pricePerHour')}
+                      <p className={cn("text-sm font-semibold text-muted-foreground mb-2")}>
+                        Giá tiêu chuẩn
                       </p>
-                      <p className={cn("text-2xl font-bold text-primary")}>
-                        {Number.parseInt(profile.pricePerHours || 0, 10).toLocaleString('vi-VN')} đ
+                      <p className={cn("text-2xl font-bold text-foreground")}>
+                        {Number.parseInt(profile.pricePerHours || 0, 10).toLocaleString('vi-VN')} đ / slot
+                      </p>
+                      <p className={cn("text-xs text-muted-foreground mt-2")}>
+                        Dành cho đặt lẻ
                       </p>
                     </div>
                   )}
                   {profile.pricePerSession && (
                     <div className={cn(
-                      "bg-card rounded-lg p-4 border border-border/20"
+                      "bg-white rounded-lg p-4 border-2 border-primary",
+                      "shadow-lg relative",
+                      "transition-all duration-200 hover:shadow-xl hover:scale-[1.02]"
                     )}>
-                      <p className={cn("text-sm text-muted-foreground mb-1")}>
-                        {t('profile.pricePerSession')}
+                      {/* Badge */}
+                      <div className={cn(
+                        "absolute -top-2 -right-2",
+                        "bg-gradient-to-r from-orange-500 to-orange-600",
+                        "text-white text-xs font-bold px-2 py-1 rounded-full",
+                        "shadow-md"
+                      )}>
+                        {profile.pricePerHours && profile.pricePerHours > profile.pricePerSession ? (
+                          `-${Math.round(((profile.pricePerHours - profile.pricePerSession) / profile.pricePerHours) * 100)}%`
+                        ) : (
+                          "Khuyên dùng"
+                        )}
+                      </div>
+                      <p className={cn("text-sm font-semibold text-primary mb-2 pr-12")}>
+                        Giá ưu đãi khi đặt nhiều slot
                       </p>
-                      <p className={cn("text-2xl font-bold text-primary")}>
-                        {Number.parseInt(profile.pricePerSession || 0, 10).toLocaleString('vi-VN')} đ
-                      </p>
+                      <div className={cn("mb-2")}>
+                        {profile.pricePerHours && profile.pricePerHours > profile.pricePerSession && (
+                          <span className={cn("text-lg text-muted-foreground line-through mr-2")}>
+                            {Number.parseInt(profile.pricePerHours || 0, 10).toLocaleString('vi-VN')} đ
+                          </span>
+                        )}
+                        <span className={cn("text-2xl font-bold text-orange-600")}>
+                          {Number.parseInt(profile.pricePerSession || 0, 10).toLocaleString('vi-VN')} đ / slot
+                        </span>
+                      </div>
+                      <div className={cn("text-xs text-muted-foreground space-y-1 mt-2")}>
+                        <p className={cn("font-semibold mb-1")}>Điều kiện áp dụng:</p>
+                        <div className={cn("flex items-start gap-1")}>
+                          <CheckCircle2 className={cn("w-3 h-3 text-green-600 mt-0.5 flex-shrink-0")} />
+                          <span>4 slot liền nhau</span>
+                        </div>
+                        <div className={cn("flex items-start gap-1")}>
+                          <CheckCircle2 className={cn("w-3 h-3 text-green-600 mt-0.5 flex-shrink-0")} />
+                          <span>Hoặc 6 slot bất kỳ</span>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
             )}
             <ProfileInfoSection profile={profile} />
+            <ProfilePostsSection 
+              posts={posts}
+              postsLoading={postsLoading}
+              onImageClick={(data) => setSelectedImage(data)}
+              onReport={(p) => setReportingPost(p)}
+              isOwnProfile={isOwnProfile}
+            />
           </div>
         );
       case "posts":
@@ -809,6 +955,20 @@ export default function ProfilePage() {
         return (
           <div className={cn("flex flex-col gap-6")}>
             <ProfileInfoSection profile={profile} />
+            <ProfilePostsSection 
+              posts={posts}
+              postsLoading={postsLoading}
+              onImageClick={(data) => setSelectedImage(data)}
+              onReport={(p) => setReportingPost(p)}
+              isOwnProfile={isOwnProfile}
+              playingPost={playingPost}
+              setPlayingPost={setPlayingPost}
+              sharedAudioRef={sharedAudioRef}
+              sharedCurrentTime={sharedCurrentTime}
+              sharedDuration={sharedDuration}
+              sharedIsPlaying={sharedIsPlaying}
+              onSeek={handleSeek}
+            />
           </div>
         );
       case "posts":
@@ -1198,10 +1358,49 @@ export default function ProfilePage() {
           onClose={() => setBookingOpen(false)}
           performerEntityAccountId={entityId}
           performerRole={(profile.role || profile.type || "").toString().toUpperCase().includes("DANCER") ? "DANCER" : "DJ"}
-          performerProfile={{
-            pricePerHours: profile.pricePerHours || profile.PricePerHours || profile.pricePerHour || profile.PricePerHour || 0,
-            pricePerSession: profile.pricePerSession || profile.PricePerSession || 0,
-          }}
+          performerProfile={(() => {
+            // Kiểm tra nhiều path khác nhau để lấy pricePerHours và pricePerSession
+            // Ưu tiên top level trước (đã được normalize), sau đó mới kiểm tra nested object
+            const businessAccount = profile.businessAccount || profile.BusinessAccount || profile.bussinessAccount || profile.BussinessAccount;
+            
+            // pricePerHours: ưu tiên top level đã normalize, sau đó nested object
+            const pricePerHours = profile.pricePerHours || 
+                                 profile.PricePerHours || 
+                                 profile.pricePerHour || 
+                                 profile.PricePerHour ||
+                                 businessAccount?.pricePerHours ||
+                                 businessAccount?.PricePerHours ||
+                                 businessAccount?.pricePerHour ||
+                                 businessAccount?.PricePerHour ||
+                                 businessAccount?.PricePerHours ||
+                                 0;
+            
+            // pricePerSession: ưu tiên top level đã normalize, sau đó nested object
+            const pricePerSession = profile.pricePerSession || 
+                                   profile.PricePerSession ||
+                                   businessAccount?.pricePerSession ||
+                                   businessAccount?.PricePerSession ||
+                                   businessAccount?.PricePerSession ||
+                                   0;
+            
+            console.log('[ProfilePage] Passing performerProfile to RequestBookingModal:', {
+              profile,
+              businessAccount,
+              pricePerHours,
+              pricePerSession,
+              hasPricePerSession: !!pricePerSession,
+              allPaths: {
+                'profile.pricePerSession': profile.pricePerSession,
+                'profile.PricePerSession': profile.PricePerSession,
+                'businessAccount.pricePerSession': businessAccount?.pricePerSession,
+                'businessAccount.PricePerSession': businessAccount?.PricePerSession,
+              }
+            });
+            return {
+              pricePerHours,
+              pricePerSession,
+            };
+          })()}
         />
       )}
       {selectedImage && (

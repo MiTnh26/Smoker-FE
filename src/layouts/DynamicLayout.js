@@ -22,6 +22,7 @@ import "../styles/modules/bar.css";
 
 const DynamicLayout = ({ children, hideSidebars = false }) => {
   const [currentRole, setCurrentRole] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [menuContactsOpen, setMenuContactsOpen] = useState(false);
 
@@ -30,14 +31,19 @@ const DynamicLayout = ({ children, hideSidebars = false }) => {
     const getCurrentUserRole = () => {
       try {
         const session = getSession();
-        if (!session) return null;
+        if (!session) {
+          setIsLoggedIn(false);
+          return null;
+        }
         
+        setIsLoggedIn(true);
         const active = getActiveEntity() || session?.activeEntity || {};
         // Only use role, not type. Role can be: customer, bar, dj, dancer
         const role = (active.role || "").toString().toUpperCase();
         return role || null;
       } catch (e) {
         console.warn("[DynamicLayout] Error reading session:", e);
+        setIsLoggedIn(false);
         return null;
       }
     };
@@ -118,14 +124,16 @@ const DynamicLayout = ({ children, hideSidebars = false }) => {
           <Menu size={24} />
         </button>
 
-        {!hideSidebars && (
+        {/* Ẩn sidebar khi chưa đăng nhập */}
+        {!hideSidebars && isLoggedIn && (
           <Sidebar 
             isOpen={sidebarOpen} 
             onClose={() => setSidebarOpen(false)} 
           />
         )}
         <main>{children}</main>
-        {!hideSidebars && <RightSidebar />}
+        {/* Ẩn right sidebar khi chưa đăng nhập */}
+        {!hideSidebars && isLoggedIn && <RightSidebar />}
       </div>
       <ChatDock />
       

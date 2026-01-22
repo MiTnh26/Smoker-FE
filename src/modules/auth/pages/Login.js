@@ -143,10 +143,35 @@ export function Login() {
           // Admin từ Accounts table → redirect đến manager login
           // (vì admin giờ đăng nhập từ /manager/login)
           navigate("/manager/login", { replace: true });
-        } else if (!res.needProfile) {
-          navigate("/customer/newsfeed", { replace: true });
         } else {
-          navigate("/profile-setup", { replace: true });
+          // Check needProfile from response, with fallback check
+          let needProfile = res.needProfile;
+          
+          // Fallback: If needProfile is undefined, check user data directly
+          if (needProfile === undefined) {
+            const user = res.user || {};
+            const hasUserName = user.userName && String(user.userName).trim() !== "";
+            const hasAvatar = user.avatar && String(user.avatar).trim() !== "";
+            const hasAddress = user.address && String(user.address).trim() !== "";
+            const hasPhone = user.phone && String(user.phone).trim() !== "";
+            
+            // Profile is incomplete if missing required fields OR missing both address and phone
+            needProfile = !(hasUserName && hasAvatar && (hasAddress || hasPhone));
+            
+            console.log("[Login] needProfile not in response, calculated from user data:", {
+              hasUserName,
+              hasAvatar,
+              hasAddress,
+              hasPhone,
+              needProfile
+            });
+          }
+          
+          if (!needProfile) {
+            navigate("/customer/newsfeed", { replace: true });
+          } else {
+            navigate("/profile-setup", { replace: true });
+          }
         }
       } else {
         setError(res?.message || t('auth.loginFailed'));

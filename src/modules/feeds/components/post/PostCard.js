@@ -4,12 +4,13 @@ import { useNavigate } from "react-router-dom"
 import { Globe, Lock } from "lucide-react"
 import YouTubeLinkPreview from "../../../../components/common/YouTubeLinkPreview"
 import { splitTextWithYouTube } from "../../../../utils/youtube"
-import { likePost, unlikePost, trackPostView } from "../../../../api/postApi"
+import { likePost, unlikePost, trackPostView, updateComment, deleteComment } from "../../../../api/postApi"
 import AudioWaveform from "../audio/AudioWaveform"
 import PostMediaLayout from "./PostMediaLayout"
 import ShareModal from "../modals/ShareModal"
 import PostDetailModal from "../modals/PostDetailModal"
 import ReadMoreText from "../comment/ReadMoreText"
+import ExpandableText from "../../../../components/common/ExpandableText"
 import { cn } from "../../../../utils/cn"
 import { getAvatarUrl } from "../../../../utils/defaultAvatar"
 import { mapPostForCard, formatPostTime } from "../../../../utils/postTransformers"
@@ -44,6 +45,9 @@ export default function PostCard({
   // originalPost: luôn bắt đầu từ null, rồi sync từ backend (post.originalPost) nếu có
   const [originalPost, setOriginalPost] = useState(null)
   const [originalPostModalOpen, setOriginalPostModalOpen] = useState(false)
+  const [editingCommentId, setEditingCommentId] = useState(null)
+  const [editCommentText, setEditCommentText] = useState("")
+  const [deletingCommentId, setDeletingCommentId] = useState(null)
   const menuRef = useRef(null)
   const shareButtonRef = useRef(null)
   const hasTrackedView = useRef(false) // Track xem đã gọi API view chưa
@@ -130,6 +134,129 @@ export default function PostCard({
       console.warn('[PostCard] Invalid post ID format, skipping view tracking:', post.id);
     }
   }, [post.id])
+
+  // Get current user info for comment ownership check
+  const getCurrentUserInfo = () => {
+    try {
+      const raw = localStorage.getItem("session")
+      const session = raw ? JSON.parse(raw) : null
+      const currentUser = session?.account
+      const activeEntity = session?.activeEntity || currentUser
+      const entities = Array.isArray(session?.entities) ? session.entities : []
+
+      const tryNormalizeEntityId = (entity) => (
+        entity?.EntityAccountId ||
+        entity?.entityAccountId ||
+        entity?.entity_account_id ||
+        null
+      )
+
+      const resolveViewerEntityAccountId = () => {
+        let resolved =
+          tryNormalizeEntityId(activeEntity) ||
+          tryNormalizeEntityId(currentUser)
+
+        if (!resolved && activeEntity?.id && entities.length > 0) {
+          const match = entities.find((entity) => {
+            if (!entity?.id) return false
+            return String(entity.id).toLowerCase() === String(activeEntity.id).toLowerCase()
+          })
+          resolved = tryNormalizeEntityId(match)
+        }
+        return resolved || null
+      }
+
+      return {
+        viewerEntityAccountId: resolveViewerEntityAccountId(),
+        currentUser
+      }
+    } catch (e) {
+      return { viewerEntityAccountId: null, currentUser: null }
+    }
+  }
+
+  // Handle edit comment
+  const handleEditComment = async (commentId, currentContent) => {
+    if (editingCommentId === commentId) {
+      // Save edit
+      const trimmed = editCommentText.trim()
+      if (!trimmed) {
+        alert("Vui lòng nhập nội dung bình luận")
+        return
+      }
+
+      try {
+        const { viewerEntityAccountId } = getCurrentUserInfo()
+        if (!viewerEntityAccountId) {
+          alert("Vui lòng chọn thực thể hoạt động trước khi chỉnh sửa bình luận.")
+          return
+        }
+
+        await updateComment(post.id, commentId, {
+          content: trimmed,
+          entityAccountId: viewerEntityAccountId
+        })
+
+        // Update local state
+        const updatedComments = post.topComments.map(c =>
+          c.id === commentId ? { ...c, content: trimmed } : c
+        )
+        post.topComments = updatedComments
+
+        setEditingCommentId(null)
+        setEditCommentText("")
+        alert("Đã cập nhật bình luận")
+      } catch (error) {
+        console.error("Error updating comment:", error)
+        alert(error?.response?.data?.message || "Không thể cập nhật bình luận. Vui lòng thử lại.")
+      }
+    } else {
+      // Start editing
+      setEditingCommentId(commentId)
+      setEditCommentText(currentContent || "")
+    }
+  }
+
+  // Handle delete comment
+  const handleDeleteComment = async (commentId) => {
+    const { viewerEntityAccountId } = getCurrentUserInfo()
+    if (!viewerEntityAccountId) {
+      alert("Vui lòng chọn thực thể hoạt động trước khi xóa bình luận.")
+      return
+    }
+
+    if (!window.confirm("Bạn có chắc chắn muốn xóa bình luận này?")) {
+      return
+    }
+
+    try {
+      setDeletingCommentId(commentId)
+      await deleteComment(post.id, commentId, {
+        entityAccountId: viewerEntityAccountId
+      })
+
+      // Update local state - remove comment from topComments
+      const updatedComments = post.topComments.filter(c => c.id !== commentId)
+      post.topComments = updatedComments
+      post.comments = Math.max(0, (post.comments || 0) - 1)
+
+      alert("Đã xóa bình luận")
+    } catch (error) {
+      console.error("Error deleting comment:", error)
+      alert(error?.response?.data?.message || "Không thể xóa bình luận. Vui lòng thử lại.")
+    } finally {
+      setDeletingCommentId(null)
+    }
+  }
+
+  // Check if current user is comment owner
+  const isCommentOwner = (comment) => {
+    const { viewerEntityAccountId } = getCurrentUserInfo()
+    if (!viewerEntityAccountId) return false
+    
+    const commentAuthorId = comment.author?.entityAccountId || comment.authorEntityAccountId
+    return String(commentAuthorId) === String(viewerEntityAccountId)
+  }
 
   const togglePlay = () => setPlayingPost(isPlaying ? null : post.id)
   const toggleLike = async () => {
@@ -922,28 +1049,30 @@ export default function PostCard({
       {/* Top 2 Comments Preview */}
       {post.topComments && post.topComments.length > 0 && (
         <div className="mt-3 border-t border-border/20 pt-3 top-comments-preview">
-          <button
-            onClick={() => setPostDetailModalOpen(true)}
-            className="w-full text-left"
-          >
-            {post.topComments.map((comment, index) => {
-              // Anonymous temporarily disabled
-              const isAnonymousComment = false;
-              const anonymousIndex = comment.anonymousIndex;
-              // Read from new DTO schema: author.name or legacy authorName
-              const authorName = comment.author?.name || comment.authorName;
-              const displayName = authorName || "Người dùng";
-              // Read avatar from new DTO schema: author.avatar or legacy authorAvatar
-              const authorAvatar = comment.author?.avatar || comment.authorAvatar;
-              const displayAvatar = getAvatarUrl(authorAvatar, 32);
+          {post.topComments.map((comment, index) => {
+            // Anonymous temporarily disabled
+            const isAnonymousComment = false;
+            const anonymousIndex = comment.anonymousIndex;
+            // Read from new DTO schema: author.name or legacy authorName
+            const authorName = comment.author?.name || comment.authorName;
+            const displayName = authorName || "Người dùng";
+            // Read avatar from new DTO schema: author.avatar or legacy authorAvatar
+            const authorAvatar = comment.author?.avatar || comment.authorAvatar;
+            const displayAvatar = getAvatarUrl(authorAvatar, 32);
+            const isOwner = isCommentOwner(comment);
+            const isEditing = editingCommentId === comment.id;
 
-              return (
+            return (
               <div key={comment.id || index} className="mb-2 last:mb-0">
                 <div className="flex gap-2 items-start">
                   <img
                     src={displayAvatar}
                     alt={displayName || "User"}
-                    className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                    className="w-8 h-8 rounded-full object-cover flex-shrink-0 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPostDetailModalOpen(true);
+                    }}
                     onError={(e) => {
                       e.target.src = getAvatarUrl(null, 32);
                     }}
@@ -953,9 +1082,12 @@ export default function PostCard({
                       <span className="font-semibold text-sm text-foreground mr-2">
                         {displayName}
                       </span>
-                      <span className="text-sm text-foreground break-words">
-                        {comment.content}
-                      </span>
+                      <ExpandableText
+                        text={comment.content || ""}
+                        maxLength={100}
+                        textClassName="text-sm text-foreground"
+                        buttonClassName="text-xs"
+                      />
                     </div>
                     <div className="flex items-center gap-3 mt-1 ml-2">
                       <span className="text-xs text-muted-foreground">
@@ -976,9 +1108,8 @@ export default function PostCard({
                   </div>
                 </div>
               </div>
-              );
-            })}
-          </button>
+            );
+          })}
         </div>
       )}
 

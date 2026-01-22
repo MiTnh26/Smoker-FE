@@ -53,56 +53,11 @@ export const useAllUserGroups = (stories, entityAccountId = null) => {
       };
     });
     
-    // KHÔNG filter ngay khi xem xong - chỉ đổi màu border
-    // Chỉ filter khi load lại trang (stories từ API đã có viewed: true)
-    // Filter: Chỉ ẩn user groups khi tất cả stories đã xem VÀ không phải story của bản thân
-    // Story của bản thân: LUÔN hiển thị dù đã xem hết (nếu chưa hết 24h)
-    const filteredUserGroups = userGroupsArray.filter(userGroup => {
-      // Kiểm tra xem có phải story của bản thân không
-      let isOwnStory = false;
-      if (entityAccountId) {
-        const currentId = String(entityAccountId).trim().toLowerCase();
-        const storyEntityId = userGroup.displayStory?.entityAccountId || 
-                             userGroup.displayStory?.authorEntityAccountId || 
-                             userGroup.displayStory?.EntityAccountId;
-        isOwnStory = storyEntityId && String(storyEntityId).trim().toLowerCase() === currentId;
-      }
-      
-      // Story của bản thân: LUÔN hiển thị dù đã xem hết (nếu chưa hết 24h)
-      // KHÔNG BAO GIỜ filter story của bản thân ra
-      if (isOwnStory) {
-        const storyDate = new Date(userGroup.displayStory.createdAt || 0);
-        const now = new Date();
-        const diffInHours = (now - storyDate) / (1000 * 60 * 60);
-        const isWithin24Hours = diffInHours <= 24;
-        
-        if (isWithin24Hours) {
-          return true; // LUÔN hiển thị story của bản thân (nếu chưa hết 24h)
-        } else {
-          return false; // Story của bản thân quá 24h → Ẩn (giống story của người khác)
-        }
-      }
-      
-      // Story của người khác: Chỉ ẩn khi TẤT CẢ stories đã xem VÀ đã được lưu trong DB (viewed: true từ API)
-      // Backend cần trả về field viewed: true khi fetch stories
-      // Nếu chỉ có trong localStorage (vừa xem xong) → Vẫn hiển thị, chỉ đổi màu
-      const allStoriesViewed = userGroup.allStories.every(s => {
-        // Chỉ coi là "đã xem trong DB" nếu có field viewed: true từ API
-        // Backend cần trả về field này khi GET /stories
-        // Không check localStorage vì đó chỉ là cache tạm thời
-        return s.viewed === true || s.isViewed === true || s.hasViewed === true;
-      });
-      
-      // Nếu tất cả đã xem trong DB → Ẩn (chỉ khi load lại trang)
-      if (allStoriesViewed) {
-        return false;
-      }
-      
-      // Còn story chưa xem trong DB → Hiển thị
-      return true;
-    });
+    // KHÔNG ẩn user groups dựa trên trạng thái viewed nữa.
+    // Chỉ filter theo 24h ở trên, sau đó sort lại thứ tự để ưu tiên chưa xem.
+    const filteredUserGroups = userGroupsArray;
     
-    // Sort user groups: ưu tiên story của bản thân trước, sau đó là story chưa xem, cuối cùng là mới nhất
+    // Sort user groups: ưu tiên story của bản thân trước, sau đó là user còn story chưa xem, cuối cùng sort theo mới nhất
     return filteredUserGroups.sort((a, b) => {
       // Ưu tiên story của bản thân (entityAccountId match) lên đầu tiên
       if (entityAccountId) {

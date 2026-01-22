@@ -15,7 +15,8 @@ export default function DJRegisterStep1({
   onDistrictChange,
   onWardChange,
   onAddressDetailChange,
-  onAddressChange
+  onAddressChange,
+  onAddressJsonChange
 }) {
   return (
     <div className="bg-white rounded-lg shadow-lg p-8">
@@ -63,6 +64,8 @@ export default function DJRegisterStep1({
                   onWardChange={onWardChange}
                   onAddressDetailChange={onAddressDetailChange}
                   onAddressChange={onAddressChange}
+                  onAddressJsonChange={onAddressJsonChange}
+                  required={true}
                   className="space-y-3"
                 />
               </div>

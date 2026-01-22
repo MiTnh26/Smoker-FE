@@ -6,6 +6,7 @@ import barPageApi from '../../api/barPageApi';
 import businessApi from '../../api/businessApi';
 import AddressSelector from '../common/AddressSelector';
 import { X } from 'lucide-react';
+import { formatAddressForSave, validateAddressFields, parseAddressFromString, extractAddressFields } from '../../utils/addressFormatter';
 
 export default function ProfileEditModal({ profile, profileType, onClose, onSuccess }) {
   const { t } = useTranslation();
@@ -37,14 +38,26 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
       });
 
       // Parse address data to populate AddressSelector
-      // Backend returns: provinceId, districtId, wardId, addressDetail, addressObject
-      if (profile.provinceId || profile.districtId || profile.wardId || profile.addressDetail) {
+      // Priority 1: Parse from address field (JSON string)
+      if (profile.address && typeof profile.address === 'string') {
+        const parsedAddress = parseAddressFromString(profile.address);
+        if (parsedAddress) {
+          const fields = extractAddressFields(parsedAddress);
+          setSelectedProvinceId(fields.provinceId);
+          setSelectedDistrictId(fields.districtId);
+          setSelectedWardId(fields.wardId);
+          setAddressDetail(fields.detail);
+        }
+      }
+      // Priority 2: Backend returns: provinceId, districtId, wardId, addressDetail
+      else if (profile.provinceId || profile.districtId || profile.wardId || profile.addressDetail) {
         setSelectedProvinceId(profile.provinceId || '');
         setSelectedDistrictId(profile.districtId || '');
         setSelectedWardId(profile.wardId || '');
         setAddressDetail(profile.addressDetail || '');
-      } else if (profile.addressObject && typeof profile.addressObject === 'object') {
-        // Fallback: parse from addressObject
+      }
+      // Priority 3: Parse from addressObject
+      else if (profile.addressObject && typeof profile.addressObject === 'object') {
         const addrObj = profile.addressObject;
         setSelectedProvinceId(addrObj.provinceId || '');
         setSelectedDistrictId(addrObj.districtId || '');
@@ -84,15 +97,26 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
       let res;
       const data = { ...formData };
       
-      // Build address object with IDs if any address component is selected
+      // Build address JSON string if any address component is selected
+      // Must have all 4 fields to be valid
       if (selectedProvinceId || selectedDistrictId || selectedWardId || addressDetail) {
-        const addressObj = {};
-        if (addressDetail) addressObj.detail = addressDetail;
-        if (selectedProvinceId) addressObj.provinceId = selectedProvinceId;
-        if (selectedDistrictId) addressObj.districtId = selectedDistrictId;
-        if (selectedWardId) addressObj.wardId = selectedWardId;
-        // Store as JSON string for backend
-        data.address = JSON.stringify(addressObj);
+        // Validate all 4 fields are present
+        if (!validateAddressFields(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId)) {
+          setErrors({ ...errors, address: 'Vui lòng điền đầy đủ thông tin địa chỉ (Tỉnh/Thành phố, Quận/Huyện, Phường/Xã, và Địa chỉ chi tiết)' });
+          setSaving(false);
+          return;
+        }
+        
+        // Format address as JSON string
+        const addressJsonString = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
+        if (!addressJsonString) {
+          setErrors({ ...errors, address: 'Lỗi khi format địa chỉ. Vui lòng thử lại.' });
+          setSaving(false);
+          return;
+        }
+        
+        // Store JSON string in address field
+        data.address = addressJsonString;
       }
       
       // Remove empty fields

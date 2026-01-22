@@ -5,7 +5,7 @@ import messageApi from "../../../../api/messageApi";
 import { useAllUserGroups } from "./hooks/useAllUserGroups";
 import { useStoryProgress } from "./hooks/useStoryProgress";
 import { useStoryControls } from "./hooks/useStoryControls";
-import { getActiveId, getUserIdentifier } from "./utils/storyUtils";
+import { getActiveId, getUserIdentifier, formatShortTime } from "./utils/storyUtils";
 import { cn } from "../../../../utils/cn";
 import StoryProgressBars from "./StoryProgressBars";
 import StoryControls from "./StoryControls";
@@ -15,7 +15,7 @@ import StoryViewers from "./StoryViewers";
 import ReportStoryModal from "./ReportStoryModal";
 import Toast from "../../../../components/common/Toast";
 
-export default function StoryViewer({ stories, activeStory, onClose, entityAccountId, onStoryDeleted }) {
+export default function StoryViewer({ stories, activeStory, onClose, entityAccountId, onStoryDeleted, onStoryViewed, onOpenEditor }) {
   const { t } = useTranslation();
   const viewedStoryIdsRef = useRef(new Set());
   
@@ -188,6 +188,10 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
               markStoryAsViewed(storyId, entityAccountId)
                 .then(() => {
                   console.log('[StoryViewer] Marked story as viewed immediately:', storyId);
+                  // Cập nhật UI ngay lập tức: thông báo cho Newsfeed / StoryManager
+                  if (onStoryViewed) {
+                    onStoryViewed(storyId);
+                  }
                 })
                 .catch((error) => {
                   console.error('[StoryViewer] Error marking story as viewed immediately:', error);
@@ -738,44 +742,194 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-[1000] flex bg-[rgb(var(--background))]"
       onClick={handleClose}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          handleClose();
+        }
+      }}
+      tabIndex={-1}
     >
-      <div className="relative flex items-center justify-center">
-        {/* Previous button - left side of story */}
-        {(storyIndex > 0 || userIndex > 0) && (
+      {/* Left Sidebar - Stories List */}
+      <div 
+        className="flex w-[360px] flex-shrink-0 flex-col border-r border-[rgb(var(--border))] bg-[rgb(var(--card))]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-[rgb(var(--border))] px-4 py-3">
+          <h2 className="text-lg font-semibold text-[rgb(var(--foreground))]">{t('story.messages') || 'Tin'}</h2>
           <button
-            className="absolute left-[-56px] z-[1001] flex h-12 w-12 items-center justify-center rounded-full bg-black/70 backdrop-blur-sm text-white transition-all duration-200 hover:bg-black/90 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 shadow-xl"
-            onClick={(e) => {
-              e.stopPropagation();
-              prevStory();
-            }}
-            aria-label="Previous story"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-[rgb(var(--muted-foreground))] transition-colors hover:bg-[rgb(var(--muted))]"
+            onClick={handleClose}
+            aria-label={t('action.close') || 'Đóng'}
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6"></polyline>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
-        )}
+        </div>
 
-        <div
-          className={cn(
-            "relative flex w-[400px] max-w-[92%] flex-col overflow-hidden",
-            "bg-card text-card-foreground",
-            "rounded-lg border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
-            "max-h-[98vh]"
-          )}
-          onClick={(e) => e.stopPropagation()}
+        {/* Your Story */}
+        <button
+          className="border-b border-[rgb(var(--border))] px-4 py-3 text-left transition-colors hover:bg-[rgb(var(--muted))]/30"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onOpenEditor) {
+              onOpenEditor();
+            }
+          }}
         >
-        {/* Progress indicators */}
-        <StoryProgressBars 
-          stories={groupedStories} 
-          currentIndex={storyIndex} 
-          progress={progress} 
-        />
-        
-        {/* Story content */}
-        <StoryContent story={story} />
+          <div className="flex items-center gap-3">
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[rgb(var(--primary))] to-[rgb(var(--primary))]/60 p-[2px]">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-[rgb(var(--card))]">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-[rgb(var(--primary))]">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="font-semibold text-[rgb(var(--foreground))]">{t('story.yourStory') || 'Tin của bạn'}</div>
+              <div className="text-sm text-[rgb(var(--muted-foreground))]">{t('story.createStory') || 'Tạo tin'}</div>
+            </div>
+          </div>
+        </button>
+
+        {/* All Stories List */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-4 py-2 text-xs font-semibold uppercase text-[rgb(var(--muted-foreground))]">
+            {t('story.allStories') || 'Tất cả tin'}
+          </div>
+          <div className="space-y-1 px-2">
+            {allUserGroups.map((userGroup, idx) => {
+              const isActive = idx === userIndex;
+              const displayStory = userGroup.displayStory;
+              const avatar = displayStory?.authorAvatar || displayStory?.avatar || "/default-avatar.png";
+              const name = displayStory?.authorName || displayStory?.userName || "User";
+              const storyCount = userGroup.allStories?.length || 0;
+              const lastStory = userGroup.allStories?.[storyCount - 1];
+              const timeAgo = lastStory?.createdAt ? formatShortTime(lastStory.createdAt, t) : "";
+
+              return (
+                <button
+                  key={idx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Tìm story đầu tiên chưa xem, nếu không có thì lấy story đầu tiên
+                    const userStories = userGroup.allStories || [];
+                    let targetStoryIndex = 0;
+                    
+                    // Tìm story đầu tiên chưa xem
+                    for (let i = 0; i < userStories.length; i++) {
+                      const s = userStories[i];
+                      const isViewed = s.viewed === true || s.isViewed === true || s.hasViewed === true;
+                      if (!isViewed) {
+                        targetStoryIndex = i;
+                        break;
+                      }
+                    }
+                    
+                    setUserIndex(idx);
+                    setStoryIndex(targetStoryIndex);
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
+                    isActive
+                      ? "bg-[rgb(var(--muted))]"
+                      : "hover:bg-[rgb(var(--muted))]/50"
+                  )}
+                >
+                  <div className="relative flex-shrink-0">
+                    <img
+                      src={avatar}
+                      alt={name}
+                      className="h-12 w-12 rounded-full object-cover"
+                    />
+                    {storyCount > 0 && (
+                      <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[rgb(var(--primary))] text-xs font-semibold text-white">
+                        {storyCount}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-[rgb(var(--foreground))] truncate">{name}</div>
+                    <div className="text-xs text-[rgb(var(--muted-foreground))] truncate">
+                      {storyCount > 0 ? `${storyCount} thẻ mới - ${timeAgo}` : timeAgo}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+
+      {/* Right Side - Story Viewer */}
+      <div
+        className="relative flex flex-1 flex-col overflow-hidden bg-black"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Navigation buttons - Nằm trong phần màu đen */}
+        <div className="absolute inset-0 z-[1001] flex items-center justify-between pointer-events-none">
+          {/* Previous button - left side */}
+          <div className="flex-shrink-0">
+            {(storyIndex > 0 || userIndex > 0) && (
+              <button
+                className="ml-4 pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-black/60 backdrop-blur-md text-white transition-all duration-200 hover:bg-black/80 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 shadow-xl border border-white/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  prevStory();
+                }}
+                aria-label="Previous story"
+              >
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Next button - right side - Luôn hiển thị, chỉ disable khi không còn story */}
+          <div className="flex-shrink-0">
+            <button
+              className={cn(
+                "mr-4 pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-black/60 backdrop-blur-md text-white transition-all duration-200 hover:bg-black/80 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 shadow-xl border border-white/10",
+                (!(storyIndex < groupedStories.length - 1 || userIndex < allUserGroups.length - 1)) && "opacity-30 cursor-not-allowed"
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (storyIndex < groupedStories.length - 1 || userIndex < allUserGroups.length - 1) {
+                  nextStory();
+                }
+              }}
+              disabled={!(storyIndex < groupedStories.length - 1 || userIndex < allUserGroups.length - 1)}
+              aria-label="Next story"
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Story content container - với padding để không bị che */}
+        <div className="relative flex flex-1 items-center justify-center overflow-hidden pb-20">
+          {/* Story content - Thu gọn để không bị che bởi bottom bar */}
+          <div className="relative w-full max-w-md h-full flex items-center justify-center">
+            <StoryContent story={story} />
+            
+            {/* Progress indicators - Nằm trong ảnh, width bằng ảnh, hạ xuống một chút */}
+            <div className="absolute top-6 left-0 right-0 z-10 px-4">
+              <StoryProgressBars 
+                stories={groupedStories} 
+                currentIndex={storyIndex} 
+                progress={progress} 
+              />
+            </div>
+          </div>
+        </div>
 
         {/* Audio player if has music */}
         {audioUrl && (
@@ -823,11 +977,12 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
 
         {/* Like button and Reply input - chỉ hiển thị nếu không phải story của chính chủ */}
         {!isOwnStory && (
-          <div
-            className="absolute bottom-3 left-3 right-3 z-20 flex items-center gap-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Like button */}
+          <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-center pb-4">
+            <div
+              className="w-full max-w-md px-4 flex items-center gap-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Like button */}
             <button 
               className={cn(
                 "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-black/60 text-white transition-colors duration-200 hover:bg-black/80",
@@ -950,6 +1105,7 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
                 )}
               </button>
             </form>
+            </div>
           </div>
         )}
 
@@ -960,33 +1116,6 @@ export default function StoryViewer({ stories, activeStory, onClose, entityAccou
         />
 
 
-        {/* Close button */}
-        <button
-          className="absolute right-3 top-12 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-black/40 text-white transition-colors duration-200 hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-          onClick={handleClose}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-
-        {/* Next button - right side of story */}
-        {!(storyIndex >= groupedStories.length - 1 && userIndex >= allUserGroups.length - 1) && (
-          <button
-            className="absolute right-[-56px] z-[1001] flex h-12 w-12 items-center justify-center rounded-full bg-black/70 backdrop-blur-sm text-white transition-all duration-200 hover:bg-black/90 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 shadow-xl"
-            onClick={(e) => {
-              e.stopPropagation();
-              nextStory();
-            }}
-            aria-label="Next story"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-          </button>
-        )}
       </div>
       {reportModalOpen && (
         <ReportStoryModal

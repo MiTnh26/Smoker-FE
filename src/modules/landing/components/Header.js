@@ -25,7 +25,7 @@ export function Header() {
       "fixed top-0 left-0 right-0 z-50",
       "h-[73px]",
       "border-b border-[0.5px] border-border/30",
-      "bg-background/95 backdrop-blur-sm",
+      "bg-background/70 backdrop-blur-sm",
       "shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
     )}>
       <div className={cn(
@@ -54,10 +54,12 @@ export function Header() {
             className={cn(
               "bg-transparent border-none cursor-pointer",
               "text-foreground font-semibold",
-              "px-4 py-2 rounded-lg",
+              "px-3 sm:px-4 py-2 rounded-lg",
+              "text-sm sm:text-base",
               "transition-all duration-200",
               "hover:text-primary hover:bg-primary/10",
-              "active:scale-95"
+              "active:scale-95",
+              "min-h-[44px] touch-target"
             )}
             onClick={() => navigate("/login")}
           >
@@ -66,10 +68,12 @@ export function Header() {
           <button
             className={cn(
               "bg-primary text-primary-foreground border-none",
-              "px-4 py-2 rounded-lg font-semibold",
+              "px-3 sm:px-4 py-2 rounded-lg font-semibold",
+              "text-sm sm:text-base",
               "transition-all duration-200",
               "hover:bg-primary/90",
-              "active:scale-95"
+              "active:scale-95",
+              "min-h-[44px] touch-target"
             )}
             onClick={() => navigate("/register")}
           >

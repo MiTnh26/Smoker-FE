@@ -6,6 +6,8 @@ import { fetchAllEntities } from "../../../utils/sessionHelper";
 import "../../../styles/modules/businessRegister.css";
 import ProfilePreviewCard from "../components/ProfilePreviewCard";
 import DancerRegisterStep1 from "../components/DancerRegisterStep1";
+import DancerTermsModal from "../components/DancerTermsModal";
+import { formatAddressForSave, validateAddressFields } from "../../../utils/addressFormatter";
 
 export default function DancerRegister() {
   const navigate = useNavigate();
@@ -16,11 +18,12 @@ export default function DancerRegister() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [message, setMessage] = useState("");
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Step 1: basic info
   const [info, setInfo] = useState({
     userName: "",
-    address: "",
+    address: "", // Will store JSON string: {"detail":"13","provinceId":"1","districtId":"21","wardId":"617"}
     phone: "",
     bio: "",
     gender: "",
@@ -34,6 +37,7 @@ export default function DancerRegister() {
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
   const [selectedWardId, setSelectedWardId] = useState('');
   const [addressDetail, setAddressDetail] = useState('');
+  const [addressJson, setAddressJson] = useState(null); // JSON string from AddressSelector
 
   // Step 2: files + preview
   const [files, setFiles] = useState({ avatar: null, background: null });
@@ -97,31 +101,51 @@ export default function DancerRegister() {
     setStep(2);
   };
 
+  const goBackStep = () => {
+    setStep(1);
+  };
+
   const triggerAvatar = () => avatarInputRef.current?.click();
   const triggerBackground = () => bgInputRef.current?.click();
 
-  // Submit tất cả ở bước cuối
-  const handleSubmitAll = async (e) => {
+  // Submit tất cả ở bước cuối - chỉ validate và hiển thị modal
+  const handleSubmitAll = (e) => {
     e.preventDefault();
     if (!files.avatar || !files.background) {
       alert("Vui lòng thêm đủ ảnh đại diện và ảnh bìa trước khi hoàn thành.");
       return;
     }
+
+    // Validate address: must have all 4 fields
+    if (!validateAddressFields(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId)) {
+      setMessage("Vui lòng điền đầy đủ thông tin địa chỉ (Tỉnh/Thành phố, Quận/Huyện, Phường/Xã, và Địa chỉ chi tiết)");
+      return;
+    }
+
+    // Format address as JSON string
+    const addressJsonString = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
+    if (!addressJsonString) {
+      setMessage("Lỗi khi format địa chỉ. Vui lòng thử lại.");
+      return;
+    }
+
+    // Clear any previous messages and show terms modal
+    setMessage("");
+    setShowTermsModal(true);
+  };
+
+  // Xử lý khi chấp nhận điều khoản
+  const handleAcceptTerms = async () => {
+    // Format address as JSON string
+    const addressJsonString = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
+
     setIsLoading(true);
     setMessage("");
+    setShowTermsModal(false);
 
     try {
       const user = JSON.parse(localStorage.getItem("user"));
       if (!user?.id) throw new Error("Không tìm thấy tài khoản. Vui lòng đăng nhập lại.");
-
-      // Build address data
-      const addressData = {
-        provinceId: selectedProvinceId || null,
-        districtId: selectedDistrictId || null,
-        wardId: selectedWardId || null,
-        detail: addressDetail || null,
-        fullAddress: info.address || null
-      };
 
       // B1: Gọi API registerDancer để tạo business
       const payload = {
@@ -129,8 +153,7 @@ export default function DancerRegister() {
         userName: info.userName.trim(),
         role: "Dancer",
         phone: info.phone || null,
-        address: info.address || null,
-        addressData: addressData,
+        address: addressJsonString, // Store JSON string in address field
         bio: info.bio || null,
         gender: info.gender || null,
         pricePerHours: Number(info.pricePerHours) || 0,
@@ -181,6 +204,10 @@ export default function DancerRegister() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCloseTermsModal = () => {
+    setShowTermsModal(false);
   };
 
   if (isSuccess) {
@@ -286,9 +313,19 @@ export default function DancerRegister() {
                 Nhấn trực tiếp vào avatar hoặc ảnh bìa bên dưới để chọn ảnh. Ảnh được cập nhật ngay trong phần xem trước.
               </p>
 
-              <button type="submit" className="business-register-btn" disabled={isLoading}>
-                {isLoading ? "Đang đăng ký..." : "Hoàn tất đăng ký"}
-              </button>
+              <div className="flex gap-4">
+                <button 
+                  type="button" 
+                  onClick={goBackStep}
+                  className="back-btn"
+                  disabled={isLoading}
+                >
+                  Quay lại
+                </button>
+                <button type="submit" className="business-register-btn flex-1" disabled={isLoading}>
+                  {isLoading ? "Đang đăng ký..." : "Hoàn tất đăng ký"}
+                </button>
+              </div>
               {message && <p className="business-register-message">{message}</p>}
             </form>
           </div>
@@ -313,6 +350,12 @@ export default function DancerRegister() {
         </div>
       )}
 
+      {/* Terms Modal */}
+      <DancerTermsModal
+        isOpen={showTermsModal}
+        onClose={handleCloseTermsModal}
+        onAccept={handleAcceptTerms}
+      />
       </div>
     </div>
   );

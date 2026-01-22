@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import { getAvatarForAccount, getNameForAccount, formatTimeDisplay, getLikesCount, isLiked, getCurrentUser, parseReplies } from "./utils";
 import { cn } from "../../../../../utils/cn";
+import ExpandableText from "../../../../../components/common/ExpandableText";
 
 export default function MediaReplyItem({
   reply,
@@ -80,11 +81,14 @@ export default function MediaReplyItem({
               autoFocus
             />
           ) : (
-            <div className={cn(
-              "text-foreground text-[0.85rem] leading-6",
-              "break-words overflow-wrap-break-word",
-              "max-w-full overflow-hidden"
-            )}>{reply.content}</div>
+            <ExpandableText
+              text={reply.content || ""}
+              maxLength={150}
+              textClassName={cn(
+                "text-foreground text-[0.85rem] leading-6"
+              )}
+              buttonClassName="text-[0.85rem]"
+            />
           )}
           {reply.images && !isEditingReply && (
             <img
