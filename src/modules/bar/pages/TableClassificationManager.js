@@ -9,13 +9,18 @@ import "../../../styles/modules/tableClassification.css";
 
 export default function TableClassificationManager({ onTableTypesChange }) {
   const { t } = useTranslation();
-  const { barPageId } = useParams();
+  const { barPageId: paramBarPageId } = useParams();
   const location = useLocation();
   const [classifications, setClassifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [exitingCards, setExitingCards] = useState(new Set());
+  
+  // Validate barPageId là GUID hợp lệ
+  const barPageId = paramBarPageId && /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(paramBarPageId)
+    ? paramBarPageId
+    : null;
 
   // Toast management
   const addToast = useCallback((message, type = "info", duration = 3000) => {
@@ -37,6 +42,12 @@ export default function TableClassificationManager({ onTableTypesChange }) {
 
   // Load danh sách loại bàn khi vào trang
   useEffect(() => {
+    if (!barPageId) {
+      setLoading(false);
+      addToast("BarPageId không hợp lệ", "error");
+      return;
+    }
+    
     const fetchData = async () => {
       try {
         setLoading(true);

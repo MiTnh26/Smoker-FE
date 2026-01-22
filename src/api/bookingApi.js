@@ -98,6 +98,24 @@ const bookingApi = {
   createTableFullPayment: (bookingId, { amount, discountPercentages } = {}) =>
     axiosClient.post(`/bookingtable/${bookingId}/create-full-payment`, { amount, discountPercentages }),
 
+  // API mới cho luồng booking với voucher
+  createBookingWithVoucher: (bookingData) =>
+    axiosClient.post("/bookingtable/with-voucher", bookingData),
+
+  // Bar confirm/reject booking
+  confirmBookingByBar: (bookingId) =>
+    axiosClient.post(`/bookingtable/bar/bookings/${bookingId}/confirm`),
+
+  rejectBookingByBar: (bookingId, rejectionReason) =>
+    axiosClient.post(`/bookingtable/bar/bookings/${bookingId}/reject`, { rejectionReason }),
+
+  getPendingBookings: () =>
+    axiosClient.get("/bookingtable/bar/bookings/pending"),
+
+  // Refund request
+  requestRefundForBooking: (bookingId, reason) =>
+    axiosClient.post(`/booking/${bookingId}/request-refund`, { reason }),
+
   // Lấy payment link cho table booking (tái sử dụng nếu có)
   getTablePaymentLink: (bookingId) => 
     axiosClient.get(`/bookingtable/${bookingId}/get-payment-link`),
@@ -124,7 +142,11 @@ const bookingApi = {
 
   // Đánh dấu khách hàng đã tới quán
   markBookingArrived: (bookingId) =>
-    axiosClient.patch(`/bookingtable/${bookingId}/mark-arrived`)
+    axiosClient.patch(`/bookingtable/${bookingId}/mark-arrived`),
+
+  // Lấy voucher theo code (public endpoint)
+  getVoucherByCode: (code) =>
+    axiosClient.get(`/admin/vouchers/code/${code}`)
 };
 
 export default bookingApi;

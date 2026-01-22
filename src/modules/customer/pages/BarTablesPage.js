@@ -3,88 +3,144 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
+import { Info, X } from "lucide-react";
 import barTableApi from "../../../api/barTableApi";
 import barPageApi from "../../../api/barPageApi";
 import bookingApi from "../../../api/bookingApi";
-import comboApi from "../../../api/comboApi";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
 import "../../../styles/modules/customer.css";
 
-// Combo Selection Component
-const ComboSelector = ({ combos, selectedCombo, onSelectCombo, loading }) => {
-  if (loading) {
-    return (
-      <div style={{ marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '12px', color: '#1f2937' }}>
-          Chọn Combo (bắt buộc)
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
-          {[1, 2, 3].map(i => (
-            <SkeletonCard key={i} style={{ height: '100px' }} />
-          ))}
-        </div>
-      </div>
-    );
-  }
+// Combo Selection Component - REMOVED (no longer needed)
+
+// Voucher Terms Modal Component
+const VoucherTermsModal = ({ open, onClose }) => {
+  if (!open) return null;
 
   return (
-    <div style={{ marginBottom: '24px' }}>
-      <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '12px', color: '#1f2937' }}>
-        Chọn Combo (bắt buộc)
-      </h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
-        {combos.map(combo => (
-          <motion.div
-            key={combo.ComboId}
-            onClick={() => onSelectCombo(combo)}
-            style={{
-              padding: '16px',
-              borderRadius: '12px',
-              border: selectedCombo?.ComboId === combo.ComboId
-                ? '2px solid rgb(var(--success))'
-                : '2px solid #e5e7eb',
-              background: selectedCombo?.ComboId === combo.ComboId
-                ? 'rgba(var(--success), 0.05)'
-                : 'white',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <h4 style={{ fontWeight: '600', marginBottom: '8px', color: '#1f2937' }}>
-              {combo.ComboName}
-            </h4>
-            <p style={{
-              fontSize: '0.9rem',
-              color: '#6b7280',
-              marginBottom: '8px',
-              minHeight: '2.5rem'
-            }}>
-              {combo.Description || 'Combo đặc biệt cho quán này'}
-            </p>
-            <div style={{
-              fontSize: '1.1rem',
-              fontWeight: '700',
-              color: 'rgb(var(--success))'
-            }}>
-              {combo.Price.toLocaleString('vi-VN')} đ
-            </div>
-          </motion.div>
-        ))}
-      </div>
-      {combos.length === 0 && (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 2000,
+      padding: '20px'
+    }} onClick={onClose}>
+      <div style={{
+        background: 'white',
+        borderRadius: '16px',
+        padding: '24px',
+        maxWidth: '600px',
+        width: '100%',
+        maxHeight: '90vh',
+        overflow: 'auto',
+        position: 'relative'
+      }} onClick={(e) => e.stopPropagation()}>
         <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          background: '#f9fafb',
-          borderRadius: '12px',
-          color: '#6b7280'
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '20px'
         }}>
-          Quán này chưa có combo nào. Vui lòng liên hệ quản lý quán.
+          <h3 style={{
+            fontSize: '1.25rem',
+            fontWeight: 'bold',
+            color: '#1f2937'
+          }}>
+            Điều kiện & Điều khoản Voucher
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <X size={20} color="#6b7280" />
+          </button>
         </div>
-      )}
+
+        <div style={{
+          fontSize: '0.9rem',
+          lineHeight: '1.6',
+          color: '#374151'
+        }}>
+          <p style={{ marginBottom: '12px' }}>
+            <strong>1. Định nghĩa:</strong><br />
+            Phiếu ưu đãi (Voucher) là phiếu mua hàng và/ hoặc phiếu sử dụng dịch vụ của các nhà cung cấp dịch vụ/ hàng hóa bên thứ ba kinh doanh thông qua Ứng Dụng Smoker.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>2. Thời hạn sử dụng:</strong><br />
+            Phiếu ưu đãi này chỉ được sử dụng 01 lần duy nhất và có giá trị trong vòng thời gian quy định kể từ ngày mua.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>3. Xuất trình voucher:</strong><br />
+            Người dùng cần phải xuất trình phiếu ưu đãi cho quán bar trước khi thanh toán. Quán bar có quyền từ chối việc sử dụng phiếu ưu đãi nếu Người dùng cung cấp phiếu ưu đãi sau khi đã hoàn thành việc đặt lịch.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>4. Thời gian áp dụng:</strong><br />
+            Phiếu ưu đãi này chỉ có thể được đổi vào các ngày và thời gian áp dụng như được nêu trên phiếu ưu đãi.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>5. Địa điểm sử dụng:</strong><br />
+            Phiếu ưu đãi này chỉ có thể được đổi tại địa chỉ của quán bar phát hành nêu tại phiếu ưu đãi này, không áp dụng để đổi tại các chi nhánh khác của quán bar, nếu có.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>6. Không chia nhỏ:</strong><br />
+            Phiếu ưu đãi này không thể được chia nhỏ để sử dụng cho các giao dịch khác nhau.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>7. Giá trị hóa đơn thấp hơn:</strong><br />
+            Nếu giá trị hóa đơn thanh toán của bạn tại quán bar thấp hơn giá trị phiếu ưu đãi, Người dùng sẽ không được nhận lại phần giá trị chênh lệch.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>8. Giá trị hóa đơn cao hơn:</strong><br />
+            Nếu giá trị hóa đơn thanh toán cao hơn giá trị phiếu ưu đãi, Người dùng phải thanh toán thêm khoản chênh lệch bằng tiền mặt hoặc các phương thức thanh toán không dùng tiền mặt khác.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>9. Không áp dụng cùng khuyến mại khác:</strong><br />
+            Phiếu ưu đãi này không thể áp dụng cùng lúc với các chương trình khuyến mại, giảm giá, ưu đãi khác.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>10. Chỉ áp dụng tại quán bar:</strong><br />
+            Phiếu ưu đãi này chỉ áp dụng để đổi trực tiếp tại quán bar.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>11. Phương thức thanh toán:</strong><br />
+            Chỉ có phương thức thanh toán không tiền mặt (thẻ ngân hàng, ví điện tử Momo/ZaloPay trên Ứng dụng Smoker) mới được chấp nhận làm phương thức thanh toán cho phiếu ưu đãi.
+          </p>
+
+          <p style={{ marginBottom: '12px' }}>
+            <strong>12. Không quy đổi và chuyển nhượng:</strong><br />
+            Phiếu ưu đãi không có giá trị quy đổi thành tiền mặt và không thể chuyển nhượng cho Người dùng khác.
+          </p>
+
+          <p style={{ marginBottom: '0' }}>
+            <strong>13. Quyền sửa đổi:</strong><br />
+            Smoker có quyền sửa đổi các điều khoản và điều kiện nếu thấy cần thiết.
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
@@ -94,16 +150,22 @@ const VoucherSelector = ({
   vouchers,
   selectedVoucher,
   onSelectVoucher,
-  comboValue,
   loading,
   onSkipVoucher
 }) => {
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  // Filter vouchers that are available (not used up, active, and from this bar)
   const availableVouchers = vouchers.filter(v =>
-    v.MinComboValue <= comboValue &&
-    v.UsedCount < v.MaxUsage &&
-    new Date(v.StartDate) <= new Date() &&
-    new Date(v.EndDate) >= new Date() &&
-    v.Status === 'ACTIVE'
+    (v.UsedCount || 0) < (v.MaxUsage || 0) &&
+    (v.Status === 'ACTIVE' || !v.Status) &&
+    (v.VoucherStatus === 'approved' || !v.VoucherStatus)
+  );
+  
+  // Vouchers that are used up (for display with disabled state)
+  const usedUpVouchers = vouchers.filter(v =>
+    (v.UsedCount || 0) >= (v.MaxUsage || 0) ||
+    v.Status !== 'ACTIVE' ||
+    v.VoucherStatus !== 'approved'
   );
 
   if (loading) {
@@ -123,9 +185,35 @@ const VoucherSelector = ({
 
   return (
     <div style={{ marginBottom: '24px' }}>
-      <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '12px', color: '#1f2937' }}>
-        Voucher giảm giá (tùy chọn)
-      </h3>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: '600', color: '#1f2937', margin: 0 }}>
+          Voucher giảm giá (tùy chọn)
+        </h3>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowTermsModal(true);
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: '50%',
+            transition: 'background 0.2s'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+          title="Xem điều khoản và điều kiện"
+        >
+          <Info size={18} color="#6b7280" />
+        </button>
+      </div>
+      
+      <VoucherTermsModal open={showTermsModal} onClose={() => setShowTermsModal(false)} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
         {/* Skip voucher option */}
         <motion.div
@@ -152,42 +240,95 @@ const VoucherSelector = ({
         </motion.div>
 
         {/* Available vouchers */}
-        {availableVouchers.map(voucher => (
-          <motion.div
-            key={voucher.VoucherId}
-            onClick={() => onSelectVoucher(voucher)}
-            style={{
-              padding: '16px',
-              borderRadius: '12px',
-              border: selectedVoucher?.VoucherId === voucher.VoucherId
-                ? '2px solid rgb(var(--success))'
-                : '2px solid #e5e7eb',
-              background: selectedVoucher?.VoucherId === voucher.VoucherId
-                ? 'rgba(var(--success), 0.05)'
-                : 'white',
-              cursor: 'pointer'
-            }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <div style={{ fontWeight: '600', marginBottom: '4px', color: '#1f2937' }}>
-              {voucher.VoucherName}
-            </div>
-            <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '4px' }}>
-              Code: {voucher.VoucherCode}
-            </div>
-            <div style={{
-              fontSize: '1rem',
-              fontWeight: '700',
-              color: 'rgb(var(--success))'
-            }}>
-              Giảm {voucher.DiscountPercentage}%
-            </div>
-            <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '4px' }}>
-              Còn {voucher.MaxUsage - voucher.UsedCount} lượt
-            </div>
-          </motion.div>
-        ))}
+        {availableVouchers.map(voucher => {
+          // Tính giá bán: giảm 10% từ giá gốc (hệ thống trích 10% lợi nhuận)
+          const originalValue = Number(voucher.OriginalValue) || 0;
+          const salePrice = Math.round(originalValue * 0.9); // Giảm 10%
+          const userBenefit = originalValue - salePrice; // Lợi ích người dùng
+          
+          return (
+            <motion.div
+              key={voucher.VoucherId}
+              onClick={() => onSelectVoucher(voucher)}
+              style={{
+                padding: '16px',
+                borderRadius: '12px',
+                border: selectedVoucher?.VoucherId === voucher.VoucherId
+                  ? '2px solid rgb(var(--success))'
+                  : '2px solid #e5e7eb',
+                background: selectedVoucher?.VoucherId === voucher.VoucherId
+                  ? 'rgba(var(--success), 0.05)'
+                  : 'white',
+                cursor: 'pointer'
+              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <div style={{ fontWeight: '600', marginBottom: '4px', color: '#1f2937' }}>
+                {voucher.VoucherName}
+              </div>
+              
+              {/* Giá bán (nổi bật) */}
+              <div style={{
+                fontSize: '1rem',
+                fontWeight: '700',
+                color: 'rgb(var(--success))',
+                marginBottom: '2px'
+              }}>
+                Giá bán: {salePrice.toLocaleString('vi-VN')} đ
+              </div>
+            </motion.div>
+          );
+        })}
+        
+        {/* Used up vouchers (displayed with disabled state) */}
+        {usedUpVouchers.map(voucher => {
+          const originalValue = Number(voucher.OriginalValue) || 0;
+          const salePrice = Math.round(originalValue * 0.9);
+          const isUsedUp = (voucher.UsedCount || 0) >= (voucher.MaxUsage || 0);
+          
+          return (
+            <motion.div
+              key={voucher.VoucherId}
+              style={{
+                padding: '16px',
+                borderRadius: '12px',
+                border: '2px solid #e5e7eb',
+                background: '#f9fafb',
+                cursor: 'not-allowed',
+                opacity: 0.5,
+                position: 'relative'
+              }}
+            >
+              <div style={{ fontWeight: '600', marginBottom: '4px', color: '#9ca3af' }}>
+                {voucher.VoucherName}
+              </div>
+              
+              <div style={{
+                fontSize: '1rem',
+                fontWeight: '700',
+                color: '#9ca3af',
+                marginBottom: '2px'
+              }}>
+                Giá bán: {salePrice.toLocaleString('vi-VN')} đ
+              </div>
+              
+              {/* Badge hiển thị trạng thái */}
+              <div style={{
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: '#dc2626',
+                marginTop: '4px',
+                padding: '2px 6px',
+                background: '#fee2e2',
+                borderRadius: '4px',
+                display: 'inline-block'
+              }}>
+                {isUsedUp ? 'Đã hết lượt sử dụng' : 'Không khả dụng'}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
       {availableVouchers.length === 0 && (
         <div style={{
@@ -198,7 +339,7 @@ const VoucherSelector = ({
           color: '#6b7280',
           fontSize: '0.9rem'
         }}>
-          Không có voucher khả dụng cho combo này
+          Không có voucher khả dụng. Bạn có thể đặt bàn mà không cần voucher.
         </div>
       )}
     </div>
@@ -312,21 +453,17 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-// Booking Modal Component with Combo & Voucher
+// Booking Modal Component with Voucher (optional)
 const BookingModal = ({
   open,
   onClose,
   tables = [],
   selectedDate,
   onConfirm,
-  combos = [],
   vouchers = [],
-  selectedCombo,
   selectedVoucher,
-  onSelectCombo,
   onSelectVoucher,
   onSkipVoucher,
-  loadingCombos,
   loadingVouchers
 }) => {
   const [customerName, setCustomerName] = useState("");
@@ -335,20 +472,30 @@ const BookingModal = ({
   const [submitting, setSubmitting] = useState(false);
   const [phoneError, setPhoneError] = useState("");
 
-  // Calculate amounts
+  // Calculate amounts - only deposit 100k if no voucher, or voucher price + deposit if has voucher
   const calculateAmounts = () => {
-    if (!selectedCombo) return null;
+    const DEPOSIT_AMOUNT = 100000; // Cọc cố định 100k
+    
+    if (!selectedVoucher) {
+      // Chỉ thanh toán cọc 100k
+      return {
+        depositAmount: DEPOSIT_AMOUNT,
+        voucherPrice: 0,
+        totalAmount: DEPOSIT_AMOUNT
+      };
+    }
 
-    const originalPrice = selectedCombo.Price;
-    const discountPercentage = selectedVoucher ? selectedVoucher.DiscountPercentage : 0;
-    const discountAmount = Math.floor(originalPrice * discountPercentage / 100);
-    const finalPaymentAmount = originalPrice - discountAmount;
+    // Có voucher: tính giá bán (giảm 10% từ giá gốc) + cọc 100k
+    const originalValue = Number(selectedVoucher.OriginalValue) || 0;
+    const salePrice = Math.round(originalValue * 0.9); // Giảm 10%
+    const totalAmount = salePrice + DEPOSIT_AMOUNT;
 
     return {
-      originalPrice,
-      discountAmount,
-      finalPaymentAmount,
-      discountPercentage
+      depositAmount: DEPOSIT_AMOUNT,
+      voucherPrice: salePrice,
+      originalValue: originalValue,
+      userBenefit: originalValue - salePrice,
+      totalAmount: totalAmount
     };
   };
 
@@ -366,11 +513,6 @@ const BookingModal = ({
 
     if (!nameTrimmed || !phoneTrimmed) {
       alert("Vui lòng nhập đầy đủ Tên khách hàng và Số điện thoại");
-      return;
-    }
-
-    if (!selectedCombo) {
-      alert("Vui lòng chọn combo");
       return;
     }
 
@@ -436,7 +578,7 @@ const BookingModal = ({
           marginBottom: '24px',
           color: '#1f2937'
         }}>
-          Đặt bàn với Combo
+          Đặt bàn
         </h2>
 
         {/* Bàn đã chọn */}
@@ -453,25 +595,14 @@ const BookingModal = ({
           </div>
         )}
 
-        {/* Combo Selection */}
-        <ComboSelector
-          combos={combos}
-          selectedCombo={selectedCombo}
-          onSelectCombo={onSelectCombo}
-          loading={loadingCombos}
+        {/* Voucher Selection (optional) */}
+        <VoucherSelector
+          vouchers={vouchers}
+          selectedVoucher={selectedVoucher}
+          onSelectVoucher={onSelectVoucher}
+          loading={loadingVouchers}
+          onSkipVoucher={onSkipVoucher}
         />
-
-        {/* Voucher Selection - chỉ hiện khi đã chọn combo */}
-        {selectedCombo && (
-          <VoucherSelector
-            vouchers={vouchers}
-            selectedVoucher={selectedVoucher}
-            onSelectVoucher={onSelectVoucher}
-            comboValue={selectedCombo.Price}
-            loading={loadingVouchers}
-            onSkipVoucher={onSkipVoucher}
-          />
-        )}
 
         {/* Payment Summary */}
         {amounts && (
@@ -486,17 +617,19 @@ const BookingModal = ({
             </h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Giá combo gốc:</span>
-                <span>{amounts.originalPrice.toLocaleString('vi-VN')} đ</span>
-              </div>
-
-              {amounts.discountAmount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgb(var(--success))' }}>
-                  <span>Giảm giá ({amounts.discountPercentage}%):</span>
-                  <span>-{amounts.discountAmount.toLocaleString('vi-VN')} đ</span>
+              {amounts.voucherPrice > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Giá voucher:</span>
+                  <span style={{ fontWeight: '600', color: 'rgb(var(--success))' }}>
+                    {amounts.voucherPrice.toLocaleString('vi-VN')} đ
+                  </span>
                 </div>
               )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Tiền cọc:</span>
+                <span>{amounts.depositAmount.toLocaleString('vi-VN')} đ</span>
+              </div>
 
               <div style={{
                 display: 'flex',
@@ -508,7 +641,7 @@ const BookingModal = ({
                 color: 'rgb(var(--success))'
               }}>
                 <span>Tổng tiền thanh toán:</span>
-                <span>{amounts.finalPaymentAmount.toLocaleString('vi-VN')} đ</span>
+                <span>{amounts.totalAmount.toLocaleString('vi-VN')} đ</span>
               </div>
             </div>
           </div>
@@ -605,63 +738,64 @@ const BookingModal = ({
           </div>
 
           {/* Payment Notice */}
-          {selectedCombo && (
+          <div style={{
+            marginBottom: '20px',
+            padding: '12px',
+            background: '#FEF3C7',
+            borderRadius: '8px',
+            border: '1px solid #FCD34D'
+          }}>
             <div style={{
-              marginBottom: '20px',
-              padding: '12px',
-              background: '#FEF3C7',
-              borderRadius: '8px',
-              border: '1px solid #FCD34D'
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#92400E',
+              fontWeight: '600',
+              marginBottom: '8px'
             }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                color: '#92400E',
-                fontWeight: '600',
-                marginBottom: '8px'
-              }}>
-                <span>💳</span>
-                <span>Bạn sẽ thanh toán toàn bộ combo. Sau khi thanh toán thành công, hệ thống sẽ tạo QR code để quán bar xác nhận.</span>
-              </div>
+              <span>💳</span>
+              <span>
+                {selectedVoucher 
+                  ? `Bạn sẽ thanh toán giá voucher + tiền cọc 100.000 đ. Sau khi thanh toán thành công, hệ thống sẽ tạo QR code để quán bar xác nhận.`
+                  : `Bạn sẽ thanh toán tiền cọc 100.000 đ. Sau khi thanh toán thành công, hệ thống sẽ tạo QR code để quán bar xác nhận.`
+                }
+              </span>
             </div>
-          )}
+          </div>
 
           {/* Important Notice */}
-          {selectedCombo && (
+          <div style={{
+            marginBottom: '20px',
+            padding: '16px',
+            background: '#FEE2E2',
+            borderRadius: '8px',
+            border: '1px solid #FCA5A5'
+          }}>
             <div style={{
-              marginBottom: '20px',
-              padding: '16px',
-              background: '#FEE2E2',
-              borderRadius: '8px',
-              border: '1px solid #FCA5A5'
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              color: '#991B1B'
             }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '12px',
-                color: '#991B1B'
-              }}>
-                <span style={{ fontSize: '1.2rem' }}>⚠️</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontWeight: '700',
-                    marginBottom: '8px',
-                    fontSize: '0.95rem'
-                  }}>
-                    Lưu ý quan trọng:
-                  </div>
-                  <div style={{
-                    fontSize: '0.9rem',
-                    lineHeight: '1.5',
-                    color: '#7F1D1D'
-                  }}>
-                    Sau khi quán bar xác nhận đặt bàn, bạn sẽ <strong>không thể hủy</strong> và <strong>không thể hoàn lại tiền</strong>. Vui lòng kiểm tra kỹ thông tin trước khi xác nhận thanh toán.
-                  </div>
+              <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontWeight: '700',
+                  marginBottom: '8px',
+                  fontSize: '0.95rem'
+                }}>
+                  Lưu ý quan trọng:
+                </div>
+                <div style={{
+                  fontSize: '0.9rem',
+                  lineHeight: '1.5',
+                  color: '#7F1D1D'
+                }}>
+                  Sau khi bạn đặt bàn và thanh toán, bạn sẽ <strong>không thể hủy</strong>. Vui lòng kiểm tra kỹ thông tin trước khi xác nhận thanh toán.
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
@@ -681,7 +815,7 @@ const BookingModal = ({
             </button>
             <button
               type="submit"
-              disabled={submitting || !selectedCombo}
+              disabled={submitting}
               style={{
                 flex: 1,
                 padding: '12px',
@@ -689,12 +823,12 @@ const BookingModal = ({
                 borderRadius: '8px',
                 background: '#3b82f6',
                 color: 'white',
-                cursor: (submitting || !selectedCombo) ? 'not-allowed' : 'pointer',
+                cursor: submitting ? 'not-allowed' : 'pointer',
                 fontWeight: '600',
-                opacity: (submitting || !selectedCombo) ? 0.7 : 1
+                opacity: submitting ? 0.7 : 1
               }}
             >
-              {submitting ? 'Đang xử lý...' : 'Thanh toán Combo'}
+              {submitting ? 'Đang xử lý...' : selectedVoucher ? 'Thanh toán Voucher + Cọc' : 'Thanh toán Cọc'}
             </button>
           </div>
         </form>
@@ -725,16 +859,13 @@ const BarTablesPage = ({ barId: propBarId }) => {
     return searchParams.get('date') || new Date().toISOString().split('T')[0];
   });
 
-  // Booking modal with combo/voucher
+  // Booking modal with voucher (combo removed)
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [selectedTables, setSelectedTables] = useState([]);
-  const [selectedCombo, setSelectedCombo] = useState(null);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
 
-  // Combo and voucher data
-  const [combos, setCombos] = useState([]);
+  // Voucher data (combo removed)
   const [vouchers, setVouchers] = useState([]);
-  const [loadingCombos, setLoadingCombos] = useState(false);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
 
   // Toast management
@@ -766,50 +897,25 @@ const BarTablesPage = ({ barId: propBarId }) => {
     }
   }, [barId]);
 
-  // Fetch combos when barId is available
+  // Fetch vouchers for this bar when barId is available
   useEffect(() => {
-    const fetchCombos = async () => {
+    const fetchBarVouchers = async () => {
       if (!barId) return;
 
       try {
-        setLoadingCombos(true);
-        // Sử dụng comboApi.getCombosByBar để lấy danh sách combo
-        const response = await comboApi.getCombosByBar(barId);
-        // Kiểm tra response format: axios trả về response object, data nằm trong response.data
-        const combosData = response.data || [];
-        // Nếu API trả về { status: 'success', data: [...] } hoặc chỉ là array
-        if (Array.isArray(combosData)) {
-          setCombos(combosData);
-        } else if (combosData.data && Array.isArray(combosData.data)) {
-           setCombos(combosData.data);
-        } else {
-           setCombos([]);
-        }
-      } catch (error) {
-        console.error("Error fetching combos:", error);
-        addToast("Không thể tải danh sách combo", "error");
-      } finally {
-        setLoadingCombos(false);
-      }
-    };
-
-    fetchCombos();
-  }, [barId, addToast]);
-
-  // Fetch vouchers when component mounts
-  useEffect(() => {
-    const fetchVouchers = async () => {
-      try {
         setLoadingVouchers(true);
-        // minComboValue=0 => lấy tất cả voucher hệ thống, FE sẽ filter theo combo sau
+        // TODO: Call API to get vouchers for this bar
+        // For now, use existing API
         const response = await bookingApi.getAvailableVouchers(0);
         const payload = response?.data ?? response;
         if (payload?.success) {
-          setVouchers(payload.data || []);
+          // Filter vouchers by barId if available
+          const allVouchers = payload.data || [];
+          // TODO: Filter by barId when API supports it
+          setVouchers(allVouchers);
         } else if (payload?.data?.success) {
           setVouchers(payload.data.data || []);
         } else {
-          // fallback: nếu API trả thẳng array
           setVouchers(Array.isArray(payload) ? payload : []);
         }
       } catch (error) {
@@ -820,8 +926,10 @@ const BarTablesPage = ({ barId: propBarId }) => {
       }
     };
 
-    fetchVouchers();
-  }, []);
+    fetchBarVouchers();
+  }, [barId]);
+
+  // Voucher fetching moved to barId effect above
 
   // Fetch bookings for date - wrap trong useCallback để tránh infinite loop
   const fetchBookingsForDate = useCallback(async (date) => {
@@ -1059,18 +1167,10 @@ const BarTablesPage = ({ barId: propBarId }) => {
       return;
     }
 
-    // Reset combo and voucher selection when opening modal
-    setSelectedCombo(null);
+    // Reset voucher selection when opening modal
     setSelectedVoucher(null);
 
     setBookingModalOpen(true);
-  };
-
-  // Handle combo selection
-  const handleSelectCombo = (combo) => {
-    setSelectedCombo(combo);
-    // Reset voucher when combo changes
-    setSelectedVoucher(null);
   };
 
   // Handle voucher selection
@@ -1083,33 +1183,14 @@ const BarTablesPage = ({ barId: propBarId }) => {
     setSelectedVoucher(null);
   };
 
-  // Handle booking confirm with combo and voucher
+  // Handle booking confirm with voucher (optional) and deposit 100k
   const handleBookingConfirm = async (formData) => {
-    if (!receiverId || selectedTables.length === 0 || !selectedCombo) {
+    if (!receiverId || selectedTables.length === 0) {
       addToast("Lỗi: Thiếu thông tin bắt buộc", "error");
       return;
     }
 
     try {
-      // Validate combo and voucher
-      const validationData = {
-        comboId: selectedCombo.ComboId,
-        voucherCode: selectedVoucher?.VoucherCode,
-        barId: barId
-      };
-
-      const validationRes = await bookingApi.validateBookingData(validationData);
-      // axiosClient có thể unwrap response.data, nên normalize lại cho chắc
-      const validationPayload = validationRes?.data ?? validationRes;
-
-      if (!validationPayload?.valid) {
-        addToast(
-          validationPayload?.reason || validationPayload?.message || "Dữ liệu không hợp lệ",
-          "error"
-        );
-        return;
-      }
-
       // Tính startTime và endTime
       const now = new Date();
       const selectedDateObj = new Date(selectedDate);
@@ -1130,53 +1211,36 @@ const BarTablesPage = ({ barId: propBarId }) => {
         endTime = endOfDay.toISOString();
       }
 
-      // Tạo booking với combo và voucher
+      // Luôn dùng API createBookingWithVoucher (voucher là optional)
+      // Tính giá bán: giảm 10% từ giá gốc (hệ thống trích 10% lợi nhuận)
+      let salePrice = null;
+      if (selectedVoucher) {
+        const originalValue = Number(selectedVoucher.OriginalValue) || 0;
+        salePrice = Math.round(originalValue * 0.9); // Giảm 10%
+      }
+      
       const bookingData = {
         receiverId: receiverId,
-        comboId: selectedCombo.ComboId,
-        voucherCode: selectedVoucher?.VoucherCode,
-        tableId: selectedTables[0].BarTableId, // Chỉ chọn 1 bàn
+        tableId: selectedTables[0].BarTableId,
+        voucherId: selectedVoucher?.VoucherId || null,
+        salePrice: salePrice,
         bookingDate: selectedDate,
         startTime: startTime,
         endTime: endTime,
         note: `${formData.customerName} - ${formData.phone}${formData.note ? ` - ${formData.note}` : ''}`
       };
 
-      console.log("[BarTablesPage] Creating booking with combo:", bookingData);
+      console.log("[BarTablesPage] Creating booking:", bookingData);
 
-      // Tạo booking với combo
-      const result = await bookingApi.createBookingWithCombo(bookingData);
+      const result = await bookingApi.createBookingWithVoucher(bookingData);
 
       if (!result.success) {
         throw new Error(result.message || "Đặt bàn thất bại");
       }
 
-      const bookingId = result.data?.BookedScheduleId || result.data?.bookedScheduleId;
-      if (!bookingId) {
-        throw new Error("Không lấy được booking ID");
-      }
-
-      // Tạo payment link cho toàn bộ combo
-      // Ưu tiên dùng số tiền FE đã tính theo voucher (để đảm bảo PayOS đúng ngay)
-      const discountPercentages = selectedVoucher ? Number(selectedVoucher.DiscountPercentage || 0) : 0;
-      const paymentAmount = Math.max(
-        0,
-        Number(selectedCombo?.Price || 0) - Math.floor(Number(selectedCombo?.Price || 0) * discountPercentages / 100)
-      );
-      console.log("[BarTablesPage] Creating full payment link:", {
-        bookingId,
-        paymentAmount,
-        comboName: selectedCombo.ComboName
-      });
-
-      const paymentResult = await bookingApi.createTableFullPayment(bookingId, {
-        amount: paymentAmount,
-        discountPercentages
-      });
-
-      if (paymentResult.success && paymentResult.data?.paymentUrl) {
-        // Redirect đến PayOS để thanh toán toàn bộ combo
-        window.location.href = paymentResult.data.paymentUrl;
+      // API đã tạo payment link, redirect
+      if (result.data?.paymentLink) {
+        window.location.href = result.data.paymentLink;
       } else {
         throw new Error("Không thể tạo link thanh toán");
       }
@@ -1234,7 +1298,7 @@ const BarTablesPage = ({ barId: propBarId }) => {
               Đã chọn bàn: {selectedTables[0]?.TableName || selectedTables[0]?.name || 'Bàn đã chọn'}
             </div>
             <div style={{ fontSize: '0.9rem', color: 'rgb(var(--success))' }}>
-              Vui lòng chọn Combo ở bước tiếp theo
+              Bạn có thể chọn voucher (tùy chọn) ở bước tiếp theo
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -1493,14 +1557,10 @@ const BarTablesPage = ({ barId: propBarId }) => {
         tables={selectedTables}
         selectedDate={selectedDate}
         onConfirm={handleBookingConfirm}
-        combos={combos}
         vouchers={vouchers}
-        selectedCombo={selectedCombo}
         selectedVoucher={selectedVoucher}
-        onSelectCombo={handleSelectCombo}
         onSelectVoucher={handleSelectVoucher}
         onSkipVoucher={handleSkipVoucher}
-        loadingCombos={loadingCombos}
         loadingVouchers={loadingVouchers}
       />
     </div>

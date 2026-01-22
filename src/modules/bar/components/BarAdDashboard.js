@@ -712,6 +712,7 @@ function StatusBadge({ status }) {
     active: { label: 'Hoạt động', color: 'bg-green-100 text-green-700 border-green-300' },
     pending: { label: 'Chờ duyệt', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
     approved: { label: 'Đã duyệt', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+    paused: { label: 'Tạm dừng', color: 'bg-orange-100 text-orange-700 border-orange-300' },
     rejected: { label: 'Từ chối', color: 'bg-red-100 text-red-700 border-red-300' },
     completed: { label: 'Hoàn thành', color: 'bg-gray-100 text-gray-700 border-gray-300' },
   };

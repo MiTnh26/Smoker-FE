@@ -9,7 +9,7 @@ import { Calendar, Clock, MapPin, DollarSign, X, Eye, AlertCircle, CheckCircle, 
 import { getAvatarUrl } from "../../../utils/defaultAvatar";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
-import QRCodeDisplay from "../../../components/common/QRCodeDisplay";
+import { QRCodeSVG } from "qrcode.react";
 import barReviewApi from "../../../api/barReviewApi";
 import userReviewApi from "../../../api/userReviewApi";
 import { uploadPostMedia } from "../../../api/postApi";
@@ -216,6 +216,29 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
   const modalTitle = isDJBooking ? "Chi tiết đặt DJ" : "Chi tiết đặt bàn";
   const bookingCodeLabel = isDJBooking ? "Mã đặt DJ" : "Mã đặt bàn";
   const isPaid = paymentStatus === "Paid" || paymentStatus === "Done";
+  const rawVoucherCode =
+    booking?.VoucherCode ||
+    booking?.voucherCode ||
+    detailSchedule?.Voucher?.VoucherCode ||
+    detailSchedule?.Voucher?.voucherCode ||
+    detailSchedule?.voucher?.VoucherCode ||
+    detailSchedule?.voucher?.voucherCode ||
+    null;
+  const voucherCode = (() => {
+    if (!rawVoucherCode) return null;
+    const s = String(rawVoucherCode).trim();
+    // Many rows store voucher code as "CODE-<GUID>" (sometimes repeated). Strip any GUID suffixes.
+    const guidRe = /-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/ig;
+    const firstGuidIdx = s.search(guidRe);
+    if (firstGuidIdx > 0) return s.slice(0, firstGuidIdx);
+    // Fallback: if there is no standard GUID, still keep only the first token before a long dash segment
+    return s.split("-")[0] || s;
+  })();
+  const canShowVoucherCode =
+    !isDJBooking &&
+    isPaid &&
+    ["Confirmed", "Arrived", "Ended", "Completed"].includes(scheduleStatus) &&
+    !!voucherCode;
 
   return (
     <div
@@ -553,6 +576,22 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
             );
           })()}
 
+          {/* Voucher code (chỉ hiện sau khi quán bar đã xác nhận) */}
+          {canShowVoucherCode && (
+            <div className="flex items-start gap-3">
+              <FileText className="mt-1 text-muted-foreground" size={20} />
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Mã voucher</p>
+                <div className="mt-2 inline-flex flex-col items-center gap-2 p-3 rounded-lg bg-background border border-border/30">
+                  <QRCodeSVG value={voucherCode} size={168} level="M" includeMargin />
+                  <p className="text-xs text-muted-foreground font-mono break-all text-center">
+                    {voucherCode}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Total Deposit Amount */}
           <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
             <span className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -574,24 +613,8 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
 
          
 
-          {/* QR Code Display - chỉ hiện khi đã thanh toán, là table booking và chưa Ended */}
-          {isPaid && !isDJBooking && scheduleStatus !== 'Ended' && scheduleStatus !== 'ended' && (
-            <div className="pt-6 border-t border-border/30">
-              <QRCodeDisplay
-                bookingId={booking.BookedScheduleId || booking.bookedScheduleId}
-                onError={(error) => {
-                  console.error("QR Code display error:", error);
-                }}
-              />
-          </div>
-          )}
 
-          {/* Booking ID */}
-          <div className="pt-4 border-t border-border/30">
-            <p className="text-xs text-muted-foreground">
-              {bookingCodeLabel}: {booking.BookedScheduleId || booking.bookedScheduleId || "N/A"}
-            </p>
-          </div>
+          {/* Booking ID: removed per request (only show voucher code when applicable) */}
         </div>
       </div>
     </div>
@@ -1648,18 +1671,25 @@ export default function MyBookings() {
 
   // Fetch bookings
   const fetchBookings = useCallback(async () => {
-    if (!currentUserEntityId) {
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError("");
     try {
-      // Sử dụng API mới có receiverInfo đã join để giảm số lần reload
-      // API getAllBookingsByBooker trả về tất cả bookings (BarTable, DJ, Dancer) với receiverInfo đã join
-      const res = await bookingApi.getAllBookingsByBooker(currentUserEntityId, { limit: 100 });
+      // Sử dụng endpoint /api/booking/my để tự động lấy bookings của user hiện tại từ token
+      // Endpoint này tự động lấy AccountId từ token và convert sang EntityAccountId
+      const res = await bookingApi.getMyBookings({ limit: 100 });
       const bookingsData = res.data?.data || res.data || [];
+
+      console.log("[MyBookings] Fetched bookings:", {
+        totalCount: bookingsData.length,
+        currentUserEntityId: currentUserEntityId,
+        bookings: bookingsData.map(b => ({
+          BookedScheduleId: b.BookedScheduleId || b.bookedScheduleId,
+          PaymentStatus: b.PaymentStatus || b.paymentStatus,
+          ScheduleStatus: b.ScheduleStatus || b.scheduleStatus,
+          Type: b.Type || b.type,
+          BookerId: b.BookerId || b.bookerId
+        }))
+      });
 
       // Backend đã populate detailSchedule, không cần fetch thêm
       setBookings(bookingsData);
@@ -1673,7 +1703,7 @@ export default function MyBookings() {
     } finally {
       setLoading(false);
     }
-  }, [currentUserEntityId, addToast, fetchUserReviews]);
+  }, [addToast, fetchUserReviews]);
 
   useEffect(() => {
     fetchBookings();
@@ -1805,69 +1835,8 @@ export default function MyBookings() {
     }
   }, [user?.id, userReviews]);
 
-  const handleCancelBooking = async (booking) => {
-    const bookingType = booking.type || booking.Type;
-    const isDJBooking = bookingType === "DJ" || bookingType === "DANCER" || bookingType === "Performer";
-    const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
-    
-    // Check if booking can be cancelled
-    if (scheduleStatus !== "Pending" && scheduleStatus !== "Confirmed") {
-      addToast("Chỉ có thể hủy booking đang ở trạng thái Chờ xác nhận hoặc Đã xác nhận", "error");
-      return;
-    }
-    
-    const confirmMessage = isDJBooking 
-      ? "Bạn có chắc chắn muốn hủy booking này không?"
-      : "Bạn có chắc chắn muốn hủy đặt bàn này không?";
-    
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    try {
-      const bookingId = booking.BookedScheduleId || booking.bookedScheduleId;
-      if (!bookingId) {
-        addToast("Không tìm thấy ID booking", "error");
-        return;
-      }
-
-      console.log("[MyBookings] Canceling booking:", {
-        bookingId,
-        isDJBooking,
-        bookingType,
-        scheduleStatus
-      });
-
-      // Sử dụng cancelDJBooking cho DJ/Dancer bookings, cancelBooking cho table bookings
-      let result;
-      if (isDJBooking) {
-        result = await bookingApi.cancelDJBooking(bookingId);
-      } else {
-        result = await bookingApi.cancelBooking(bookingId);
-      }
-
-      console.log("[MyBookings] Cancel booking result:", result);
-
-      // Check response
-      if (result?.data?.success === false) {
-        throw new Error(result.data.message || "Không thể hủy booking");
-      }
-
-      const successMessage = isDJBooking 
-        ? "Hủy booking thành công"
-        : "Hủy đặt bàn thành công";
-      addToast(successMessage, "success");
-      fetchBookings(); // Refresh list
-    } catch (err) {
-      console.error("[MyBookings] Error canceling booking:", err);
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data?.error || 
-                          err.message ||
-                          (isDJBooking
-                            ? "Không thể hủy booking. Vui lòng thử lại."
-                            : "Không thể hủy đặt bàn. Vui lòng thử lại.");
-      addToast(errorMessage, "error");
-    }
+  const handleCancelBooking = async () => {
+    addToast("Hiện tại không hỗ trợ hủy sau khi đặt bàn.", "error");
   };
 
   // Check if booking is completed (Ended status, Completed status, Arrived + past EndTime, or past date + confirmed)
@@ -1991,7 +1960,14 @@ export default function MyBookings() {
     // Loại bỏ các booking bị Rejected khỏi mọi danh sách
     filtered = filtered.filter((booking) => {
       const sStatus = booking.scheduleStatus || booking.ScheduleStatus;
-      return sStatus !== "Rejected";
+      const isRejected = sStatus === "Rejected";
+      if (isRejected) {
+        console.log("[MyBookings] Filtering out Rejected booking:", {
+          BookedScheduleId: booking.BookedScheduleId || booking.bookedScheduleId,
+          ScheduleStatus: sStatus
+        });
+      }
+      return !isRejected;
     });
 
     // Filter by type first
@@ -2066,6 +2042,16 @@ export default function MyBookings() {
   // Get filtered and sorted bookings
   const getFilteredAndSortedBookings = () => {
     let filtered = filterBookings(bookings);
+    console.log("[MyBookings] Filtered bookings:", {
+      originalCount: bookings.length,
+      filteredCount: filtered.length,
+      filtered: filtered.map(b => ({
+        BookedScheduleId: b.BookedScheduleId || b.bookedScheduleId,
+        PaymentStatus: b.PaymentStatus || b.paymentStatus,
+        ScheduleStatus: b.ScheduleStatus || b.scheduleStatus,
+        Type: b.Type || b.type
+      }))
+    });
     return sortBookingsByDate(filtered);
   };
 
@@ -2305,16 +2291,18 @@ export default function MyBookings() {
             </p>
           </div>
         
-          <button
-            onClick={() => setShowFilter(!showFilter)}
-            className={cn(
-            "w-full md:w-auto px-4 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all",
-            showFilter ? "bg-primary text-primary-foreground shadow-md" : "bg-card border hover:bg-muted text-foreground"
-            )}
-          >
-            <Filter size={18} />
-          {showFilter ? "Đóng bộ lọc" : "Bộ lọc nâng cao"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowFilter(!showFilter)}
+              className={cn(
+              "w-full md:w-auto px-4 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all",
+              showFilter ? "bg-primary text-primary-foreground shadow-md" : "bg-card border hover:bg-muted text-foreground"
+              )}
+            >
+              <Filter size={18} />
+            {showFilter ? "Đóng bộ lọc" : "Bộ lọc nâng cao"}
+            </button>
+          </div>
         </div>
 
         {/* Filter Panel */}
@@ -2437,11 +2425,26 @@ export default function MyBookings() {
                   const pStatus = b.paymentStatus || b.PaymentStatus;
                   const sStatus = b.scheduleStatus || b.ScheduleStatus;
                   const isPaid = pStatus === "Paid" || pStatus === "Done";
-                  // Include Pending, Confirmed, Arrived. Exclude Ended/Completed/Rejected/Canceled
-                  const isActive = ["Pending", "Confirmed", "Arrived"].includes(sStatus);
+                  // Include Pending, Confirmed, Arrived, Upcoming. Exclude Ended/Completed/Rejected/Canceled
+                  const isActive = ["Pending", "Confirmed", "Arrived", "Upcoming", "upcoming"].includes(sStatus);
                   // Also ensure not past if confirmed
                   const isNotPast = !(sStatus === "Confirmed" && isBookingCompleted(b));
-                  return isPaid && isActive && isNotPast;
+                  const shouldShow = isPaid && isActive && isNotPast;
+                  
+                  // Log để debug
+                  if (isPaid && !shouldShow) {
+                    console.log("[MyBookings] Upcoming tab: Booking filtered out:", {
+                      BookedScheduleId: b.BookedScheduleId || b.bookedScheduleId,
+                      PaymentStatus: pStatus,
+                      ScheduleStatus: sStatus,
+                      isPaid: isPaid,
+                      isActive: isActive,
+                      isNotPast: isNotPast,
+                      shouldShow: shouldShow
+                    });
+                  }
+                  
+                  return shouldShow;
                 });
                 break;
             }
@@ -2478,7 +2481,7 @@ export default function MyBookings() {
                     booking={booking}
                     onViewDetail={handleViewDetail}
                     onCancel={handleCancelBooking}
-                    showCancel={activeTab === 'upcoming' && ((booking.scheduleStatus || booking.ScheduleStatus) === 'Pending' || (booking.scheduleStatus || booking.ScheduleStatus) === 'Confirmed')}
+                    showCancel={false}
                     onContinuePayment={handleContinuePayment}
                     reviewButton={
                       <ReviewButton
