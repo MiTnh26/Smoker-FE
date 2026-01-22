@@ -111,7 +111,7 @@ export default function BarMenuCombo({ barPageId }) {
                   <span className="text-xs text-gray-500 font-medium">{fieldLabels.comboName}</span>
                 </div>
                 <h4 className="text-base font-bold text-gray-800 line-clamp-2">{combo.ComboName || "Chưa có tên"}</h4>
-              </div>
+                  </div>
 
               {/* Price */}
               <div className="mb-2">
@@ -120,18 +120,18 @@ export default function BarMenuCombo({ barPageId }) {
                   <span className="text-xs text-gray-500 font-medium">{fieldLabels.price}</span>
                 </div>
                 <p className="text-xl font-bold text-green-600">{combo.Price.toLocaleString("vi-VN")} đ</p>
-              </div>
+                </div>
 
               {/* Description Preview */}
-              {combo.Description && (
-                <div className="mb-2">
+                {combo.Description && (
+                  <div className="mb-2">
                   <div className="flex items-center gap-1 mb-1">
                     <FileText size={14} className="text-blue-500" />
                     <span className="text-xs text-gray-500 font-medium">{fieldLabels.description}</span>
                   </div>
                   <p className="text-xs text-gray-600 line-clamp-2">{combo.Description}</p>
-                </div>
-              )}
+                  </div>
+                )}
 
               {/* Click hint */}
               <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-center gap-2 text-xs text-purple-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
@@ -190,7 +190,7 @@ export default function BarMenuCombo({ barPageId }) {
                     <span>{fieldLabels.price}</span>
                   </label>
                   <p className="text-green-600 font-bold text-2xl">{selectedCombo.Price.toLocaleString("vi-VN")} đ</p>
-                </div>
+          </div>
 
                 <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-100">
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
@@ -199,8 +199,8 @@ export default function BarMenuCombo({ barPageId }) {
                   </label>
                   <p className="text-gray-900 whitespace-pre-wrap leading-relaxed">
                     {selectedCombo.Description || "Chưa có mô tả"}
-                  </p>
-                </div>
+          </p>
+        </div>
               </div>
 
               <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
@@ -213,7 +213,7 @@ export default function BarMenuCombo({ barPageId }) {
               </div>
             </motion.div>
           </motion.div>
-        )}
+      )}
       </AnimatePresence>
     </div>
   );

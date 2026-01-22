@@ -13,9 +13,11 @@ const accountantApi = {
 
   // Refund Requests Management
   getRefundRequests: (params) => 
-    axiosClient.get("/admin/refund-requests", { params }),
-  updateRefundStatus: (bookedScheduleId, refundStatus) => 
-    axiosClient.patch(`/admin/refund-requests/${bookedScheduleId}/status`, { refundStatus }),
+    axiosClient.get("/accountant/refund-requests", { params }),
+  assignRefundRequest: (refundRequestId) =>
+    axiosClient.post(`/accountant/refund-requests/${refundRequestId}/assign`),
+  processRefund: (refundRequestId, data) =>
+    axiosClient.post(`/accountant/refund-requests/${refundRequestId}/process`, data),
 };
 
 export default accountantApi;

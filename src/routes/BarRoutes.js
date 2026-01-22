@@ -7,7 +7,7 @@ import BarSettings from "../modules/bar/pages/BarSettings";
 import BarTableListPage from "../modules/bar/pages/BarTableListPage";
 import TableClassificationManager from "../modules/bar/pages/TableClassificationManager";
 import ComboManager from "../modules/bar/pages/ComboManager";
-// Removed: VoucherManager - bar voucher management removed
+import BarVoucherManager from "../modules/bar/pages/BarVoucherManager";
 import ManagePost from "../modules/bar/pages/ManagePost";
 import ManageStory from "../modules/bar/pages/ManageStory";
 import EventsPage from "../modules/bar/pages/EventsPage";
@@ -90,12 +90,19 @@ export default function BarRoutes() {
           </ProtectedRoute>
         }
       />
-       {/* Removed: Voucher route - bar voucher management removed */}
        <Route
         path="/bar/settings/:barPageId/combos"
         element={
           <ProtectedRoute roles={["bar"]}>
             <DynamicLayout> <ComboManager /></DynamicLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/bar/vouchers"
+        element={
+          <ProtectedRoute roles={["bar"]}>
+            <DynamicLayout> <BarVoucherManager /></DynamicLayout>
           </ProtectedRoute>
         }
       />

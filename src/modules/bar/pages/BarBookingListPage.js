@@ -137,23 +137,27 @@ export default function BarBookingListPage() {
     if (!receiverId) return [];
     
     try {
+      // Format date to YYYY-MM-DD for API
+      const dateParam = date ? new Date(date).toISOString().split('T')[0] : null;
+      
       const response = await bookingApi.getBookingsByReceiver(receiverId, {
         limit: 1000,
-        offset: 0
+        offset: 0,
+        date: dateParam // Pass date to backend for server-side filtering
       });
       
       const bookings = response.data?.data || response.data || [];
       
-      // Filter by date if provided
-      if (date) {
-        return bookings.filter(booking => {
-          const bookingDate = booking.bookingDate || booking.BookingDate || booking.StartTime;
-          if (!bookingDate) return false;
-          const bookingDateObj = new Date(bookingDate);
-          const filterDate = new Date(date);
-          return bookingDateObj.toDateString() === filterDate.toDateString();
-        });
-      }
+      console.log('[BarBookingListPage] Fetched bookings for date:', {
+        date: dateParam,
+        count: bookings.length,
+        bookings: bookings.map(b => ({
+          BookedScheduleId: b.BookedScheduleId || b.bookedScheduleId,
+          BookingDate: b.BookingDate || b.bookingDate,
+          ScheduleStatus: b.ScheduleStatus || b.scheduleStatus,
+          PaymentStatus: b.PaymentStatus || b.paymentStatus
+        }))
+      });
       
       return bookings;
     } catch (error) {
@@ -172,6 +176,7 @@ export default function BarBookingListPage() {
     setLoading(true);
     setError('');
     try {
+      console.log('[BarBookingListPage] Fetching bookings for date:', selectedDate);
       const bookingsData = await fetchBookingsForDate(selectedDate);
       
       // Filter: BarTable bookings với paymentStatus = 'Paid' và scheduleStatus = 'Pending'
@@ -179,15 +184,45 @@ export default function BarBookingListPage() {
         const type = b.Type || b.type;
         const scheduleStatus = b.scheduleStatus || b.ScheduleStatus;
         const paymentStatus = b.paymentStatus || b.PaymentStatus;
+      
+        const isBarTable = type === "BarTable";
+        const isPaid = (paymentStatus === 'Paid' || paymentStatus === 'Done');
+        const isPending = scheduleStatus === 'Pending' || scheduleStatus === 'Upcoming'; // Thêm Upcoming vào pending
+        const isNotRejected = scheduleStatus !== "Rejected";
+        const isNotCanceled = scheduleStatus !== "Canceled";
         
+        const shouldInclude = isBarTable && isPaid && isPending && isNotRejected && isNotCanceled;
+        
+        // Log để debug
+        if (!shouldInclude) {
+          console.log('[BarBookingListPage] Booking filtered out from pending:', {
+            BookedScheduleId: b.BookedScheduleId || b.bookedScheduleId,
+            Type: type,
+            ScheduleStatus: scheduleStatus,
+            PaymentStatus: paymentStatus,
+            isBarTable,
+            isPaid,
+            isPending,
+            isNotRejected,
+            isNotCanceled
+          });
+        }
+      
         // Chỉ hiển thị: BarTable + Paid + Pending
-        return type === "BarTable" 
-          && (paymentStatus === 'Paid' || paymentStatus === 'Done')
-          && scheduleStatus === 'Pending'
-          && scheduleStatus !== "Rejected" 
-          && scheduleStatus !== "Canceled";
+        return shouldInclude;
       });
       
+      console.log('[BarBookingListPage] Pending bookings after filter:', {
+        total: bookingsData.length,
+        filtered: pendingBookings.length,
+        pendingBookings: pendingBookings.map(b => ({
+          BookedScheduleId: b.BookedScheduleId || b.bookedScheduleId,
+          Type: b.Type || b.type,
+          ScheduleStatus: b.ScheduleStatus || b.scheduleStatus,
+          PaymentStatus: b.PaymentStatus || b.paymentStatus
+        }))
+      });
+        
       // Sort by date (newest first)
       const sorted = pendingBookings.sort((a, b) => {
         const dateA = new Date(a.bookingDate || a.BookingDate || 0);
@@ -209,12 +244,14 @@ export default function BarBookingListPage() {
     if (!receiverId) return;
 
     try {
+      console.log('[BarBookingListPage] Fetching confirmed bookings for date:', selectedDate);
       const bookingsData = await fetchBookingsForDate(selectedDate);
       
       // Filter: BarTable bookings với:
       // 1. paymentStatus = 'Paid' và scheduleStatus = 'Confirmed'
       // 2. scheduleStatus = 'Arrived'
       // 3. scheduleStatus = 'Ended'
+      // 4. scheduleStatus = 'Upcoming' (nếu đã thanh toán)
       const confirmedBookings = bookingsData.filter(b => {
         const type = b.Type || b.type;
         const scheduleStatus = b.scheduleStatus || b.ScheduleStatus;
@@ -222,11 +259,19 @@ export default function BarBookingListPage() {
         
         // Loại bỏ Rejected và Canceled
         if (scheduleStatus === "Rejected" || scheduleStatus === "Canceled") {
+          console.log('[BarBookingListPage] Booking filtered out (Rejected/Canceled):', {
+            BookedScheduleId: b.BookedScheduleId || b.bookedScheduleId,
+            ScheduleStatus: scheduleStatus
+          });
           return false;
         }
         
         // Chỉ hiển thị BarTable bookings
         if (type !== "BarTable") {
+          console.log('[BarBookingListPage] Booking filtered out (not BarTable):', {
+            BookedScheduleId: b.BookedScheduleId || b.bookedScheduleId,
+            Type: type
+          });
           return false;
         }
         
@@ -234,9 +279,31 @@ export default function BarBookingListPage() {
         // 1. Confirmed và đã thanh toán (Paid)
         // 2. Arrived (bất kỳ payment status)
         // 3. Ended (bất kỳ payment status)
-        return (scheduleStatus === 'Confirmed' && (paymentStatus === 'Paid' || paymentStatus === 'Done'))
+        // KHÔNG hiển thị Upcoming ở đây vì Upcoming là chờ xác nhận, phải ở tab "pending"
+        const shouldInclude = (scheduleStatus === 'Confirmed' && (paymentStatus === 'Paid' || paymentStatus === 'Done'))
           || scheduleStatus === 'Arrived'
           || scheduleStatus === 'Ended';
+        
+        if (!shouldInclude) {
+          console.log('[BarBookingListPage] Booking filtered out from confirmed:', {
+            BookedScheduleId: b.BookedScheduleId || b.bookedScheduleId,
+            ScheduleStatus: scheduleStatus,
+            PaymentStatus: paymentStatus
+          });
+        }
+        
+        return shouldInclude;
+      });
+      
+      console.log('[BarBookingListPage] Confirmed bookings after filter:', {
+        total: bookingsData.length,
+        filtered: confirmedBookings.length,
+        confirmedBookings: confirmedBookings.map(b => ({
+          BookedScheduleId: b.BookedScheduleId || b.bookedScheduleId,
+          Type: b.Type || b.type,
+          ScheduleStatus: b.ScheduleStatus || b.scheduleStatus,
+          PaymentStatus: b.PaymentStatus || b.paymentStatus
+        }))
       });
       
       // Sort by date (newest first)
@@ -338,7 +405,10 @@ export default function BarBookingListPage() {
   const handleConfirmBooking = async (bookingId) => {
     try {
       setUpdatingBooking(bookingId);
-      await bookingApi.confirmBooking(bookingId);
+      const response = await bookingApi.confirmBookingByBar(bookingId);
+      if (response.data?.success) {
+        alert(`Đã xác nhận đặt bàn. Mã voucher: ${response.data.data?.voucherCode || 'N/A'}`);
+      }
       // Refresh cả 2 danh sách
       await Promise.all([fetchBookings(), fetchConfirmedBookings()]);
       // Refresh modal nếu đang mở
@@ -347,7 +417,38 @@ export default function BarBookingListPage() {
       }
     } catch (err) {
       console.error('Error confirming booking:', err);
-      alert('Không thể xác nhận booking');
+      alert(err.response?.data?.message || 'Không thể xác nhận booking');
+    } finally {
+      setUpdatingBooking(null);
+    }
+  };
+
+  const handleRejectBooking = async (bookingId, rejectionReason) => {
+    if (!rejectionReason || rejectionReason.trim() === '') {
+      alert('Vui lòng nhập lý do từ chối');
+      return;
+    }
+    
+    if (!window.confirm('Bạn có chắc chắn muốn từ chối đặt bàn này? Yêu cầu hoàn tiền sẽ được gửi tự động.')) {
+      return;
+    }
+    
+    try {
+      setUpdatingBooking(bookingId);
+      const response = await bookingApi.rejectBookingByBar(bookingId, rejectionReason);
+      if (response.data?.success) {
+        alert('Đã từ chối đặt bàn. Yêu cầu hoàn tiền đã được gửi.');
+      }
+      // Refresh cả 2 danh sách
+      await Promise.all([fetchBookings(), fetchConfirmedBookings()]);
+      // Đóng modal nếu đang mở
+      if (detailModalOpen && selectedBooking?.BookedScheduleId === bookingId) {
+        setDetailModalOpen(false);
+        setSelectedBooking(null);
+      }
+    } catch (err) {
+      console.error('Error rejecting booking:', err);
+      alert(err.response?.data?.message || 'Không thể từ chối booking');
     } finally {
       setUpdatingBooking(null);
     }
@@ -421,9 +522,9 @@ export default function BarBookingListPage() {
           <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg shadow-lg">
             <Table size={28} className="text-white" />
           </div>
-          <h1 className={cn('text-3xl font-bold text-foreground')}>
-            Quản lý đặt bàn
-          </h1>
+        <h1 className={cn('text-3xl font-bold text-foreground')}>
+          Quản lý đặt bàn
+        </h1>
         </div>
         <p className={cn('text-muted-foreground mt-2')}>
           Quản lý và xác nhận các đặt bàn của quán bar
@@ -523,18 +624,18 @@ export default function BarBookingListPage() {
             <p className={cn('text-sm text-muted-foreground')}>
               Tổng số: <span className="font-semibold text-primary">{bookings.length}</span> đặt bàn (Đã thanh toán, chờ xác nhận)
             </p>
-          </div>
+        </div>
         
-          {bookings.length === 0 ? (
-            <div className={cn(
+        {bookings.length === 0 ? (
+          <div className={cn(
               'text-center py-16',
               'bg-gradient-to-br from-muted/30 to-muted/10 rounded-xl border border-border/20 p-8'
-            )}>
+          )}>
               <Table size={48} className="text-muted-foreground mx-auto mb-4 opacity-50" />
               <p className="text-lg font-semibold text-muted-foreground mb-2">Chưa có đặt bàn nào</p>
               <p className="text-sm text-muted-foreground">Chọn ngày khác để xem đặt bàn</p>
-            </div>
-          ) : (
+          </div>
+        ) : (
             <div className={cn('grid grid-cols-1 lg:grid-cols-2 gap-4')}>
             {bookings.map((booking) => {
             const scheduleStatus = booking.scheduleStatus || booking.ScheduleStatus;
@@ -580,7 +681,7 @@ export default function BarBookingListPage() {
             const combo = detailSchedule?.Combo || {};
             const comboName = combo.ComboName || combo.comboName || 'Combo đặt bàn';
             const comboPrice = combo.Price || combo.price || 0;
-            
+
             return (
               <motion.div
                 key={booking.BookedScheduleId}
@@ -615,8 +716,8 @@ export default function BarBookingListPage() {
                   )}>
                     {paymentStatus === 'Paid' || paymentStatus === 'Done' ? 'Đã thanh toán' : 'Chưa thanh toán'}
                   </span>
-                </div>
-
+                  </div>
+                  
                 {/* Info Grid */}
                 <div className={cn('grid grid-cols-2 gap-3')}>
                   {/* Date */}
@@ -640,40 +741,40 @@ export default function BarBookingListPage() {
                       </p>
                     </div>
                   </div>
-                </div>
+                  </div>
                   
-                {/* Tables */}
-                {enrichedTableList.length > 0 && (
+                  {/* Tables */}
+                  {enrichedTableList.length > 0 && (
                   <div className={cn('p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-100')}>
                     <div className={cn('flex items-center gap-2 mb-2')}>
                       <Table size={16} className="text-purple-500" />
                       <span className={cn('text-sm font-semibold text-foreground')}>Bàn đã chọn:</span>
                     </div>
                     <div className={cn('flex flex-wrap gap-2')}>
-                      {enrichedTableList.map((tableItem, idx) => (
-                        <span
-                          key={tableItem.id || idx}
-                          className={cn(
+                        {enrichedTableList.map((tableItem, idx) => (
+                          <span
+                            key={tableItem.id || idx}
+                            className={cn(
                             'px-3 py-1.5 bg-white rounded-lg text-sm font-medium',
                             'border-2 border-purple-200 text-purple-700 shadow-sm'
-                          )}
-                        >
+                            )}
+                          >
                           {tableItem.fullName || tableItem.name || `Bàn ${idx + 1}`}
-                        </span>
-                      ))}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
                   
-                {/* Note */}
-                {detailSchedule?.Note && (
+                  {/* Note */}
+                  {detailSchedule?.Note && (
                   <div className={cn('p-3 bg-muted/30 rounded-lg border border-border/20')}>
                     <div className={cn('flex items-center gap-2 mb-1')}>
                       <FileText size={14} className="text-muted-foreground" />
                       <span className={cn('text-xs font-semibold text-muted-foreground')}>Ghi chú:</span>
                     </div>
                     <p className={cn('text-sm text-foreground')}>{detailSchedule.Note}</p>
-                  </div>
+                </div>
                 )}
 
                 {/* Action buttons */}
@@ -704,7 +805,32 @@ export default function BarBookingListPage() {
                         )}
                       </button>
                     )}
-                    {(paymentStatus === 'Paid' || paymentStatus === 'Done') && scheduleStatus !== 'Ended' && (
+                    {(paymentStatus === 'Paid' || paymentStatus === 'Done') && (scheduleStatus === 'Pending' || scheduleStatus === 'Upcoming') && (
+                      <button
+                        onClick={() => handleViewBookingDetail(booking.BookedScheduleId)}
+                        disabled={isProcessing || loadingBookingDetail}
+                        className={cn(
+                          'flex-1 px-4 py-2 rounded-lg text-sm font-medium',
+                          'bg-gradient-to-r from-blue-500 to-indigo-500 text-white',
+                          'hover:from-blue-600 hover:to-indigo-600 shadow-md hover:shadow-lg',
+                          'transition-all duration-200',
+                          'disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2'
+                        )}
+                      >
+                        {isProcessing || loadingBookingDetail ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin text-white" />
+                            <span className="text-white">Đang tải...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileText size={16} className="text-white" />
+                            <span className="text-white">Xem chi tiết</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {(paymentStatus === 'Paid' || paymentStatus === 'Done') && scheduleStatus !== 'Ended' && scheduleStatus !== 'Pending' && scheduleStatus !== 'Upcoming' && (
                       <button
                         onClick={() => handleViewBookingDetail(booking.BookedScheduleId)}
                         disabled={isProcessing || loadingBookingDetail}
@@ -756,7 +882,7 @@ export default function BarBookingListPage() {
               <div>
                 <h2 className={cn('text-2xl font-bold text-foreground mb-1')}>
                   Danh sách đặt bàn đã xác nhận
-                </h2>
+            </h2>
                 <p className={cn('text-sm text-muted-foreground')}>
                   Tổng số: <span className="font-semibold text-primary">{filteredConfirmedBookings.length}</span> đặt bàn
                   {statusFilter !== 'all' && (
@@ -766,7 +892,7 @@ export default function BarBookingListPage() {
                   )}
                 </p>
               </div>
-            </div>
+          </div>
 
             {/* Status Filter */}
             <div className={cn('flex items-center gap-2 flex-wrap mb-4')}>
@@ -890,19 +1016,19 @@ export default function BarBookingListPage() {
                   >
                     {/* Header - Status badge */}
                     <div className={cn('flex items-center justify-end mb-4')}>
-                      <span
-                        className={cn(
+                          <span
+                            className={cn(
                           "px-3 py-1 rounded-full text-xs font-semibold border"
-                        )}
-                        style={{
-                          color: statusConfig.color,
-                          backgroundColor: statusConfig.bg,
-                          borderColor: statusConfig.color
-                        }}
-                      >
-                        {statusConfig.label}
-                      </span>
-                    </div>
+                            )}
+                            style={{
+                              color: statusConfig.color,
+                              backgroundColor: statusConfig.bg,
+                              borderColor: statusConfig.color
+                            }}
+                          >
+                            {statusConfig.label}
+                          </span>
+                        </div>
 
                     <div className={cn('grid grid-cols-2 gap-3 mb-3')}>
                       <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
@@ -912,8 +1038,8 @@ export default function BarBookingListPage() {
                           <p className={cn('text-sm font-semibold text-foreground')}>
                             {bookingDetails.BookerName || 'N/A'}
                           </p>
-                        </div>
-                      </div>
+                          </div>
+                          </div>
                       <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
                         <DollarSign size={16} className="text-green-500" />
                         <div>
@@ -931,8 +1057,8 @@ export default function BarBookingListPage() {
                             {new Date(bookingDetails.BookingDate).toLocaleDateString('vi-VN')}
                           </p>
                         </div>
-                      </div>
-                      {bookingDetails.ConfirmedAt && (
+                          </div>
+                          {bookingDetails.ConfirmedAt && (
                         <div className={cn('flex items-center gap-2 p-2 bg-muted/30 rounded-lg')}>
                           <Clock size={16} className="text-orange-500" />
                           <div>
@@ -941,9 +1067,9 @@ export default function BarBookingListPage() {
                               {new Date(bookingDetails.ConfirmedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                             </p>
                           </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
                     {/* Tables */}
                     {enrichedTableList.length > 0 && (
@@ -951,7 +1077,7 @@ export default function BarBookingListPage() {
                         <div className={cn('flex items-center gap-2 mb-2')}>
                           <Table size={16} className="text-purple-500" />
                           <span className={cn('text-sm font-semibold text-foreground')}>Bàn đã chọn:</span>
-                        </div>
+                      </div>
                         <div className={cn('flex flex-wrap gap-2')}>
                           {enrichedTableList.map((tableItem, idx) => (
                             <span
@@ -964,8 +1090,8 @@ export default function BarBookingListPage() {
                               {tableItem.fullName || tableItem.name || `Bàn ${idx + 1}`}
                             </span>
                           ))}
-                        </div>
-                      </div>
+                    </div>
+                  </div>
                     )}
 
                     {/* Action Button */}
@@ -1028,6 +1154,7 @@ export default function BarBookingListPage() {
         booking={selectedBooking}
         isProcessing={updatingBooking === selectedBooking?.BookedScheduleId}
         onConfirm={handleConfirmBooking}
+        onReject={handleRejectBooking}
         onMarkArrived={handleMarkArrived}
         onEndBooking={handleEndBooking}
         getStatusConfig={getStatusConfig}
@@ -1045,11 +1172,14 @@ const BookingDetailModal = ({
   booking, 
   isProcessing = false,
   onConfirm,
+  onReject,
   onMarkArrived,
   onEndBooking,
   getStatusConfig,
   tables = []
 }) => {
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
   // Parse booking data
   const detailSchedule = booking?.detailSchedule || booking?.DetailSchedule;
   const paymentStatus = booking?.paymentStatus || booking?.PaymentStatus;
@@ -1112,7 +1242,7 @@ const BookingDetailModal = ({
       tableList = Object.keys(tableMap || {}).map(key => {
         const tableInfo = tableMap[key];
         return {
-          id: key,
+      id: key,
           name: tableInfo?.TableName || tableInfo?.name || key,
           price: tableInfo?.Price || tableInfo?.price || 0
         };
@@ -1195,7 +1325,7 @@ const BookingDetailModal = ({
         className={cn(
           "w-full max-w-3xl bg-card text-card-foreground rounded-2xl",
           "border-2 border-border/20 shadow-2xl",
-          "p-6 relative max-h-[90vh] overflow-y-auto"
+        "p-6 relative max-h-[90vh] overflow-y-auto"
         )}
       >
         {/* Header */}
@@ -1204,9 +1334,9 @@ const BookingDetailModal = ({
             <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg">
               <FileText size={20} className="text-white" />
             </div>
-            <h3 className={cn("text-2xl font-bold text-foreground")}>
-              Chi tiết đặt bàn
-            </h3>
+          <h3 className={cn("text-2xl font-bold text-foreground")}>
+            Chi tiết đặt bàn
+          </h3>
           </div>
           <button
             onClick={onClose}
@@ -1250,29 +1380,29 @@ const BookingDetailModal = ({
 
           {/* Info Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            {/* Booking Date */}
+          {/* Booking Date */}
             <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
               <div className="p-2 bg-purple-500 rounded-lg">
                 <Calendar className="text-white" size={20} />
               </div>
-              <div>
+            <div>
                 <p className="text-xs text-muted-foreground font-medium mb-1">Ngày đặt</p>
                 <p className="font-bold text-foreground">
-                  {formatDate(bookingDate)}
-                </p>
-              </div>
+                {formatDate(bookingDate)}
+              </p>
             </div>
+          </div>
 
-            {/* Booker Info */}
+          {/* Booker Info */}
             <div className="flex items-start gap-3 p-4 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl border border-blue-100">
               <div className="p-2 bg-blue-500 rounded-lg">
                 <User className="text-white" size={20} />
               </div>
-              <div>
+            <div>
                 <p className="text-xs text-muted-foreground font-medium mb-1">Người đặt</p>
                 <p className="font-bold text-foreground">
-                  {booking.BookerName || booking.bookerName || 'N/A'}
-                </p>
+                {booking.BookerName || booking.bookerName || 'N/A'}
+              </p>
               </div>
             </div>
           </div>
@@ -1379,9 +1509,9 @@ const BookingDetailModal = ({
                 <div className="p-2 bg-white/50 rounded-lg flex justify-between items-center">
                   <span className="text-sm text-muted-foreground font-medium">Giảm giá:</span>
                   <span className="text-sm font-bold text-green-600">
-                    -{discountAmount.toLocaleString('vi-VN')} đ
-                  </span>
-                </div>
+                      -{discountAmount.toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
               )}
               <div className="p-3 bg-white/70 rounded-lg flex justify-between items-center border-2 border-green-200">
                 <span className="text-base font-bold text-foreground">Tổng tiền thanh toán:</span>
@@ -1405,40 +1535,31 @@ const BookingDetailModal = ({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3 pt-4 border-t border-border/30">
-            {(paymentStatus === 'Paid' || paymentStatus === 'Done') && scheduleStatus === 'Pending' && (
-              <button
-                onClick={() => onConfirm(bookingId)}
-                disabled={isProcessing}
-                className={cn(
-                  "flex-1 px-4 py-3 rounded-xl text-sm font-semibold",
-                  "bg-gradient-to-r from-green-500 to-emerald-500 text-white",
-                  "hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl",
-                  "transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
-                  "flex items-center justify-center gap-2"
-                )}
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin text-white" />
-                    <span className="text-white">Đang xử lý...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle size={16} className="text-white" />
-                    <span className="text-white">Xác nhận booking</span>
-                  </>
-                )}
-              </button>
-            )}
-            {(paymentStatus === 'Paid' || paymentStatus === 'Done') && scheduleStatus === 'Confirmed' && (
+            {(paymentStatus === 'Paid' || paymentStatus === 'Done') && (scheduleStatus === 'Pending' || scheduleStatus === 'Upcoming') && (
               <>
+                {onReject && (
+                  <button
+                    onClick={() => setShowRejectModal(true)}
+                    disabled={isProcessing}
+                    className={cn(
+                      "flex-1 px-4 py-3 rounded-xl text-sm font-semibold",
+                      "bg-gradient-to-r from-red-500 to-rose-500 text-white",
+                      "hover:from-red-600 hover:to-rose-600 shadow-lg hover:shadow-xl",
+                      "transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
+                      "flex items-center justify-center gap-2"
+                    )}
+                  >
+                    <X size={16} className="text-white" />
+                    <span className="text-white">Từ chối</span>
+                  </button>
+                )}
                 <button
-                  onClick={() => onMarkArrived(bookingId)}
+                  onClick={() => onConfirm(bookingId)}
                   disabled={isProcessing}
                   className={cn(
                     "flex-1 px-4 py-3 rounded-xl text-sm font-semibold",
-                    "bg-gradient-to-r from-blue-500 to-indigo-500 text-white",
-                    "hover:from-blue-600 hover:to-indigo-600 shadow-lg hover:shadow-xl",
+                    "bg-gradient-to-r from-green-500 to-emerald-500 text-white",
+                    "hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl",
                     "transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
                     "flex items-center justify-center gap-2"
                   )}
@@ -1451,10 +1572,37 @@ const BookingDetailModal = ({
                   ) : (
                     <>
                       <CheckCircle size={16} className="text-white" />
-                      <span className="text-white">Đánh dấu đã tới quán</span>
+                      <span className="text-white">Xác nhận booking</span>
                     </>
                   )}
                 </button>
+              </>
+            )}
+            {(paymentStatus === 'Paid' || paymentStatus === 'Done') && scheduleStatus === 'Confirmed' && (
+              <>
+              <button
+                onClick={() => onMarkArrived(bookingId)}
+                disabled={isProcessing}
+                className={cn(
+                    "flex-1 px-4 py-3 rounded-xl text-sm font-semibold",
+                    "bg-gradient-to-r from-blue-500 to-indigo-500 text-white",
+                    "hover:from-blue-600 hover:to-indigo-600 shadow-lg hover:shadow-xl",
+                    "transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
+                    "flex items-center justify-center gap-2"
+                )}
+              >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin text-white" />
+                      <span className="text-white">Đang xử lý...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={16} className="text-white" />
+                      <span className="text-white">Đánh dấu đã tới quán</span>
+                    </>
+                  )}
+              </button>
                 <button
                   onClick={() => onEndBooking(bookingId)}
                   disabled={isProcessing}
@@ -1508,6 +1656,64 @@ const BookingDetailModal = ({
           </div>
         </div>
       </motion.div>
+
+      {/* Reject Booking Modal */}
+      {showRejectModal && (
+        <div className={cn("fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4")}>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className={cn("bg-card rounded-xl p-6 max-w-md w-full border border-border")}
+          >
+            <h3 className={cn("text-lg font-semibold mb-4")}>Từ chối đặt bàn</h3>
+            <p className={cn("text-sm text-muted-foreground mb-4")}>
+              Vui lòng nhập lý do từ chối. Yêu cầu hoàn tiền sẽ được gửi tự động.
+            </p>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Nhập lý do từ chối..."
+              rows={4}
+              className={cn(
+                "w-full px-3 py-2 rounded-lg border border-border",
+                "bg-background text-foreground text-sm",
+                "focus:outline-none focus:ring-2 focus:ring-primary mb-4"
+              )}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason('');
+                }}
+                className={cn(
+                  "flex-1 px-4 py-2 rounded-lg text-sm font-medium",
+                  "bg-muted text-foreground hover:bg-muted/80"
+                )}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  if (onReject) {
+                    onReject(bookingId, rejectionReason);
+                    setShowRejectModal(false);
+                    setRejectionReason('');
+                  }
+                }}
+                disabled={!rejectionReason.trim() || isProcessing}
+                className={cn(
+                  "flex-1 px-4 py-2 rounded-lg text-sm font-medium",
+                  "bg-red-500 text-white hover:bg-red-600",
+                  "disabled:opacity-50 disabled:cursor-not-allowed"
+                )}
+              >
+                Xác nhận từ chối
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

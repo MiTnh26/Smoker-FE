@@ -176,7 +176,15 @@ export default function Sidebar({ isOpen, onClose }) {
   }, []);
 
   useEffect(() => {
-    if (paramBarPageId) setBarPageId(paramBarPageId);
+    // Chỉ set barPageId từ URL params nếu đó là GUID hợp lệ
+    // Tránh lấy "vouchers" hoặc các giá trị không phải GUID từ route conflicts
+    if (paramBarPageId) {
+      const isGuid = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i.test(paramBarPageId);
+      if (isGuid) {
+        setBarPageId(paramBarPageId);
+      }
+      // Nếu không phải GUID, giữ nguyên barPageId từ entity/session (nếu có)
+    }
   }, [paramBarPageId]);
 
   // Fetch table types when barPageId is available

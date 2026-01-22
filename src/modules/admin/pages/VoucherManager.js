@@ -2,74 +2,89 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Plus,
-  Edit,
-  Trash2,
-  Search,
-  Filter,
   TicketPercent,
-  Calendar,
   DollarSign,
   Users,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Eye,
-  EyeOff
+  TrendingUp,
+  ChevronDown,
+  ChevronRight,
+  Building2,
+  Search,
+  ArrowUpDown,
 } from "lucide-react";
-import adminApi from "../../../api/adminApi";
+import adminVoucherApi from "../../../api/adminVoucherApi";
 import { ToastContainer } from "../../../components/common/Toast";
 import { SkeletonCard } from "../../../components/common/Skeleton";
 
 export default function VoucherManager() {
   const { t } = useTranslation();
-  const [vouchers, setVouchers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [toasts, setToasts] = useState([]);
+  const [bars, setBars] = useState([]);
+  const [loadingBars, setLoadingBars] = useState(false);
+  const [expandedBars, setExpandedBars] = useState(new Set());
+  const [barVouchersMap, setBarVouchersMap] = useState({}); // { barPageId: [vouchers] }
+  const [loadingVouchers, setLoadingVouchers] = useState({}); // { barPageId: true/false }
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("revenue-desc"); // "revenue-desc", "revenue-asc", "name-asc", "name-desc"
 
-  // Form states
-  const [formData, setFormData] = useState({
-    voucherName: "",
-    voucherCode: "",
-    discountPercentage: 3,
-    maxUsage: 100,
-    minComboValue: 1000000,
-    startDate: "",
-    endDate: "",
-    status: "ACTIVE"
-  });
-
-  // Load vouchers
-  const loadVouchers = useCallback(async () => {
+  const loadBars = useCallback(async () => {
     try {
-      setLoading(true);
-      const params = {};
-      if (statusFilter !== "all") params.status = statusFilter;
-
-      const response = await adminApi.getVouchers(params);
-
-      if (response.success) {
-        setVouchers(response.data || []);
-      } else {
-        addToast(response.message || "Không thể tải danh sách voucher", "error");
+      setLoadingBars(true);
+      const response = await adminVoucherApi.getBarsWithVouchers();
+      console.log("[VoucherManager] loadBars - Response:", response);
+      if (response?.success) {
+        setBars(response.data || []);
       }
     } catch (error) {
-      console.error("❌ Error loading vouchers:", error);
-      console.error("❌ Error details:", error.response?.data);
-      addToast(error.response?.data?.message || "Không thể tải danh sách voucher", "error");
+      console.error("❌ Error loading bars:", error);
+      addToast(error.response?.data?.message || "Không thể tải danh sách quán bar", "error");
     } finally {
-      setLoading(false);
+      setLoadingBars(false);
     }
-  }, [statusFilter]);
+  }, []);
+
+  const loadBarVouchers = useCallback(async (barPageId) => {
+    // Nếu đã load rồi thì không load lại
+    if (barVouchersMap[barPageId]) {
+      return;
+    }
+
+    try {
+      setLoadingVouchers(prev => ({ ...prev, [barPageId]: true }));
+      const response = await adminVoucherApi.getBarVouchersWithStats(barPageId);
+      console.log("[VoucherManager] loadBarVouchers - Response received:", response);
+      
+      if (response?.success) {
+        setBarVouchersMap(prev => ({
+          ...prev,
+          [barPageId]: response.data || []
+        }));
+      } else {
+        addToast(response?.message || "Không thể tải danh sách voucher", "error");
+      }
+    } catch (error) {
+      console.error("❌ Error loading bar vouchers:", error);
+      addToast(error.response?.data?.message || error.message || "Không thể tải danh sách voucher", "error");
+    } finally {
+      setLoadingVouchers(prev => ({ ...prev, [barPageId]: false }));
+    }
+  }, [barVouchersMap]);
 
   useEffect(() => {
-    loadVouchers();
-  }, [loadVouchers]);
+    loadBars();
+  }, [loadBars]);
+
+  const toggleBar = (barPageId) => {
+    const newExpanded = new Set(expandedBars);
+    if (newExpanded.has(barPageId)) {
+      newExpanded.delete(barPageId);
+    } else {
+      newExpanded.add(barPageId);
+      // Load vouchers khi expand
+      loadBarVouchers(barPageId);
+    }
+    setExpandedBars(newExpanded);
+  };
 
   // Toast management
   const addToast = (message, type = "success") => {
@@ -80,461 +95,285 @@ export default function VoucherManager() {
     }, 3000);
   };
 
-  // Form handlers
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const resetForm = () => {
-    setFormData({
-      voucherName: "",
-      voucherCode: "",
-      discountPercentage: 3,
-      maxUsage: 100,
-      minComboValue: 1000000,
-      startDate: "",
-      endDate: "",
-      status: "ACTIVE"
+  // Filter và sort bars
+  const filteredAndSortedBars = React.useMemo(() => {
+    let filtered = bars;
+    
+    // Filter theo search term
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = bars.filter(bar => 
+        bar.BarName?.toLowerCase().includes(term)
+      );
+    }
+    
+    // Sort
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortBy) {
+        case "revenue-desc":
+          return (Number(b.TotalSystemProfit) || 0) - (Number(a.TotalSystemProfit) || 0);
+        case "revenue-asc":
+          return (Number(a.TotalSystemProfit) || 0) - (Number(b.TotalSystemProfit) || 0);
+        case "name-asc":
+          return (a.BarName || "").localeCompare(b.BarName || "");
+        case "name-desc":
+          return (b.BarName || "").localeCompare(a.BarName || "");
+        default:
+          return 0;
+      }
     });
-  };
+    
+    return sorted;
+  }, [bars, searchTerm, sortBy]);
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-
-    try {
-      // Validate form
-      if (!formData.voucherName.trim() || !formData.voucherCode.trim()) {
-        addToast("Vui lòng điền đầy đủ thông tin", "error");
-        return;
-      }
-
-      if (formData.discountPercentage < 3 || formData.discountPercentage > 5) {
-        addToast("Phần trăm giảm giá phải từ 3-5%", "error");
-        return;
-      }
-
-      const response = await adminApi.createVoucher(formData);
-      if (response.success) {
-        addToast("Tạo voucher thành công!");
-        setShowCreateModal(false);
-        resetForm();
-        loadVouchers();
-      } else {
-        addToast(response.message || "Không thể tạo voucher", "error");
-      }
-    } catch (error) {
-      console.error("Error creating voucher:", error);
-      addToast(error.response?.data?.message || "Lỗi khi tạo voucher", "error");
-    }
-  };
-
-  const handleEdit = async (e) => {
-    e.preventDefault();
-
-    try {
-      if (!selectedVoucher) return;
-
-      const response = await adminApi.updateVoucher(selectedVoucher.VoucherId, formData);
-      if (response.success) {
-        addToast("Cập nhật voucher thành công!");
-        setShowEditModal(false);
-        setSelectedVoucher(null);
-        resetForm();
-        loadVouchers();
-      } else {
-        addToast(response.message || "Không thể cập nhật voucher", "error");
-      }
-    } catch (error) {
-      console.error("Error updating voucher:", error);
-      addToast(error.response?.data?.message || "Lỗi khi cập nhật voucher", "error");
-    }
-  };
-
-  const handleDelete = async (voucherId) => {
-    if (!window.confirm("Bạn có chắc muốn xóa voucher này?")) return;
-
-    try {
-      const response = await adminApi.deleteVoucher(voucherId);
-      if (response.success) {
-        addToast("Xóa voucher thành công!");
-        loadVouchers();
-      } else {
-        addToast(response.message || "Không thể xóa voucher", "error");
-      }
-    } catch (error) {
-      console.error("Error deleting voucher:", error);
-      addToast(error.response?.data?.message || "Lỗi khi xóa voucher", "error");
-    }
-  };
-
-  const openEditModal = (voucher) => {
-    setSelectedVoucher(voucher);
-    setFormData({
-      voucherName: voucher.VoucherName || "",
-      voucherCode: voucher.VoucherCode || "",
-      discountPercentage: voucher.DiscountPercentage || 3,
-      maxUsage: voucher.MaxUsage || 100,
-      minComboValue: voucher.MinComboValue || 1000000,
-      startDate: voucher.StartDate ? new Date(voucher.StartDate).toISOString().split('T')[0] : "",
-      endDate: voucher.EndDate ? new Date(voucher.EndDate).toISOString().split('T')[0] : "",
-      status: voucher.Status || "ACTIVE"
-    });
-    setShowEditModal(true);
-  };
-
-  // Filter vouchers
-  const filteredVouchers = vouchers.filter(voucher => {
-    const matchesSearch = voucher.VoucherName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         voucher.VoucherCode?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "ACTIVE": return "text-green-600 bg-green-100";
-      case "INACTIVE": return "text-red-600 bg-red-100";
-      case "EXPIRED": return "text-gray-600 bg-gray-100";
-      default: return "text-gray-600 bg-gray-100";
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "ACTIVE": return <CheckCircle size={16} />;
-      case "INACTIVE": return <XCircle size={16} />;
-      case "EXPIRED": return <AlertCircle size={16} />;
-      default: return <AlertCircle size={16} />;
-    }
-  };
+  // Tính tổng doanh thu hệ thống từ tất cả bars (sau khi filter)
+  const totalSystemProfit = filteredAndSortedBars.reduce((sum, bar) => sum + (Number(bar.TotalSystemProfit) || 0), 0);
 
   return (
     <div className="p-6">
       <div className="max-w-7xl mx-auto">
+        <ToastContainer toasts={toasts} />
+        
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <TicketPercent className="text-primary" size={32} />
-            <h1 className="text-3xl font-bold text-foreground">Quản lý Voucher</h1>
+            <h1 className="text-3xl font-bold text-foreground">Quản lý Voucher từ Bar</h1>
           </div>
           <p className="text-muted-foreground">
-            Tạo và quản lý các voucher giảm giá cho hệ thống
+            Xem danh sách voucher do quán bar tạo và thống kê doanh thu
           </p>
         </div>
 
-        {/* Controls */}
-        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-          <div className="flex flex-col sm:flex-row gap-4 flex-1">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="bg-card border border-border rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Tổng doanh thu hệ thống</p>
+                <p className="text-2xl font-bold text-primary">
+                  {totalSystemProfit.toLocaleString('vi-VN')} đ
+                </p>
+              </div>
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <TrendingUp className="text-primary" size={24} />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Search and Sort Controls */}
+        <div className="mb-6 bg-card border border-border rounded-xl p-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             {/* Search */}
-            <div className="relative flex-1 max-w-md">
+            <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
               <input
                 type="text"
-                placeholder="Tìm kiếm voucher..."
+                placeholder="Tìm kiếm theo tên quán bar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
-
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="ACTIVE">Đang hoạt động</option>
-              <option value="INACTIVE">Không hoạt động</option>
-              <option value="EXPIRED">Đã hết hạn</option>
-            </select>
+            
+            {/* Sort */}
+            <div className="flex items-center gap-2">
+              <ArrowUpDown className="text-muted-foreground" size={20} />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="revenue-desc">Doanh thu: Cao → Thấp</option>
+                <option value="revenue-asc">Doanh thu: Thấp → Cao</option>
+                <option value="name-asc">Tên: A → Z</option>
+                <option value="name-desc">Tên: Z → A</option>
+              </select>
+            </div>
           </div>
-
-          {/* Create Button */}
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            <Plus size={20} />
-            Tạo Voucher
-          </button>
         </div>
 
-        {/* Voucher List */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredVouchers.map((voucher) => (
-              <motion.div
-                key={voucher.VoucherId}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow"
-              >
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <TicketPercent className="text-primary" size={24} />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">{voucher.VoucherName}</h3>
-                      <p className="text-sm text-muted-foreground font-mono">{voucher.VoucherCode}</p>
-                    </div>
-                  </div>
-                  <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(voucher.Status)}`}>
-                    {getStatusIcon(voucher.Status)}
-                    {voucher.Status}
-                  </div>
-                </div>
-
-                {/* Details */}
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <DollarSign size={16} className="text-muted-foreground" />
-                    <span>Giảm {voucher.DiscountPercentage}%</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users size={16} className="text-muted-foreground" />
-                    <span>{voucher.UsedCount || 0}/{voucher.MaxUsage} lượt</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar size={16} className="text-muted-foreground" />
-                    <span>{new Date(voucher.StartDate).toLocaleDateString('vi-VN')} - {new Date(voucher.EndDate).toLocaleDateString('vi-VN')}</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Tối thiểu: {voucher.MinComboValue?.toLocaleString('vi-VN')} đ
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openEditModal(voucher)}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
-                  >
-                    <Edit size={16} />
-                    Sửa
-                  </button>
-                  <button
-                    onClick={() => handleDelete(voucher.VoucherId)}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/80 transition-colors"
-                  >
-                    <Trash2 size={16} />
-                    Xóa
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && filteredVouchers.length === 0 && (
-          <div className="text-center py-12">
-            <TicketPercent className="mx-auto text-muted-foreground" size={48} />
-            <h3 className="text-lg font-semibold mt-4">Chưa có voucher nào</h3>
-            <p className="text-muted-foreground mb-4">Tạo voucher đầu tiên để bắt đầu</p>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              Tạo Voucher
-            </button>
-          </div>
-        )}
-
-        {/* Create Modal */}
-        <AnimatePresence>
-          {showCreateModal && (
-            <VoucherModal
-              title="Tạo Voucher Mới"
-              formData={formData}
-              onSubmit={handleCreate}
-              onClose={() => {
-                setShowCreateModal(false);
-                resetForm();
-              }}
-              onChange={handleInputChange}
-              submitText="Tạo Voucher"
-            />
-          )}
-
-          {/* Edit Modal */}
-          {showEditModal && (
-            <VoucherModal
-              title="Chỉnh sửa Voucher"
-              formData={formData}
-              onSubmit={handleEdit}
-              onClose={() => {
-                setShowEditModal(false);
-                setSelectedVoucher(null);
-                resetForm();
-              }}
-              onChange={handleInputChange}
-              submitText="Cập nhật"
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Toasts */}
-        <ToastContainer toasts={toasts} />
+        {/* Bar List with Expandable Vouchers */}
+        <BarListWithVouchers
+          bars={filteredAndSortedBars}
+          loading={loadingBars}
+          expandedBars={expandedBars}
+          barVouchersMap={barVouchersMap}
+          loadingVouchers={loadingVouchers}
+          onToggleBar={toggleBar}
+        />
       </div>
     </div>
   );
 }
 
-// Voucher Modal Component
-function VoucherModal({ title, formData, onSubmit, onClose, onChange, submitText }) {
+// Bar List with Expandable Vouchers Component
+function BarListWithVouchers({ bars, loading, expandedBars, barVouchersMap, loadingVouchers, onToggleBar }) {
+  if (loading) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <motion.div
-        initial={{ scale: 0.95 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0.95 }}
-        className="bg-card rounded-xl shadow-xl max-w-md w-full p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-xl font-bold mb-4">{title}</h2>
-
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Tên Voucher</label>
-            <input
-              type="text"
-              name="voucherName"
-              value={formData.voucherName}
-              onChange={onChange}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="bg-card border border-border rounded-xl p-6">
+            <SkeletonCard />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Mã Voucher</label>
-            <input
-              type="text"
-              name="voucherCode"
-              value={formData.voucherCode}
-              onChange={onChange}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
+        ))}
           </div>
+    );
+  }
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Giảm giá (%)</label>
-              <input
-                type="number"
-                name="discountPercentage"
-                value={formData.discountPercentage}
-                onChange={onChange}
-                min="3"
-                max="5"
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
+  if (bars.length === 0) {
+    return (
+      <div className="text-center py-12 bg-card rounded-xl border border-border">
+        <Building2 size={48} className="mx-auto text-muted-foreground mb-4" />
+        <p className="text-muted-foreground">Không có quán bar nào đã tạo voucher</p>
             </div>
+    );
+  }
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Số lượt tối đa</label>
-              <input
-                type="number"
-                name="maxUsage"
-                value={formData.maxUsage}
-                onChange={onChange}
-                min="1"
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-          </div>
+  return (
+    <div className="space-y-4">
+      {bars.map((bar) => {
+        const isExpanded = expandedBars.has(bar.BarPageId);
+        const vouchers = barVouchersMap[bar.BarPageId] || [];
+        const isLoading = loadingVouchers[bar.BarPageId];
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Giá trị combo tối thiểu (VND)</label>
-            <input
-              type="number"
-              name="minComboValue"
-              value={formData.minComboValue}
-              onChange={onChange}
-              min="1000000"
-              step="100000"
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Ngày bắt đầu</label>
-              <input
-                type="date"
-                name="startDate"
-                value={formData.startDate}
-                onChange={onChange}
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Ngày kết thúc</label>
-              <input
-                type="date"
-                name="endDate"
-                value={formData.endDate}
-                onChange={onChange}
-                className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                required
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Trạng thái</label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={onChange}
-              className="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="ACTIVE">Hoạt động</option>
-              <option value="INACTIVE">Không hoạt động</option>
-            </select>
-          </div>
-
-          <div className="flex gap-3 pt-4">
+        return (
+          <motion.div
+            key={bar.BarPageId}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-card border border-border rounded-xl overflow-hidden"
+          >
+            {/* Bar Header */}
             <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors"
+              onClick={() => onToggleBar(bar.BarPageId)}
+              className="w-full p-6 flex items-center justify-between hover:bg-muted/50 transition-colors"
             >
-              Hủy
+              <div className="flex items-center gap-4 flex-1">
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <Building2 className="text-primary" size={24} />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="text-lg font-semibold mb-1">{bar.BarName}</h3>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>{bar.TotalVouchers} voucher</span>
+                    <span>•</span>
+                    {(() => {
+                      const vouchers = barVouchersMap[bar.BarPageId] || [];
+                      const totalUsed = vouchers.reduce((sum, v) => sum + (Number(v.UsedCount) || 0), 0);
+                      const totalMaxUsage = vouchers.reduce((sum, v) => sum + (Number(v.MaxUsage) || 0), 0);
+                      return (
+                        <span>
+                          Đã sử dụng: {totalUsed} / {totalMaxUsage} lượt
+                        </span>
+                      );
+                    })()}
+                    <span>•</span>
+                    <span className="text-primary font-semibold">
+                      Doanh thu: {Number(bar.TotalSystemProfit || 0).toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+                </div>
+              </div>
+              {isExpanded ? (
+                <ChevronDown className="text-muted-foreground" size={24} />
+              ) : (
+                <ChevronRight className="text-muted-foreground" size={24} />
+              )}
             </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              {submitText}
-            </button>
+
+            {/* Vouchers List (Expandable) */}
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-6 pb-6 border-t border-border">
+                    {isLoading ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                        {[...Array(3)].map((_, i) => (
+                          <SkeletonCard key={i} />
+                        ))}
+                      </div>
+                    ) : vouchers.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <TicketPercent size={32} className="mx-auto mb-2 opacity-50" />
+                        <p>Chưa có voucher nào</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                        {vouchers.map((voucher) => (
+                          <motion.div
+                            key={voucher.VoucherId}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bg-background border border-border rounded-lg p-4 hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <div className="mb-1">
+                                  <span className="text-xs text-muted-foreground">Tên voucher: </span>
+                                  <span className="font-semibold text-sm">{voucher.VoucherName}</span>
+                                </div>
+                                <div>
+                                  <span className="text-xs text-muted-foreground">Mã voucher: </span>
+                                  <span className="text-xs font-mono font-semibold">{voucher.VoucherCode}</span>
+                                </div>
+                              </div>
+                              {(() => {
+                                const usedCount = Number(voucher.UsedCount) || 0;
+                                const maxUsage = Number(voucher.MaxUsage) || 0;
+                                const isActive = usedCount < maxUsage;
+                                
+                                return (
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    isActive
+                                      ? 'bg-green-100 text-green-700' 
+                                      : 'bg-gray-100 text-gray-700'
+                                  }`}>
+                                    {isActive ? 'Hoạt động' : 'Hết lượt sử dụng'}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Giá trị gốc:</span>
+                                <span className="font-semibold">
+                                  {(voucher.OriginalValue || 0).toLocaleString('vi-VN')} đ
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Đã sử dụng:</span>
+                                <span className="font-semibold">
+                                  {voucher.UsedCount || 0} / {voucher.MaxUsage} lượt
+                                </span>
+                              </div>
+                              <div className="pt-2 border-t border-border flex items-center justify-between">
+                                <span className="text-muted-foreground">Doanh thu hệ thống:</span>
+                                <span className="font-semibold text-primary">
+                                  {Number(voucher.TotalSystemProfit || 0).toLocaleString('vi-VN')} đ
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
           </div>
-        </form>
       </motion.div>
+              )}
+            </AnimatePresence>
     </motion.div>
+        );
+      })}
+    </div>
   );
 }

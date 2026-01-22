@@ -56,17 +56,17 @@ function ReviveAdCard({ zoneId = "1", barPageId }) {
       
       if (!isLocalhost) {
         // Thay thế localhost URLs bằng current URL trong HTML
-        // Match các pattern: http://localhost:PORT/path hoặc https://localhost:PORT/path
-        cleanHtml = cleanHtml.replace(
-          /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s"'<>]*)?/gi,
-          (match) => {
-            // Lấy path từ URL gốc (sau domain và port)
-            const urlMatch = match.match(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(\/.*)?$/i);
-            const path = urlMatch && urlMatch[1] ? urlMatch[1] : '';
+      // Match các pattern: http://localhost:PORT/path hoặc https://localhost:PORT/path
+      cleanHtml = cleanHtml.replace(
+        /https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s"'<>]*)?/gi,
+        (match) => {
+          // Lấy path từ URL gốc (sau domain và port)
+          const urlMatch = match.match(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?(\/.*)?$/i);
+          const path = urlMatch && urlMatch[1] ? urlMatch[1] : '';
             // Thay thế với current URL + path
             return currentUrl + path;
-          }
-        );
+        }
+      );
       }
       
       // Xóa nội dung cũ

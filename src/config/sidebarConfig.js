@@ -76,6 +76,7 @@ export const sidebarConfig = {
         { label: "Quản lý loại bàn", path: "/bar/settings/:barPageId/table-types" },
         { label: "Quản lý bàn", path: "/bar/settings/:barPageId" },
         { label: "Quản lý combo", path: "/bar/settings/:barPageId/combos" },
+        { label: "Quản lý voucher", path: "/bar/vouchers" },
       ],
     },
   ],
