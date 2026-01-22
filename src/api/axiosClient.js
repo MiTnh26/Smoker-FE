@@ -6,7 +6,7 @@ const axiosClient = axios.create({
 });
 
 axiosClient.interceptors.request.use((config) => {
-  console.log(`[REQUEST] ${config.method?.toUpperCase()} ${config.url}`);
+  
   
   // Lấy token từ 'session' trong localStorage
   let token = null;
@@ -41,6 +41,57 @@ axiosClient.interceptors.request.use((config) => {
     console.log(`[REQUEST] Token added: ${token.substring(0, 20)}...`);
   } else {
     console.warn(`[REQUEST] No token found for ${config.url}`);
+  }
+  
+  // ✅ Auto-add entityAccountId from session (nếu chưa có trong request)
+  try {
+    const sessionRaw = localStorage.getItem("session");
+    if (sessionRaw) {
+      const session = JSON.parse(sessionRaw);
+      // Lấy entityAccountId từ activeEntity hoặc account
+      const entityAccountId = session.activeEntity?.EntityAccountId || 
+                             session.activeEntity?.entityAccountId ||
+                             session.account?.EntityAccountId ||
+                             session.account?.entityAccountId ||
+                             null;
+      
+      if (entityAccountId) {
+        const method = config.method?.toLowerCase();
+        
+        // Cho POST/PUT/PATCH: thêm vào body (nếu là object, không phải FormData)
+        if (['post', 'put', 'patch'].includes(method)) {
+          if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
+            // Chỉ thêm nếu chưa có (không override nếu frontend đã gửi)
+            if (!config.data.entityAccountId) {
+              config.data.entityAccountId = entityAccountId;
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`[axiosClient] Auto-added entityAccountId to body: ${entityAccountId.substring(0, 20)}...`);
+              }
+            }
+          }
+        }
+        
+        // Cho GET/DELETE: thêm vào query params
+        if (method === 'get' || method === 'delete') {
+          // Khởi tạo params nếu chưa có
+          if (!config.params) {
+            config.params = {};
+          }
+          // Chỉ thêm nếu chưa có (không override nếu frontend đã gửi)
+          if (!config.params.entityAccountId) {
+            config.params.entityAccountId = entityAccountId;
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[axiosClient] Auto-added entityAccountId to params: ${entityAccountId.substring(0, 20)}...`);
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    // Silent fail - không ảnh hưởng request nếu không đọc được session
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[axiosClient] Không thể đọc entityAccountId từ session', e);
+    }
   }
   
   // Auto-add locale from i18n (if available)

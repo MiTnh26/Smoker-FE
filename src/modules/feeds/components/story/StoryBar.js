@@ -1,14 +1,21 @@
 
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState, useEffect } from "react"
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { isViewed } from "./utils/storyUtils";
 import { cn } from "../../../../utils/cn";
 import CreateStory from "./CreateStory";
+import searchApi from "../../../../api/searchApi";
 
 export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAccountId }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const barRef = useRef(null)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [showSearchModal, setShowSearchModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [trendingSearches, setTrendingSearches] = useState([])
+  const [loadingTrending, setLoadingTrending] = useState(false)
 
   // Số lượng item hiển thị cùng lúc (bao gồm cả card \"Tạo story\")
  
@@ -110,6 +117,7 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
     });
   }, [stories, isViewed, entityAccountId]);
 
+  const hasStories = groupedByUser.length > 0;
   const totalItems = groupedByUser.length + 1 // include CreateStory
   const maxIndex = Math.max(0, totalItems - VISIBLE_COUNT)
 
@@ -133,6 +141,47 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
       _allUserStories: userGroup.allStories // Flag để StoryViewer biết đây là grouped stories
     });
   }
+
+  // Handle discover button click - mở modal search
+  const handleDiscoverClick = () => {
+    setShowSearchModal(true);
+  }
+
+  // Handle search submit - điều hướng đến search với query
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setShowSearchModal(false);
+      setSearchQuery('');
+    }
+  }
+
+  // Handle close modal
+  const handleCloseModal = () => {
+    setShowSearchModal(false);
+    setSearchQuery('');
+  }
+
+  // Load trending searches khi modal mở
+  useEffect(() => {
+    if (showSearchModal && trendingSearches.length === 0) {
+      const loadTrendingSearches = async () => {
+        setLoadingTrending(true);
+        try {
+          const trends = await searchApi.getTrendingSearches(6);
+          setTrendingSearches(trends || []);
+        } catch (error) {
+          console.error('[StoryBar] Error loading trending searches:', error);
+          // Fallback to empty array
+          setTrendingSearches([]);
+        } finally {
+          setLoadingTrending(false);
+        }
+      };
+      loadTrendingSearches();
+    }
+  }, [showSearchModal]);
 
   return (
     <div className="relative flex w-full items-center">
@@ -173,7 +222,75 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
           style={{ transform: `translateX(-${offset}px)` }}
         >
           <CreateStory onOpenEditor={onOpenEditor} />
-          {groupedByUser.map((userGroup, idx) => {
+          
+          {/* Empty State khi chưa có stories từ bạn bè */}
+          {!hasStories && (
+            <div 
+              className="flex w-full items-center gap-3 rounded-xl border-2 border-dashed p-4" 
+              style={{ 
+                borderColor: "rgb(var(--border))",
+                background: "rgba(var(--card), 0.5)",
+                minHeight: "200px"
+              }}
+            >
+              <div className="flex flex-1 items-center gap-3">
+                {/* Icon */}
+                <div 
+                  className="flex-shrink-0 rounded-full p-3" 
+                  style={{ background: "rgba(var(--primary), 0.1)" }}
+                >
+                  <svg 
+                    width="24" 
+                    height="24" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2"
+                    style={{ color: "rgb(var(--primary))" }}
+                  >
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <path d="M8 2v4M16 2v4M3 10h18" />
+                  </svg>
+                </div>
+                
+                {/* Message */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm mb-1" style={{ color: "rgb(var(--foreground))" }}>
+                    {t('story.emptyTitle')}
+                  </p>
+                  <p className="text-xs opacity-70" style={{ color: "rgb(var(--foreground))" }}>
+                    {t('story.emptyDescription')}
+                  </p>
+                </div>
+                
+                {/* CTA Buttons */}
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={handleDiscoverClick}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    style={{ 
+                      background: "rgb(var(--primary))",
+                      color: "rgb(var(--primary-foreground))"
+                    }}
+                  >
+                    {t('story.discover')}
+                  </button>
+                  <button
+                    onClick={onOpenEditor}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors"
+                    style={{ 
+                      borderColor: "rgb(var(--border))",
+                      color: "rgb(var(--foreground))"
+                    }}
+                  >
+                    {t('story.createFirst')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {hasStories && groupedByUser.map((userGroup, idx) => {
             const story = userGroup.displayStory;
             const key = story._id || `story-${idx}`;
             const avatarSrc = story.authorAvatar || story.avatar || '/default-avatar.png';
@@ -271,6 +388,148 @@ export default function StoryBar({ stories, onStoryClick, onOpenEditor, entityAc
             />
           </svg>
         </button>
+      )}
+
+{showSearchModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={handleCloseModal}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') handleCloseModal();
+          }}
+          role="dialog"
+          aria-modal="true"
+          tabIndex={-1}
+        >
+          <div 
+            className="relative w-full max-w-lg mx-4 rounded-xl shadow-2xl overflow-hidden"
+            style={{ 
+              background: "rgb(var(--card))",
+              border: "1px solid rgb(var(--border))",
+              color: "rgb(var(--foreground))"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header: Title & Close */}
+            <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "rgb(var(--border))" }}>
+              <h3 className="text-lg font-bold">
+                {t('story.searchTitle') || "Tìm kiếm Story"}
+              </h3>
+              <button
+                onClick={handleCloseModal}
+                className="p-1 rounded-full hover:bg-black/5 transition-colors opacity-70 hover:opacity-100"
+                aria-label="Close"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <form onSubmit={handleSearchSubmit} className="space-y-6">
+                
+                {/* Input Area */}
+                <div className="relative group">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.35-4.35" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={t('story.searchPlaceholder') || "Nhập tên người dùng, sự kiện..."}
+                    className="w-full pl-12 pr-10 py-3.5 rounded-lg border text-base focus:outline-none focus:ring-2 transition-all"
+                    style={{ 
+                      background: "rgb(var(--background))",
+                      borderColor: "rgb(var(--border))",
+                      color: "rgb(var(--foreground))",
+                      boxShadow: "none"
+                    }}
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button 
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 opacity-50 hover:opacity-100"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                    </button>
+                  )}
+                </div>
+
+                {/* Phần Gợi ý (UX: Lấp đầy khoảng trống khi chưa nhập) */}
+                {!searchQuery && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold uppercase opacity-50 tracking-wider">
+                      {t('story.trendingSearches') || 'Xu hướng tìm kiếm'}
+                    </p>
+                    {loadingTrending ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="text-sm opacity-50" style={{ color: "rgb(var(--foreground))" }}>
+                          {t('common.loading') || 'Đang tải...'}
+                        </div>
+                      </div>
+                    ) : trendingSearches.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {trendingSearches.map((tag, index) => (
+                          <button 
+                            key={`${tag}-${index}`}
+                            type="button"
+                            onClick={() => setSearchQuery(tag)}
+                            className="px-3 py-1.5 text-sm rounded-md border hover:brightness-95 transition-all"
+                            style={{ 
+                              background: "rgb(var(--background))", 
+                              borderColor: "rgb(var(--border))",
+                              color: "rgb(var(--foreground))"
+                            }}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs opacity-50 py-2" style={{ color: "rgb(var(--foreground))" }}>
+                        {t('story.noTrendingSearches') || 'Chưa có xu hướng tìm kiếm'}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Footer Buttons */}
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="px-5 py-2.5 rounded-lg text-sm font-medium border hover:bg-black/5 transition-colors"
+                    style={{ 
+                      borderColor: "rgb(var(--border))",
+                      color: "rgb(var(--foreground))"
+                    }}
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!searchQuery.trim()}
+                    className="px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ 
+                      background: "rgb(var(--primary))",
+                      color: "rgb(var(--primary-foreground))"
+                    }}
+                  >
+                    {t('story.search')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

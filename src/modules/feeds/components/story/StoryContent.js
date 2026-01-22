@@ -12,7 +12,7 @@ export default function StoryContent({ story }) {
         src={story.video}
         autoPlay
         muted
-        className="aspect-[9/16] w-full bg-muted object-cover"
+        className="h-full w-full max-h-[calc(100vh-5rem)] max-w-full bg-black object-contain"
       />
     );
   }
@@ -41,7 +41,7 @@ export default function StoryContent({ story }) {
       <img 
         src={imageUrl} 
         alt={story.title || story.content || "story"} 
-        className="aspect-[9/16] w-full bg-muted object-cover" 
+        className="h-full w-full max-h-[calc(100vh-5rem)] max-w-full bg-black object-contain" 
       />
     );
   }

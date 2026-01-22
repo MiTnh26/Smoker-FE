@@ -1082,90 +1082,17 @@ export default function PostCard({
                       <span className="font-semibold text-sm text-foreground mr-2">
                         {displayName}
                       </span>
-                      {isEditing ? (
-                        <div className="mt-2">
-                          <textarea
-                            value={editCommentText}
-                            onChange={(e) => setEditCommentText(e.target.value)}
-                            className={cn(
-                              "w-full px-2 py-1.5 rounded-lg text-sm",
-                              "bg-background text-foreground border border-border",
-                              "outline-none resize-none"
-                            )}
-                            rows={2}
-                            autoFocus
-                          />
-                          <div className="flex gap-2 mt-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditComment(comment.id, comment.content);
-                              }}
-                              disabled={!editCommentText.trim()}
-                              className={cn(
-                                "px-3 py-1 bg-primary text-white rounded-lg",
-                                "text-xs font-semibold transition-all",
-                                "disabled:opacity-50 disabled:cursor-not-allowed",
-                                "hover:bg-primary/90"
-                              )}
-                            >
-                              Lưu
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingCommentId(null);
-                                setEditCommentText("");
-                              }}
-                              className={cn(
-                                "px-3 py-1 bg-muted/30 text-foreground rounded-lg",
-                                "text-xs font-semibold transition-all",
-                                "hover:bg-muted/50"
-                              )}
-                            >
-                              Hủy
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <ExpandableText
-                          text={comment.content || ""}
-                          maxLength={100}
-                          textClassName="text-sm text-foreground"
-                          buttonClassName="text-xs"
-                        />
-                      )}
+                      <ExpandableText
+                        text={comment.content || ""}
+                        maxLength={100}
+                        textClassName="text-sm text-foreground"
+                        buttonClassName="text-xs"
+                      />
                     </div>
                     <div className="flex items-center gap-3 mt-1 ml-2">
                       <span className="text-xs text-muted-foreground">
                         {comment.likeCount || 0} lượt thích
                       </span>
-                      {isOwner && !isEditing && (
-                        <>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEditComment(comment.id, comment.content);
-                            }}
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            Chỉnh sửa
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteComment(comment.id);
-                            }}
-                            disabled={deletingCommentId === comment.id}
-                            className={cn(
-                              "text-xs text-danger hover:text-danger/80 transition-colors",
-                              deletingCommentId === comment.id && "opacity-50 cursor-not-allowed"
-                            )}
-                          >
-                            {deletingCommentId === comment.id ? "Đang xóa..." : "Xóa"}
-                          </button>
-                        </>
-                      )}
                       {index === post.topComments.length - 1 && post.comments > post.topComments.length && (
                         <button
                           onClick={(e) => {

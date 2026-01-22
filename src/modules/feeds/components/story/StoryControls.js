@@ -20,11 +20,11 @@ export default function StoryControls({
   const { t } = useTranslation();
 
   const controlButtonBase =
-    "flex h-9 w-9 items-center justify-center rounded-lg bg-black/40 text-white transition-colors duration-200 hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40";
+    "flex h-10 w-10 items-center justify-center rounded-lg bg-black/60 backdrop-blur-md text-white transition-all duration-200 hover:bg-black/80 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 border border-white/10";
 
   return (
     <>
-      <div className="absolute right-12 top-12 z-30 flex items-center gap-2">
+      <div className="absolute right-6 top-20 z-30 flex items-center gap-2">
         <button
           className={controlButtonBase}
           onClick={onPause}

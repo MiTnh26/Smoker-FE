@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import { userApi } from "../../../api/userApi";
 import { locationApi } from "../../../api/locationApi";
 import { useNavigate } from "react-router-dom";
+import { Info, X } from "lucide-react";
+import { Button } from "../../../components/common/Button";
 import "../../../styles/modules/profileSetup.css";
 
 const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
@@ -32,6 +34,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
+  const [showHint, setShowHint] = useState(true); // State để ẩn/hiện hint
   const isLoadingProfileRef = useRef(false); // Ref để track đang load profile (không trigger re-render)
   const hasLoadedFromProfileRef = useRef(false); // Ref để track đã load từ profile (không reset giá trị)
 
@@ -600,6 +603,31 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
           </p>
         </div>
 
+        {/* Friendly Hint */}
+        {(() => {
+          const hasPhone = form.phone.trim() !== '';
+          const hasFullAddress = selectedProvinceId && selectedDistrictId && selectedWardId && form.address.trim() !== '';
+          const needsInfo = !hasPhone && !hasFullAddress;
+          return needsInfo && showHint;
+        })() && (
+          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center flex-1 gap-2">
+              <Info className="h-4 w-4 text-blue-500 flex-shrink-0" />
+              <p className="text-sm text-blue-700">
+                Để hoàn tất hồ sơ, bạn cần điền <strong>địa chỉ</strong> hoặc <strong>số điện thoại</strong>. Bạn có thể bỏ qua bây giờ và điền sau.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowHint(false)}
+              className="flex-shrink-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded p-1 transition-colors"
+              aria-label="Đóng thông báo"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Form Section */}
           <div className="ps-card rounded-2xl p-5 sm:p-6">
@@ -803,21 +831,44 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               </div>
               {/* Gender */}
               <div>
-                <label htmlFor="gender" className="ps-label block text-sm font-medium mb-2">
+                <label className="ps-label block text-sm font-medium mb-2">
                   Giới tính
                 </label>
-                <select
-                  id="gender"
-                  name="gender"
-                  value={form.gender}
-                  onChange={handleInputChange}
-                  className="ps-input w-full px-4 py-3 rounded-xl"
-                >
-                  <option value="">-- Chọn giới tính --</option>
-                  <option value="male">Nam</option>
-                  <option value="female">Nữ</option>
-                  <option value="other">Khác</option>
-                </select>
+                <div className="flex gap-4">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="male"
+                      checked={form.gender === 'male'}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 text-primary border-gray-300 focus:ring-primary focus:ring-2"
+                    />
+                    <span className="ml-2 text-sm text-foreground">Nam</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="female"
+                      checked={form.gender === 'female'}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 text-primary border-gray-300 focus:ring-primary focus:ring-2"
+                    />
+                    <span className="ml-2 text-sm text-foreground">Nữ</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="other"
+                      checked={form.gender === 'other'}
+                      onChange={handleInputChange}
+                      className="h-4 w-4 text-primary border-gray-300 focus:ring-primary focus:ring-2"
+                    />
+                    <span className="ml-2 text-sm text-foreground">Khác</span>
+                  </label>
+                </div>
               </div>
               {/* Submit Error */}
               {errors.submit && (
@@ -861,22 +912,32 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
                 Đổi mật khẩu
               </button> */}
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={`ps-btn-primary w-full py-3 px-5 rounded-xl font-medium ${isLoading ? 'ps-btn-disabled' : ''}`}
-                aria-describedby="submit-help"
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Đang lưu...
-                  </div>
-                ) : (
-                  'Hoàn thành hồ sơ'
-                )}
-              </button>
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(redirectPath, { replace: true })}
+                  disabled={isLoading}
+                  className="flex-1 py-3 px-5 rounded-xl font-medium border-2 border-muted-foreground/30 text-muted-foreground hover:bg-muted/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Bỏ qua
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading || !isFormValid}
+                  className={`ps-btn-primary flex-1 py-3 px-5 rounded-xl font-medium ${(isLoading || !isFormValid) ? 'ps-btn-disabled opacity-50 cursor-not-allowed' : ''}`}
+                  aria-describedby="submit-help"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Đang lưu...
+                    </div>
+                  ) : (
+                    'Hoàn thành hồ sơ'
+                  )}
+                </button>
+              </div>
             </form>
           </div>
 

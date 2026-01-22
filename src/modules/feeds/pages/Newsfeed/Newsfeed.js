@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { StoryBar, StoryViewer, StoryEditor } from "../../components/story"
 import PostFeed from "../../components/post/PostFeed"
+import FeedHeader from "./components/FeedHeader"
 import "../../../../styles/modules/feeds/pages/Newsfeed/Newsfeed.css"
 import LiveSetup from "../../components/livestream/LiveSetup";
 import LiveBroadcaster from "../../components/livestream/LiveBroadcaster";
@@ -17,6 +18,7 @@ import { useStoryManager } from "../../components/story";
 export default function NewsfeedPage() {
   const { t } = useTranslation();
   const [activeStory, setActiveStory] = useState(null)
+  const [activeTab, setActiveTab] = useState('trending'); // 'trending' | 'following' | 'friends'
   const {
     activeLivestream,
     openViewer,
@@ -208,6 +210,12 @@ export default function NewsfeedPage() {
 
   return (
     <div className="newsfeed-page">
+      {/* Feed Header with Tabs - Hiển thị trên cùng */}
+      <FeedHeader 
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+      
       {/* Tạo Story + StoryBar */}
       <div className="story-section">
         <StoryBar 
@@ -221,6 +229,7 @@ export default function NewsfeedPage() {
       <main className="newsfeed-main">
         {/* PostFeed now includes livestreams merged with posts */}
         <PostFeed 
+          feedType={activeTab}
           onGoLive={handleGoLive} 
           onLivestreamClick={handleLivestreamClick}
         />
@@ -233,6 +242,10 @@ export default function NewsfeedPage() {
           onClose={() => setActiveStory(null)}
           onStoryDeleted={fetchStories}
           onStoryViewed={handleStoryViewed}
+          onOpenEditor={() => {
+            setActiveStory(null);
+            handleOpenEditor();
+          }}
         />
       )}
 

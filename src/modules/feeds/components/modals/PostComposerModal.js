@@ -212,41 +212,8 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
   const [userName, setUserName] = useState("");
   const { t } = useTranslation();
 
-  // Load user info from session
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("session");
-      const session = raw ? JSON.parse(raw) : null;
-      if (session) {
-        const activeEntity = session?.activeEntity || session?.account;
-        const avatar = activeEntity?.avatar || session?.account?.avatar || "https://media.techz.vn/resize_x700x/media2019/source/01TRAMY/2024MY1/mckanhnong.png";
-        const name = activeEntity?.name || activeEntity?.userName || session?.account?.userName || session?.account?.name || "Người dùng";
-        setUserAvatar(avatar);
-        setUserName(name);
-      }
-    } catch (err) {
-      console.error("[COMPOSER] Error loading user info:", err);
-    }
-  }, [open]);
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-      // Reset status khi mở modal
-      setStatus("public");
-      setShowPrivacyDropdown(false);
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-  
-  if (!open) return null;
-
   // Upload files via backend API (safer, uses backend Cloudinary config)
+  // ⚠️ QUAN TRỌNG: Định nghĩa trước để có thể sử dụng trong useEffect
   const uploadToCloudinary = async (file, type) => {
     const formData = new FormData();
     // Backend expects field names: "images" for images, "videos" for videos, "audio" for audio
@@ -320,6 +287,102 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
     updatedFiles[index] = { ...updatedFiles[index], caption };
     setMediaFiles(updatedFiles);
   };
+
+  // Load user info from session
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      if (session) {
+        const activeEntity = session?.activeEntity || session?.account;
+        const avatar = activeEntity?.avatar || session?.account?.avatar || "https://media.techz.vn/resize_x700x/media2019/source/01TRAMY/2024MY1/mckanhnong.png";
+        const name = activeEntity?.name || activeEntity?.userName || session?.account?.userName || session?.account?.name || "Người dùng";
+        setUserAvatar(avatar);
+        setUserName(name);
+      }
+    } catch (err) {
+      console.error("[COMPOSER] Error loading user info:", err);
+    }
+  }, [open]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      // Reset status khi mở modal
+      setStatus("public");
+      setShowPrivacyDropdown(false);
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  // ⚠️ QUAN TRỌNG: Xử lý paste image từ clipboard khi modal mở
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePaste = async (e) => {
+      // Chỉ xử lý nếu đang focus vào modal (không phải input/textarea khác)
+      const target = e.target;
+      const isInModal = target.closest('.post-form-glass-card');
+      if (!isInModal) return;
+
+      const items = e.clipboardData?.items;
+      if (!items || uploading) return;
+      
+      const imageFiles = [];
+      for (const item of Array.from(items)) {
+        // Chỉ xử lý image
+        if (item.type.includes('image')) {
+          const file = item.getAsFile();
+          if (file) {
+            imageFiles.push(file);
+          }
+        }
+      }
+      
+      // Nếu có image được paste, upload và thêm vào mediaFiles
+      if (imageFiles.length > 0) {
+        e.preventDefault(); // Ngăn paste text nếu có image
+        e.stopPropagation(); // Ngăn event bubble
+        
+        setUploading(true);
+        try {
+          const uploadedFiles = [];
+          for (const file of imageFiles) {
+            const result = await uploadToCloudinary(file, 'images');
+            if (result.secure_url) {
+              uploadedFiles.push({
+                url: result.secure_url,
+                path: result.secure_url,
+                type: result.type || file.type,
+                resource_type: result.resource_type || 'image',
+                caption: ""
+              });
+            }
+          }
+          if (uploadedFiles.length > 0) {
+            setMediaFiles(prev => [...prev, ...uploadedFiles]);
+          }
+        } catch (err) {
+          console.error("[COMPOSER] Paste upload failed:", err);
+          alert(`${t('modal.uploadFailed')}: ${err.message || ''}`);
+        } finally {
+          setUploading(false);
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [open, uploading, t]);
+
+  if (!open) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -564,6 +627,29 @@ export default function PostComposerModal({ open, onClose, onCreated, postType =
                   <textarea
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
+                    onPaste={async (e) => {
+                      // ⚠️ QUAN TRỌNG: Xử lý paste image từ clipboard
+                      const items = e.clipboardData?.items;
+                      if (!items) return;
+                      
+                      const imageFiles = [];
+                      for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+                        // Chỉ xử lý image
+                        if (item.type.indexOf('image') !== -1) {
+                          const file = item.getAsFile();
+                          if (file) {
+                            imageFiles.push(file);
+                          }
+                        }
+                      }
+                      
+                      // Nếu có image được paste, upload và thêm vào mediaFiles
+                      if (imageFiles.length > 0) {
+                        e.preventDefault(); // Ngăn paste text nếu có image
+                        await handleFileUpload(imageFiles, 'images');
+                      }
+                    }}
                     placeholder={t('modal.composerPlaceholder') || "Bạn đang nghĩ gì?..."}
                     rows={6}
                     className="post-form-textarea post-form-textarea-modern"
