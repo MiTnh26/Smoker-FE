@@ -35,7 +35,7 @@ const extractLikeAccountId = (like) => {
   return normalizeGuid(like.accountId || like.AccountId);
 };
 
-export default function PostFeed({ onGoLive, onLivestreamClick }) {
+export default function PostFeed({ feedType = 'trending', onGoLive, onLivestreamClick }) {
   const { t } = useTranslation();
   const { socket } = useSocket();
   const [feed, setFeed] = useState([]);
@@ -179,10 +179,13 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
     }
   }, []);
 
-  // Load initial posts when component mounts
+  // Load initial posts when component mounts or feedType changes
   useEffect(() => {
+    // Reset cursor and hasMore when feedType changes
+    setCursor(null);
+    setHasMore(true);
     loadPosts(false);
-  }, []); // Empty dependency array - only run once on mount
+  }, [feedType]); // Reload when feedType changes
 
   const loadPosts = async (isRefresh = false) => {
     try {
@@ -199,6 +202,7 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
       // Use cursor-based pagination if cursor exists
       const params = {
         limit: 10,
+        feedType: feedType, // 'trending' | 'following' | 'friends'
         // Add timestamp to prevent caching
         _t: Date.now()
       };
@@ -279,7 +283,8 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
 
       const response = await feedApi.getFeed({
         cursor: cursor,
-        limit: 10
+        limit: 10,
+        feedType: feedType // 'trending' | 'following' | 'friends'
       });
 
       let feedData = [];
@@ -502,7 +507,18 @@ export default function PostFeed({ onGoLive, onLivestreamClick }) {
 
       <div className="feed-posts gap-1.5">
         {feed.length === 0 ? (
-          <p key="empty-feed" className="text-gray-400">{t('feed.noPosts')}</p>
+          <div key="empty-feed" className="text-center py-8">
+            <p className="text-gray-400 text-lg font-medium mb-2">{t('feed.emptyTitle')}</p>
+            {feedType === 'following' && (
+              <p className="text-gray-500">{t('feed.followingEmpty')}</p>
+            )}
+            {feedType === 'friends' && (
+              <p className="text-gray-500">{t('feed.friendsEmpty')}</p>
+            )}
+            {feedType === 'trending' && (
+              <p className="text-gray-500">{t('feed.noPosts')}</p>
+            )}
+          </div>
         ) : (
           feed.map((item, index) => {
             // Handle livestream

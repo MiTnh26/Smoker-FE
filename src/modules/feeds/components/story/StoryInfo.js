@@ -50,7 +50,7 @@ export default function StoryInfo({ story, t, isOwnStory = false }) {
   const displayCaption = story.content || story.caption || "";
 
   return (
-    <div className="absolute left-3 right-3 top-12 z-10 flex items-start gap-3 pr-24 text-white pointer-events-none">
+    <div className="absolute left-6 right-6 top-16 z-10 flex items-start gap-3 pr-32 text-white pointer-events-none">
       <img 
         src={avatarSrc} 
         alt={username} 

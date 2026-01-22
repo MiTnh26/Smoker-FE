@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Music, Type } from "lucide-react";
+import { Music, Type, ZoomIn, ZoomOut, Move } from "lucide-react";
 import SelectSong from "../music/SelectSong";
 import Cropper from "react-easy-crop";
 import Slider from "@mui/material/Slider";
@@ -88,14 +88,16 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
   const renderPreviewContent = () => {
     if (!imageUrl) {
       return (
-        <div className="flex h-[480px] w-full items-center justify-center rounded-lg border-[0.5px] border-border/20 bg-muted/40 text-sm text-muted-foreground">
+        <div className="flex h-full w-full items-center justify-center rounded-lg border-2 border-border bg-muted/40 text-sm text-muted-foreground">
           {t('story.selectImage') || 'Chọn ảnh để bắt đầu'}
         </div>
       );
     }
 
   return (
-      <div className="relative h-[480px] w-full overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-black/60">
+      <>
+        {/* Preview Image Container - Full height, tràn viền dọc, giữ tỉ lệ điện thoại dọc */}
+        <div className="relative mx-auto overflow-hidden bg-black" style={{ height: '100vh', width: 'calc(100vh * 9 / 16)', maxWidth: '100%' }}>
               <Cropper
                 image={imageUrl}
                 crop={crop}
@@ -119,24 +121,6 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
             )}
           </div>
         )}
-        <div className="absolute bottom-2 left-2 right-2 z-10 rounded-lg bg-black/60 px-3 py-2 backdrop-blur">
-                <Slider
-                  value={zoom}
-                  min={1}
-                  max={3}
-                  step={0.01}
-                  onChange={(_, value) => setZoom(value)}
-            sx={{
-              color: '#1877f2',
-              '& .MuiSlider-thumb': {
-                backgroundColor: '#1877f2',
-              },
-              '& .MuiSlider-track': {
-                backgroundColor: '#1877f2',
-              }
-            }}
-                />
-              </div>
         <button 
           type="button"
           className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white transition-colors hover:bg-black/80"
@@ -157,19 +141,100 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
           ×
         </button>
       </div>
+      
+      {/* Zoom and Crop Controls - Outside preview container, căn giữa theo preview */}
+      <div className="absolute bottom-4 z-10 space-y-3" style={{ left: '50%', transform: 'translateX(-50%)', width: 'calc(100vh * 9 / 16)', maxWidth: 'calc(100% - 2rem)' }}>
+        {/* Zoom Control */}
+        <div className="rounded-xl bg-black/70 px-4 py-3 backdrop-blur-md border border-white/20">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ZoomIn size={16} className="text-white/80" />
+              <span className="text-xs font-medium text-white/90">Zoom</span>
+            </div>
+            <span className="text-xs font-semibold text-white">{Math.round(zoom * 100)}%</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setZoom(Math.max(1, zoom - 0.1))}
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition-all duration-200 hover:bg-white/20 hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/10 disabled:hover:scale-100"
+              disabled={zoom <= 1}
+            >
+              <ZoomOut size={16} />
+            </button>
+            <div className="flex-1">
+              <Slider
+                value={zoom}
+                min={1}
+                max={3}
+                step={0.05}
+                onChange={(_, value) => setZoom(value)}
+                sx={{
+                  color: 'rgb(var(--primary))',
+                  height: 6,
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  '& .MuiSlider-thumb': {
+                    width: 20,
+                    height: 20,
+                    backgroundColor: 'rgb(var(--primary))',
+                    border: '3px solid white',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    // ⚠️ QUAN TRỌNG: Sử dụng width/height thay vì scale để tránh lệch vị trí
+                    '&:hover': {
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                      width: 23,
+                      height: 23,
+                      marginLeft: '-1.5px',
+                      marginTop: '-1.5px',
+                    },
+                    '&:active': {
+                      width: 24,
+                      height: 24,
+                      marginLeft: '-2px',
+                      marginTop: '-2px',
+                    }
+                  },
+                  '& .MuiSlider-track': {
+                    backgroundColor: 'rgb(var(--primary))',
+                    height: 5,
+                    border: 'none',
+                    transition: 'all 0.2s ease',
+                  },
+                  '& .MuiSlider-rail': {
+                    backgroundColor: 'rgba(255,255,255,0.25)',
+                    height: 5,
+                    opacity: 1,
+                  },
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setZoom(Math.min(3, zoom + 0.1))}
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white transition-all duration-200 hover:bg-white/20 hover:scale-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white/10 disabled:hover:scale-100"
+              disabled={zoom >= 3}
+            >
+              <ZoomIn size={16} />
+            </button>
+          </div>
+        </div>
+        
+        {/* Crop Position Hint */}
+        <div className="flex items-center justify-center gap-2 rounded-lg bg-black/50 px-3 py-2 backdrop-blur-sm border border-white/10">
+          <Move size={14} className="text-white/70" />
+          <span className="text-xs text-white/80">Kéo để di chuyển hình ảnh</span>
+        </div>
+      </div>
+    </>
     );
   };
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-[1000] flex flex-col bg-card"
       tabIndex={-1}
       role="presentation"
-      onClick={(e) => {
-      if (e.target === e.currentTarget && onClose) {
-        onClose();
-      }
-      }}
       onKeyDown={(e) => {
         if (e.key === "Escape" && onClose) {
           onClose();
@@ -177,20 +242,22 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
       }}
     >
       <div
-        className="grid w-[960px] max-w-[95vw] grid-cols-[280px_1fr] gap-4 rounded-lg border-[0.5px] border-border/20 bg-card p-4 text-card-foreground shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+        className="flex h-full w-full gap-4 p-4 text-card-foreground"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Left Sidebar */}
-        <div className="flex h-full flex-col">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold">{t('story.yourStory') || 'Your story'}</h2>
+        <div className="flex h-full w-[320px] flex-shrink-0 flex-col border-r border-border pr-4">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">{t('story.yourStory') || 'Your story'}</h2>
             <button
               type="button"
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-transparent text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95"
+              className="flex h-9 w-9 items-center justify-center rounded-lg bg-transparent text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground active:scale-95"
               onClick={onClose}
               title={t('action.close') || 'Close'}
             >
-              ×
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
             </button>
           </div>
           
@@ -289,8 +356,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
                 setActivePanel(activePanel === 'alternative' ? null : 'alternative');
               }}
             >
-              <span className="rounded bg-muted px-1.5 py-0.5 text-xs">Aa</span>
-              <span>{t('story.alternativeText') || 'Alternative text'}</span>
+             
             </button>
           </div>
           
@@ -313,29 +379,27 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
         </div>
         
         {/* Right Preview Panel */}
-        <div className="flex flex-col">
-          <div className="mb-2 text-sm font-medium text-muted-foreground">{t('story.preview') || 'Preview'}</div>
-          <div className="rounded-lg border-[0.5px] border-border/20 bg-card p-3">
-            <div className="flex items-center justify-center">
-              {renderPreviewContent()}
-            </div>
-            </div>
+        <div className="relative flex flex-1 flex-col overflow-hidden">
+          <div className="mb-3 text-sm font-medium text-muted-foreground">{t('story.preview') || 'Preview'}</div>
+          <div className="flex flex-1 items-center justify-center overflow-hidden p-0">
+            {renderPreviewContent()}
+          </div>
           
           {/* Image Upload Button (if no image) */}
           {!imageUrl && (
-            <div className="mt-5 text-center">
+            <div className="mt-6 text-center">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 onChange={handleFileChange}
                 ref={inputFileRef}
                 style={{ display: 'none' }}
               />
               <button 
                 onClick={() => inputFileRef.current.click()}
-                className="rounded-lg bg-primary px-6 py-3 text-[15px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90 active:scale-95"
+                className="rounded-lg bg-primary px-8 py-3 text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 active:scale-95"
               >
-                {t('story.selectImage') || 'Select Image'}
+                {t('story.selectImage') || 'Select Image or Video'}
             </button>
           </div>
           )}
@@ -360,10 +424,10 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
           tabIndex={-1}
         >
           <div
-            className="w-[480px] max-w-[90vw] rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+            className="w-[480px] max-w-[90vw] rounded-lg border-2 border-border bg-card shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-border/20 p-4">
+            <div className="flex items-center justify-between border-b border-border p-4">
               <h3 className="text-lg font-semibold text-card-foreground">
                 {t('story.addText') || 'Add text'}
               </h3>
@@ -380,7 +444,7 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
                 {t('input.caption') || 'Caption'}
               </label>
               <textarea
-                className="h-40 w-full rounded-lg border-[0.5px] border-border/20 bg-background px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+                className="h-40 w-full rounded-lg border-2 border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-all duration-200 focus:border-primary focus:ring-2 focus:ring-primary/20"
                 placeholder={t('input.captionStory') || 'Add a caption...'}
                 value={captionDraft}
                 onChange={(e) => setCaptionDraft(e.target.value)}
@@ -427,10 +491,10 @@ export default function StoryEditor({ onStoryCreated, onClose }) {
           tabIndex={-1}
         >
           <div
-            className="w-[500px] max-w-[90vw] max-h-[80vh] overflow-hidden rounded-lg border-[0.5px] border-border/20 bg-card shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+            className="w-[500px] max-w-[90vw] max-h-[80vh] overflow-hidden rounded-lg border-2 border-border bg-card shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-border/20 p-4">
+            <div className="flex items-center justify-between border-b border-border p-4">
               <h3 className="text-lg font-semibold text-card-foreground">
                 {t('story.selectMusicFromLibrary') || 'Select music from library'}
               </h3>

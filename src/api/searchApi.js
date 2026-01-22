@@ -79,6 +79,26 @@ const searchApi = {
       });
       return emptyResult;
     }
+  },
+
+  /**
+   * Lấy danh sách trending searches (gợi ý tìm kiếm phổ biến)
+   * @param {number} limit - Số lượng kết quả (default: 6)
+   * @returns {Promise<Array<string>>} - Danh sách tên trending
+   */
+  async getTrendingSearches(limit = 6) {
+    try {
+      const response = await axiosClient.get('/search/trending', { 
+        params: { limit } 
+      });
+      
+      // Axios interceptor trả về response.data
+      const data = response?.data || response || [];
+      return Array.isArray(data) ? data : (data.data || []);
+    } catch (error) {
+      console.error('[Search API] Error getting trending searches:', error);
+      return [];
+    }
   }
 };
 

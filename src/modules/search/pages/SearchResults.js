@@ -33,6 +33,27 @@ export default function SearchResults() {
   const [active, setActive] = useState("all");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState({ users: [], bars: [], djs: [], dancers: [], posts: [] });
+  const [trendingSearches, setTrendingSearches] = useState([]);
+  const [loadingTrending, setLoadingTrending] = useState(false);
+
+  // Load trending searches khi chưa có query
+  useEffect(() => {
+    if (!q && trendingSearches.length === 0) {
+      const loadTrendingSearches = async () => {
+        setLoadingTrending(true);
+        try {
+          const trends = await searchApi.getTrendingSearches(8);
+          setTrendingSearches(trends || []);
+        } catch (error) {
+          console.error('[SearchResults] Error loading trending searches:', error);
+          setTrendingSearches([]);
+        } finally {
+          setLoadingTrending(false);
+        }
+      };
+      loadTrendingSearches();
+    }
+  }, [q, trendingSearches.length]);
 
   useEffect(() => {
     let alive = true;
@@ -122,23 +143,64 @@ export default function SearchResults() {
 
         {/* Kết quả bên phải */}
         <main className="flex-1 rounded-2xl bg-card/60 p-3 sm:p-4 border border-border/40">
-          {q && (
-            <p className="mb-3 text-xs text-muted-foreground">
-              {t("search.resultsFor", { q }) || `Kết quả cho "${q}"`}
-            </p>
-          )}
-          {loading ? (
-            <div className="py-4 text-sm text-muted-foreground">
-              {t("search.searching") || "Đang tìm..."}
+          {/* Trending Searches - Hiển thị khi chưa có query */}
+          {!q && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground mb-2">
+                  {t("search.trendingSearches") || "Xu hướng tìm kiếm"}
+                </h2>
+                {loadingTrending ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="text-sm opacity-50 text-muted-foreground">
+                      {t("common.loading") || "Đang tải..."}
+                    </div>
+                  </div>
+                ) : trendingSearches.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {trendingSearches.map((tag, index) => (
+                      <button
+                        key={`trending-${index}`}
+                        type="button"
+                        onClick={() => navigate(`/search?q=${encodeURIComponent(tag)}`)}
+                        className="px-4 py-2 text-sm rounded-lg border transition-all hover:brightness-95 hover:border-primary/40"
+                        style={{ 
+                          background: "rgb(var(--background))", 
+                          borderColor: "rgb(var(--border))",
+                          color: "rgb(var(--foreground))"
+                        }}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm opacity-50 py-4 text-muted-foreground">
+                    {t("search.noTrendingSearches") || "Chưa có xu hướng tìm kiếm"}
+                  </div>
+                )}
+              </div>
             </div>
-          ) : (
+          )}
+
+          {/* Search Results - Hiển thị khi có query */}
+          {q && (
             <>
-              {active === "all" ? (
+              <p className="mb-3 text-xs text-muted-foreground">
+                {t("search.resultsFor", { q }) || `Kết quả cho "${q}"`}
+              </p>
+              {loading ? (
+                <div className="py-4 text-sm text-muted-foreground">
+                  {t("search.searching") || "Đang tìm..."}
+                </div>
+              ) : (
                 <>
-                  {/* Mọi người (users) */}
-                  {(data.users || []).length > 0 && (
-                    <section className="mb-5 rounded-xl bg-background/40 border border-border/40 px-3 py-2.5">
-                      <div className="mb-2 flex items-center justify-between">
+                  {active === "all" ? (
+                    <>
+                      {/* Mọi người (users) */}
+                      {(data.users || []).length > 0 && (
+                        <section className="mb-5 rounded-xl bg-background/40 border border-border/40 px-3 py-2.5">
+                          <div className="mb-2 flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-foreground">
                           {t("search.sectionUsers") || "Mọi người"}
                         </h3>
@@ -181,14 +243,14 @@ export default function SearchResults() {
                             {renderFollowButton(item)}
                           </li>
                         ))}
-                      </ul>
-                    </section>
-                  )}
+                        </ul>
+                      </section>
+                      )}
 
-                  {/* Bar */}
-                  {(data.bars || []).length > 0 && (
-                    <section className="mb-5 rounded-xl bg-background/40 border border-border/40 px-3 py-2.5">
-                      <div className="mb-2 flex items-center justify-between">
+                      {/* Bar */}
+                      {(data.bars || []).length > 0 && (
+                        <section className="mb-5 rounded-xl bg-background/40 border border-border/40 px-3 py-2.5">
+                          <div className="mb-2 flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-foreground">
                           {t("search.sectionBars") || "Bar"}
                         </h3>
@@ -231,14 +293,14 @@ export default function SearchResults() {
                             {renderFollowButton(item)}
                           </li>
                         ))}
-                      </ul>
-                    </section>
-                  )}
+                          </ul>
+                        </section>
+                      )}
 
-                  {/* DJ */}
-                  {(data.djs || []).length > 0 && (
-                    <section className="mb-5 rounded-xl bg-background/40 border border-border/40 px-3 py-2.5">
-                      <div className="mb-2 flex items-center justify-between">
+                      {/* DJ */}
+                      {(data.djs || []).length > 0 && (
+                        <section className="mb-5 rounded-xl bg-background/40 border border-border/40 px-3 py-2.5">
+                          <div className="mb-2 flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-foreground">
                           {t("search.sectionDjs") || "DJ"}
                         </h3>
@@ -281,14 +343,14 @@ export default function SearchResults() {
                             {renderFollowButton(item)}
                           </li>
                         ))}
-                      </ul>
-                    </section>
-                  )}
+                          </ul>
+                        </section>
+                      )}
 
-                  {/* Dancer */}
-                  {(data.dancers || []).length > 0 && (
-                    <section className="mb-5 rounded-xl bg-background/40 border border-border/40 px-3 py-2.5">
-                      <div className="mb-2 flex items-center justify-between">
+                      {/* Dancer */}
+                      {(data.dancers || []).length > 0 && (
+                        <section className="mb-5 rounded-xl bg-background/40 border border-border/40 px-3 py-2.5">
+                          <div className="mb-2 flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-foreground">
                           {t("search.sectionDancers") || "Dancer"}
                         </h3>
@@ -331,14 +393,14 @@ export default function SearchResults() {
                             {renderFollowButton(item)}
                           </li>
                         ))}
-                      </ul>
-                    </section>
-                  )}
+                          </ul>
+                        </section>
+                      )}
 
-                  {/* Bài viết */}
-                  {transformedPosts.length > 0 && (
-                    <section className="mb-2 rounded-xl bg-background/40 border border-border/40 px-3 py-2.5">
-                      <div className="mb-2 flex items-center justify-between">
+                      {/* Bài viết */}
+                      {transformedPosts.length > 0 && (
+                        <section className="mb-2 rounded-xl bg-background/40 border border-border/40 px-3 py-2.5">
+                          <div className="mb-2 flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-foreground">
                           {t("search.sectionPosts") || "Bài viết"}
                         </h3>
@@ -348,9 +410,9 @@ export default function SearchResults() {
                           onClick={() => setActive("posts")}
                         >
                           {t("search.viewAll") || "Xem tất cả"}
-                        </button>
-                      </div>
-                      <div className="space-y-3">
+                          </button>
+                          </div>
+                          <div className="space-y-3">
                         {transformedPosts.slice(0, MAX_PREVIEW).map((post) => (
                           <PostCard
                             key={post.id}
@@ -369,87 +431,89 @@ export default function SearchResults() {
                             onShared={null}
                           />
                         ))}
-                      </div>
-                    </section>
-                  )}
+                          </div>
+                        </section>
+                      )}
 
-                  {(!data.users?.length &&
-                    !data.bars?.length &&
-                    !data.djs?.length &&
-                    !data.dancers?.length &&
-                    !transformedPosts.length) && (
-                    <div className="py-4 text-sm text-muted-foreground">
-                      {t("search.noResults") || "Không có kết quả"}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {/* Chế độ xem từng tab riêng biệt */}
-                  {active === "posts" ? (
-                    transformedPosts.length > 0 ? (
-                      <div className="space-y-3">
-                        {transformedPosts.map((post) => (
-                          <PostCard
-                            key={post.id}
-                            post={post}
-                            playingPost={null}
-                            setPlayingPost={() => {}}
-                            sharedAudioRef={null}
-                            sharedCurrentTime={0}
-                            sharedDuration={0}
-                            sharedIsPlaying={false}
-                            onSeek={() => {}}
-                            onEdit={null}
-                            onDelete={null}
-                            onReport={null}
-                            onImageClick={null}
-                            onShared={null}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="py-4 text-sm text-muted-foreground">
-                        {t("search.noResults") || "Không có kết quả"}
-                      </div>
-                    )
-                  ) : list.length > 0 ? (
-                    <ul className="divide-y divide-border/40">
-                      {list.map((item) => (
-                        <li
-                          key={`${item.type}-${item.id}`}
-                          className="flex items-center justify-between gap-4 py-2.5"
-                        >
-                          <button
-                            type="button"
-                            className="flex flex-1 items-center gap-3 text-left"
-                            onClick={() => onOpenItem(navigate, item)}
-                          >
-                            <img
-                              className="h-9 w-9 rounded-full object-cover"
-                              src={getAvatarUrl(item.avatar, 36)}
-                              alt={item.name}
-                              onError={(e) => {
-                                e.target.src = getAvatarUrl(null, 36);
-                              }}
-                            />
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-foreground">
-                                {item.name}
-                              </div>
-                              <div className="truncate text-xs text-muted-foreground">
-                                {item.type}
-                              </div>
-                            </div>
-                          </button>
-                          {renderFollowButton(item)}
-                        </li>
-                      ))}
-                    </ul>
+                      {(!data.users?.length &&
+                        !data.bars?.length &&
+                        !data.djs?.length &&
+                        !data.dancers?.length &&
+                        !transformedPosts.length) && (
+                        <div className="py-4 text-sm text-muted-foreground">
+                          {t("search.noResults") || "Không có kết quả"}
+                        </div>
+                      )}
+                    </>
                   ) : (
-                    <div className="py-4 text-sm text-muted-foreground">
-                      {t("search.noResults") || "Không có kết quả"}
-                    </div>
+                    <>
+                          {/* Chế độ xem từng tab riêng biệt */}
+                      {active === "posts" ? (
+                        transformedPosts.length > 0 ? (
+                          <div className="space-y-3">
+                            {transformedPosts.map((post) => (
+                              <PostCard
+                                key={post.id}
+                                post={post}
+                                playingPost={null}
+                                setPlayingPost={() => {}}
+                                sharedAudioRef={null}
+                                sharedCurrentTime={0}
+                                sharedDuration={0}
+                                sharedIsPlaying={false}
+                                onSeek={() => {}}
+                                onEdit={null}
+                                onDelete={null}
+                                onReport={null}
+                                onImageClick={null}
+                                onShared={null}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="py-4 text-sm text-muted-foreground">
+                            {t("search.noResults") || "Không có kết quả"}
+                          </div>
+                        )
+                      ) : list.length > 0 ? (
+                        <ul className="divide-y divide-border/40">
+                          {list.map((item) => (
+                            <li
+                              key={`${item.type}-${item.id}`}
+                              className="flex items-center justify-between gap-4 py-2.5"
+                            >
+                              <button
+                                type="button"
+                                className="flex flex-1 items-center gap-3 text-left"
+                                onClick={() => onOpenItem(navigate, item)}
+                              >
+                                <img
+                                  className="h-9 w-9 rounded-full object-cover"
+                                  src={getAvatarUrl(item.avatar, 36)}
+                                  alt={item.name}
+                                  onError={(e) => {
+                                    e.target.src = getAvatarUrl(null, 36);
+                                  }}
+                                />
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-semibold text-foreground">
+                                    {item.name}
+                                  </div>
+                                  <div className="truncate text-xs text-muted-foreground">
+                                    {item.type}
+                                  </div>
+                                </div>
+                              </button>
+                              {renderFollowButton(item)}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <div className="py-4 text-sm text-muted-foreground">
+                          {t("search.noResults") || "Không có kết quả"}
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}

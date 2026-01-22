@@ -30,7 +30,7 @@ import BarReview from "../../bar/components/BarReview";
 import BarTables from "../../bar/components/BarTables";
 import BarTablesPage from "../../customer/pages/BarTablesPage";
 import PerformerReviews from "../../business/components/PerformerReviews";
-import { ProfileInfoSection } from "../../../components/profile/ProfileInfoSection";
+import { ProfileInfoSection, ProfilePostsSection } from "../../../components/profile/ProfileInfoSection";
 import AudioPlayerBar from "../../feeds/components/audio/AudioPlayerBar";
 import { useSharedAudioPlayer } from "../../../hooks/useSharedAudioPlayer";
 import ImageDetailModal from "../../feeds/components/media/mediasOfPost/ImageDetailModal";
@@ -411,6 +411,20 @@ export default function ProfilePage() {
             <div className={cn("bg-card rounded-lg p-6 border-[0.5px] border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.05)]")}>
               <BarMenu barPageId={barPageId} />
             </div>
+            <ProfilePostsSection 
+              posts={posts}
+              postsLoading={postsLoading}
+              onImageClick={(data) => setSelectedImage(data)}
+              onReport={(p) => setReportingPost(p)}
+              isOwnProfile={isOwnProfile}
+              playingPost={playingPost}
+              setPlayingPost={setPlayingPost}
+              sharedAudioRef={sharedAudioRef}
+              sharedCurrentTime={sharedCurrentTime}
+              sharedDuration={sharedDuration}
+              sharedIsPlaying={sharedIsPlaying}
+              onSeek={handleSeek}
+            />
           </div>
         );
       case "posts":
@@ -649,6 +663,20 @@ export default function ProfilePage() {
               </div>
             )}
             <ProfileInfoSection profile={profile} />
+            <ProfilePostsSection 
+              posts={posts}
+              postsLoading={postsLoading}
+              onImageClick={(data) => setSelectedImage(data)}
+              onReport={(p) => setReportingPost(p)}
+              isOwnProfile={isOwnProfile}
+              playingPost={playingPost}
+              setPlayingPost={setPlayingPost}
+              sharedAudioRef={sharedAudioRef}
+              sharedCurrentTime={sharedCurrentTime}
+              sharedDuration={sharedDuration}
+              sharedIsPlaying={sharedIsPlaying}
+              onSeek={handleSeek}
+            />
           </div>
         );
       case "posts":
@@ -830,6 +858,13 @@ export default function ProfilePage() {
               </div>
             )}
             <ProfileInfoSection profile={profile} />
+            <ProfilePostsSection 
+              posts={posts}
+              postsLoading={postsLoading}
+              onImageClick={(data) => setSelectedImage(data)}
+              onReport={(p) => setReportingPost(p)}
+              isOwnProfile={isOwnProfile}
+            />
           </div>
         );
       case "posts":
@@ -920,6 +955,20 @@ export default function ProfilePage() {
         return (
           <div className={cn("flex flex-col gap-6")}>
             <ProfileInfoSection profile={profile} />
+            <ProfilePostsSection 
+              posts={posts}
+              postsLoading={postsLoading}
+              onImageClick={(data) => setSelectedImage(data)}
+              onReport={(p) => setReportingPost(p)}
+              isOwnProfile={isOwnProfile}
+              playingPost={playingPost}
+              setPlayingPost={setPlayingPost}
+              sharedAudioRef={sharedAudioRef}
+              sharedCurrentTime={sharedCurrentTime}
+              sharedDuration={sharedDuration}
+              sharedIsPlaying={sharedIsPlaying}
+              onSeek={handleSeek}
+            />
           </div>
         );
       case "posts":
