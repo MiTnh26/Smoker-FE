@@ -357,19 +357,36 @@ export default function UnifiedMenu({
           <div className="user-menu-businesses">
             <h4>{t('unifiedMenu.entityLabel')}</h4>
             <ul>
-              {visibleEntities.map((entity) => (
-                <li
-                  key={entity.id}
-                  onClick={() => handleEntitySwitch(entity)}
-                  className="entity-item"
-                >
-                  <div className="user-menu-avatar user-menu-avatar-small">
-                    {renderAvatar(entity.avatar, 28)}
-                  </div>
-                  <span>{entity.name}</span>
-                  <small>({entity.role })</small>
-                </li>
-              ))}
+              {visibleEntities.map((entity) => {
+                const roleStr = String(entity.role || '').toLowerCase();
+                const statusStr = String(entity.status || entity.Status || '').toLowerCase();
+                const isDJOrDancerOrBar = roleStr === 'dj' || roleStr === 'dancer' || roleStr === 'bar';
+                const isPending = statusStr === 'pending';
+                const showPendingLabel = isDJOrDancerOrBar && isPending;
+                
+                return (
+                  <li
+                    key={entity.id}
+                    onClick={() => handleEntitySwitch(entity)}
+                    className="entity-item"
+                  >
+                    <div className="user-menu-avatar user-menu-avatar-small">
+                      {renderAvatar(entity.avatar, 28)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>{entity.name}</span>
+                        <small>({entity.role })</small>
+                      </div>
+                      {showPendingLabel && (
+                        <small style={{ color: '#f59e0b', fontSize: '11px', display: 'block', marginTop: '2px' }}>
+                          Đang chờ duyệt
+                        </small>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
 
             {filteredEntities.length > 2 && (

@@ -26,15 +26,7 @@ import {
   Ticket
 } from "lucide-react";
 
-/**
- * Cấu hình sidebar cho từng loại tài khoản (role)
- * Mỗi role có 1 mảng menu riêng.
- * 
- * Lưu ý:
- * - `label`: tên hiển thị
- * - `icon`: biểu tượng lucide-react
- * - `path`: đường dẫn điều hướng
- */
+
 
 export const sidebarConfig = {
   customer: [
@@ -42,27 +34,20 @@ export const sidebarConfig = {
     { label: "Sự kiện", icon: Calendar, path: "/customer/events" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/customer/messages" },
     { label: "Đặt bàn của tôi", icon: BookOpen, path: "/customer/my-bookings" },
-    { label: "Ví của tôi", icon: Wallet, path: "/wallet" },
+ //   { label: "Ví của tôi", icon: Wallet, path: "/wallet" },
     { label: "Hồ sơ", icon: User, path: "/own/profile" },
     { label: "Thông Tin Ngân Hàng", icon: CreditCard, path: "/customer/bank-info" },
     { label: "Đăng ký tài khoản kinh doanh", icon: Store, path: "/register/select-account-type" },
   ],
 
-  // bar: [
-  //   { label: "Dashboard", icon: BarChart3, path: "/bar/dashboard" },
-  //   { label: "Sự kiện", icon: Calendar, path: "/bar/events" },
-  //   { label: "Nhân sự (DJ, Dancer)", icon: Users, path: "/bar/staff" },
-  //   { label: "Tin nhắn", icon: MessageCircle, path: "/bar/messages" },
-  //   { label: "Bar page", icon: User, path: "/bar/:barPageId" },
-  //   { label: "Cài đặt quán", icon: Settings, path: "/bar/settings/:barPageId" },
-  // ],
+
   bar: [
     { label: "Newsfeed", icon: Home, path: "/bar/newsfeed" },
     { label: "Dashboard", icon: BarChart3, path: "/bar/dashboard" },
     { label: "Quản lý đặt bàn", icon: ClipboardList, path: "/bar/bookings" },
     { label: "Sự kiện", icon: Calendar, path: "/bar/events" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/bar/messages" },
-    { label: "Ví của tôi", icon: Wallet, path: "/wallet" },
+   // { label: "Ví của tôi", icon: Wallet, path: "/wallet" },
     {
       label: "Bar page",
       icon: User,
@@ -88,7 +73,7 @@ export const sidebarConfig = {
    
     { label: "Đánh giá & sao", icon: Star, modalType: "reviews" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/dj/messages" },
-    { label: "Ví của tôi", icon: Wallet, path: "/wallet" },
+  //  { label: "Ví của tôi", icon: Wallet, path: "/wallet" },
     { label: "Hồ sơ", icon: User, path: "/dj/profile" },
   ],
 
@@ -100,7 +85,7 @@ export const sidebarConfig = {
   
     { label: "Đánh giá & sao", icon: Star, modalType: "reviews" },
     { label: "Tin nhắn", icon: MessageCircle, path: "/dancer/messages" },
-    { label: "Ví của tôi", icon: Wallet, path: "/wallet" },
+  //  { label: "Ví của tôi", icon: Wallet, path: "/wallet" },
     { label: "Hồ sơ", icon: User, path: "/dancer/profile" },
   ],
 

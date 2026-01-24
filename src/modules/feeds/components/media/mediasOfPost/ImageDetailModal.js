@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
+import { X } from "lucide-react";
 import { 
   getMediaById, 
   getMediaByUrl,
@@ -35,6 +36,7 @@ import {
   getNameForAccount,
   formatTimeDisplay
 } from "./utils";
+import { normalizeId } from "../../comment/utils";
 import MediaStatsBar from "./MediaStatsBar";
 import MediaImageViewer from "./MediaImageViewer";
 import MediaCommentSection from "./MediaCommentSection";
@@ -71,6 +73,8 @@ export default function ImageDetailModal({
   // UI state
   const [viewingImage, setViewingImage] = useState(null); // Image URL for lightbox
   const [imageError, setImageError] = useState(false); // Image load error state
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState(null); // { type: 'comment'|'reply', id: string, commentId: string, replyId?: string }
+  const [deleting, setDeleting] = useState(false);
   const hasLoadedRef = useRef(false);
   const replyInputRef = useRef(null);
   const navigate = useNavigate();
@@ -185,10 +189,18 @@ export default function ImageDetailModal({
       const mediaData = response?.data?.data || response?.data;
       setMedia(mediaData);
       
-      // Check if current user liked the media
+      // Check if current user liked the media using sessionData to get entityAccountId
+      const sessionData = getSessionData();
+      if (sessionData && mediaData?.likes) {
+        const { activeEntity } = sessionData;
+        // Use activeEntity to check like state (includes entityAccountId for role-based likes)
+        setMediaLiked(isLiked(mediaData.likes, activeEntity));
+      } else {
+        // Fallback to getCurrentUser if sessionData not available
       const currentUser = getCurrentUser();
       if (currentUser && mediaData?.likes) {
         setMediaLiked(isLiked(mediaData.likes, currentUser));
+        }
       }
     } catch (err) {
       console.error("[IMAGE_MODAL] Error loading media:", err);
@@ -206,6 +218,22 @@ export default function ImageDetailModal({
   const parsedComments = useMemo(() => {
     return parseComments(media, "newest");
   }, [media]);
+
+  // ⚠️ TỐI ƯU: Ưu tiên dùng stats.commentCount từ backend (đã bao gồm replies)
+  // Fallback về tính toán thủ công nếu không có
+  const commentsCount = useMemo(() => {
+    if (media?.stats?.commentCount !== undefined) {
+      return media.stats.commentCount;
+    }
+    // Fallback: tính tổng comments + replies
+    let total = parsedComments.length;
+    parsedComments.forEach(comment => {
+      if (comment.replies && Array.isArray(comment.replies)) {
+        total += comment.replies.length;
+      }
+    });
+    return total;
+  }, [media?.stats?.commentCount, parsedComments]);
 
   // Author info for media (fallback to session if missing)
   const {
@@ -282,15 +310,67 @@ export default function ImageDetailModal({
 
     setSubmitting(true);
     try {
-      await addMediaComment(mediaIdForApi, {
+      const response = await addMediaComment(mediaIdForApi, {
         content: content.trim(),
         typeRole: typeRole,
         entityAccountId: entityAccountId || activeEntity?.EntityAccountId || activeEntity?.entityAccountId,
         entityId: entityId || activeEntity?.id,
         entityType: entityType || typeRole
       });
-      await loadMediaDetails(false);
-      return true;
+      
+      // ⚠️ TỐI ƯU: Optimistic UI - cập nhật media.comments trực tiếp thay vì reload
+      if (response?.success || response?.data?.success) {
+        const normalizedEntityAccountId = normalizeId(entityAccountId || activeEntity?.EntityAccountId || activeEntity?.entityAccountId);
+        const now = new Date().toISOString();
+        
+        // Tạo comment object mới với đầy đủ thông tin
+        const newCommentObj = {
+          id: response?.data?.commentId || response?.data?.id || `temp-${Date.now()}`,
+          accountId: entityId || activeEntity?.id,
+          content: content.trim(),
+          images: "",
+          likes: 0,
+          likesObject: {},
+          likedByViewer: false,
+          canManage: true,
+          typeRole: entityType || typeRole,
+          replies: [],
+          createdAt: now,
+          updatedAt: now,
+          authorName: activeEntity?.name || activeEntity?.userName || "User",
+          authorAvatar: activeEntity?.avatar || null,
+          // ⚠️ QUAN TRỌNG: Set entityAccountId để canManageComment có thể tìm thấy
+          entityAccountId: normalizedEntityAccountId ? String(normalizedEntityAccountId).trim() : null,
+          authorEntityAccountId: normalizedEntityAccountId ? String(normalizedEntityAccountId).trim() : null,
+          authorEntityType: entityType || typeRole,
+          authorEntityId: entityId
+        };
+        
+        // Cập nhật media.comments trực tiếp (optimistic update) - thêm vào đầu
+        setMedia(prev => {
+          if (!prev) return prev;
+          const currentComments = prev.comments || {};
+          const commentsMap = currentComments instanceof Map 
+            ? new Map(currentComments) 
+            : (typeof currentComments === 'object' && !Array.isArray(currentComments)
+              ? new Map(Object.entries(currentComments))
+              : new Map());
+          
+          // ⚠️ TỐI ƯU: Thêm comment mới vào đầu (giống TikTok)
+          commentsMap.set(newCommentObj.id, newCommentObj);
+          
+          return {
+            ...prev,
+            comments: commentsMap,
+            stats: {
+              ...prev.stats,
+              commentCount: (prev.stats?.commentCount || 0) + 1
+            }
+          };
+        });
+      }
+      
+      return response?.success || response?.data?.success || false;
     } catch (err) {
       console.error("[IMAGE_MODAL] Error adding comment:", err);
       return false;
@@ -307,57 +387,132 @@ export default function ImageDetailModal({
     const sessionData = getSessionData();
     if (!sessionData) return;
 
-    const { currentUser, activeEntity, typeRole } = sessionData;
+    const { typeRole, entityAccountId, entityId, entityType, activeEntity } = sessionData;
     
-    const wasLiked = mediaLiked;
+    // Double-check like state from media object to ensure accuracy
+    let wasLiked = mediaLiked;
+    if (media?.likes && activeEntity) {
+      const actualLiked = isLiked(media.likes, activeEntity);
+      if (actualLiked !== mediaLiked) {
+        console.warn("[IMAGE_MODAL] Like state mismatch, syncing:", { mediaLiked, actualLiked });
+        setMediaLiked(actualLiked);
+        wasLiked = actualLiked;
+      }
+    }
     // Optimistic update
     setMediaLiked(!wasLiked);
     
     // Optimistic update likes count in media object
+    // Backend uses entityAccountId as key, so we need to use the same
     if (media) {
       const currentLikes = media.likes || {};
-      const currentUser = getCurrentUser();
-      if (currentUser) {
-        const userId = String(currentUser.id || currentUser._id || "").toLowerCase().trim();
+      const likeKey = entityAccountId ? String(entityAccountId) : null;
+      
+      if (likeKey) {
+        if (currentLikes instanceof Map) {
+          const newLikes = new Map(currentLikes);
         if (wasLiked) {
-          // Unlike: remove from likes
-          const newLikes = { ...currentLikes };
-          delete newLikes[userId];
+            newLikes.delete(likeKey);
+          } else {
+            newLikes.set(likeKey, {
+              accountId: entityId,
+              entityAccountId: entityAccountId,
+              entityId: entityId,
+              entityType: entityType,
+              TypeRole: typeRole,
+              createdAt: new Date()
+            });
+          }
           setMedia({ ...media, likes: newLikes });
+        } else if (typeof currentLikes === 'object') {
+          const newLikes = { ...currentLikes };
+          if (wasLiked) {
+            delete newLikes[likeKey];
         } else {
-          // Like: add to likes
-          setMedia({ ...media, likes: { ...currentLikes, [userId]: true } });
+            newLikes[likeKey] = {
+              accountId: entityId,
+              entityAccountId: entityAccountId,
+              entityId: entityId,
+              entityType: entityType,
+              TypeRole: typeRole,
+              createdAt: new Date()
+            };
+          }
+          setMedia({ ...media, likes: newLikes });
         }
       }
     }
     
     try {
       if (wasLiked) {
-        await unlikeMedia(mediaIdForApi);
+        await unlikeMedia(mediaIdForApi, { entityAccountId });
       } else {
         await likeMedia(mediaIdForApi, { 
-          accountId: currentUser?.id || activeEntity?.id,
-          typeRole: typeRole
+          typeRole: typeRole,
+          entityAccountId: entityAccountId,
+          entityId: entityId,
+          entityType: entityType || typeRole
         });
       }
       // Reload media to sync with server (without showing loading)
       await loadMediaDetails(false);
     } catch (err) {
       console.error("[IMAGE_MODAL] Error toggling media like:", err);
-      // Rollback
+      const errorMessage = err?.response?.data?.message || err.message;
+      console.warn("[IMAGE_MODAL] Like error details:", {
+        wasLiked,
+        errorMessage,
+        entityAccountId,
+        mediaId: mediaIdForApi
+      });
+      
+      // If error is "Already liked", reload media to sync state
+      if (errorMessage === "Already liked" || errorMessage?.includes("Already liked")) {
+        console.log("[IMAGE_MODAL] Already liked - reloading media to sync state");
+        await loadMediaDetails(false);
+        return;
+      }
+      
+      // Rollback for other errors
       setMediaLiked(wasLiked);
       if (media) {
         const currentLikes = media.likes || {};
-        const currentUser = getCurrentUser();
-        if (currentUser) {
-          const userId = String(currentUser.id || currentUser._id || "").toLowerCase().trim();
+        const likeKey = entityAccountId ? String(entityAccountId) : null;
+        
+        if (likeKey) {
+          if (currentLikes instanceof Map) {
+            const newLikes = new Map(currentLikes);
           if (wasLiked) {
             // Restore like
-            setMedia({ ...media, likes: { ...currentLikes, [userId]: true } });
+              newLikes.set(likeKey, {
+                accountId: entityId,
+                entityAccountId: entityAccountId,
+                entityId: entityId,
+                entityType: entityType,
+                TypeRole: typeRole,
+                createdAt: new Date()
+              });
           } else {
             // Remove like
+              newLikes.delete(likeKey);
+            }
+            setMedia({ ...media, likes: newLikes });
+          } else if (typeof currentLikes === 'object') {
             const newLikes = { ...currentLikes };
-            delete newLikes[userId];
+            if (wasLiked) {
+              // Restore like
+              newLikes[likeKey] = {
+                accountId: entityId,
+                entityAccountId: entityAccountId,
+                entityId: entityId,
+                entityType: entityType,
+                TypeRole: typeRole,
+                createdAt: new Date()
+              };
+            } else {
+              // Remove like
+              delete newLikes[likeKey];
+            }
             setMedia({ ...media, likes: newLikes });
           }
         }
@@ -418,9 +573,18 @@ export default function ImageDetailModal({
     const sessionData = getSessionData();
     if (!sessionData) return;
 
-    const { typeRole, entityAccountId } = sessionData;
-    const currentUser = getCurrentUser();
-    const wasLiked = isLiked(comment.likes, currentUser);
+    const { typeRole, entityAccountId, activeEntity } = sessionData;
+    
+    // Double-check like state from comment object to ensure accuracy
+    let wasLiked = isLiked(comment.likes, activeEntity || sessionData);
+    if (comment?.likes && activeEntity) {
+      const actualLiked = isLiked(comment.likes, activeEntity);
+      if (actualLiked !== wasLiked) {
+        console.warn("[IMAGE_MODAL] Comment like state mismatch, syncing:", { wasLiked, actualLiked });
+        wasLiked = actualLiked;
+      }
+    }
+    
     setPendingLikes(prev => ({ ...prev, [key]: true }));
     
     try {
@@ -433,6 +597,13 @@ export default function ImageDetailModal({
       await loadMediaDetails(false);
     } catch (err) {
       console.error("[IMAGE_MODAL] Error toggling comment like:", err);
+      const errorMessage = err?.response?.data?.message || err.message;
+      
+      // If error is "Already liked", reload media to sync state
+      if (errorMessage === "Already liked" || errorMessage?.includes("Already liked")) {
+        console.log("[IMAGE_MODAL] Already liked - reloading media to sync state");
+        await loadMediaDetails(false);
+      }
     } finally {
       setPendingLikes(prev => ({ ...prev, [key]: false }));
     }
@@ -449,9 +620,18 @@ export default function ImageDetailModal({
     const sessionData = getSessionData();
     if (!sessionData) return;
 
-    const { typeRole, entityAccountId } = sessionData;
-    const currentUser = getCurrentUser();
-    const wasLiked = isLiked(reply.likes, currentUser);
+    const { typeRole, entityAccountId, activeEntity } = sessionData;
+    
+    // Double-check like state from reply object to ensure accuracy
+    let wasLiked = isLiked(reply.likes, activeEntity || sessionData);
+    if (reply?.likes && activeEntity) {
+      const actualLiked = isLiked(reply.likes, activeEntity);
+      if (actualLiked !== wasLiked) {
+        console.warn("[IMAGE_MODAL] Reply like state mismatch, syncing:", { wasLiked, actualLiked });
+        wasLiked = actualLiked;
+      }
+    }
+    
     setPendingLikes(prev => ({ ...prev, [key]: true }));
     
     try {
@@ -464,6 +644,13 @@ export default function ImageDetailModal({
       await loadMediaDetails(false);
     } catch (err) {
       console.error("[IMAGE_MODAL] Error toggling reply like:", err);
+      const errorMessage = err?.response?.data?.message || err.message;
+      
+      // If error is "Already liked", reload media to sync state
+      if (errorMessage === "Already liked" || errorMessage?.includes("Already liked")) {
+        console.log("[IMAGE_MODAL] Already liked - reloading media to sync state");
+        await loadMediaDetails(false);
+      }
     } finally {
       setPendingLikes(prev => ({ ...prev, [key]: false }));
     }
@@ -577,13 +764,23 @@ export default function ImageDetailModal({
     }
   };
 
-  // Delete Comment/Reply
-  const handleDelete = async (type, id, commentId) => {
-    if (typeof window !== "undefined" && !window.confirm("Bạn có chắc chắn muốn xóa?")) return;
+  // Delete Comment/Reply - Show confirmation modal
+  const handleDelete = (type, id, commentId, replyId = null) => {
+    setDeleteConfirmModal({ type, id, commentId, replyId });
+  };
+  
+  // Confirm delete after modal confirmation
+  const confirmDelete = async () => {
+    if (!deleteConfirmModal) return;
     
+    const { type, id, commentId } = deleteConfirmModal;
     const mediaIdForApi = getMediaIdForApi();
-    if (!mediaIdForApi) return;
+    if (!mediaIdForApi) {
+      setDeleteConfirmModal(null);
+      return;
+    }
     
+    setDeleting(true);
     try {
       if (type === 'comment') {
         await deleteMediaComment(mediaIdForApi, id);
@@ -594,6 +791,10 @@ export default function ImageDetailModal({
       await loadMediaDetails();
     } catch (err) {
       console.error("[IMAGE_MODAL] Error deleting comment/reply:", err);
+      alert(err.response?.data?.message || err.message || "Không thể xóa. Vui lòng thử lại.");
+    } finally {
+      setDeleting(false);
+      setDeleteConfirmModal(null);
     }
   };
 
@@ -652,7 +853,6 @@ export default function ImageDetailModal({
 
   if (!open) return null;
   const mediaLikesCount = getLikesCount(media?.likes);
-  const commentsCount = parsedComments.length;
 
   return (
     <div
@@ -837,6 +1037,51 @@ export default function ImageDetailModal({
           >
             ×
           </button>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmModal && (
+        <div
+          className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => !deleting && setDeleteConfirmModal(null)}
+        >
+          <div
+            className="bg-card border border-border rounded-lg shadow-lg w-full max-w-md p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-foreground">
+                Xác nhận xóa
+              </h3>
+              <button
+                onClick={() => !deleting && setDeleteConfirmModal(null)}
+                className="p-1 rounded-full transition-colors duration-200 text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                disabled={deleting}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-foreground">
+              Bạn có chắc chắn muốn xóa {deleteConfirmModal.type === 'comment' ? 'bình luận' : 'phản hồi'} này?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirmModal(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-muted/30 text-foreground border border-border hover:bg-muted/50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-danger text-white hover:bg-danger/90 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleting ? "Đang xóa..." : "Xóa"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

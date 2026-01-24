@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { X } from "lucide-react";
@@ -6,519 +6,237 @@ import { getPostDetail } from "../../../../api/postApi";
 import PostCard from "../post/PostCard";
 import CommentSection from "../comment/CommentSection";
 import CommentInputForm from "../comment/CommentInputForm";
-import { cn } from "../../../../utils/cn";
+import { getSessionData } from "../comment/utils";
+import { mapPostForCard } from "../../../../utils/postTransformers";
 
-/**
- * Post Detail Modal
- * 
- * @param {boolean} open - Whether modal is open
- * @param {object} post - Post data (optional, if provided will skip fetching)
- * @param {string} postId - Post ID to fetch (required if post not provided)
- * @param {string} commentId - Comment ID to scroll to (optional)
- * @param {function} onClose - Close handler
- * @param {string} title - Custom modal title (optional)
- */
 export default function PostDetailModal({ 
   open, 
   post: initialPost, 
   postId, 
   commentId, 
   onClose,
-  title
+  title,
+  onPostUpdated = null // Callback để sync state với parent (PostCard)
 }) {
   const { t } = useTranslation();
-  const [postData, setPostData] = useState(initialPost || null);
+  const sessionData = getSessionData();
+  const activeEntity = sessionData?.activeEntity || sessionData?.account || null;
+
+  // 1. Khai báo State
+  const [postData, setPostData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const modalContentRef = useRef(null);
   const [playingPost, setPlayingPost] = useState(null);
-  const sharedAudioRef = useRef(null);
   const [sharedCurrentTime, setSharedCurrentTime] = useState(0);
-  // Comments always shown in PostDetailModal
-  const [showComments, setShowComments] = useState(true);
-  const [commentSectionKey, setCommentSectionKey] = useState(0);
+  
+  const sharedAudioRef = useRef(null);
+  const commentSectionRef = useRef(null);
+  const likedStateRef = useRef(null);
+  const initialPostRef = useRef(null);
+  const lastFetchedPostIdRef = useRef(null);
 
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (open) {
-      // Simply disable body scroll - scroll position will be preserved automatically
-      document.body.style.overflow = "hidden";
-      
-      return () => {
-        // Restore body scroll - scroll position stays the same
-        document.body.style.overflow = "";
-      };
-    }
-  }, [open]);
+  // 2. Khai báo các hàm Helper (Phải nằm TRÊN useEffect)
+  const transformPostData = useCallback((post) => {
+    if (!post) return null;
+    return mapPostForCard(post, t, activeEntity);
+  }, [t, activeEntity]);
 
-  // Fetch post data
-  useEffect(() => {
-    if (open) {
-      if (initialPost) {
-        setPostData(initialPost);
-      } else if (postId) {
-        fetchPost();
-      }
-      // Comments always shown in PostDetailModal
-      setShowComments(true);
-    } else {
-      setPostData(null);
-      setError(null);
-      setShowComments(true);
-    }
-  }, [open, postId, initialPost]);
-
-
-  const fetchPost = async () => {
+  const fetchPost = useCallback(async () => {
+    if (!postId) return;
     try {
       setLoading(true);
-      setError(null);
+
       const response = await getPostDetail(postId, { includeMedias: true, includeMusic: true });
-      
-      let post = null;
-      if (response?.success && response.data) {
-        post = response.data;
-      } else if (response?._id) {
-        post = response;
-      } else {
+      let incomingPost = response?.data || response;
+
+      if (!incomingPost?._id && !incomingPost?.id) {
         setError("Post not found");
         return;
       }
 
-      // Transform post data using the same logic as PostFeed
-      const transformedPost = transformPostData(post);
+      const transformedPost = transformPostData(incomingPost);
+      
+      // Preserve like state nếu likedStateRef đã được set (từ initialPost)
+      if (likedStateRef.current === true && !transformedPost.likedByCurrentUser) {
+        transformedPost.likedByCurrentUser = true;
+        if (transformedPost.stats) {
+          transformedPost.stats.isLikedByMe = true;
+        }
+      }
+
       setPostData(transformedPost);
     } catch (err) {
-      console.error("[PostDetailModal] Error fetching post:", err);
-      setError(err.message || "Failed to load post");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [postId, transformPostData]);
 
-  // Helper: Get session data
-  const getSession = () => {
-    try {
-      const raw = localStorage.getItem("session");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  };
-
-  // Transform post data
-  const transformPostData = (post) => {
-    const session = getSession();
-    const currentUser = session?.account;
-    const activeEntity = session?.activeEntity || currentUser;
-
-    // Helper: Normalize ID for comparison
-    const normalizeId = (id) => id ? String(id).trim().toLowerCase() : null;
-    
-    // Check if liked
-    const currentUserId = activeEntity?.id || currentUser?.id;
-    let isLikedByCurrentUser = false;
-    if (currentUserId && post?.likes) {
-      const likesArray = post.likes instanceof Map
-        ? Array.from(post.likes.values())
-        : Array.isArray(post.likes)
-        ? post.likes
-        : typeof post.likes === 'object'
-        ? Object.values(post.likes)
-        : [];
-      isLikedByCurrentUser = likesArray.some(likeObj => 
-        likeObj && String(likeObj.accountId) === String(currentUserId)
-      );
+  // 3. Các useEffect xử lý Lifecycle
+  // Effect 1: Xử lý khi modal mở/đóng
+  useEffect(() => {
+    if (!open) {
+      document.body.style.overflow = "";
+      setPostData(null);
+      setError(null);
+      likedStateRef.current = null;
+      initialPostRef.current = null;
+      lastFetchedPostIdRef.current = null;
+      return;
     }
 
-    // Check ownership - read from new DTO schema: author.entityAccountId or legacy format
-    const ownerId = normalizeId(post.author?.entityAccountId || post.entityAccountId);
-    const viewerEntityId = normalizeId(activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id);
-    const canManage = ownerId && viewerEntityId && ownerId === viewerEntityId;
-
-    // Helper: Count items in collection
-    const countItems = (items) => {
-      if (!items) return 0;
-      if (items instanceof Map) return items.size;
-      if (Array.isArray(items)) return items.length;
-      if (typeof items === 'object') return Object.keys(items).length;
-      return 0;
-    };
-
-    // Count comments and replies
-    const commentsArray = post.comments 
-      ? (post.comments instanceof Map 
-          ? Array.from(post.comments.values())
-          : Array.isArray(post.comments)
-          ? post.comments
-          : Object.values(post.comments))
-      : [];
+    document.body.style.overflow = "hidden";
     
-    let commentCount = commentsArray.length;
-    commentsArray.forEach(c => {
-      if (c?.replies) commentCount += countItems(c.replies);
-    });
+    // Lưu initialPost vào ref để tránh dependency issues
+    if (initialPost) {
+      initialPostRef.current = initialPost;
 
-    // Count likes
-    const likeCount = post.likes ? countItems(post.likes) : 0;
-
-    // Format time
-    const formatTimeDisplay = (value) => {
-      try {
-        const d = value ? new Date(value) : new Date();
-        if (Number.isNaN(d.getTime())) return new Date().toLocaleString('vi-VN');
-        
-        const diffMs = new Date().getTime() - d.getTime();
-        if (diffMs < 0) return d.toLocaleString('vi-VN');
-        
-        const minutes = Math.floor(diffMs / 60000);
-        if (minutes < 1) return t('time.justNow') || 'Vừa xong';
-        if (minutes < 60) return `${minutes} phút trước`;
-        
-        const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours} giờ trước`;
-        
-        const days = Math.floor(hours / 24);
-        if (days === 1) return 'Hôm qua';
-        if (days < 7) return `${days} ngày trước`;
-        
-        return d.toLocaleDateString('vi-VN');
-      } catch {
-        return new Date().toLocaleString('vi-VN');
-      }
-    };
-
-    // Extract medias - support both new DTO schema (array) and legacy format
-    const extractMedias = (medias) => {
-      if (!medias) return { images: [], videos: [], audios: [] };
+      // Transform initialPost trước (để có like state đúng từ checkPostIsLiked)
+      const transformedInitial = transformPostData(initialPost);
       
-      // New DTO schema: medias is already a clean array
-      if (Array.isArray(medias)) {
-        const images = [], videos = [], audios = [];
-        medias.forEach(item => {
-          if (!item?.url) return;
-          const url = item.url.toLowerCase();
-          const mediaObj = { 
-            id: item.id || item._id || '', 
-            url: item.url, 
-            caption: item.caption || "",
-            type: item.type
-          };
-          const isAudio = item.type === 'audio' || /\.(mp3|wav|m4a|ogg|aac)$/i.test(url);
-          const isVideo = item.type === 'video' || /\.(mp4|webm|mov)$/i.test(url);
+      // Check like state từ transformedInitial (đã được check bằng checkPostIsLiked)
+      // Không preserve nếu initialPost có thể đã cũ, chỉ dựa vào kết quả transform
+      const initialLiked = transformedInitial.likedByCurrentUser === true || transformedInitial.stats?.isLikedByMe === true;
+      
+      // Set likedStateRef từ transformedInitial (đáng tin cậy hơn)
+      likedStateRef.current = initialLiked;
+      
+      setPostData(transformedInitial);
+    }
+    
+    // Fetch post nếu có postId và chưa fetch postId này
+    if (postId && lastFetchedPostIdRef.current !== postId) {
+      lastFetchedPostIdRef.current = postId;
+      
+      // Gọi fetchPost trực tiếp để tránh dependency issues
+      (async () => {
+        try {
+          setLoading(true);
+          const response = await getPostDetail(postId, { includeMedias: true, includeMusic: true });
+          let incomingPost = response?.data || response;
+
+          if (!incomingPost?._id && !incomingPost?.id) {
+            setError("Post not found");
+            return;
+          }
+
+          const transformedPost = transformPostData(incomingPost);
+    
+          // Preserve like state nếu likedStateRef đã được set (từ initialPost)
+          if (likedStateRef.current === true && !transformedPost.likedByCurrentUser) {
+            transformedPost.likedByCurrentUser = true;
+            if (!transformedPost.stats) {
+              transformedPost.stats = {};
+            }
+            transformedPost.stats.isLikedByMe = true;
+          }
           
-          if (isAudio) audios.push(mediaObj);
-          else if (isVideo) videos.push(mediaObj);
-          else images.push(mediaObj);
-        });
-        return { images, videos, audios };
-      }
-      
-      // Legacy format: object or Map
-      const images = [], videos = [], audios = [];
-      const entries = medias instanceof Map
-        ? Array.from(medias.entries())
-        : Object.entries(medias);
-      
-      entries.forEach(([key, item]) => {
-        if (!item?.url) return;
-        
-        const url = item.url.toLowerCase();
-        const mediaObj = { id: key, url: item.url, caption: item.caption || "" };
-        const isAudio = item.type === 'audio' || /\.(mp3|wav|m4a|ogg|aac)$/i.test(url);
-        const isVideo = item.type === 'video' || /\.(mp4|webm|mov)$/i.test(url);
-        
-        if (isAudio) audios.push(mediaObj);
-        else if (isVideo) videos.push(mediaObj);
-        else images.push(mediaObj);
-      });
-      
-      return { images, videos, audios };
-    };
+          // Nếu không có initialPost (mở từ notification), check lại like state từ transformedPost
+          // vì transformPostData đã check bằng checkPostIsLiked (từ likesObject)
+          // Nếu transformedPost.likedByCurrentUser là true, set likedStateRef để preserve cho lần sau
+          if (!initialPost && transformedPost.likedByCurrentUser === true) {
+            likedStateRef.current = true;
+          }
 
-    const extractedMedias = extractMedias(post.medias);
-    const populatedSong = post.song && typeof post.song === 'object' ? post.song : null;
-    const populatedMusic = post.music && typeof post.music === 'object' ? post.music : null;
+          setPostData(transformedPost);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, postId]);
 
-    // Get audio source
-    const isAudioUrl = (url) => {
-      if (!url || typeof url !== 'string') return false;
-      const u = url.toLowerCase();
-      return /\.(mp3|m4a|wav|ogg|aac)$/i.test(u);
-    };
-
-    const getAudioUrl = (obj) => {
-      if (!obj) return null;
-      const urls = [
-        obj.audioUrl, obj.streamUrl, obj.fileUrl,
-        obj.url, obj.sourceUrl, obj.downloadUrl
-      ];
-      return urls.find(isAudioUrl) || null;
-    };
-
-    const audioFromMusic = getAudioUrl(populatedMusic);
-    const audioFromSong = getAudioUrl(populatedSong);
-    const audioMedia = extractedMedias.audios?.[0];
-
-    // Read from new DTO schema: author.name or legacy format
-    const authorName = post.author?.name || post.authorName || post.account?.userName || post.accountName || "Người dùng";
-    const authorAvatar = post.author?.avatar || post.authorAvatar || post.account?.avatar || null;
-    
-    // Read stats from new DTO schema or legacy format
-    const stats = post.stats || {};
-    const finalLikeCount = stats.likeCount !== undefined ? stats.likeCount : likeCount;
-    const finalCommentCount = stats.commentCount !== undefined ? stats.commentCount : commentCount;
-    const finalLikedByCurrentUser = stats.isLikedByMe !== undefined ? stats.isLikedByMe : isLikedByCurrentUser;
-    
-    // Read medias from new DTO schema (clean array) or legacy format
-    const mediasArray = post.medias || extractedMedias;
-    const finalImages = Array.isArray(mediasArray) 
-      ? mediasArray.filter(m => m.type === 'image' || (!m.type && !m.url?.match(/\.(mp4|webm|mov|mp3|wav|m4a|ogg|aac)$/i)))
-      : (mediasArray.images || extractedMedias.images || []);
-    const finalVideos = Array.isArray(mediasArray)
-      ? mediasArray.filter(m => m.type === 'video' || m.url?.match(/\.(mp4|webm|mov)$/i))
-      : (mediasArray.videos || extractedMedias.videos || []);
-
-    return {
-      id: post._id || post.id,
-      user: authorName,
-      avatar: authorAvatar || "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPC9zdmc+",
-      time: formatTimeDisplay(post.createdAt || post.updatedAt),
-      content: post.content || post.caption || post["Tiêu Đề"] || "",
-      caption: post.caption || "",
-      medias: {
-        images: finalImages,
-        videos: finalVideos
-      },
-      image: finalImages?.[0]?.url || populatedMusic?.coverUrl || populatedSong?.coverUrl || post.musicBackgroundImage || post.thumbnail || null,
-      videoSrc: finalVideos?.[0]?.url || null,
-      audioSrc: audioFromMusic || audioFromSong || audioMedia?.url || post.audioSrc || null,
-      audioTitle: populatedMusic?.title || populatedSong?.title || post.musicTitle || post["Tên Bài Nhạc"] || post.title || null,
-      artistName: populatedMusic?.artist || populatedSong?.artist || post.artistName || post["Tên Nghệ Sĩ"] || authorName || null,
-      album: post.album || null,
-      genre: populatedMusic?.hashTag || populatedSong?.hashTag || post.hashTag || post["HashTag"] || null,
-      releaseDate: post.releaseDate || post.createdAt || null,
-      description: post.description || populatedMusic?.details || populatedSong?.details || post["Chi Tiết"] || post.content || null,
-      thumbnail: populatedMusic?.coverUrl || populatedSong?.coverUrl || post.musicBackgroundImage || post.thumbnail || null,
-      likes: finalLikeCount,
-      likedByCurrentUser: finalLikedByCurrentUser,
-      comments: finalCommentCount,
-      shares: stats.shareCount !== undefined ? stats.shareCount : (typeof post.shares === 'number' ? post.shares : Number(post.shares) || 0),
-      views: stats.viewCount !== undefined ? stats.viewCount : (post.views || 0),
-      hashtags: post.hashtags || [],
-      verified: post.verified || false,
-      location: post.location || null,
-      title: post.title || null,
-      canManage,
-      ownerEntityAccountId: post.author?.entityAccountId || ownerId || null,
-      _id: post._id || post.id,
-      accountId: post.accountId,
-      entityAccountId: post.author?.entityAccountId || post.entityAccountId,
-      entityId: post.author?.entityId || post.entityId,
-      entityType: post.author?.entityType || post.entityType,
-      authorEntityId: post.author?.entityId || post.authorEntityId,
-      authorEntityType: post.author?.entityType || post.authorEntityType,
-      authorEntityAccountId: post.author?.entityAccountId || post.authorEntityAccountId,
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
-      type: post.type,
-      originalPost: post.originalPost || null,
-      repostedFromId: post.repostedFromId || null,
-    };
-  };
-
+  // 4. Các Handler khác
   const handleSeek = (newTime) => {
     setSharedCurrentTime(newTime);
-    if (sharedAudioRef.current) {
-      sharedAudioRef.current.currentTime = newTime;
-    }
+    if (sharedAudioRef.current) sharedAudioRef.current.currentTime = newTime;
   };
 
-  // Handle backdrop click
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose?.();
-    }
-  };
-
-  // Handle escape key
-  useEffect(() => {
-    if (!open) return;
-    
-    const handleEscape = (e) => {
-      if (e.key === 'Escape') {
-        onClose?.();
-      }
-    };
-    
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [open, onClose]);
-
-  if (!open) {
-    return null;
-  }
-
+  if (!open) return null;
 
   return (
-    <div 
-      className={cn(
-        "fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999]",
-        "flex items-center justify-center p-4",
-        "overflow-y-auto"
-      )}
-      onClick={handleBackdropClick}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div 
-        className={cn(
-          "w-full max-w-[680px] max-h-[90vh]",
-          "bg-card text-card-foreground rounded-lg",
-          "border-[0.5px] border-border/20 shadow-[0_2px_8px_rgba(0,0,0,0.12)]",
-          "overflow-hidden flex flex-col",
-          "relative z-[10000]"
-        )}
-        ref={modalContentRef}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto"
+         onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-[680px] max-h-[90vh] bg-card rounded-lg overflow-hidden flex flex-col relative z-[10000]"
+           onClick={(e) => e.stopPropagation()}>
+        
         {/* Header */}
-        <div className={cn(
-          "p-5 border-b border-border/30",
-          "flex items-center justify-between flex-shrink-0",
-          "bg-card/80 backdrop-blur-sm relative z-[9998]"
-        )}>
-          <h2 className={cn(
-            "text-xl font-semibold m-0 text-foreground"
-          )}>
-            {title || postData?.user || t('notifications.postDetail') || 'Bài viết'}
+        <div className="p-5 border-b border-border/30 flex items-center justify-between bg-card/80 backdrop-blur-sm">
+          <h2 className="text-xl font-semibold m-0">
+            {title || postData?.author?.name || t('notifications.postDetail')}
           </h2>
-          <button
-            className={cn(
-              "w-9 h-9 border-none bg-transparent text-foreground",
-              "cursor-pointer flex items-center justify-center",
-              "rounded-full transition-all duration-300",
-              "hover:bg-muted/50 hover:scale-110",
-              "active:scale-95 p-0"
-            )}
-            onClick={onClose}
-            aria-label="Close"
-          >
+          <button onClick={onClose} className="hover:bg-muted/50 rounded-full p-1 transition-all">
             <X size={24} />
           </button>
         </div>
 
         {/* Content */}
-        <div className={cn(
-          "flex-1 flex flex-col min-h-0 relative z-10 overflow-hidden",
-          "[&_.comment-section_form]:sticky [&_.comment-section_form]:bottom-0 [&_.comment-section_form]:z-[10001] [&_.comment-section_form]:bg-card [&_.comment-section_form]:shadow-[0_-2px_8px_rgba(0,0,0,0.1)]"
-        )}>
-          {loading && (
-            <div className={cn(
-              "flex-1 flex items-center justify-center py-12 px-8 text-center text-foreground"
-            )}>
-              <p>{t('action.loading') || 'Đang tải...'}</p>
-            </div>
-          )}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {loading && !postData && <div className="p-12 text-center">{t('action.loading')}</div>}
+          {error && <div className="p-12 text-center text-destructive">{error}</div>}
 
-          {error && (
-            <div className={cn(
-              "flex-1 flex items-center justify-center py-12 px-8 text-center text-foreground"
-            )}>
-              <div>
-                <p>{error}</p>
-                <button 
-                  onClick={fetchPost}
-                  className={cn(
-                    "mt-4 px-6 py-2.5 bg-primary",
-                    "text-primary-foreground border-none rounded-lg",
-                    "cursor-pointer font-medium transition-all duration-200",
-                    "hover:opacity-90",
-                    "active:scale-95"
-                  )}
-                >
-                  {t('action.retry') || 'Thử lại'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!loading && !error && postData && (
+          {postData && (
             <>
-              {/* Scrollable area: Post + Comments (without input form) */}
-              <div className={cn(
-                "flex-1 overflow-y-auto min-h-0",
-                "scrollbar-hide",
-                // Hide input form in scrollable area
-                "[&_form]:hidden"
-              )}>
-                {/* Post Card */}
-                <div className={cn(
-                  "p-0 border-b border-border/30",
-                  "[&_.post-card]:m-0 [&_.post-card]:rounded-none [&_.post-card]:border-none [&_.post-card]:shadow-none",
-                  "[&_.post-card_>_div:has(>_.comment-section)]:hidden",
-                  "[&_.top-comments-preview]:hidden",
-                  "[&_.view-all-comments-link]:hidden",
-                  "[&_.post-card_.comment-section]:hidden"
-                )}>
+              <div className="flex-1 overflow-y-auto scrollbar-hide [&_form]:hidden [&_.view-all-comments-link]:hidden">
                   <PostCard
                     post={postData}
                     playingPost={playingPost}
                     setPlayingPost={setPlayingPost}
                     sharedAudioRef={sharedAudioRef}
                     sharedCurrentTime={sharedCurrentTime}
-                    sharedDuration={0}
-                    sharedIsPlaying={false}
                     onSeek={handleSeek}
                     disableCommentButton={true}
-                  />
-                </div>
-
-                {/* Comment Section - without input form */}
-                {showComments && postData?.id && (
-                  <div className={cn(
-                    "border-t border-border/30 pt-2",
-                    "[&_.comment-section]:max-h-none [&_.comment-section-inline]:max-h-none",
-                    "[&_.comment-section-inline]:border-none [&_.comment-section-inline]:pt-0"
-                  )}>
+                  onLike={(likeData) => {
+                    setPostData(prev => ({
+                      ...prev,
+                      likedByCurrentUser: likeData.liked,
+                      likes: likeData.likeCount, // Đồng bộ với stats.likeCount
+                      stats: { 
+                        ...prev.stats, 
+                        isLikedByMe: likeData.liked, 
+                        likeCount: likeData.likeCount 
+                      }
+                    }));
+                    
+                    // Đồng bộ state với parent (PostCard) để khi đóng modal, PostCard cũng có state đúng
+                    if (onPostUpdated) {
+                      onPostUpdated({
+                        postId: postData?.id || postId,
+                        liked: likeData.liked,
+                        likeCount: likeData.likeCount
+                      });
+                    }
+                  }}
+                />
+                
+                <div className="border-t border-border/30 pt-2">
                     <CommentSection
-                      key={`comments-${postData.id || postId}-${commentSectionKey}`}
-                      postId={String(postData.id || postId)}
+                    ref={commentSectionRef}
+                    key={`comments-${postData.id}`}
+                    postId={String(postData.id)}
                       alwaysOpen={true}
                       inline={true}
                       scrollToCommentId={commentId}
+                    onPostUpdated={fetchPost}
                     />
                   </div>
-                )}
               </div>
 
-              {/* Fixed input form at bottom */}
-              {showComments && postData?.id && (
-                <div className={cn(
-                  "flex-shrink-0 border-t border-border/30 bg-card",
-                  "relative z-[10001] shadow-[0_-2px_8px_rgba(0,0,0,0.1)]"
-                )}>
+              <div className="border-t border-border/30 bg-card p-2">
                   <CommentInputForm
-                    postId={String(postData.id || postId)}
-                    onCommentAdded={() => {
-                      // Force reload comments by updating key
-                      setCommentSectionKey(prev => prev + 1);
-                      // Optimistically bump comment count on the card header
-                      setPostData(prev => {
-                        if (!prev) return prev;
-                        const currentCount = prev.stats?.commentCount ?? prev.comments?.length ?? 0;
-                        return {
+                  postId={String(postData.id)}
+                  onCommentAdded={(responseData) => {
+                    setPostData(prev => ({
                           ...prev,
-                          stats: {
-                            ...prev.stats,
-                            commentCount: currentCount + 1
-                          }
-                        };
-                      });
+                      stats: { ...prev.stats, commentCount: (prev.stats?.commentCount || 0) + 1 }
+                    }));
+                    if (commentSectionRef.current) commentSectionRef.current.handleNewComment(responseData);
                     }}
                   />
                 </div>
-              )}
             </>
           )}
         </div>
@@ -534,4 +252,5 @@ PostDetailModal.propTypes = {
   commentId: PropTypes.string,
   onClose: PropTypes.func.isRequired,
   title: PropTypes.string,
+  onPostUpdated: PropTypes.func, // Callback để sync state với parent
 };

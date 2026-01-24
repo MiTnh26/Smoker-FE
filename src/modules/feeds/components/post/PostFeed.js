@@ -15,6 +15,7 @@ import ReportPostModal from "../modals/ReportPostModal";
 import ImageDetailModal from "../media/mediasOfPost/ImageDetailModal";
 import { mapPostForCard } from "../../../../utils/postTransformers";
 import { useSocket } from "../../../../contexts/SocketContext";
+import { getSessionData } from "../comment/utils";
 
 const normalizeGuid = (value) => {
   if (!value) return null;
@@ -68,18 +69,19 @@ export default function PostFeed({ feedType = 'trending', onGoLive, onLivestream
   // Current bar page ID for ads
   const [currentBarPageId, setCurrentBarPageId] = useState(null);
 
-  // Lấy entityAccountId của user hiện tại (cần cho trash post)
+  // ⚠️ ĐỒNG BỘ: Dùng getSessionData() như PostDetailModal để nhất quán
+  const sessionData = getSessionData();
+  const activeEntity = sessionData?.activeEntity || sessionData?.account || null;
+  console.log('[PostFeed] activeEntity:', {
+    activeEntity,
+    entityAccountId: activeEntity?.EntityAccountId || activeEntity?.entityAccountId,
+    type: typeof activeEntity
+  });
+  
+  // Helper: Lấy entityAccountId string (cần cho trash post và các API calls)
   const getCurrentEntityAccountId = () => {
-    try {
-      const raw = localStorage.getItem("session");
-      const session = raw ? JSON.parse(raw) : null;
-      if (!session) return null;
-      
-      const activeEntity = session?.activeEntity || session?.account;
-      return activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
-    } catch {
-      return null;
-    }
+    if (!activeEntity) return null;
+    return activeEntity?.EntityAccountId || activeEntity?.entityAccountId || activeEntity?.id || null;
   };
   
   // Shared audio state is now managed by useSharedAudioPlayer
@@ -549,9 +551,8 @@ export default function PostFeed({ feedType = 'trending', onGoLive, onLivestream
             // Handle post
             const post = item.data;
             const postId = post._id || post.postId || post.id || `post-${index}`;
-            // Get viewerEntityAccountId for like status calculation
-            const viewerEntityAccountId = getCurrentEntityAccountId();
-            const transformedPost = mapPostForCard(post, t, viewerEntityAccountId);
+            // ⚠️ ĐỒNG BỘ: Truyền activeEntity object (giống PostDetailModal) thay vì string
+            const transformedPost = mapPostForCard(post, t, activeEntity);
             return (
               <React.Fragment key={postId}>
                 <PostCard

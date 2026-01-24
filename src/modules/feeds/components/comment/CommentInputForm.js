@@ -3,26 +3,14 @@ import { useTranslation } from "react-i18next";
 import PropTypes from "prop-types";
 import { addComment } from "../../../../api/postApi";
 import { cn } from "../../../../utils/cn";
+import { normalizeId, getAvatarForAccount } from "./utils";
 
 export default function CommentInputForm({ postId, onCommentAdded, onSubmitOverride, placeholder, disabled }) {
   const { t } = useTranslation();
-  const ANONYMOUS_AVATAR_URL = "/images/an-danh.png";
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [viewerName, setViewerName] = useState("");
   const [viewerAvatar, setViewerAvatar] = useState(null);
-  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ left: 0, bottom: 0 });
-  const roleMenuRef = useRef(null);
-  const menuRef = useRef(null);
-  const [isAnonymous, setIsAnonymous] = useState(false);
-  const [canUseAnonymous, setCanUseAnonymous] = useState(false);
-
-  const normalizeId = (value) => (value ? String(value).trim().toLowerCase() : null);
-
-  const getAvatarForAccount = (accountId, entityAccountId) => {
-    return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNlNWU3ZWIiLz4KPC9zdmc+";
-  };
 
   const resolveViewerIdentity = () => {
     try {
@@ -63,36 +51,7 @@ export default function CommentInputForm({ postId, onCommentAdded, onSubmitOverr
     const identity = resolveViewerIdentity();
     setViewerName(identity.name || "User");
     setViewerAvatar(identity.avatar);
-    setCanUseAnonymous(false);
-    setIsAnonymous(false);
   }, []);
-
-  // Calculate menu position when it opens
-  useEffect(() => {
-    if (roleMenuOpen && roleMenuRef.current) {
-      const rect = roleMenuRef.current.getBoundingClientRect();
-      setMenuPosition({
-        left: rect.left,
-        bottom: window.innerHeight - rect.top + 8
-      });
-    }
-  }, [roleMenuOpen]);
-
-  // Close role menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (roleMenuRef.current && !roleMenuRef.current.contains(e.target) &&
-          menuRef.current && !menuRef.current.contains(e.target)) {
-        setRoleMenuOpen(false);
-      }
-    };
-    if (roleMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [roleMenuOpen]);
 
   const handleAddComment = async (e) => {
     e.preventDefault();
@@ -127,28 +86,35 @@ export default function CommentInputForm({ postId, onCommentAdded, onSubmitOverr
       const entityType = typeRole;
       const useAnonymous = false; // anonymous temporarily disabled
 
-      let ok = false;
+      let responseData = null;
+      const commentTextToSend = newComment.trim(); // Lưu lại để dùng làm fallback
+      
       if (typeof onSubmitOverride === "function") {
-        ok = await onSubmitOverride(newComment.trim());
+        responseData = await onSubmitOverride(commentTextToSend);
       } else {
         const response = await addComment(postId, {
-          content: newComment.trim(),
+          content: commentTextToSend,
           typeRole: typeRole,
           entityAccountId: entityAccountId,
           entityId: entityId,
           entityType: entityType,
           isAnonymous: useAnonymous,
         });
-        ok = response?.success || response?.data?.success;
+        const ok = response?.success || response?.data?.success;
+        if (ok) {
+          // Học theo ImageDetailModal: chỉ truyền commentId và content, còn lại parent tự tạo từ activeEntity
+          responseData = {
+            commentId: response?.data?.commentId || response?.data?.id,
+            content: commentTextToSend // Dùng content từ form, không từ API
+          };
+        }
       }
 
-      if (ok) {
+      if (responseData) {
         setNewComment("");
         if (onCommentAdded) {
-          onCommentAdded();
-          setTimeout(() => {
-            onCommentAdded();
-          }, 1000);
+          // ⚠️ QUAN TRỌNG: Truyền responseData về để parent có thể dùng optimistic UI
+          onCommentAdded(responseData);
         }
       }
     } catch (error) {
@@ -163,8 +129,7 @@ export default function CommentInputForm({ postId, onCommentAdded, onSubmitOverr
       "flex items-start gap-2 p-3 border-t border-border/20 bg-card",
       "flex-shrink-0 relative z-[10002]"
     )}>
-      <div className="relative flex-shrink-0 z-[10003]" ref={roleMenuRef}>
-        {/* Anonymous selection temporarily disabled */}
+      <div className="relative flex-shrink-0 z-[10003]">
         <img 
           src={viewerAvatar || getAvatarForAccount()} 
           alt={viewerName}

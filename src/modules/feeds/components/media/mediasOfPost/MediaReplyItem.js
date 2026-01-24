@@ -1,5 +1,7 @@
+import { useState, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
-import { getAvatarForAccount, getNameForAccount, formatTimeDisplay, getLikesCount, isLiked, getCurrentUser, parseReplies } from "./utils";
+import { MoreVertical } from "lucide-react";
+import { getAvatarForAccount, getNameForAccount, formatTimeDisplay, getLikesCount, isLiked, getCurrentUser, parseReplies, canManageReply, getSessionData } from "./utils";
 import { cn } from "../../../../../utils/cn";
 import ExpandableText from "../../../../../components/common/ExpandableText";
 
@@ -26,12 +28,35 @@ export default function MediaReplyItem({
   onAddReply
 }) {
   const currentUser = getCurrentUser();
-  const replyLiked = isLiked(reply.likes, currentUser);
+  // Use sessionData with activeEntity for role-based likes check
+  const sessionData = getSessionData();
+  const replyLiked = isLiked(reply.likes, sessionData?.activeEntity || sessionData || currentUser);
   const replyLikesCount = getLikesCount(reply.likes);
-  const isReplyOwner = currentUser && String(reply.accountId) === String(currentUser.id);
+  const isReplyOwner = canManageReply(reply);
   const isEditingReply = editingComment?.type === 'reply' && editingComment.id === reply.id;
   const isReplyingToReply = replyingTo?.type === 'reply' && replyingTo.replyId === reply.id;
   const replyPendingKey = `reply-${commentId}-${reply.id}`;
+  
+  // Menu state
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const menuButtonRef = useRef(null);
+  const menuRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+  
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target) &&
+          menuButtonRef.current && !menuButtonRef.current.contains(e.target)) {
+        setOpenMenuId(null);
+      }
+    };
+    const menuKey = `reply-${commentId}-${reply.id}`;
+    if (openMenuId === menuKey) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openMenuId, commentId, reply.id]);
 
   return (
     <div className="py-2">
@@ -42,7 +67,7 @@ export default function MediaReplyItem({
           alt="avatar"
           onClick={() => onNavigateToProfile(reply.authorEntityId, reply.authorEntityType, reply.authorEntityAccountId)}
         />
-        <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden">
+        <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden relative">
           <div className="flex items-center gap-2 mb-1">
             <span 
               className={cn(
@@ -57,6 +82,77 @@ export default function MediaReplyItem({
               <span className="text-muted-foreground text-[0.7rem]">
                 {formatTimeDisplay(reply.createdAt)}
               </span>
+            )}
+            {/* Menu button for reply owner */}
+            {isReplyOwner && !isEditingReply && (
+              <div className="ml-auto">
+                <button
+                  ref={menuButtonRef}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const menuKey = `reply-${commentId}-${reply.id}`;
+                    if (menuButtonRef.current && openMenuId !== menuKey) {
+                      const rect = menuButtonRef.current.getBoundingClientRect();
+                      setMenuPosition({
+                        top: rect.bottom + 4,
+                        right: window.innerWidth - rect.right
+                      });
+                    }
+                    setOpenMenuId(openMenuId === menuKey ? null : menuKey);
+                  }}
+                  className={cn(
+                    "p-1 rounded-full transition-all duration-200",
+                    "hover:bg-muted/30 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {openMenuId === `reply-${commentId}-${reply.id}` && (
+                  <div
+                    ref={menuRef}
+                    className={cn(
+                      "fixed z-[100000]",
+                      "bg-card border border-border rounded-lg shadow-lg",
+                      "p-1 overflow-hidden"
+                    )}
+                    style={{
+                      top: `${menuPosition.top}px`,
+                      right: `${menuPosition.right}px`
+                    }}
+                  >
+                    <div className="flex gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditClick('reply', reply.id, commentId, reply.id);
+                          setOpenMenuId(null);
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 text-sm whitespace-nowrap",
+                          "text-foreground hover:bg-muted/30 rounded",
+                          "transition-colors duration-200"
+                        )}
+                      >
+                        Chỉnh sửa
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteClick('reply', reply.id, commentId, reply.id);
+                          setOpenMenuId(null);
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 text-sm whitespace-nowrap",
+                          "text-danger hover:bg-danger/10 rounded",
+                          "transition-colors duration-200"
+                        )}
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           {isEditingReply ? (
@@ -129,7 +225,6 @@ export default function MediaReplyItem({
         </button>
         
         {!isEditingReply && (
-          <>
             <button 
               className={cn(
                 "bg-transparent border-none text-muted-foreground text-sm",
@@ -140,31 +235,6 @@ export default function MediaReplyItem({
             >
               Phản hồi
             </button>
-            {isReplyOwner && (
-              <>
-                <button 
-                  className={cn(
-                    "bg-transparent border-none text-muted-foreground text-sm",
-                    "px-1 py-1 rounded transition-all duration-200 cursor-pointer",
-                    "hover:bg-muted/30 hover:text-foreground"
-                  )}
-                  onClick={() => onEditClick('reply', reply.id, commentId, reply.id)}
-                >
-                  Chỉnh sửa
-                </button>
-                <button 
-                  className={cn(
-                    "bg-transparent border-none text-danger text-sm",
-                    "px-1 py-1 rounded transition-all duration-200 cursor-pointer",
-                    "hover:bg-danger/10"
-                  )}
-                  onClick={() => onDeleteClick('reply', reply.id, commentId, reply.id)}
-                >
-                  Xóa
-                </button>
-              </>
-            )}
-          </>
         )}
         
         {isEditingReply && (

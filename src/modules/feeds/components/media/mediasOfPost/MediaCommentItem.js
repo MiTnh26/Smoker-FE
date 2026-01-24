@@ -1,5 +1,7 @@
+import { useState, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
-import { getAvatarForAccount, getNameForAccount, formatTimeDisplay, getLikesCount, isLiked, getCurrentUser, parseReplies } from "./utils";
+import { MoreVertical } from "lucide-react";
+import { getAvatarForAccount, getNameForAccount, formatTimeDisplay, getLikesCount, isLiked, getCurrentUser, parseReplies, canManageComment, canManageReply, getSessionData } from "./utils";
 import MediaReplyItem from "./MediaReplyItem";
 import { cn } from "../../../../../utils/cn";
 import ExpandableText from "../../../../../components/common/ExpandableText";
@@ -17,6 +19,7 @@ export default function MediaCommentItem({
   pendingLikes,
   submitting,
   onLikeClick,
+  onReplyLikeClick,
   onReplyClick,
   onEditClick,
   onDeleteClick,
@@ -29,10 +32,12 @@ export default function MediaCommentItem({
 }) {
   const currentUser = getCurrentUser();
   const ANONYMOUS_AVATAR_URL = "/images/an-danh.png";
-  const commentLiked = isLiked(comment.likes, currentUser);
+  // Use sessionData with activeEntity for role-based likes check
+  const sessionData = getSessionData();
+  const commentLiked = isLiked(comment.likes, sessionData?.activeEntity || sessionData || currentUser);
   const commentLikesCount = getLikesCount(comment.likes);
   const replies = parseReplies(comment);
-  const isCommentOwner = currentUser && String(comment.accountId) === String(currentUser.id);
+  const isCommentOwner = canManageComment(comment);
   // Anonymous temporarily disabled
   const isAnonymousComment = false;
   const anonymousIndex = comment.anonymousIndex;
@@ -41,6 +46,26 @@ export default function MediaCommentItem({
 
   const displayAvatar = comment.authorAvatar || getAvatarForAccount(comment.accountId, comment.authorEntityAccountId, comment.authorAvatar);
   const pendingKey = `comment-${comment.id}`;
+  
+  // Menu state
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const menuButtonRef = useRef(null);
+  const menuRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+  
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target) &&
+          menuButtonRef.current && !menuButtonRef.current.contains(e.target)) {
+        setOpenMenuId(null);
+      }
+    };
+    if (openMenuId === `comment-${comment.id}`) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openMenuId, comment.id]);
 
   return (
     <div className={cn(
@@ -55,7 +80,7 @@ export default function MediaCommentItem({
           alt="avatar"
           onClick={() => onNavigateToProfile(comment.authorEntityId, comment.authorEntityType, comment.authorEntityAccountId)}
         />
-        <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden">
+        <div className="flex-1 flex flex-col gap-1 min-w-0 max-w-full overflow-hidden relative">
           <div className="flex items-center gap-2 mb-1">
             <span 
               className={cn(
@@ -70,6 +95,77 @@ export default function MediaCommentItem({
               <span className="text-muted-foreground text-xs">
                 {formatTimeDisplay(comment.createdAt)}
               </span>
+            )}
+            {/* Menu button for comment owner */}
+            {isCommentOwner && !isEditing && (
+              <div className="ml-auto">
+                <button
+                  ref={menuButtonRef}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const menuKey = `comment-${comment.id}`;
+                    if (menuButtonRef.current && openMenuId !== menuKey) {
+                      const rect = menuButtonRef.current.getBoundingClientRect();
+                      setMenuPosition({
+                        top: rect.bottom + 4,
+                        right: window.innerWidth - rect.right
+                      });
+                    }
+                    setOpenMenuId(openMenuId === menuKey ? null : menuKey);
+                  }}
+                  className={cn(
+                    "p-1 rounded-full transition-all duration-200",
+                    "hover:bg-muted/30 text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+                {openMenuId === `comment-${comment.id}` && (
+                  <div
+                    ref={menuRef}
+                    className={cn(
+                      "fixed z-[100000]",
+                      "bg-card border border-border rounded-lg shadow-lg",
+                      "p-1 overflow-hidden"
+                    )}
+                    style={{
+                      top: `${menuPosition.top}px`,
+                      right: `${menuPosition.right}px`
+                    }}
+                  >
+                    <div className="flex gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditClick('comment', comment.id, comment.id);
+                          setOpenMenuId(null);
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 text-sm whitespace-nowrap",
+                          "text-foreground hover:bg-muted/30 rounded",
+                          "transition-colors duration-200"
+                        )}
+                      >
+                        Chỉnh sửa
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteClick('comment', comment.id, comment.id);
+                          setOpenMenuId(null);
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 text-sm whitespace-nowrap",
+                          "text-danger hover:bg-danger/10 rounded",
+                          "transition-colors duration-200"
+                        )}
+                      >
+                        Xóa
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           {isEditing ? (
@@ -142,7 +238,6 @@ export default function MediaCommentItem({
         </button>
         
         {!isEditing && (
-          <>
             <button 
               className={cn(
                 "bg-transparent border-none text-muted-foreground text-sm",
@@ -153,31 +248,6 @@ export default function MediaCommentItem({
             >
               Phản hồi
             </button>
-            {isCommentOwner && (
-              <>
-                <button 
-                  className={cn(
-                    "bg-transparent border-none text-muted-foreground text-sm",
-                    "px-1 py-1 rounded transition-all duration-200 cursor-pointer",
-                    "hover:bg-muted/30 hover:text-foreground"
-                  )}
-                  onClick={() => onEditClick('comment', comment.id, comment.id)}
-                >
-                  Chỉnh sửa
-                </button>
-                <button 
-                  className={cn(
-                    "bg-transparent border-none text-danger text-sm",
-                    "px-1 py-1 rounded transition-all duration-200 cursor-pointer",
-                    "hover:bg-danger/10"
-                  )}
-                  onClick={() => onDeleteClick('comment', comment.id, comment.id)}
-                >
-                  Xóa
-                </button>
-              </>
-            )}
-          </>
         )}
         
         {isEditing && (
@@ -227,7 +297,7 @@ export default function MediaCommentItem({
               setReplyText={setReplyText}
               pendingLikes={pendingLikes}
               submitting={submitting}
-              onLikeClick={onLikeClick}
+              onLikeClick={onReplyLikeClick || onLikeClick}
               onReplyClick={onReplyClick}
               onEditClick={onEditClick}
               onDeleteClick={onDeleteClick}

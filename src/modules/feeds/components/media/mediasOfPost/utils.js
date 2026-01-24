@@ -93,13 +93,32 @@ export const createNavigateToProfile = (navigate) => {
   return (entityId, entityType, entityAccountId) => {
     if (!entityId && !entityAccountId) return;
     
-    if (entityType === 'BarPage') {
-      navigate(`/bar/${entityId || entityAccountId}`);
-    } else if (entityType === 'BusinessAccount') {
-      navigate(`/profile/${entityAccountId || entityId}`);
-    } else {
-      navigate(`/profile/${entityAccountId || entityId}`);
+    // Check if this is own profile before navigating
+    try {
+      const raw = localStorage.getItem("session");
+      const session = raw ? JSON.parse(raw) : null;
+      if (session && entityAccountId) {
+        const activeEntityAccountId = 
+          session.activeEntity?.EntityAccountId ||
+          session.activeEntity?.entityAccountId ||
+          null;
+        
+        // Normalize IDs for comparison
+        const postEntityAccountIdNormalized = String(entityAccountId).toLowerCase().trim();
+        const activeEntityAccountIdNormalized = activeEntityAccountId ? String(activeEntityAccountId).toLowerCase().trim() : null;
+        
+        // If it's own profile, navigate to /own/profile
+        if (activeEntityAccountIdNormalized && postEntityAccountIdNormalized === activeEntityAccountIdNormalized) {
+          navigate("/own/profile");
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('[createNavigateToProfile] Error checking own profile:', error);
     }
+    
+    // Navigate to public profile - use /profile/ for all entity types including BarPage
+    navigate(`/profile/${entityAccountId || entityId}`);
   };
 };
 
@@ -115,19 +134,44 @@ export const getLikesCount = (likesObj) => {
 // Check if current user liked
 export const isLiked = (likesObj, currentUser) => {
   if (!currentUser || !likesObj) return false;
-  const userId = String(currentUser.id);
+  
+  // Get entityAccountId from currentUser (for role-based likes)
+  const entityAccountId = currentUser?.EntityAccountId || currentUser?.entityAccountId || null;
+  const userId = String(currentUser.id || currentUser._id || "");
   
   if (likesObj instanceof Map) {
+    // Backend uses entityAccountId as key, so check both key and value
+    if (entityAccountId) {
+      const likeKey = String(entityAccountId);
+      if (likesObj.has(likeKey)) return true;
+    }
+    // Fallback: check by accountId in value
     for (const [, likeObj] of likesObj.entries()) {
-      if (likeObj && String(likeObj.accountId) === userId) return true;
+      if (likeObj) {
+        if (likeObj.accountId && String(likeObj.accountId) === userId) return true;
+        if (likeObj.entityAccountId && entityAccountId && String(likeObj.entityAccountId) === String(entityAccountId)) return true;
+      }
     }
     return false;
   }
   if (Array.isArray(likesObj)) {
-    return likesObj.some(l => l && String(l.accountId) === userId);
+    return likesObj.some(l => {
+      if (!l) return false;
+      if (l.accountId && String(l.accountId) === userId) return true;
+      if (l.entityAccountId && entityAccountId && String(l.entityAccountId) === String(entityAccountId)) return true;
+      return false;
+    });
   }
   if (typeof likesObj === 'object') {
-    return Object.values(likesObj).some(l => l && String(l.accountId) === userId);
+    // Check by entityAccountId as key first
+    if (entityAccountId && likesObj[String(entityAccountId)]) return true;
+    // Fallback: check by accountId in values
+    return Object.values(likesObj).some(l => {
+      if (!l) return false;
+      if (l.accountId && String(l.accountId) === userId) return true;
+      if (l.entityAccountId && entityAccountId && String(l.entityAccountId) === String(entityAccountId)) return true;
+      return false;
+    });
   }
   return false;
 };
@@ -258,6 +302,98 @@ export const getSessionData = () => {
   } catch (e) {
     return null;
   }
+};
+
+// Helper to normalize ID for comparison
+const normalizeId = (id) => {
+  if (!id) return null;
+  return String(id).toLowerCase().trim();
+};
+
+// Check if current user can manage a comment/reply (using entityAccountId)
+export const canManageComment = (comment) => {
+  // Priority 1: Check canManage from backend
+  if (typeof comment?.canManage === "boolean") {
+    return comment.canManage;
+  }
+  
+  // Priority 2: Check by entityAccountId
+  const sessionData = getSessionData();
+  if (!sessionData) return false;
+  
+  const { activeEntity } = sessionData;
+  const viewerEntityAccountId = normalizeId(
+    activeEntity?.EntityAccountId ||
+    activeEntity?.entityAccountId ||
+    null
+  );
+  
+  const commentEntityAccountId = normalizeId(
+    comment?.entityAccountId ||
+    comment?.authorEntityAccountId ||
+    comment?.author?.entityAccountId ||
+    null
+  );
+  
+  // Check entity account match (priority)
+  if (viewerEntityAccountId && commentEntityAccountId &&
+      viewerEntityAccountId === commentEntityAccountId) {
+    return true;
+  }
+  
+  // Fallback: Check by accountId
+  const viewerAccountId = normalizeId(activeEntity?.id || activeEntity?.accountId || null);
+  const commentAccountId = normalizeId(comment?.accountId || comment?.authorAccountId || comment?.author?.accountId || null);
+  
+  if (viewerAccountId && commentAccountId &&
+      viewerAccountId === commentAccountId) {
+    return true;
+  }
+  
+  return false;
+};
+
+// Check if current user can manage a reply (using entityAccountId)
+export const canManageReply = (reply) => {
+  // Priority 1: Check canManage from backend
+  if (typeof reply?.canManage === "boolean") {
+    return reply.canManage;
+  }
+  
+  // Priority 2: Check by entityAccountId
+  const sessionData = getSessionData();
+  if (!sessionData) return false;
+  
+  const { activeEntity } = sessionData;
+  const viewerEntityAccountId = normalizeId(
+    activeEntity?.EntityAccountId ||
+    activeEntity?.entityAccountId ||
+    null
+  );
+  
+  const replyEntityAccountId = normalizeId(
+    reply?.entityAccountId ||
+    reply?.authorEntityAccountId ||
+    reply?.author?.entityAccountId ||
+    null
+  );
+  
+  // Check entity account match (priority)
+  if (viewerEntityAccountId && replyEntityAccountId &&
+      viewerEntityAccountId === replyEntityAccountId) {
+    return true;
+  }
+  
+  // Fallback: Check by accountId
+  const viewerAccountId = normalizeId(activeEntity?.id || activeEntity?.accountId || null);
+  const replyAccountId = normalizeId(reply?.accountId || reply?.authorAccountId || reply?.author?.accountId || null);
+  
+  if (viewerAccountId && replyAccountId &&
+      viewerAccountId === replyAccountId) {
+    return true;
+  }
+  
+  return false;
 };
 
 // Get media ID for API calls

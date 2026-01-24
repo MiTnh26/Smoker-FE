@@ -36,6 +36,7 @@ export default function BarRegister() {
 
   const [files, setFiles] = useState({ avatar: null, background: null });
   const [previews, setPreviews] = useState({ avatar: "", background: "" });
+  const [displayAddress, setDisplayAddress] = useState("");
 
   // Load user profile to sync phone and email (not address)
   useEffect(() => {
@@ -253,8 +254,8 @@ export default function BarRegister() {
           onWardChange={setSelectedWardId}
           onAddressDetailChange={setAddressDetail}
           onAddressChange={(fullAddr) => {
-            // Keep full address for display purposes
-            // The JSON will be stored separately via onAddressJsonChange
+            // Lưu chuỗi địa chỉ đầy đủ để hiển thị ở bước xem trước
+            setDisplayAddress(fullAddr);
           }}
           onAddressJsonChange={(addressJson) => {
             // Update info.address with JSON string when valid
@@ -267,7 +268,7 @@ export default function BarRegister() {
 
       {step === 2 && (
         <BarRegisterStep2
-          info={info}
+          info={{ ...info, address: displayAddress || info.address }}
           files={files}
           previews={previews}
           handleFileChange={handleFileChange}
