@@ -154,18 +154,15 @@ const VoucherSelector = ({
   onSkipVoucher
 }) => {
   const [showTermsModal, setShowTermsModal] = useState(false);
-  // Filter vouchers that are available (not used up, active, and from this bar)
+  // API đã filter sẵn voucher khả dụng (chỉ voucher của bar này và đã được admin duyệt)
+  // Chỉ cần filter theo usage count
   const availableVouchers = vouchers.filter(v =>
-    (v.UsedCount || 0) < (v.MaxUsage || 0) &&
-    (v.Status === 'ACTIVE' || !v.Status) &&
-    (v.VoucherStatus === 'approved' || !v.VoucherStatus)
+    (v.UsedCount || 0) < (v.MaxUsage || 0)
   );
-  
+
   // Vouchers that are used up (for display with disabled state)
   const usedUpVouchers = vouchers.filter(v =>
-    (v.UsedCount || 0) >= (v.MaxUsage || 0) ||
-    v.Status !== 'ACTIVE' ||
-    v.VoucherStatus !== 'approved'
+    (v.UsedCount || 0) >= (v.MaxUsage || 0)
   );
 
   if (loading) {
@@ -339,7 +336,7 @@ const VoucherSelector = ({
           color: '#6b7280',
           fontSize: '0.9rem'
         }}>
-          Không có voucher khả dụng. Bạn có thể đặt bàn mà không cần voucher.
+          Quán bar này chưa có voucher hoặc các voucher đã hết lượt sử dụng. Bạn có thể đặt bàn mà không cần voucher.
         </div>
       )}
     </div>
@@ -882,10 +879,18 @@ const BarTablesPage = ({ barId: propBarId }) => {
   useEffect(() => {
     const fetchReceiverId = async () => {
       try {
+        console.log('[BarTablesPage] Fetching bar details for barId:', barId);
         const barDetails = await barPageApi.getBarPageById(barId);
-        const entityAccountId = barDetails.data?.data?.EntityAccountId || barDetails.data?.EntityAccountId;
+        console.log('[BarTablesPage] Bar details response:', barDetails);
+
+        // API trả về: { status: "success", data: { EntityAccountId, ... } }
+        const entityAccountId = barDetails.data?.data?.EntityAccountId;
+        console.log('[BarTablesPage] Extracted EntityAccountId:', entityAccountId);
+
         if (entityAccountId) {
           setReceiverId(entityAccountId);
+        } else {
+          console.warn('[BarTablesPage] No EntityAccountId found in response');
         }
       } catch (error) {
         console.error("Error fetching bar details:", error);
@@ -902,25 +907,35 @@ const BarTablesPage = ({ barId: propBarId }) => {
     const fetchBarVouchers = async () => {
       if (!barId) return;
 
+      console.log('[BarTablesPage] fetchBarVouchers - barId:', barId, 'receiverId:', receiverId);
+      console.log('[BarTablesPage] Full URL:', window.location.href);
+      console.log('[BarTablesPage] Expected voucher BarPageId: 5527E08A-B130-4CDB-9338-7E111CA53467');
+      console.log('[BarTablesPage] Current barId matches expected:', barId === '5527E08A-B130-4CDB-9338-7E111CA53467');
+
       try {
         setLoadingVouchers(true);
-        // TODO: Call API to get vouchers for this bar
-        // For now, use existing API
-        const response = await bookingApi.getAvailableVouchers(0);
-        const payload = response?.data ?? response;
-        if (payload?.success) {
-          // Filter vouchers by barId if available
-          const allVouchers = payload.data || [];
-          // TODO: Filter by barId when API supports it
-          setVouchers(allVouchers);
-        } else if (payload?.data?.success) {
-          setVouchers(payload.data.data || []);
+        // Gọi API với barId (là barPageId) để chỉ lấy voucher của quán bar này
+        console.log('[BarTablesPage] Calling getAvailableVouchers with barId:', barId);
+        const response = await bookingApi.getAvailableVouchers(barId);
+        console.log('[BarTablesPage] API response (axios interceptor already returns response.data):', response);
+
+        // Vì axios interceptor trả về response.data trực tiếp, response chính là API payload
+        const payload = response;
+        console.log('[BarTablesPage] Payload:', payload);
+        console.log('[BarTablesPage] payload.success:', payload?.success);
+
+        if (payload?.success === true) {
+          // API đã filter theo barId và chỉ trả voucher đã được admin duyệt
+          console.log('[BarTablesPage] Setting vouchers:', payload.data || []);
+          setVouchers(payload.data || []);
         } else {
-          setVouchers(Array.isArray(payload) ? payload : []);
+          console.log('[BarTablesPage] No success or success !== true, setting empty vouchers. Payload:', payload);
+          setVouchers([]);
         }
       } catch (error) {
         console.error("Error fetching vouchers:", error);
-        // Don't show error toast for vouchers as it's optional
+        // Không hiển thị voucher nếu có lỗi
+        setVouchers([]);
       } finally {
         setLoadingVouchers(false);
       }
