@@ -142,15 +142,8 @@ export default function ManagerLogin() {
               </button>
 
               <div className={cn("text-center text-sm")}>
-                <span className={cn("text-muted-foreground")}>
-                  Chưa có tài khoản?{" "}
-                </span>
-                <Link
-                  to="/manager/register"
-                  className={cn("text-primary hover:underline")}
-                >
-                  Đăng ký
-                </Link>
+             
+               
               </div>
             </form>
           </div>

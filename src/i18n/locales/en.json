@@ -58,6 +58,7 @@
     "combosManage": "Manage combos",
     "registerBusiness": "Register business account",
     "adminUsers": "Manage users",
+    "adminAccountantRegistration": "Register accountant",
     "adminApprovals": "Manage approvals",
     "adminMusic": "Music library",
     "adminAdPackages": "Ad packages",
@@ -751,6 +752,31 @@
   "admin": {
     "manageUsers": "Manage users",
     "manageMusic": "Manage music",
+    "accountantRegistration": {
+      "title": "Register accountant",
+      "subtitle": "Create an account in Managers table with role = accountant.",
+      "roleLabel": "Role",
+      "roleValue": "Accountant",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Enter email",
+      "phoneLabel": "Phone",
+      "phonePlaceholder": "Enter phone (optional)",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Enter password (min 8 chars)",
+      "confirmPasswordLabel": "Confirm password",
+      "confirmPasswordPlaceholder": "Re-enter password",
+      "togglePassword": "Show/hide password",
+      "toggleConfirmPassword": "Show/hide confirm password",
+      "submit": "Create accountant account",
+      "submitting": "Creating...",
+      "success": "Accountant account created: {{email}}",
+      "errors": {
+        "invalidEmail": "Invalid email",
+        "passwordMin": "Password must be at least 8 characters",
+        "confirmMismatch": "Confirm password does not match",
+        "failed": "Registration failed"
+      }
+    },
     "reports": {
       "status": {
         "pending": "Pending",

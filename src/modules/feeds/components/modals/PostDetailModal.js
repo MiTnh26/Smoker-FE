@@ -34,6 +34,7 @@ export default function PostDetailModal({
   const likedStateRef = useRef(null);
   const initialPostRef = useRef(null);
   const lastFetchedPostIdRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   // 2. Khai báo các hàm Helper (Phải nằm TRÊN useEffect)
   const transformPostData = useCallback((post) => {
@@ -64,11 +65,18 @@ export default function PostDetailModal({
         }
       }
 
-      setPostData(transformedPost);
+          // Chỉ set state nếu modal còn mở
+          if (isMountedRef.current) {
+            setPostData(transformedPost);
+          }
     } catch (err) {
-      setError(err.message);
+      if (isMountedRef.current) {
+        setError(err.message);
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, [postId, transformPostData]);
 
@@ -77,6 +85,7 @@ export default function PostDetailModal({
   useEffect(() => {
     if (!open) {
       document.body.style.overflow = "";
+      isMountedRef.current = false;
       setPostData(null);
       setError(null);
       likedStateRef.current = null;
@@ -85,6 +94,7 @@ export default function PostDetailModal({
       return;
     }
 
+    isMountedRef.current = true;
     document.body.style.overflow = "hidden";
     
     // Lưu initialPost vào ref để tránh dependency issues
@@ -138,14 +148,26 @@ export default function PostDetailModal({
             likedStateRef.current = true;
           }
 
-          setPostData(transformedPost);
+          // Chỉ set state nếu modal còn mở
+          if (isMountedRef.current) {
+            setPostData(transformedPost);
+          }
         } catch (err) {
-          setError(err.message);
+          if (isMountedRef.current) {
+            setError(err.message);
+          }
         } finally {
-          setLoading(false);
+          if (isMountedRef.current) {
+            setLoading(false);
+          }
         }
       })();
     }
+    
+    // Cleanup function để đảm bảo ref được reset khi unmount hoặc modal đóng
+    return () => {
+      isMountedRef.current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, postId]);
 
@@ -190,19 +212,27 @@ export default function PostDetailModal({
                     onSeek={handleSeek}
                     disableCommentButton={true}
                   onLike={(likeData) => {
-                    setPostData(prev => ({
-                      ...prev,
-                      likedByCurrentUser: likeData.liked,
-                      likes: likeData.likeCount, // Đồng bộ với stats.likeCount
-                      stats: { 
-                        ...prev.stats, 
-                        isLikedByMe: likeData.liked, 
-                        likeCount: likeData.likeCount 
-                      }
-                    }));
+                    // Kiểm tra modal còn mở và postData còn tồn tại
+                    if (!isMountedRef.current) return;
+                    
+                    setPostData(prev => {
+                      // Nếu prev là null (modal đã đóng), không update
+                      if (!prev) return prev;
+                      
+                      return {
+                        ...prev,
+                        likedByCurrentUser: likeData.liked,
+                        likes: likeData.likeCount, // Đồng bộ với stats.likeCount
+                        stats: { 
+                          ...(prev.stats || {}), 
+                          isLikedByMe: likeData.liked, 
+                          likeCount: likeData.likeCount 
+                        }
+                      };
+                    });
                     
                     // Đồng bộ state với parent (PostCard) để khi đóng modal, PostCard cũng có state đúng
-                    if (onPostUpdated) {
+                    if (onPostUpdated && isMountedRef.current) {
                       onPostUpdated({
                         postId: postData?.id || postId,
                         liked: likeData.liked,
@@ -229,12 +259,26 @@ export default function PostDetailModal({
                   <CommentInputForm
                   postId={String(postData.id)}
                   onCommentAdded={(responseData) => {
-                    setPostData(prev => ({
-                          ...prev,
-                      stats: { ...prev.stats, commentCount: (prev.stats?.commentCount || 0) + 1 }
-                    }));
-                    if (commentSectionRef.current) commentSectionRef.current.handleNewComment(responseData);
-                    }}
+                    // Kiểm tra modal còn mở và postData còn tồn tại
+                    if (!isMountedRef.current) return;
+                    
+                    setPostData(prev => {
+                      // Nếu prev là null (modal đã đóng), không update
+                      if (!prev) return prev;
+                      
+                      return {
+                        ...prev,
+                        stats: { 
+                          ...(prev.stats || {}), 
+                          commentCount: (prev.stats?.commentCount || 0) + 1 
+                        }
+                      };
+                    });
+                    
+                    if (commentSectionRef.current && isMountedRef.current) {
+                      commentSectionRef.current.handleNewComment(responseData);
+                    }
+                  }}
                   />
                 </div>
             </>

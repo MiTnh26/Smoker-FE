@@ -103,6 +103,31 @@ export const extractAddressFields = (addressObj) => {
     provinceId: addressObj.provinceId || '',
     districtId: addressObj.districtId || '',
     wardId: addressObj.wardId || ''
+    // Note: We ignore fullAddress field from old format - it was redundant
   };
+};
+
+/**
+ * Migrates old address format to new format
+ * Old: {"fullAddress":"12, Xã Tiên Hải, Thành phố Phủ Lý, Hà Nam","provinceId":"35","districtId":"347","wardId":"13381","detail":"12"}
+ * New: {"detail":"12","provinceId":"35","districtId":"347","wardId":"13381"}
+ * @param {object} oldAddressObj - Old address object
+ * @returns {string|null} - New address JSON string or null
+ */
+export const migrateAddressFormat = (oldAddressObj) => {
+  if (!oldAddressObj || typeof oldAddressObj !== 'object') {
+    return null;
+  }
+
+  // Extract only the 4 required fields
+  const { detail, provinceId, districtId, wardId } = extractAddressFields(oldAddressObj);
+  
+  // Validate all fields are present
+  if (!validateAddressFields(detail, provinceId, districtId, wardId)) {
+    return null;
+  }
+
+  // Return new format JSON string
+  return formatAddressForSave(detail, provinceId, districtId, wardId);
 };
 

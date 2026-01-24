@@ -384,6 +384,7 @@ export default function Sidebar({ isOpen, onClose }) {
       "Đối tác / Bar": "partners",
       "Đánh giá & sao": "reviewsStars",
       "Quản lý người dùng": "adminUsers",
+      "Đăng ký kế toán": "adminAccountantRegistration",
       "Quản lý duyệt": "adminApprovals",
       "Thư viện nhạc": "adminMusic",
       "Gói quảng cáo": "adminAdPackages",
