@@ -21,13 +21,18 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
   });
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // Prevent body scroll when modal is open
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
+      // Reset errors when modal opens
+      setErrors({});
     } else {
       document.body.style.overflow = "";
+      // Clear errors when modal closes
+      setErrors({});
     }
     return () => {
       document.body.style.overflow = "";
@@ -126,14 +131,87 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
     }
   };
 
+  const validateField = (fieldName, value) => {
+    const newErrors = { ...errors };
+
+    switch (fieldName) {
+      case 'musicTitle':
+        if (!value || value.trim() === "") {
+          newErrors.musicTitle = t('validation.required') || "Title is required";
+        } else {
+          delete newErrors.musicTitle;
+        }
+        break;
+      case 'artistName':
+        if (!value || value.trim() === "") {
+          newErrors.artistName = t('validation.required') || "Artist name is required";
+        } else {
+          delete newErrors.artistName;
+        }
+        break;
+      case 'description':
+        if (!value || value.trim() === "") {
+          newErrors.description = t('validation.required') || "Description is required";
+        } else {
+          delete newErrors.description;
+        }
+        break;
+      case 'audioUrl':
+        if (!value || value.trim() === "") {
+          newErrors.audioUrl = t('validation.required') || "Audio file is required";
+        } else {
+          delete newErrors.audioUrl;
+        }
+        break;
+      case 'musicBackgroundImage':
+        if (!value || value.trim() === "") {
+          newErrors.musicBackgroundImage = t('validation.required') || "Cover image is required";
+        } else {
+          delete newErrors.musicBackgroundImage;
+        }
+        break;
+      case 'musicPurchaseLink':
+        if (value && value.trim() !== "") {
+          try {
+            new URL(value);
+            delete newErrors.musicPurchaseLink;
+          } catch (e) {
+            newErrors.musicPurchaseLink = t('validation.invalidUrl') || "Invalid URL format";
+          }
+        } else {
+          delete newErrors.musicPurchaseLink;
+        }
+        break;
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
+
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Validate field in real-time
+    validateField(name, value);
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    // Validate on blur to show error if user leaves field empty
+    validateField(name, value);
   };
 
   const handleAudioFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
       setUploading(true);
+      // Clear error when file is selected
+      if (errors.audioUrl) {
+        setErrors({ ...errors, audioUrl: "" });
+      }
       try {
         const result = await uploadAudioToCloudinary(file);
         const audioUrl = result.secure_url || result.url || result.path;
@@ -160,6 +238,10 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
     const file = e.target.files[0];
     if (file) {
       setUploading(true);
+      // Clear error when file is selected
+      if (errors.musicBackgroundImage) {
+        setErrors({ ...errors, musicBackgroundImage: "" });
+      }
       try {
         const result = await uploadImageToCloudinary(file);
         const imageUrl = result.secure_url || result.url || result.path;
@@ -183,10 +265,74 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.musicTitle || !formData.artistName || !formData.description || !formData.audioUrl || !formData.musicBackgroundImage) {
-      alert(t('modal.postFailed'));
+    
+    // Validate all fields before submit - get errors synchronously
+    const validationErrors = {};
+    
+    // Validate all required fields
+    if (!formData.musicTitle || formData.musicTitle.trim() === "") {
+      validationErrors.musicTitle = t('validation.required') || "Title is required";
+    }
+
+    if (!formData.artistName || formData.artistName.trim() === "") {
+      validationErrors.artistName = t('validation.required') || "Artist name is required";
+    }
+
+    if (!formData.description || formData.description.trim() === "") {
+      validationErrors.description = t('validation.required') || "Description is required";
+    }
+
+    if (!formData.audioUrl || formData.audioUrl.trim() === "") {
+      validationErrors.audioUrl = t('validation.required') || "Audio file is required";
+    }
+
+    if (!formData.musicBackgroundImage || formData.musicBackgroundImage.trim() === "") {
+      validationErrors.musicBackgroundImage = t('validation.required') || "Cover image is required";
+    }
+
+    // Validate URL format for purchase link (if provided)
+    if (formData.musicPurchaseLink && formData.musicPurchaseLink.trim() !== "") {
+      try {
+        new URL(formData.musicPurchaseLink);
+      } catch (e) {
+        validationErrors.musicPurchaseLink = t('validation.invalidUrl') || "Invalid URL format";
+      }
+    }
+
+    // Set errors and prevent submit if validation fails
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      
+      // Show alert with list of missing fields
+      const missingFields = Object.keys(validationErrors).map(field => {
+        const fieldNames = {
+          musicTitle: "Title",
+          artistName: "Artist",
+          description: "Description",
+          audioUrl: "Audio file",
+          musicBackgroundImage: "Cover image",
+          musicPurchaseLink: "Purchase link"
+        };
+        return fieldNames[field] || field;
+      }).join(", ");
+      
+      alert(t('validation.pleaseFillAllFields') || `Vui lòng điền đầy đủ thông tin: ${missingFields}`);
+      
+      // Scroll to first error field
+      const firstErrorField = Object.keys(validationErrors)[0];
+      if (firstErrorField) {
+        const errorElement = document.getElementById(`music-${firstErrorField}`);
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => errorElement.focus(), 300);
+        }
+      }
       return;
     }
+    
+    // Clear errors if validation passes
+    setErrors({});
+
     if (uploading) {
       alert(t('modal.waitUpload'));
       return;
@@ -299,6 +445,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
         audioFile: null,
         audioUrl: ""
       });
+      setErrors({});
       onClose?.();
 
     } catch (err) {
@@ -364,9 +511,13 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
                   name="musicTitle"
                   value={formData.musicTitle}
                   onChange={handleInputChange}
-                  className="post-form-input"
+                  onBlur={handleBlur}
+                  className={`post-form-input ${errors.musicTitle ? 'border-red-500' : ''}`}
                   required
                 />
+                {errors.musicTitle && (
+                  <span className="text-red-500 text-sm mt-1 block">{errors.musicTitle}</span>
+                )}
               </div>
 
               {/* Artist - Left Column */}
@@ -380,9 +531,13 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
                   name="artistName"
                   value={formData.artistName}
                   onChange={handleInputChange}
-                  className="post-form-input"
+                  onBlur={handleBlur}
+                  className={`post-form-input ${errors.artistName ? 'border-red-500' : ''}`}
                   required
                 />
+                {errors.artistName && (
+                  <span className="text-red-500 text-sm mt-1 block">{errors.artistName}</span>
+                )}
               </div>
 
               {/* Hashtag - Right Column */}
@@ -411,11 +566,15 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
-                  className="post-form-textarea"
+                  onBlur={handleBlur}
+                  className={`post-form-textarea ${errors.description ? 'border-red-500' : ''}`}
                   rows={3}
                   placeholder={t('input.caption')}
                   required
                 />
+                {errors.description && (
+                  <span className="text-red-500 text-sm mt-1 block">{errors.description}</span>
+                )}
               </div>
 
               {/* Purchase Link - Full Width */}
@@ -429,9 +588,13 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
                   name="musicPurchaseLink"
                   value={formData.musicPurchaseLink}
                   onChange={handleInputChange}
-                  className="post-form-input"
+                  onBlur={handleBlur}
+                  className={`post-form-input ${errors.musicPurchaseLink ? 'border-red-500' : ''}`}
                   placeholder={t('input.url')}
                 />
+                {errors.musicPurchaseLink && (
+                  <span className="text-red-500 text-sm mt-1 block">{errors.musicPurchaseLink}</span>
+                )}
               </div>
 
               {/* Audio File Picker - Full Width */}
@@ -445,6 +608,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
                     type="file"
                     accept="audio/*"
                     onChange={handleAudioFileChange}
+                    className={errors.audioUrl ? 'border-red-500' : ''}
                     required
                   />
                   {formData.audioUrl && (
@@ -453,6 +617,9 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
                     </div>
                   )}
                 </div>
+                {errors.audioUrl && (
+                  <span className="text-red-500 text-sm mt-1 block">{errors.audioUrl}</span>
+                )}
               </div>
 
               {/* Cover Image Picker - Full Width */}
@@ -466,6 +633,7 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
                     type="file"
                     accept="image/*"
                     onChange={handleImageFileChange}
+                    className={errors.musicBackgroundImage ? 'border-red-500' : ''}
                     required
                   />
                   {formData.musicBackgroundImage && (
@@ -477,6 +645,9 @@ export default function MusicPostModal({ open, onClose, onCreated }) {
                     </div>
                   )}
                 </div>
+                {errors.musicBackgroundImage && (
+                  <span className="text-red-500 text-sm mt-1 block">{errors.musicBackgroundImage}</span>
+                )}
               </div>
             </div>
 
