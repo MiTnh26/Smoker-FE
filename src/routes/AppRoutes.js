@@ -17,7 +17,6 @@ import DynamicLayout from "../layouts/DynamicLayout";
 import ProfilePage from "../modules/profile/pages/ProfilePage";
 import PaymentReturn from "../pages/PaymentReturn";
 import ManagerLogin from "../modules/manager/pages/ManagerLogin";
-import ManagerRegister from "../modules/manager/pages/ManagerRegister";
 import AccountantRoutes from "./AccountantRoutes";
 
 export default function AppRoutes() {
@@ -49,7 +48,8 @@ export default function AppRoutes() {
         
         {/* Manager Auth Routes */}
         <Route path="/manager/login" element={<ManagerLogin />} />
-        <Route path="/manager/register" element={<ManagerRegister />} />
+        {/* Registration should be done from Admin area only */}
+        <Route path="/manager/register" element={<Navigate to="/manager/login" replace />} />
         
         <Route
           path="/search"

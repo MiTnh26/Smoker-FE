@@ -427,15 +427,14 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
         if (!value) {
           newErrors.date = "Vui lòng chọn ngày";
         } else {
-          // Kiểm tra ngày phải sau hôm nay ít nhất 1 ngày
+          // Kiểm tra ngày không được là quá khứ
           const selectedDate = new Date(value);
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
+          selectedDate.setHours(0, 0, 0, 0);
           
-          if (selectedDate <= today) {
-            newErrors.date = "Chỉ có thể đặt từ ngày mai trở đi";
+          if (selectedDate < today) {
+            newErrors.date = "Không thể đặt ngày trong quá khứ";
           } else {
             newErrors.date = "";
           }
@@ -578,8 +577,38 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
     return bookedSlotsForDate.includes(slotId);
   };
 
+  // Kiểm tra slot đã trôi qua giờ hiện tại chưa (nếu chọn ngày hôm nay)
+  const isSlotPassed = (slotId) => {
+    if (!date) return false;
+    
+    // Kiểm tra xem ngày được chọn có phải là hôm nay không
+    const selectedDate = new Date(date);
+    const today = new Date();
+    selectedDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    
+    // Nếu không phải hôm nay thì không có slot nào trôi qua
+    if (selectedDate.getTime() !== today.getTime()) {
+      return false;
+    }
+    
+    // Nếu là hôm nay, kiểm tra giờ hiện tại
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeInHours = currentHour + currentMinute / 60;
+    
+    // Slot kết thúc ở giờ: slotId * SLOT_DURATION
+    // Ví dụ: Slot 1 kết thúc ở 2h, Slot 2 kết thúc ở 4h
+    const slotEndHour = slotId * SLOT_DURATION;
+    
+    // Nếu giờ hiện tại >= giờ kết thúc của slot thì slot đã trôi qua
+    return currentTimeInHours >= slotEndHour;
+  };
+
   const handleSlotToggle = (slotId) => {
     if (isSlotBooked(slotId)) return; // Không cho chọn slot đã book
+    if (isSlotPassed(slotId)) return; // Không cho chọn slot đã trôi qua
     
     setSelectedSlots(prev => {
       if (prev.includes(slotId)) {
@@ -599,15 +628,16 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
     
     const selectedDate = e.target.value;
     
-    // Kiểm tra ngày phải sau hôm nay ít nhất 1 ngày
+    // Kiểm tra ngày không được là quá khứ
     if (selectedDate) {
       const date = new Date(selectedDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      date.setHours(0, 0, 0, 0);
       
-      if (date <= today) {
-        // Nếu chọn ngày hôm nay hoặc quá khứ, không cho chọn
-        setError("Chỉ có thể đặt từ ngày mai trở đi");
+      if (date < today) {
+        // Nếu chọn ngày quá khứ, không cho chọn
+        setError("Không thể đặt ngày trong quá khứ");
         return;
       }
     }
@@ -803,10 +833,9 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                     handleDateChange({ target: { value: selectedDate } });
                   }}
                   minDate={(() => {
-                    const tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(0, 0, 0, 0);
-                    return tomorrow;
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return today;
                   })()}
                   error={fieldErrors.date}
                   disabled={loadingBookedSlots || selectedSlots.length > 0}
@@ -843,17 +872,19 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                     {SLOTS.map(slot => {
                       const isSelected = selectedSlots.includes(slot.id);
                       const isBooked = isSlotBooked(slot.id);
+                      const isPassed = isSlotPassed(slot.id);
+                      const isDisabled = isBooked || isPassed || loadingBookedSlots;
                       
                       return (
                         <button
                           key={slot.id}
                           type="button"
                           onClick={() => handleSlotToggle(slot.id)}
-                          disabled={isBooked || loadingBookedSlots}
+                          disabled={isDisabled}
                           className={cn(
                             "relative p-4 rounded-lg border-2 transition-all",
                             "flex flex-col items-center justify-center gap-1",
-                            isBooked
+                            isDisabled
                               ? "bg-muted/50 border-border/30 cursor-not-allowed opacity-50"
                               : isSelected
                               ? "bg-primary/10 border-primary text-primary"
@@ -868,6 +899,9 @@ export default function RequestBookingModal({ open, onClose, performerEntityAcco
                           )}
                           {isBooked && (
                             <span className="absolute top-1 right-1 text-xs text-danger">✕</span>
+                          )}
+                          {isPassed && !isBooked && (
+                            <span className="absolute top-1 right-1 text-xs text-muted-foreground">⏰</span>
                           )}
                         </button>
                       );

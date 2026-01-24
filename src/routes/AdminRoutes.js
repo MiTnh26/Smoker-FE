@@ -14,6 +14,7 @@ import ManageResumeRequests from "../modules/admin/pages/ManageResumeRequests";
 import ManageRefundRequests from "../modules/admin/pages/ManageRefundRequests";
 import ManagePosts from "../modules/admin/pages/ManagePosts";
 import VoucherManager from "../modules/admin/pages/VoucherManager";
+import AccountantRegistration from "../modules/admin/pages/AccountantRegistration";
 import ProtectedRoute from "./ProtectedRoute";
 
 export default function AdminRoutes() {
@@ -22,6 +23,7 @@ export default function AdminRoutes() {
     <Fragment>
       <Route path="/admin/dashboard" element={<ProtectedRoute roles={["admin"]}><AdminLayout><Dashboard /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/users" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageUsers /></AdminLayout></ProtectedRoute>} />
+      <Route path="/admin/manager-registration" element={<ProtectedRoute roles={["admin"]}><AdminLayout><AccountantRegistration /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/approvals" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageApprovals /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/music" element={<ProtectedRoute roles={["admin"]}><AdminLayout><ManageMusic /></AdminLayout></ProtectedRoute>} />
       <Route path="/admin/reports" element={<ProtectedRoute roles={["admin"]}><AdminLayout><Reports /></AdminLayout></ProtectedRoute>} />
