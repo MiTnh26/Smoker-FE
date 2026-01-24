@@ -809,18 +809,19 @@ export default function DancerProfile() {
                                                 }
                                             }
                                             
-                                            // Send structured address data
-                                            if (selectedProvinceId || selectedDistrictId || selectedWardId) {
-                                                formData.append('addressData', JSON.stringify({
-                                                    provinceId: selectedProvinceId || null,
-                                                    districtId: selectedDistrictId || null,
-                                                    wardId: selectedWardId || null,
-                                                    fullAddress: fullAddress,
-                                                    detail: addressDetail || null
-                                                }));
-                                                formData.append('address', fullAddress);
+                                            // Send structured address data using new format (without fullAddress)
+                                            if (selectedProvinceId && selectedDistrictId && selectedWardId && addressDetail) {
+                                                // All 4 fields present - use new format
+                                                const addressObj = {
+                                                    detail: addressDetail,
+                                                    provinceId: selectedProvinceId,
+                                                    districtId: selectedDistrictId,
+                                                    wardId: selectedWardId
+                                                };
+                                                formData.append('address', JSON.stringify(addressObj));
                                             } else {
-                                                formData.append('address', fullAddress || profile.address || '');
+                                                // Fallback to existing address or empty
+                                                formData.append('address', profile.address || '');
                                             }
                                             
                                             // Send avatar and background URLs

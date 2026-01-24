@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 import { userApi } from "../../../api/userApi";
+import { formatAddressForSave, validateAddressFields } from "../../../utils/addressFormatter";
 import { locationApi } from "../../../api/locationApi";
 import { useNavigate } from "react-router-dom";
 import { Info, X } from "lucide-react";
@@ -69,12 +70,12 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
         }
         return;
       }
-      
+
       // Nếu đang load profile, không load lại districts vì đã load sẵn
       if (isLoadingProfileRef.current) {
         return;
       }
-      
+
       try {
         setLocationLoading(true);
         const data = await locationApi.getDistricts(selectedProvinceId);
@@ -105,12 +106,12 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
         }
         return;
       }
-      
+
       // Nếu đang load profile, không load lại wards vì đã load sẵn
       if (isLoadingProfileRef.current) {
         return;
       }
-      
+
       try {
         setLocationLoading(true);
         const data = await locationApi.getWards(selectedDistrictId);
@@ -136,12 +137,12 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
         const res = await userApi.me();
         if (res && res.status === "success" && res.data) {
           const user = res.data;
-          
+
           // Xử lý address trước - chỉ lấy detail, không lấy toàn bộ JSON
           // Ưu tiên lấy detail từ addressData (backend đã thêm trường này)
           let addressDetail = '';
           let parsedAddressData = null;
-          
+
           // Ưu tiên 1: Lấy detail từ addressData (backend đã parse sẵn)
           if (user.addressData && user.addressData.detail) {
             addressDetail = user.addressData.detail;
@@ -164,7 +165,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               }
             }
           }
-          
+
           setForm({
             userName: user.userName || '',
             avatar: user.avatar || '',
@@ -174,33 +175,33 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
             phone: user.phone || '',
             gender: user.gender || ''
           });
-          
+
           // Load structured address data if available
           // Ưu tiên dùng addressData (backend đã parse sẵn), nếu không có thì dùng parsedAddressData từ address JSON
           const locationData = user.addressData || parsedAddressData;
-          
+
           if (locationData && locationData.provinceId) {
             // Load tất cả dữ liệu trước khi set state để tránh useEffect reset
             try {
               const districtsData = await locationApi.getDistricts(locationData.provinceId);
               let wardsData = [];
-              
+
               if (locationData.districtId) {
                 wardsData = await locationApi.getWards(locationData.districtId);
               }
-              
+
               // Set tất cả state cùng lúc sau khi đã load xong tất cả dữ liệu
               // Đảm bảo isLoadingProfileRef vẫn là true khi set để useEffect không load lại
               setDistricts(districtsData);
               setWards(wardsData);
-              
+
               // Đánh dấu đã load từ profile để không reset giá trị
               hasLoadedFromProfileRef.current = true;
-              
+
               // Set tất cả location state cùng lúc
               // Các useEffect sẽ check isLoadingProfileRef và return early nếu đang load profile
               setSelectedProvinceId(locationData.provinceId);
-              
+
               if (locationData.districtId) {
                 setSelectedDistrictId(locationData.districtId);
                 if (locationData.wardId) {
@@ -321,7 +322,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     const parts = [];
     const addressDetail = form.address?.trim() || '';
     if (addressDetail) parts.push(addressDetail);
-    
+
     const selectedWard = wards.find(w => w.id === selectedWardId);
     const selectedDistrict = districts.find(d => d.id === selectedDistrictId);
     const selectedProvince = provinces.find(p => p.id === selectedProvinceId);
@@ -380,7 +381,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
       setErrors(prev => ({ ...prev, userName: 'Tên người dùng phải có ít nhất 4 ký tự' }));
       return;
     }
-    
+
     if (!form.avatar.trim() && !avatarFile) {
       setErrors(prev => ({ ...prev, avatar: 'Ảnh đại diện là bắt buộc' }));
       return;
@@ -395,30 +396,28 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
     setIsLoading(true);
 
     try {
-      // Build FormData for multipart upload
       const formData = new FormData();
       formData.append('userName', form.userName.trim());
       formData.append('bio', (form.bio || '').slice(0, 500));
-      
-      // Build structured address similar to ProfileEditModal so edit modal can read it
-      const detail = (form.address || '').trim();
-      const addressObj = {};
-      if (detail) addressObj.detail = detail;
-      if (selectedProvinceId) addressObj.provinceId = selectedProvinceId;
-      if (selectedDistrictId) addressObj.districtId = selectedDistrictId;
-      if (selectedWardId) addressObj.wardId = selectedWardId;
-      const fullAddress = buildAddress();
-      if (fullAddress) addressObj.fullAddress = fullAddress;
 
-      if (Object.keys(addressObj).length > 0) {
-        // Store as JSON string in "address" to match edit profile saving scheme
+      const detail = (form.address || '').trim();
+
+      // Kiểm tra nếu người dùng đã chọn đầy đủ các cấp hành chính
+      if (selectedProvinceId && selectedDistrictId && selectedWardId) {
+        // TẠO ĐỐI TƯỢNG ĐÚNG CẤU TRÚC BẠN YÊU CẦU
+        const addressObj = {
+          detail: detail, // Chỉ lưu text thuần vào đây
+          provinceId: selectedProvinceId,
+          districtId: selectedDistrictId,
+          wardId: selectedWardId
+        };
         formData.append('address', JSON.stringify(addressObj));
-        // Keep addressData for backward compatibility
-        formData.append('addressData', JSON.stringify(addressObj));
-      } else {
+      } else if (detail) {
+        // Nếu chỉ nhập text thuần mà không chọn dropdown
         formData.append('address', detail);
       }
-      
+      // If no address info at all, don't append anything
+
       formData.append('phone', sanitizePhone(form.phone));
       formData.append('gender', form.gender || '');
 
@@ -470,13 +469,13 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
         try {
           const { getSession, updateSession } = await import("../../../utils/sessionManager");
           const session = getSession();
-          
+
           if (session && updatedUserData) {
             console.log(`[PROFILE SETUP] Current session:`, session);
-            
+
             // Preserve EntityAccountId when updating account
             const accountEntityAccountId = session.account?.EntityAccountId || session.account?.entityAccountId || null;
-            
+
             // Update account (preserve EntityAccountId)
             const updatedAccount = {
               ...session.account,
@@ -487,7 +486,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               address: updatedUserData.address || session.account.address,
               EntityAccountId: accountEntityAccountId, // Preserve EntityAccountId
             };
-            
+
             // Update activeEntity if exists (preserve EntityAccountId)
             const updatedActiveEntity = session.activeEntity ? {
               ...session.activeEntity,
@@ -495,37 +494,37 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               name: updatedUserData.userName || session.activeEntity.name,
               EntityAccountId: session.activeEntity.EntityAccountId || session.activeEntity.entityAccountId || null, // Preserve EntityAccountId
             } : null;
-            
+
             // Update entities array if exists
-            const updatedEntities = session.entities && Array.isArray(session.entities) 
+            const updatedEntities = session.entities && Array.isArray(session.entities)
               ? session.entities.map(entity => {
-                  if (entity.type === "Account" && entity.id === session.account?.id) {
-                    return {
-                      ...entity,
-                      avatar: updatedUserData.avatar || entity.avatar,
-                      name: updatedUserData.userName || entity.name,
-                      EntityAccountId: entity.EntityAccountId || entity.entityAccountId || null, // Preserve EntityAccountId
-                    };
-                  }
-                  return entity;
-                })
+                if (entity.type === "Account" && entity.id === session.account?.id) {
+                  return {
+                    ...entity,
+                    avatar: updatedUserData.avatar || entity.avatar,
+                    name: updatedUserData.userName || entity.name,
+                    EntityAccountId: entity.EntityAccountId || entity.entityAccountId || null, // Preserve EntityAccountId
+                  };
+                }
+                return entity;
+              })
               : session.entities;
-            
+
             // Update session using sessionManager
             updateSession({
               account: updatedAccount,
               activeEntity: updatedActiveEntity || session.activeEntity,
               entities: updatedEntities,
             });
-            
+
             console.log(`[PROFILE SETUP] Session updated via sessionManager`);
-            
+
             // Dispatch custom event to notify other components (menu, sidebar, etc.)
             const event = new Event('profileUpdated');
             window.dispatchEvent(event);
             console.log(`[PROFILE SETUP] Dispatched profileUpdated event`);
-            
-            const customEvent = new CustomEvent('profileUpdated', { 
+
+            const customEvent = new CustomEvent('profileUpdated', {
               detail: { avatar: updatedUserData.avatar, userName: updatedUserData.userName }
             });
             window.dispatchEvent(customEvent);
@@ -544,31 +543,31 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
       }
     } catch (error) {
       const errorMessage = error?.response?.data?.message || error.message || 'Cập nhật thất bại';
-      
+
       // If error is about userName validation, set it to userName field
       if (errorMessage.includes('Tên người dùng') || errorMessage.includes('userName')) {
-        setErrors(prev => ({ 
-          ...prev, 
+        setErrors(prev => ({
+          ...prev,
           userName: errorMessage,
-          submit: errorMessage 
+          submit: errorMessage
         }));
-      } 
+      }
       // If error is about phone validation, set it to phone field
       else if (errorMessage.includes('điện thoại') || errorMessage.includes('phone')) {
-        setErrors(prev => ({ 
-          ...prev, 
+        setErrors(prev => ({
+          ...prev,
           phone: errorMessage,
-          submit: errorMessage 
+          submit: errorMessage
         }));
-      } 
+      }
       // If error is about gender validation, set it to gender field
       else if (errorMessage.includes('Giới tính') || errorMessage.includes('gender')) {
-        setErrors(prev => ({ 
-          ...prev, 
+        setErrors(prev => ({
+          ...prev,
           gender: errorMessage,
-          submit: errorMessage 
+          submit: errorMessage
         }));
-      } 
+      }
       else {
         setErrors({ submit: errorMessage });
       }
@@ -610,23 +609,23 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
           const needsInfo = !hasPhone && !hasFullAddress;
           return needsInfo && showHint;
         })() && (
-          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center flex-1 gap-2">
-              <Info className="h-4 w-4 text-blue-500 flex-shrink-0" />
-              <p className="text-sm text-blue-700">
-                Để hoàn tất hồ sơ, bạn cần điền <strong>địa chỉ</strong> hoặc <strong>số điện thoại</strong>. Bạn có thể bỏ qua bây giờ và điền sau.
-              </p>
+            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+              <div className="flex items-center flex-1 gap-2">
+                <Info className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <p className="text-sm text-blue-700">
+                  Để hoàn tất hồ sơ, bạn cần điền <strong>địa chỉ</strong> hoặc <strong>số điện thoại</strong>. Bạn có thể bỏ qua bây giờ và điền sau.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHint(false)}
+                className="flex-shrink-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded p-1 transition-colors"
+                aria-label="Đóng thông báo"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowHint(false)}
-              className="flex-shrink-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded p-1 transition-colors"
-              aria-label="Đóng thông báo"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+          )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Form Section */}
@@ -742,7 +741,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               {/* Address - District */}
               {selectedProvinceId && (
                 <div>
-                <label htmlFor="district" className="ps-label block text-sm font-medium mb-2">
+                  <label htmlFor="district" className="ps-label block text-sm font-medium mb-2">
                     Quận/Huyện
                   </label>
                   <select
@@ -766,7 +765,7 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
               {/* Address - Ward */}
               {selectedDistrictId && (
                 <div>
-                <label htmlFor="ward" className="ps-label block text-sm font-medium mb-2">
+                  <label htmlFor="ward" className="ps-label block text-sm font-medium mb-2">
                     Phường/Xã
                   </label>
                   <select

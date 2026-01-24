@@ -6,14 +6,14 @@ import barPageApi from '../../api/barPageApi';
 import businessApi from '../../api/businessApi';
 import AddressSelector from '../common/AddressSelector';
 import { X } from 'lucide-react';
-import { formatAddressForSave, validateAddressFields, parseAddressFromString, extractAddressFields } from '../../utils/addressFormatter';
+import { parseAddressFromString, extractAddressFields } from '../../utils/addressFormatter';
 
 export default function ProfileEditModal({ profile, profileType, onClose, onSuccess }) {
   const { t } = useTranslation();
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
-  
+
   // Address selector states
   const [selectedProvinceId, setSelectedProvinceId] = useState('');
   const [selectedDistrictId, setSelectedDistrictId] = useState('');
@@ -23,10 +23,10 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
   useEffect(() => {
     if (profile) {
       // For BarPage, use BarName; for others, use userName
-      const nameField = profileType === 'BarPage' 
+      const nameField = profileType === 'BarPage'
         ? (profile.BarName || profile.barName || profile.userName || profile.name || '')
         : (profile.userName || profile.name || '');
-      
+
       setFormData({
         userName: nameField,
         BarName: profileType === 'BarPage' ? nameField : undefined,
@@ -38,31 +38,42 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
       });
 
       // Parse address data to populate AddressSelector
-      // Priority 1: Parse from address field (JSON string)
-      if (profile.address && typeof profile.address === 'string') {
+      // Priority 1: Backend returns addressData (structured object) - this is the main source
+      if (profile.addressData && typeof profile.addressData === 'object') {
+        const fields = extractAddressFields(profile.addressData);
+        setSelectedProvinceId(fields.provinceId || '');
+        setSelectedDistrictId(fields.districtId || '');
+        setSelectedWardId(fields.wardId || '');
+        setAddressDetail(fields.detail || '');
+      }
+      // Priority 2: Parse from address field (JSON string)
+      else if (profile.address && typeof profile.address === 'string') {
         const parsedAddress = parseAddressFromString(profile.address);
         if (parsedAddress) {
           const fields = extractAddressFields(parsedAddress);
-          setSelectedProvinceId(fields.provinceId);
-          setSelectedDistrictId(fields.districtId);
-          setSelectedWardId(fields.wardId);
-          setAddressDetail(fields.detail);
+          setSelectedProvinceId(fields.provinceId || '');
+          setSelectedDistrictId(fields.districtId || '');
+          setSelectedWardId(fields.wardId || '');
+          setAddressDetail(fields.detail || '');
+        } else {
+          // If address is plain text (not JSON), set it as detail
+          setAddressDetail(profile.address || '');
         }
       }
-      // Priority 2: Backend returns: provinceId, districtId, wardId, addressDetail
+      // Priority 3: Backend returns: provinceId, districtId, wardId, addressDetail (direct fields)
       else if (profile.provinceId || profile.districtId || profile.wardId || profile.addressDetail) {
         setSelectedProvinceId(profile.provinceId || '');
         setSelectedDistrictId(profile.districtId || '');
         setSelectedWardId(profile.wardId || '');
         setAddressDetail(profile.addressDetail || '');
       }
-      // Priority 3: Parse from addressObject
+      // Priority 4: Parse from addressObject (handle both old and new format)
       else if (profile.addressObject && typeof profile.addressObject === 'object') {
-        const addrObj = profile.addressObject;
-        setSelectedProvinceId(addrObj.provinceId || '');
-        setSelectedDistrictId(addrObj.districtId || '');
-        setSelectedWardId(addrObj.wardId || '');
-        setAddressDetail(addrObj.detail || addrObj.addressDetail || '');
+        const fields = extractAddressFields(profile.addressObject);
+        setSelectedProvinceId(fields.provinceId || '');
+        setSelectedDistrictId(fields.districtId || '');
+        setSelectedWardId(fields.wardId || '');
+        setAddressDetail(fields.detail || '');
       }
     }
   }, [profile, profileType]);
@@ -96,36 +107,38 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
     try {
       let res;
       const data = { ...formData };
-      
+
       // Build address JSON string if any address component is selected
-      // Must have all 4 fields to be valid
-      if (selectedProvinceId || selectedDistrictId || selectedWardId || addressDetail) {
-        // Validate all 4 fields are present
-        if (!validateAddressFields(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId)) {
-          setErrors({ ...errors, address: 'Vui lòng điền đầy đủ thông tin địa chỉ (Tỉnh/Thành phố, Quận/Huyện, Phường/Xã, và Địa chỉ chi tiết)' });
-          setSaving(false);
-          return;
-        }
-        
-        // Format address as JSON string
-        const addressJsonString = formatAddressForSave(addressDetail, selectedProvinceId, selectedDistrictId, selectedWardId);
-        if (!addressJsonString) {
-          setErrors({ ...errors, address: 'Lỗi khi format địa chỉ. Vui lòng thử lại.' });
-          setSaving(false);
-          return;
-        }
-        
-        // Store JSON string in address field
-        data.address = addressJsonString;
+      // Case 1: User selected location from dropdowns (has provinceId, districtId, wardId)
+      if (selectedProvinceId && selectedDistrictId && selectedWardId) {
+        // All 3 location fields are selected - use structured format
+        const addressObj = {
+          detail: (addressDetail || '').trim(),
+          provinceId: selectedProvinceId,
+          districtId: selectedDistrictId,
+          wardId: selectedWardId
+        };
+        // Send as JSON string in address field
+        data.address = JSON.stringify(addressObj);
       }
-      
+      // Case 2: User only entered text address (no dropdown selection)
+      else if (addressDetail && !selectedProvinceId && !selectedDistrictId && !selectedWardId) {
+        // Plain text address - send as string
+        data.address = addressDetail.trim();
+      }
+      // Case 3: User cleared address - remove it
+      else if (!addressDetail && !selectedProvinceId && !selectedDistrictId && !selectedWardId) {
+        // No address info - don't send address field (or send empty string)
+        // Backend will handle empty address
+      }
+
       // Remove empty fields
       for (const key of Object.keys(data)) {
         if (data[key] === '' || data[key] === null || data[key] === undefined) {
           delete data[key];
         }
       }
-      
+
       // Remove bio for BarPage since table doesn't have Bio column
       if (profileType === 'BarPage' && data.bio !== undefined) {
         delete data.bio;
@@ -143,7 +156,7 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
             setErrors({ submit: "Internal Error: Bar EntityAccountId is missing. Cannot save." });
             setSaving(false);
             return;
-    }
+          }
           const barData = { ...data };
           // Map userName to BarName for BarPage API (always use userName value)
           if (barData.userName) {
@@ -216,15 +229,15 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
               const updatedAccount =
                 profileType === "Account"
                   ? {
-                      ...currentAccount,
-                      avatar: updatedProfileData.avatar || currentAccount.avatar,
-                      userName: updatedProfileData.userName || currentAccount.userName,
-                      name: updatedProfileData.userName || currentAccount.name,
-                      phone: updatedProfileData.phone || currentAccount.phone,
-                      bio: updatedProfileData.bio || currentAccount.bio,
-                      address: updatedProfileData.address || currentAccount.address,
-                      EntityAccountId: accountEntityAccountId,
-                    }
+                    ...currentAccount,
+                    avatar: updatedProfileData.avatar || currentAccount.avatar,
+                    userName: updatedProfileData.userName || currentAccount.userName,
+                    name: updatedProfileData.userName || currentAccount.name,
+                    phone: updatedProfileData.phone || currentAccount.phone,
+                    bio: updatedProfileData.bio || currentAccount.bio,
+                    address: updatedProfileData.address || currentAccount.address,
+                    EntityAccountId: accountEntityAccountId,
+                  }
                   : currentAccount;
 
               // Helper to decide if an entity is the one we just edited
@@ -251,14 +264,14 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
               // Update activeEntity (Account / BarPage / BusinessAccount)
               const updatedActiveEntity = currentActive && isSameEntity(currentActive)
                 ? {
-                    ...currentActive,
-                    avatar: updatedProfileData.avatar || currentActive.avatar,
-                    name:
-                      updatedProfileData.userName ||
-                      updatedProfileData.BarName ||
-                      updatedProfileData.barName ||
-                      currentActive.name,
-                  }
+                  ...currentActive,
+                  avatar: updatedProfileData.avatar || currentActive.avatar,
+                  name:
+                    updatedProfileData.userName ||
+                    updatedProfileData.BarName ||
+                    updatedProfileData.barName ||
+                    currentActive.name,
+                }
                 : currentActive;
 
               // Update matching entity in entities array
@@ -307,7 +320,7 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
   const renderFields = () => {
     const isPerformer = profileType === 'BusinessAccount';
 
-      return (
+    return (
       <div className={cn('space-y-5')}>
         {/* Name */}
         <div className={cn('space-y-2')}>
@@ -341,22 +354,22 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
           <div className={cn('space-y-2')}>
             <label htmlFor="bio" className={cn('block text-sm font-semibold text-foreground')}>
               {t('profile.bio') || 'Giới thiệu'}
-          </label>
-          <textarea
-            id="bio"
-            name="bio"
-            rows={4}
-            value={formData.bio || ''}
-            onChange={handleChange}
-            className={cn(
+            </label>
+            <textarea
+              id="bio"
+              name="bio"
+              rows={4}
+              value={formData.bio || ''}
+              onChange={handleChange}
+              className={cn(
                 'w-full px-4 py-3 rounded-xl border resize-none',
                 'bg-background/50 backdrop-blur-sm text-foreground',
                 'border-border/50 focus:border-primary focus:ring-2 focus:ring-primary/20',
                 'transition-all duration-200 placeholder:text-muted-foreground/50'
-            )}
-            placeholder={t('profile.bioPlaceholder') || 'Tell us about yourself...'}
-          />
-        </div>
+              )}
+              placeholder={t('profile.bioPlaceholder') || 'Tell us about yourself...'}
+            />
+          </div>
         )}
 
         {/* Phone */}
@@ -387,32 +400,32 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
           </label>
           <div className={cn('bg-background/30 backdrop-blur-sm rounded-xl p-4 border border-border/30')}>
             <AddressSelector
-            selectedProvinceId={selectedProvinceId}
-            selectedDistrictId={selectedDistrictId}
-            selectedWardId={selectedWardId}
-            addressDetail={addressDetail}
+              selectedProvinceId={selectedProvinceId}
+              selectedDistrictId={selectedDistrictId}
+              selectedWardId={selectedWardId}
+              addressDetail={addressDetail}
               onProvinceChange={(id) => {
-              setSelectedProvinceId(id);
-              setSelectedDistrictId('');
-              setSelectedWardId('');
+                setSelectedProvinceId(id);
+                setSelectedDistrictId('');
+                setSelectedWardId('');
               }}
               onDistrictChange={(id) => {
-              setSelectedDistrictId(id);
-              setSelectedWardId('');
+                setSelectedDistrictId(id);
+                setSelectedWardId('');
               }}
-            onWardChange={(id) => {
-              setSelectedWardId(id);
-            }}
-            onAddressDetailChange={(detail) => {
-              setAddressDetail(detail);
-            }}
-            onAddressChange={(fullAddress) => {
-              // Update formData.address with the full address string
-              setFormData(prev => ({ ...prev, address: fullAddress }));
+              onWardChange={(id) => {
+                setSelectedWardId(id);
+              }}
+              onAddressDetailChange={(detail) => {
+                setAddressDetail(detail);
+              }}
+              onAddressChange={(fullAddress) => {
+                // This is just for display purposes, don't update formData.address here
+                // The actual address JSON will be built in handleSave()
               }}
             />
           </div>
-          </div>
+        </div>
 
         {/* Price fields for Performers */}
         {isPerformer && (
@@ -459,16 +472,16 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
             </div>
           </div>
         )}
-        </div>
-      );
+      </div>
+    );
   };
 
   return (
-    <div 
+    <div
       className={cn('fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4')}
       onClick={onClose}
     >
-      <div 
+      <div
         className={cn(
           'bg-card/95 backdrop-blur-xl rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col',
           'shadow-[0_25px_70px_rgba(0,0,0,0.4)]',
@@ -503,7 +516,7 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
               'mb-4 p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm'
             )}>
               {errors.submit}
-          </div>
+            </div>
           )}
           {renderFields()}
         </div>

@@ -21,9 +21,8 @@ import {
   DollarSign,
   Megaphone,
   AlertCircle,
-  FileText,
-  Wallet,
-  Ticket
+  Ticket,
+  UserPlus
 } from "lucide-react";
 
 
@@ -92,6 +91,7 @@ export const sidebarConfig = {
   admin: [
     { label: "Dashboard", icon: BarChart3, path: "/admin/dashboard" },
     { label: "Quản lý người dùng", icon: Users, path: "/admin/users" },
+    { label: "Đăng ký kế toán", icon: UserPlus, path: "/admin/manager-registration" },
     { label: "Quản lý duyệt", icon: ClipboardCheck, path: "/admin/approvals" },
     { label: "Quản lý voucher", icon: Ticket, path: "/admin/vouchers" },
     { label: "Thư viện nhạc", icon: Music2, path: "/admin/music" },
