@@ -49,9 +49,9 @@ const bookingApi = {
   getAvailableCombos: (barId) =>
     axiosClient.get(`/bookingtable/bar/${barId}/available-combos`),
 
-  getAvailableVouchers: (minComboValue = 1000000) =>
+  getAvailableVouchers: (barPageId, minComboValue = 0) =>
     axiosClient.get("/bookingtable/available-vouchers", {
-      params: { minComboValue }
+      params: { barPageId, minComboValue }
     }),
 
   validateBookingData: (data) =>
