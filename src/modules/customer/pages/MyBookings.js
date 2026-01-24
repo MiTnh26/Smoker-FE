@@ -189,13 +189,13 @@ const BookingDetailModal = ({ open, onClose, booking }) => {
     }
 
     // Nếu chưa thanh toán → hiển thị "Chưa thanh toán"
-    if (paymentStatus !== "Paid" && paymentStatus !== "Done") {
-      return { 
-        label: "Chưa thanh toán", 
-        color: "rgb(var(--danger))", 
-        bg: "rgba(var(--danger), 0.1)" 
-      };
-    }
+     if (paymentStatus !== "Paid" && paymentStatus !== "Done") {
+       return { 
+         label: "Chưa thanh toán", 
+         color: "rgb(var(--danger))", 
+         bg: "rgba(var(--danger), 0.1)" 
+       };
+     }
 
     // Nếu đã thanh toán → hiển thị theo scheduleStatus
     const configs = {
@@ -2351,9 +2351,9 @@ export default function MyBookings() {
         <div className="flex gap-2 min-w-max p-1 bg-muted/30 rounded-xl border border-border/40 w-fit">
           {[
             { id: 'upcoming', label: 'Sắp tới', icon: Clock },
-            { id: 'unpaid', label: 'Chờ thanh toán', icon: Wallet },
+            //{ id: 'unpaid', label: 'Chờ thanh toán', icon: Wallet },
             { id: 'history', label: 'Lịch sử', icon: CheckCircle },
-            { id: 'cancelled', label: 'Đã hủy', icon: XCircle },
+            //{ id: 'cancelled', label: 'Đã hủy', icon: XCircle },
           ].map((tab) => {
             const isActive = (filterType === tab.id) || (filterType === 'all' && tab.id === 'upcoming' && !['unpaid', 'history', 'cancelled'].includes(filterType)); // Simple active check logic mapping
             // Actual Logic: We need a state for the active TAB, separate from the filterType (which filters by DJ/Bar)
