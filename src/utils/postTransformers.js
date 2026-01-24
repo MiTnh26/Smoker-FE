@@ -4,6 +4,7 @@
  */
 
 import { getSession } from "./sessionManager";
+import { checkPostIsLiked } from "../modules/feeds/components/post/checkPostIsLiked";
 
 /**
  * Check if a URL is an audio file
@@ -153,17 +154,29 @@ const extractAudioFromMedias = (medias) => {
   return null;
 };
 
+// ⚠️ ĐỒNG BỘ: Normalize về toLowerCase để nhất quán với utils.js và DB structure
 const normalizeGuid = (value) => {
   if (!value) return null;
-  return String(value).trim().toUpperCase();
+  return String(value).trim().toLowerCase();
 };
 
 const normalizeEntityAccountId = normalizeGuid;
 
-const resolveViewerEntityAccountId = (explicitId) => {
-  const normalizedExplicit = normalizeEntityAccountId(explicitId);
-  if (normalizedExplicit) return normalizedExplicit;
+// ⚠️ ĐỒNG BỘ: Hỗ trợ cả object (activeEntity) và string (entityAccountId) để backward compatible
+const resolveViewerEntityAccountId = (viewerEntity) => {
+  // Nếu là object (activeEntity) - cách mới, nhất quán với PostDetailModal
+  if (viewerEntity && typeof viewerEntity === 'object') {
+    const entityId = viewerEntity.EntityAccountId || viewerEntity.entityAccountId || viewerEntity.id;
+    if (entityId) return normalizeEntityAccountId(entityId);
+  }
+  
+  // Nếu là string (entityAccountId) - cách cũ, backward compatible
+  if (typeof viewerEntity === 'string') {
+    const normalized = normalizeEntityAccountId(viewerEntity);
+    if (normalized) return normalized;
+  }
 
+  // Fallback: Đọc từ session
   try {
     const session = getSession();
     return normalizeEntityAccountId(
@@ -219,7 +232,8 @@ const isLikedByViewer = (likes, viewerEntityAccountId) => {
  * Updated to use new DTO schema: author, medias, stats, originalPost, topComments
  */
 // eslint-disable-next-line complexity
-export const mapPostForCard = (post, t, viewerEntityAccountId) => {
+// ⚠️ ĐỒNG BỘ: viewerEntity có thể là object (activeEntity) hoặc string (entityAccountId) để backward compatible
+export const mapPostForCard = (post, t, viewerEntity) => {
   // Support both new DTO schema and legacy schema for backward compatibility
   const id = post.id || post._id || post.postId;
   
@@ -262,7 +276,8 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     ...mediaFromMediaIds.audios,
   ]);
 
-  const resolvedViewerEntityId = resolveViewerEntityAccountId(viewerEntityAccountId);
+  // ⚠️ ĐỒNG BỘ: resolveViewerEntityAccountId đã hỗ trợ cả object và string
+  const resolvedViewerEntityId = resolveViewerEntityAccountId(viewerEntity);
 
   // Read music from new DTO schema (music object) or legacy format
   const music = post.music || post.musicId || {};
@@ -283,10 +298,11 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
     typeof stats.trendingScore === "number"
       ? stats.trendingScore
       : (typeof post.trendingScore === "number" ? post.trendingScore : 0);
-  const likedByCurrentUser =
-    stats.isLikedByMe !== undefined
-      ? stats.isLikedByMe
-      : isLikedByViewer(post.likes, resolvedViewerEntityId, null);
+  
+  // Use universal checkPostIsLiked function (O(1) lookup, supports both likes and likesObject)
+  // ⚠️ ĐỒNG BỘ: Truyền viewerEntity object (hoặc string nếu backward compatible) thay vì resolvedViewerEntityId
+  // checkPostIsLiked sẽ tự extract và normalize toLowerCase để match với keys trong DB
+  const likedByCurrentUser = checkPostIsLiked(post, viewerEntity);
 
   // Read author info from new DTO schema
   const ownerEntityAccountId = normalizeEntityAccountId(
@@ -314,7 +330,7 @@ export const mapPostForCard = (post, t, viewerEntityAccountId) => {
   // Transform originalPost recursively if exists (to ensure createdAt and other fields are preserved)
   let transformedOriginalPost = null;
   if (originalPost) {
-    transformedOriginalPost = mapPostForCard(originalPost, t, viewerEntityAccountId);
+    transformedOriginalPost = mapPostForCard(originalPost, t, viewerEntity);
     // Ensure createdAt is preserved for time display (in case it was lost during transformation)
     if (originalPost.createdAt) {
       transformedOriginalPost.createdAt = originalPost.createdAt;

@@ -14,6 +14,7 @@ import ExpandableText from "../../../../components/common/ExpandableText"
 import { cn } from "../../../../utils/cn"
 import { getAvatarUrl } from "../../../../utils/defaultAvatar"
 import { mapPostForCard, formatPostTime } from "../../../../utils/postTransformers"
+import { getSession } from "../../../../utils/sessionManager"
 import "../../../../styles/modules/feeds/components/post/post-card.css"
 
 export default function PostCard({
@@ -32,7 +33,8 @@ export default function PostCard({
   onShared,
   disableCommentButton = false,
   hideMenu = false,
-  isOwnProfile = false
+  isOwnProfile = false,
+  onLike = null // Callback khi like/unlike để sync state với parent
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -69,7 +71,8 @@ export default function PostCard({
       ? post.stats.isLikedByMe 
       : Boolean(post.likedByCurrentUser);
     setLiked(isLiked);
-    setLikeCount(Number(post.likes || post.stats?.likeCount || 0));
+    // Ưu tiên stats.likeCount (mới nhất từ backend) hơn post.likes (có thể cũ)
+    setLikeCount(Number(post.stats?.likeCount ?? post.likes ?? 0));
   }, [post.likedByCurrentUser, post.stats?.isLikedByMe, post.likes, post.stats?.likeCount, post.id])
 
   // Query original post if this is a repost (chỉ query 1 lần, có cache)
@@ -305,21 +308,9 @@ export default function PostCard({
 
       // Optimistic update
       const nextLiked = !liked
+      const nextLikeCount = Math.max(0, likeCount + (nextLiked ? 1 : -1))
       setLiked(nextLiked)
-      setLikeCount((c) => Math.max(0, c + (nextLiked ? 1 : -1)))
-
-      // Debug: log entityAccountId và session để kiểm tra phân biệt like giữa các role
-      try {
-        const rawSession = localStorage.getItem("session")
-        console.log("[PostCard] toggleLike", {
-          postId: post.id,
-          nextLiked,
-          viewerEntityAccountId,
-          session: rawSession
-        })
-      } catch {
-        console.warn("[PostCard] Failed to read session for debug logging")
-      }
+      setLikeCount(nextLikeCount)
 
       const response = nextLiked
         ? await likePost(post.id, { typeRole, entityAccountId: viewerEntityAccountId })
@@ -328,6 +319,15 @@ export default function PostCard({
       // Response từ like/unlike API trả về raw post, không phải DTO
       // Optimistic update đã đúng rồi, không cần sync từ response
       // State sẽ được sync đúng khi reload từ useEffect (đọc từ post.stats.isLikedByMe)
+      
+      // Gọi callback để thông báo cho parent component (PostDetailModal)
+      if (onLike) {
+        onLike({
+          postId: post.id,
+          liked: nextLiked,
+          likeCount: nextLikeCount
+        });
+      }
     } catch (error) {
       // Revert optimistic update on error
       setLiked((v) => !v)
@@ -462,14 +462,32 @@ export default function PostCard({
     
     if (!entityAccountId && !entityId) return;
     
-    if (entityType === 'BarPage') {
-      navigate(`/bar/${entityId || entityAccountId}`);
-    } else if (entityType === 'BusinessAccount' || entityType === 'Business') {
-      navigate(`/profile/${entityAccountId || entityId}`);
-    } else {
-      // Account or default
-      navigate(`/profile/${entityAccountId || entityId}`);
+    // Check if this is own profile before navigating
+    try {
+      const session = getSession();
+      if (session) {
+        const activeEntityAccountId = 
+          session.activeEntity?.EntityAccountId ||
+          session.activeEntity?.entityAccountId ||
+          null;
+        
+        // Normalize IDs for comparison
+        const postEntityAccountIdNormalized = entityAccountId ? String(entityAccountId).toLowerCase().trim() : null;
+        const activeEntityAccountIdNormalized = activeEntityAccountId ? String(activeEntityAccountId).toLowerCase().trim() : null;
+        
+        // If it's own profile, navigate to /own/profile
+        if (postEntityAccountIdNormalized && activeEntityAccountIdNormalized && 
+            postEntityAccountIdNormalized === activeEntityAccountIdNormalized) {
+          navigate("/own/profile");
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('[PostCard] Error checking own profile:', error);
     }
+    
+    // Navigate to public profile - use /profile/ for all entity types including BarPage
+      navigate(`/profile/${entityAccountId || entityId}`);
   }
 
   // Debug / analytics: trending score & view count (from stats or fallback fields)
@@ -1141,9 +1159,25 @@ export default function PostCard({
       />
       <PostDetailModal
         open={postDetailModalOpen}
-        post={post}
+        post={{
+          ...post,
+          likedByCurrentUser: liked,
+          likes: likeCount,
+          stats: {
+            ...post.stats,
+            isLikedByMe: liked,
+            likeCount: likeCount
+          }
+        }}
         postId={post.id}
         onClose={() => setPostDetailModalOpen(false)}
+        onPostUpdated={(updateData) => {
+          // Đồng bộ state like từ PostDetailModal về PostCard
+          if (updateData.postId === post.id) {
+            setLiked(updateData.liked);
+            setLikeCount(updateData.likeCount);
+          }
+        }}
       />
     </article>
   )

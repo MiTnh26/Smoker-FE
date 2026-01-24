@@ -73,6 +73,7 @@ export default function MediaCommentSection({
                 pendingLikes={pendingLikes}
                 submitting={submitting}
                 onLikeClick={onToggleCommentLike}
+                onReplyLikeClick={onToggleReplyLike}
                 onReplyClick={onShowReplyInput}
                 onEditClick={onStartEdit}
                 onDeleteClick={onDelete}

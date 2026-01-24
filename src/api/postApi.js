@@ -161,7 +161,7 @@ export const getTrashedPosts = (params) => axiosClient.get("/posts/trash", { par
 export const likeMedia = (mediaId, data) => axiosClient.post(`/medias/${mediaId}/like`, data);
 
 // Unlike media
-export const unlikeMedia = (mediaId) => axiosClient.delete(`/medias/${mediaId}/like`);
+export const unlikeMedia = (mediaId, data = {}) => axiosClient.delete(`/medias/${mediaId}/like`, { data });
 
 // Track media share
 export const trackMediaShare = (mediaId) => axiosClient.post(`/medias/${mediaId}/share`);

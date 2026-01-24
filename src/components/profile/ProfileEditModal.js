@@ -145,10 +145,12 @@ export default function ProfileEditModal({ profile, profileType, onClose, onSucc
             return;
     }
           const barData = { ...data };
-          // Map userName to BarName for BarPage API
-          if (barData.userName && !barData.BarName) {
+          // Map userName to BarName for BarPage API (always use userName value)
+          if (barData.userName) {
             barData.BarName = barData.userName;
           }
+          // Remove userName field to avoid confusion (BarPage uses BarName)
+          delete barData.userName;
           // Map phone to phoneNumber for BarPage API
           if (barData.phone && !barData.phoneNumber) {
             barData.phoneNumber = barData.phone;

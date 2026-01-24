@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { formatShortTime } from "./utils/storyUtils";
+import { getSession } from "../../../../utils/sessionManager";
 
 /**
  * Component to display story user info (avatar, name, time, music, caption)
@@ -17,13 +18,31 @@ export default function StoryInfo({ story, t, isOwnStory = false }) {
     const entityId = story.authorEntityId || story.entityId;
     const entityType = story.authorEntityType || story.entityType;
     
-    if (entityType === "BarPage") {
-      navigate(`/bar/${entityId || entityAccountId}`);
-    } else if (entityType === "BusinessAccount") {
-      navigate(`/profile/${entityAccountId || entityId}`);
-    } else {
-      navigate(`/profile/${entityAccountId || entityId}`);
+    // Check if this is own profile before navigating
+    try {
+      const session = getSession();
+      if (session && entityAccountId) {
+        const activeEntityAccountId = 
+          session.activeEntity?.EntityAccountId ||
+          session.activeEntity?.entityAccountId ||
+          null;
+        
+        // Normalize IDs for comparison
+        const storyEntityAccountIdNormalized = String(entityAccountId).toLowerCase().trim();
+        const activeEntityAccountIdNormalized = activeEntityAccountId ? String(activeEntityAccountId).toLowerCase().trim() : null;
+        
+        // If it's own profile, navigate to /own/profile
+        if (activeEntityAccountIdNormalized && storyEntityAccountIdNormalized === activeEntityAccountIdNormalized) {
+          navigate("/own/profile");
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('[StoryInfo] Error checking own profile:', error);
     }
+    
+    // Navigate to public profile - use /profile/ for all entity types including BarPage
+      navigate(`/profile/${entityAccountId || entityId}`);
   };
 
 
