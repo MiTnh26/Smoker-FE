@@ -402,8 +402,9 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
 
       const detail = (form.address || '').trim();
 
-      // Kiểm tra nếu người dùng đã chọn đầy đủ các cấp hành chính
-      if (selectedProvinceId && selectedDistrictId && selectedWardId) {
+      // Kiểm tra nếu người dùng đã chọn đầy đủ các cấp hành chính VÀ có detail
+      // Backend yêu cầu đầy đủ 4 trường: detail, provinceId, districtId, wardId
+      if (selectedProvinceId && selectedDistrictId && selectedWardId && detail) {
         // TẠO ĐỐI TƯỢNG ĐÚNG CẤU TRÚC BẠN YÊU CẦU
         const addressObj = {
           detail: detail, // Chỉ lưu text thuần vào đây
@@ -412,11 +413,11 @@ const ProfileSetup = ({ onSave, redirectPath = "/customer/newsfeed" }) => {
           wardId: selectedWardId
         };
         formData.append('address', JSON.stringify(addressObj));
-      } else if (detail) {
-        // Nếu chỉ nhập text thuần mà không chọn dropdown
+      } else if (detail && (!selectedProvinceId || !selectedDistrictId || !selectedWardId)) {
+        // Nếu chỉ nhập text thuần mà không chọn đầy đủ dropdown
         formData.append('address', detail);
       }
-      // If no address info at all, don't append anything
+      // If no address info at all, or chỉ có location mà không có detail, don't append anything
 
       formData.append('phone', sanitizePhone(form.phone));
       formData.append('gender', form.gender || '');
