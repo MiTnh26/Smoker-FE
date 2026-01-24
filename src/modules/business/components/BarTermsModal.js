@@ -140,43 +140,37 @@ export default function BarTermsModal({ isOpen, onClose, onAccept }) {
         {/* Section 3 */}
         <Section
           number={3}
-          title="Voucher & ưu đãi cho khách hàng"
+          title="Voucher & Phân phối"
           icon={Shield}
         >
           <Bullet>
-            Hệ thống có thể áp dụng voucher giảm giá cho khách hàng khi đặt bàn.
+            Quán Bar có thể tạo các voucher và gửi cho Admin để Admin phân phối lại cho người dùng khi đặt bàn tại quán bar đó.
           </Bullet>
           <Bullet>
-            Voucher chỉ áp dụng trên giá combo và không áp dụng cộng dồn.
+            Admin được hưởng <strong>100% tiền bán voucher</strong>. Ví dụ: Quán Bar tạo voucher A giá 500.000 đ rồi gửi cho Admin, Admin sẽ tạo voucher cho người dùng khi đặt bàn tại quán bar đó và Admin sẽ được hưởng 100% tiền bán voucher đó.
           </Bullet>
           <Bullet>
-            Giá trị giảm giá tối đa cho mỗi voucher là 5% theo quy định của hệ
-            thống.
+            Nếu Admin bán voucher với giá thấp hơn giá gốc (ví dụ: voucher gốc 500.000 đ, Admin bán 450.000 đ), thì người dùng lời phần chênh lệch (50.000 đ) và hệ thống lời phần còn lại (400.000 đ).
           </Bullet>
           <Bullet>
-            Quán Bar đồng ý rằng phần giảm giá cho khách hàng được trừ vào phần
-            doanh thu của hệ thống, không ảnh hưởng đến quyền lợi đã thỏa thuận
-            của Quán Bar.
+            Voucher chỉ có giá trị khi được Admin duyệt và phân phối cho người dùng.
           </Bullet>
         </Section>
 
         {/* Section 4 */}
         <Section
           number={4}
-          title="Hủy bàn & hoàn tiền"
-          icon={Ban}
+          title="Quy trình đặt bàn"
+          icon={Calendar}
         >
           <Bullet>
-            Quán Bar không được tự ý hủy bàn sau khi khách hàng đã đặt bàn thành
-            công.
+            Quy trình đặt bàn: Người dùng chọn quán → chọn đặt bàn → chọn bàn → xác nhận đặt → chọn voucher (nếu có) → thanh toán voucher → hệ thống gửi thông báo tới quán bar.
           </Bullet>
           <Bullet>
-            Trường hợp không phục vụ đúng combo, khách hàng có quyền gửi phản hồi
-            và yêu cầu hoàn tiền.
+            Sau khi người dùng thanh toán voucher thành công, hệ thống sẽ tự động gửi thông báo cho quán bar để quán bar xác nhận đặt bàn.
           </Bullet>
           <Bullet>
-            Hệ thống sẽ là bên kiểm duyệt và quyết định cuối cùng đối với các yêu
-            cầu hoàn tiền hợp lệ.
+            Quán Bar có trách nhiệm xem xét và xác nhận hoặc từ chối đặt bàn trong thời gian hợp lý.
           </Bullet>
         </Section>
 
@@ -184,23 +178,41 @@ export default function BarTermsModal({ isOpen, onClose, onAccept }) {
         <Section
           number={5}
           title="Xác nhận đặt bàn & trách nhiệm"
-          icon={Calendar}
+          icon={CheckCircle}
         >
           <Bullet>
-            Mỗi đơn đặt bàn hợp lệ sẽ được lưu trữ trên hệ thống và tạo mã QR để
-            xác nhận.
+            Nếu Quán Bar <strong>xác nhận</strong> đặt bàn: hệ thống sẽ gửi thông báo cho người dùng và hiển thị mã voucher trong lịch sử đặt bàn của người dùng. Mã này được sử dụng để giảm tiền khi thanh toán tại quán bar.
           </Bullet>
           <Bullet>
-            Quán Bar có trách nhiệm kiểm tra thông tin đặt bàn và phục vụ đúng
-            lịch đã xác nhận.
+            Nếu Quán Bar <strong>từ chối</strong> đặt bàn: hệ thống sẽ tự động tạo yêu cầu hoàn tiền và gửi thông báo cho kế toán. Kế toán sẽ xử lý đơn chuyển tiền thủ công và cung cấp minh chứng đã hoàn tiền, sau đó cập nhật lại trạng thái của đơn và thông báo cho người dùng đã hoàn tiền.
           </Bullet>
           <Bullet>
-            Trường hợp khách hàng không đến, Quán Bar không có nghĩa vụ hoàn tiền.
+            Quán Bar có trách nhiệm kiểm tra thông tin đặt bàn và phục vụ đúng lịch đã xác nhận.
+          </Bullet>
+          <Bullet>
+            Trường hợp khách hàng không đến sau khi đã xác nhận, Quán Bar không có nghĩa vụ hoàn tiền.
           </Bullet>
         </Section>
 
         {/* Section 6 */}
-        <Section number={6} title="Xác nhận điều khoản">
+        <Section
+          number={6}
+          title="Hủy bàn & hoàn tiền"
+          icon={Ban}
+        >
+          <Bullet>
+            Quán Bar không được tự ý hủy bàn sau khi khách hàng đã đặt bàn thành công và đã thanh toán.
+          </Bullet>
+          <Bullet>
+            Trường hợp không phục vụ đúng combo, khách hàng có quyền gửi phản hồi và yêu cầu hoàn tiền.
+          </Bullet>
+          <Bullet>
+            Hệ thống sẽ là bên kiểm duyệt và quyết định cuối cùng đối với các yêu cầu hoàn tiền hợp lệ.
+          </Bullet>
+        </Section>
+
+        {/* Section 7 */}
+        <Section number={7} title="Xác nhận điều khoản">
           <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
             <p className="text-sm text-muted-foreground">
               Bằng việc nhấn{" "}
