@@ -875,32 +875,73 @@ const BarTablesPage = ({ barId: propBarId }) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
-  // Fetch receiverId
+  // Fetch receiverId từ barId (BarPageId) trong URL
   useEffect(() => {
     const fetchReceiverId = async () => {
-      try {
-        console.log('[BarTablesPage] Fetching bar details for barId:', barId);
-        const barDetails = await barPageApi.getBarPageById(barId);
-        console.log('[BarTablesPage] Bar details response:', barDetails);
+      if (!barId) {
+        console.warn('[BarTablesPage] No barId provided, cannot fetch receiverId');
+        return;
+      }
 
-        // API trả về: { status: "success", data: { EntityAccountId, ... } }
-        const entityAccountId = barDetails.data?.data?.EntityAccountId;
+      try {
+        console.log('[BarTablesPage] === Fetching receiverId ===');
+        console.log('[BarTablesPage] barId (BarPageId from URL):', barId);
+        
+        const response = await barPageApi.getBarPageById(barId);
+        console.log('[BarTablesPage] Raw API response:', response);
+        
+        // Axios interceptor có thể đã unwrap response.data
+        // Response structure có thể là:
+        // 1. { status: "success", data: { EntityAccountId, ... } } - nếu chưa unwrap
+        // 2. { EntityAccountId, ... } - nếu đã unwrap
+        // 3. response.data = { status: "success", data: { EntityAccountId, ... } } - nếu unwrap 1 lần
+        
+        let entityAccountId = null;
+        
+        // Thử nhiều cách extract để đảm bảo lấy được
+        if (response?.data?.data?.EntityAccountId) {
+          // Case: { data: { status: "success", data: { EntityAccountId } } }
+          entityAccountId = response.data.data.EntityAccountId;
+          console.log('[BarTablesPage] Found EntityAccountId in response.data.data.EntityAccountId');
+        } else if (response?.data?.EntityAccountId) {
+          // Case: { data: { EntityAccountId } } - đã unwrap 1 lần
+          entityAccountId = response.data.EntityAccountId;
+          console.log('[BarTablesPage] Found EntityAccountId in response.data.EntityAccountId');
+        } else if (response?.EntityAccountId) {
+          // Case: { EntityAccountId } - đã unwrap hoàn toàn
+          entityAccountId = response.EntityAccountId;
+          console.log('[BarTablesPage] Found EntityAccountId in response.EntityAccountId');
+        } else if (response?.status === 'success' && response?.data?.EntityAccountId) {
+          // Case: { status: "success", data: { EntityAccountId } }
+          entityAccountId = response.data.EntityAccountId;
+          console.log('[BarTablesPage] Found EntityAccountId in response.data.EntityAccountId (status success)');
+        }
+        
         console.log('[BarTablesPage] Extracted EntityAccountId:', entityAccountId);
+        console.log('[BarTablesPage] EntityAccountId type:', typeof entityAccountId);
+        console.log('[BarTablesPage] Full response keys:', Object.keys(response || {}));
+        if (response?.data) {
+          console.log('[BarTablesPage] response.data keys:', Object.keys(response.data || {}));
+        }
 
         if (entityAccountId) {
+          console.log('[BarTablesPage] ✓ Setting receiverId to:', entityAccountId);
           setReceiverId(entityAccountId);
         } else {
-          console.warn('[BarTablesPage] No EntityAccountId found in response');
+          console.error('[BarTablesPage] ❌ No EntityAccountId found in response');
+          console.error('[BarTablesPage] Full response structure:', JSON.stringify(response, null, 2));
+          addToast("Không thể lấy thông tin quán bar. Vui lòng thử lại.", "error");
         }
       } catch (error) {
-        console.error("Error fetching bar details:", error);
+        console.error("[BarTablesPage] ❌ Error fetching bar details:", error);
+        console.error("[BarTablesPage] Error response:", error.response?.data);
+        console.error("[BarTablesPage] Error message:", error.message);
+        addToast("Lỗi khi tải thông tin quán bar", "error");
       }
     };
 
-    if (barId) {
-      fetchReceiverId();
-    }
-  }, [barId]);
+    fetchReceiverId();
+  }, [barId, addToast]);
 
   // Fetch vouchers for this bar when barId is available
   useEffect(() => {
@@ -1182,6 +1223,15 @@ const BarTablesPage = ({ barId: propBarId }) => {
       return;
     }
 
+    // Kiểm tra receiverId đã được fetch chưa
+    if (!receiverId) {
+      console.error('[BarTablesPage] ❌ receiverId is missing when opening booking modal');
+      console.error('[BarTablesPage] barId:', barId);
+      console.error('[BarTablesPage] receiverId state:', receiverId);
+      addToast("Đang tải thông tin quán bar. Vui lòng đợi một chút...", "warning");
+      return;
+    }
+
     // Reset voucher selection when opening modal
     setSelectedVoucher(null);
 
@@ -1200,10 +1250,63 @@ const BarTablesPage = ({ barId: propBarId }) => {
 
   // Handle booking confirm with voucher (optional) and deposit 100k
   const handleBookingConfirm = async (formData) => {
-    if (!receiverId || selectedTables.length === 0) {
-      addToast("Lỗi: Thiếu thông tin bắt buộc", "error");
+    console.log("=== [DEBUG] handleBookingConfirm - Frontend ===");
+    console.log("[DEBUG] formData:", formData);
+    console.log("[DEBUG] receiverId:", receiverId, `(type: ${typeof receiverId}, length: ${receiverId?.length})`);
+    console.log("[DEBUG] barId (from URL):", barId);
+    console.log("[DEBUG] selectedTables:", selectedTables);
+    console.log("[DEBUG] selectedTables.length:", selectedTables.length);
+    console.log("[DEBUG] selectedTables[0]:", selectedTables[0]);
+    console.log("[DEBUG] selectedTables[0]?.BarTableId:", selectedTables[0]?.BarTableId);
+    console.log("[DEBUG] selectedDate:", selectedDate);
+    console.log("[DEBUG] selectedVoucher:", selectedVoucher);
+
+    // Validate required fields
+    if (selectedTables.length === 0) {
+      console.error("[DEBUG] ❌ Validation failed: No table selected");
+      addToast("Vui lòng chọn một bàn", "error");
       return;
     }
+
+    // Nếu thiếu receiverId, thử fetch lại trước khi tiếp tục
+    let finalReceiverId = receiverId;
+    if (!finalReceiverId && barId) {
+      console.log("[DEBUG] receiverId missing, attempting to re-fetch...");
+      try {
+        const response = await barPageApi.getBarPageById(barId);
+        let entityAccountId = 
+          response?.data?.data?.EntityAccountId || 
+          response?.data?.EntityAccountId || 
+          response?.EntityAccountId ||
+          (response?.status === 'success' && response?.data?.EntityAccountId ? response.data.EntityAccountId : null);
+        
+        if (entityAccountId) {
+          console.log("[DEBUG] ✓ Re-fetched receiverId:", entityAccountId);
+          finalReceiverId = entityAccountId;
+          setReceiverId(entityAccountId); // Update state for next time
+        } else {
+          console.error("[DEBUG] ❌ Could not extract EntityAccountId from response");
+          addToast("Không thể lấy thông tin quán bar. Vui lòng tải lại trang.", "error");
+          return;
+        }
+      } catch (error) {
+        console.error("[DEBUG] ❌ Failed to re-fetch receiverId:", error);
+        addToast("Lỗi khi tải thông tin quán bar. Vui lòng thử lại.", "error");
+        return;
+      }
+    }
+
+    if (!finalReceiverId) {
+      console.error("[DEBUG] ❌ Validation failed: receiverId is still missing");
+      console.error("[DEBUG]   - receiverId:", finalReceiverId ? "✓" : "✗ MISSING");
+      console.error("[DEBUG]   - barId:", barId);
+      addToast("Lỗi: Không thể xác định quán bar. Vui lòng tải lại trang.", "error");
+      return;
+    }
+
+    console.log("[DEBUG] ✓ All validations passed");
+    console.log("[DEBUG]   - receiverId:", finalReceiverId);
+    console.log("[DEBUG]   - tableId:", selectedTables[0]?.BarTableId);
 
     try {
       // Tính startTime và endTime
@@ -1226,16 +1329,26 @@ const BarTablesPage = ({ barId: propBarId }) => {
         endTime = endOfDay.toISOString();
       }
 
+      console.log("[DEBUG] Calculated times:");
+      console.log("[DEBUG]   - startTime:", startTime);
+      console.log("[DEBUG]   - endTime:", endTime);
+      console.log("[DEBUG]   - isToday:", isToday);
+
       // Luôn dùng API createBookingWithVoucher (voucher là optional)
       // Tính giá bán: giảm 10% từ giá gốc (hệ thống trích 10% lợi nhuận)
       let salePrice = null;
       if (selectedVoucher) {
         const originalValue = Number(selectedVoucher.OriginalValue) || 0;
         salePrice = Math.round(originalValue * 0.9); // Giảm 10%
+        console.log("[DEBUG] Voucher calculation:");
+        console.log("[DEBUG]   - originalValue:", originalValue);
+        console.log("[DEBUG]   - salePrice:", salePrice);
+      } else {
+        console.log("[DEBUG] No voucher selected");
       }
       
       const bookingData = {
-        receiverId: receiverId,
+        receiverId: finalReceiverId, // Sử dụng finalReceiverId thay vì receiverId state
         tableId: selectedTables[0].BarTableId,
         voucherId: selectedVoucher?.VoucherId || null,
         salePrice: salePrice,
@@ -1245,7 +1358,16 @@ const BarTablesPage = ({ barId: propBarId }) => {
         note: `${formData.customerName} - ${formData.phone}${formData.note ? ` - ${formData.note}` : ''}`
       };
 
-      console.log("[BarTablesPage] Creating booking:", bookingData);
+      console.log("[DEBUG] Final bookingData to send:");
+      console.log("[DEBUG]   - receiverId:", bookingData.receiverId, `(type: ${typeof bookingData.receiverId})`);
+      console.log("[DEBUG]   - tableId:", bookingData.tableId, `(type: ${typeof bookingData.tableId})`);
+      console.log("[DEBUG]   - voucherId:", bookingData.voucherId, `(type: ${typeof bookingData.voucherId})`);
+      console.log("[DEBUG]   - salePrice:", bookingData.salePrice, `(type: ${typeof bookingData.salePrice})`);
+      console.log("[DEBUG]   - bookingDate:", bookingData.bookingDate, `(type: ${typeof bookingData.bookingDate})`);
+      console.log("[DEBUG]   - startTime:", bookingData.startTime, `(type: ${typeof bookingData.startTime})`);
+      console.log("[DEBUG]   - endTime:", bookingData.endTime, `(type: ${typeof bookingData.endTime})`);
+      console.log("[DEBUG]   - note:", bookingData.note, `(type: ${typeof bookingData.note})`);
+      console.log("[DEBUG] Full bookingData object:", JSON.stringify(bookingData, null, 2));
 
       const result = await bookingApi.createBookingWithVoucher(bookingData);
 

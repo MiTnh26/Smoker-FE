@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Route } from "react-router-dom";
+import { Route, Navigate } from "react-router-dom";
 import AuthLayout from "../layouts/AuthLayout";
 import { 
   Login, 
@@ -24,6 +24,7 @@ export default function AuthRoutes() {
       <Route path="/register" element={<AuthLayout><Register /></AuthLayout>} />
       <Route path="/login/google" element={<AuthLayout><GoogleLoginButton /></AuthLayout>} />
       <Route path="/profile-setup" element={<AuthLayout><ProfileSetup /></AuthLayout>} />
+      <Route path="/setup-profile" element={<Navigate to="/profile-setup" replace />} />
   <Route path="/forgot-password" element={<AuthLayout><ForgotPassword /></AuthLayout>} />
   <Route path="/verify-otp" element={<AuthLayout><VerifyOtp /></AuthLayout>} />
   <Route path="/reset-password" element={<AuthLayout><ResetPassword /></AuthLayout>} />
